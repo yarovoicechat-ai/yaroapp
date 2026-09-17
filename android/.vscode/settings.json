@@ -1,0 +1,23 @@
+{
+    "java.import.gradle.enabled": false,
+    "java.import.maven.enabled": false,
+    "java.autobuild.enabled": false,
+    "java.configuration.updateBuildConfiguration": "disabled",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.import.exclusions": [
+        "**/node_modules/**",
+        "**/node_modules/*/**",
+        "**/node_modules/@react-native/**",
+        "**/node_modules/@react-native-firebase/**",
+        "**/node_modules/@notifee/**",
+        "**/.metadata/**",
+        "**/archetype/**"
+    ],
+    "java.project.exclusion": [
+        "**/node_modules/**",
+        "**/node_modules/*/**"
+    ],
+    "files.watcherExclude": {
+        "**/node_modules/**": true
+    }
+}

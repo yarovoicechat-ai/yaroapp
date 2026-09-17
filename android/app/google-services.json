@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "775252509237",
+    "project_id": "yaro-voice-chat",
+    "storage_bucket": "yaro-voice-chat.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:775252509237:android:6b8f848b4b025b52afa77c",
+        "android_client_info": {
+          "package_name": "yaro.vc.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "775252509237-aeqs5cd5viou7iv4r5chq8k15ccaq7ir.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASAKjsbgLm0LnqGWZ3zQtgJnLVShUXLpI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "775252509237-aeqs5cd5viou7iv4r5chq8k15ccaq7ir.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

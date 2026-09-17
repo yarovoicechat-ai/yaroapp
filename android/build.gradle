@@ -1,0 +1,75 @@
+ext {
+    buildToolsVersion = "36.0.0"
+    minSdkVersion = 24
+    compileSdkVersion = 36
+    targetSdkVersion = 36
+    ndkVersion = "27.1.12297006"
+    kotlinVersion = "2.2.0"
+}
+
+buildscript {
+    ext {
+        buildToolsVersion = "36.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 36
+        targetSdkVersion = 36
+        ndkVersion = "27.1.12297006"
+        kotlinVersion = "2.2.0"
+    }
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.5.2")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.0")
+        classpath('com.google.gms:google-services:4.4.2')
+    }
+}
+
+subprojects {
+    def configureSubproject = { proj ->
+        if (proj.hasProperty("android")) {
+            proj.android {
+                defaultConfig {
+                    externalNativeBuild {
+                        cmake {
+                            arguments "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384",
+                                      "-DCMAKE_MODULE_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384",
+                                      "-DCMAKE_EXE_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384",
+                                      "-DCMAKE_JOB_POOLS=compile=1;link=1",
+                                      "-DCMAKE_JOB_POOL_COMPILE=compile",
+                                      "-DCMAKE_JOB_POOL_LINK=link"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (project.state.executed) {
+        configureSubproject(project)
+    } else {
+        project.afterEvaluate {
+            configureSubproject(project)
+        }
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    configurations.all {
+        exclude group: 'io.agora.rtc', module: 'agora-special-full'
+        exclude group: 'io.agora.rtc', module: 'full-screen-sharing'
+        exclude group: 'io.agora.rtc', module: 'full-sdk'
+    }
+}

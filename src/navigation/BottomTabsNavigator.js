@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
-  Platform,
+  Animated,
 } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,16 +15,15 @@ import Svg, { Path } from "react-native-svg";
 import { TabActions } from "@react-navigation/native";
 
 import Home from "../screens/user/Home";
+import OneToOne from "../screens/user/OneToOne";
 import Party from "../screens/user/Party";
 import ChatListScreen from "../screens/chats/chatList";
 import Profile from "../screens/user/Profile";
-import Setting from "../screens/user/Setting";
 import { AuthContext } from "../context/AuthProvider";
 import { apiUtil } from "../utils/apiUtil";
 import { getSocket } from "../sockets";
 
 import {
-  TAB_BAR_HEIGHT,
   TAB_BAR_HORIZONTAL_MARGIN,
   getTabBarBottomMargin,
 } from "../utils/safeAreaUtils";
@@ -32,34 +31,94 @@ import {
 const Tab = createBottomTabNavigator();
 
 const BAR_HEIGHT = 64;
-const CORNER_RADIUS = 28;
-const NOTCH_RADIUS = 40; // half-width of the notch opening
-const NOTCH_DEPTH = 24;  // depth of the center scoop
+const CORNER_RADIUS = 26;
+const CIRCLE_SIZE = 48;
+const NOTCH_RADIUS = 32;
+const NOTCH_DEPTH = 22;
+
+const TAB_CONFIG = {
+  Home: {
+    label: "Home",
+    activeIcon: "home",
+    inactiveIcon: "home-outline",
+  },
+  OneToOne: {
+    label: "1 to 1",
+    activeIcon: "call",
+    inactiveIcon: "call-outline",
+  },
+  Party: {
+    label: "Party",
+    activeIcon: "people",
+    inactiveIcon: "people-outline",
+  },
+  ChatScreen: {
+    label: "Message",
+    activeIcon: "chatbubbles",
+    inactiveIcon: "chatbubble-ellipses-outline",
+  },
+  Profile: {
+    label: "Profile",
+    activeIcon: "person",
+    inactiveIcon: "person-outline",
+  },
+};
+
+const getCurvedNotchPath = (barWidth, barHeight, cx) => {
+  const r = CORNER_RADIUS;
+  const nr = NOTCH_RADIUS;
+  const nd = NOTCH_DEPTH;
+
+  // Clamped notch points to prevent overlapping corner radius arcs
+  const x1 = Math.max(r + 2, cx - nr);
+  const x2 = Math.min(barWidth - r - 2, cx + nr);
+
+  let p = `M 0 ${r} `;
+  p += `A ${r} ${r} 0 0 1 ${r} 0 `;
+
+  if (x1 > r) {
+    p += `L ${x1} 0 `;
+  }
+
+  // Smooth scoop down and up using cubic beziers
+  const cpOffset = (x2 - x1) * 0.28;
+  p += `C ${x1 + cpOffset} 0, ${cx - cpOffset} ${nd}, ${cx} ${nd} `;
+  p += `C ${cx + cpOffset} ${nd}, ${x2 - cpOffset} 0, ${x2} 0 `;
+
+  if (x2 < barWidth - r) {
+    p += `L ${barWidth - r} 0 `;
+  }
+
+  p += `A ${r} ${r} 0 0 1 ${barWidth} ${r} `;
+  p += `L ${barWidth} ${barHeight - r} `;
+  p += `A ${r} ${r} 0 0 1 ${barWidth - r} ${barHeight} `;
+  p += `L ${r} ${barHeight} `;
+  p += `A ${r} ${r} 0 0 1 0 ${barHeight - r} `;
+  p += `Z`;
+
+  return p;
+};
 
 const CustomTabBar = ({ state, descriptors, navigation, totalUnread }) => {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
 
-  // Width of the floating bar
+  const tabCount = state.routes.length || 5;
   const barWidth = Math.max(280, windowWidth - (TAB_BAR_HORIZONTAL_MARGIN * 2));
-  const cx = barWidth / 2;
+  const tabWidth = barWidth / tabCount;
+  const bottomInset = getTabBarBottomMargin(insets.bottom);
 
-  // Generate smooth SVG path for the scooped notched floating bar
-  const svgPath = `
-    M ${CORNER_RADIUS} 0
-    L ${cx - NOTCH_RADIUS} 0
-    C ${cx - NOTCH_RADIUS + 14} 0, ${cx - 18} ${NOTCH_DEPTH}, ${cx} ${NOTCH_DEPTH}
-    C ${cx + 18} ${NOTCH_DEPTH}, ${cx + NOTCH_RADIUS - 14} 0, ${cx + NOTCH_RADIUS} 0
-    L ${barWidth - CORNER_RADIUS} 0
-    A ${CORNER_RADIUS} ${CORNER_RADIUS} 0 0 1 ${barWidth} ${CORNER_RADIUS}
-    L ${barWidth} ${BAR_HEIGHT - CORNER_RADIUS}
-    A ${CORNER_RADIUS} ${CORNER_RADIUS} 0 0 1 ${barWidth - CORNER_RADIUS} ${BAR_HEIGHT}
-    L ${CORNER_RADIUS} ${BAR_HEIGHT}
-    A ${CORNER_RADIUS} ${CORNER_RADIUS} 0 0 1 0 ${BAR_HEIGHT - CORNER_RADIUS}
-    L 0 ${CORNER_RADIUS}
-    A ${CORNER_RADIUS} ${CORNER_RADIUS} 0 0 1 ${CORNER_RADIUS} 0
-    Z
-  `;
+  // Animated sliding value for the floating elevated circle
+  const slideAnim = useRef(new Animated.Value(state.index * tabWidth)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: state.index * tabWidth,
+      useNativeDriver: true,
+      tension: 68,
+      friction: 10,
+    }).start();
+  }, [slideAnim, state.index, tabWidth]);
 
   const handleTabPress = (route, isFocused) => {
     const event = navigation.emit({
@@ -73,69 +132,12 @@ const CustomTabBar = ({ state, descriptors, navigation, totalUnread }) => {
     }
   };
 
-  const bottomInset = getTabBarBottomMargin(insets.bottom);
+  // Center of active tab for the scoop notch
+  const activeCx = (state.index + 0.5) * tabWidth;
+  const svgPath = getCurvedNotchPath(barWidth, BAR_HEIGHT, activeCx);
 
-  // Group routes: Left 2 routes (Home, ChatScreen), Center (Party), Right 2 routes (Profile, Setting)
-  const leftRoutes = state.routes.slice(0, 2);
-  const centerRoute = state.routes[2];
-  const rightRoutes = state.routes.slice(3, 5);
-
-  const isCenterFocused = state.index === 2;
-
-  const renderTabItem = (route, routeIndex) => {
-    const isFocused = state.index === routeIndex;
-    const options = descriptors[route.key].options;
-
-    let iconName = "ellipse-outline";
-    if (route.name === "Home") {
-      iconName = isFocused ? "call" : "call-outline";
-    } else if (route.name === "ChatScreen") {
-      iconName = isFocused ? "chatbubbles" : "chatbubble-ellipses-outline";
-    } else if (route.name === "Profile") {
-      iconName = isFocused ? "person" : "person-outline";
-    } else if (route.name === "Setting") {
-      iconName = isFocused ? "settings" : "settings-outline";
-    }
-
-    const activeColor = "#7C3AED";
-    const inactiveColor = "#374151";
-
-    return (
-      <TouchableOpacity
-        key={route.key}
-        accessibilityRole="button"
-        accessibilityState={isFocused ? { selected: true } : {}}
-        accessibilityLabel={options.tabBarAccessibilityLabel || route.name}
-        testID={options.tabBarTestID}
-        style={styles.tabItem}
-        onPress={() => handleTabPress(route, isFocused)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.iconWrapper}>
-          <Icon
-            name={iconName}
-            size={23}
-            color={isFocused ? activeColor : inactiveColor}
-          />
-          {route.name === "ChatScreen" && totalUnread > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>
-                {totalUnread > 99 ? "99+" : totalUnread}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Active tab horizontal dash indicator */}
-        <View
-          style={[
-            styles.activeIndicator,
-            { opacity: isFocused ? 1 : 0 }
-          ]}
-        />
-      </TouchableOpacity>
-    );
-  };
+  const activeRoute = state.routes[state.index];
+  const activeConfig = activeRoute ? TAB_CONFIG[activeRoute.name] : null;
 
   return (
     <View
@@ -149,55 +151,101 @@ const CustomTabBar = ({ state, descriptors, navigation, totalUnread }) => {
       ]}
       pointerEvents="box-none"
     >
-      {/* Background SVG shape with curved cutout notch and shadow */}
+      {/* Background SVG shape with dynamic scooped notch following the active tab */}
       <View style={styles.svgBackgroundWrapper}>
         <Svg width={barWidth} height={BAR_HEIGHT}>
           <Path
             d={svgPath}
             fill="#FFFFFF"
-            stroke="#F1F5F9"
+            stroke="#E2E8F0"
             strokeWidth={1.2}
           />
         </Svg>
       </View>
 
-      {/* Floating Center Purple Circle Action Button (+) */}
-      {centerRoute && (
-        <TouchableOpacity
-          style={styles.centerButtonContainer}
-          onPress={() => handleTabPress(centerRoute, isCenterFocused)}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Party Room Action"
+      {/* Floating Elevated Circle that rises UP for the clicked/active tab */}
+      <Animated.View
+        style={[
+          styles.floatingCircleWrapper,
+          {
+            left: (tabWidth - CIRCLE_SIZE) / 2,
+            transform: [{ translateX: slideAnim }],
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <LinearGradient
+          colors={["#8B5CF6", "#7C3AED"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.floatingCircle}
         >
-          <LinearGradient
-            colors={["#8B5CF6", "#7C3AED"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[
-              styles.centerButton,
-              isCenterFocused && styles.centerButtonActive,
-            ]}
-          >
-            <Icon name="add" size={28} color="#FFFFFF" />
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
+          {activeConfig && (
+            <Icon
+              name={activeConfig.activeIcon}
+              size={24}
+              color="#FFFFFF"
+            />
+          )}
+          {activeRoute?.name === "ChatScreen" && totalUnread > 0 && (
+            <View style={styles.floatingBadge}>
+              <Text style={styles.badgeText}>
+                {totalUnread > 99 ? "99+" : totalUnread}
+              </Text>
+            </View>
+          )}
+        </LinearGradient>
+      </Animated.View>
 
-      {/* Content Row: Left 2 Tabs | Center Gap | Right 2 Tabs */}
+      {/* 5 Tab Items */}
       <View style={styles.tabsRow}>
-        {/* Left Tabs (Call, Chat) */}
-        <View style={styles.tabGroup}>
-          {leftRoutes.map((route, idx) => renderTabItem(route, idx))}
-        </View>
+        {state.routes.map((route, index) => {
+          const isFocused = state.index === index;
+          const options = descriptors[route.key].options;
+          const config = TAB_CONFIG[route.name] || {
+            label: route.name,
+            activeIcon: "ellipse",
+            inactiveIcon: "ellipse-outline",
+          };
 
-        {/* Center Gap for Notch and Floating Button */}
-        <View style={styles.centerGap} pointerEvents="none" />
-
-        {/* Right Tabs (Profile, Settings) */}
-        <View style={styles.tabGroup}>
-          {rightRoutes.map((route, idx) => renderTabItem(route, idx + 3))}
-        </View>
+          return (
+            <TouchableOpacity
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={options.tabBarAccessibilityLabel || config.label}
+              testID={options.tabBarTestID}
+              style={[styles.tabItem, { width: tabWidth }]}
+              onPress={() => handleTabPress(route, isFocused)}
+              activeOpacity={0.7}
+            >
+              {isFocused ? (
+                // Focused tab: icon is in floating circle above, label sits right below the notch
+                <View style={styles.focusedTabContent}>
+                  <Text style={styles.tabLabelActive} numberOfLines={1}>
+                    {config.label}
+                  </Text>
+                </View>
+              ) : (
+                // Inactive tab: only icon is visible (no text), vertically centered
+                <View style={styles.inactiveTabContent}>
+                  <Icon
+                    name={config.inactiveIcon}
+                    size={24}
+                    color="#64748B"
+                  />
+                  {route.name === "ChatScreen" && totalUnread > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {totalUnread > 99 ? "99+" : totalUnread}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -207,7 +255,6 @@ export default function BottomTabsNavigator() {
   const { user } = useContext(AuthContext);
   const [totalUnread, setTotalUnread] = useState(0);
 
-  // Helper to fetch total unread messages from API
   const fetchUnread = async () => {
     try {
       const res = await apiUtil.get("/chat/conversations");
@@ -215,7 +262,7 @@ export default function BottomTabsNavigator() {
       const total = convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
       setTotalUnread(total);
     } catch (err) {
-      // silently ignore network errors
+      // silently fail
     }
   };
 
@@ -267,10 +314,10 @@ export default function BottomTabsNavigator() {
       }}
     >
       <Tab.Screen name="Home" component={Home} />
-      <Tab.Screen name="ChatScreen" component={ChatListScreen} />
+      <Tab.Screen name="OneToOne" component={OneToOne} />
       <Tab.Screen name="Party" component={Party} />
+      <Tab.Screen name="ChatScreen" component={ChatListScreen} />
       <Tab.Screen name="Profile" component={Profile} />
-      <Tab.Screen name="Setting" component={Setting} />
     </Tab.Navigator>
   );
 }
@@ -291,59 +338,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     shadowColor: "#64748B",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.16,
+    shadowOpacity: 0.14,
     shadowRadius: 14,
     elevation: 10,
   },
-  tabsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    height: BAR_HEIGHT,
-    zIndex: 2,
-  },
-  tabGroup: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    height: BAR_HEIGHT,
-  },
-  centerGap: {
-    width: 76,
-    height: BAR_HEIGHT,
-  },
-  tabItem: {
-    flex: 1,
-    height: BAR_HEIGHT,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 4,
-  },
-  iconWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 32,
-    height: 32,
-  },
-  activeIndicator: {
-    width: 14,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "#7C3AED",
-    marginTop: 4,
-  },
-  centerButtonContainer: {
+  floatingCircleWrapper: {
     position: "absolute",
     top: -15,
     zIndex: 10,
-    alignItems: "center",
-    justifyContent: "center",
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
   },
-  centerButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  floatingCircle: {
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
+    borderRadius: CIRCLE_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#7C3AED",
@@ -352,14 +361,56 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
-  centerButtonActive: {
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+  tabsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    height: BAR_HEIGHT,
+    zIndex: 2,
+  },
+  tabItem: {
+    height: BAR_HEIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  focusedTabContent: {
+    height: BAR_HEIGHT,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 7,
+  },
+  inactiveTabContent: {
+    height: BAR_HEIGHT,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabLabelActive: {
+    fontSize: 10.5,
+    color: "#7C3AED",
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.1,
   },
   badge: {
     position: "absolute",
-    top: -3,
-    right: -7,
+    top: -4,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#EF4444",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+  },
+  floatingBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
@@ -372,7 +423,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: "#FFFFFF",
-    fontSize: 9,
-    fontWeight: "700",
+    fontSize: 8.5,
+    fontWeight: "800",
   },
 });

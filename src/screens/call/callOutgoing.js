@@ -33,8 +33,24 @@ const OutGoing = () => {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
 
-  const { transactionId, channelName, maxMinutes, callRatePerMinute = 100, name, agora, callerImage, image, gender, createdAt, ringExpiresAt } =
-    route.params || {};
+  const {
+    transactionId,
+    channelName,
+    maxMinutes,
+    callRatePerMinute = 100,
+    name,
+    agora,
+    callerImage,
+    image,
+    gender,
+    createdAt,
+    ringExpiresAt,
+    isVideo,
+    callType,
+    hostId,
+    host,
+  } = route.params || {};
+  const isVideoCall = isVideo === true || callType === 'video';
   const noAnswerTimerRef = useRef(null);
 
   const [status, setStatus] = useState('Ringing...');
@@ -105,7 +121,7 @@ const OutGoing = () => {
         
         if (['accepted', 'connecting', 'connected', 'ongoing'].includes(currentStatus)) {
           if (noAnswerTimerRef.current) clearTimeout(noAnswerTimerRef.current);
-          console.log("🚀 Call already accepted! Transitioning to OnGoing screen...");
+          console.log("🚀 Call already accepted! Transitioning to Ongoing/VideoCall screen...");
           try { InCallManager.stop(); } catch (_) {}
           setStatus("Accepted ✅");
           const ongoingCall = getValidOngoingCall({
@@ -118,13 +134,27 @@ const OutGoing = () => {
             handleEndCall();
             return;
           }
-          navigation.replace("OnGoing", {
-            ...ongoingCall,
-            name: name || 'User',
-            maxMinutes,
-            isCaller: true,
-            image,
-          });
+          const isVideoCallTarget = isVideoCall || res.data.data?.isVideo === true || res.data.data?.callType === 'video';
+          if (isVideoCallTarget) {
+            navigation.replace("VideoCall", {
+              ...ongoingCall,
+              name: name || 'User',
+              maxMinutes,
+              isCaller: true,
+              image,
+              gender,
+              hostId: hostId || host?._id,
+              host: host || { name, image, _id: hostId },
+            });
+          } else {
+            navigation.replace("OnGoing", {
+              ...ongoingCall,
+              name: name || 'User',
+              maxMinutes,
+              isCaller: true,
+              image,
+            });
+          }
         } else if (['ended', 'cancelled', 'rejected', 'missed', 'expired'].includes(currentStatus)) {
           if (noAnswerTimerRef.current) clearTimeout(noAnswerTimerRef.current);
           console.log("❌ Call already ended/rejected! Resetting to MainTabs...");
@@ -141,7 +171,7 @@ const OutGoing = () => {
   };
 
   useEffect(() => {
-    try { InCallManager.start({ media: 'audio', ringback: '_BUNDLE_' }); } catch (err) { console.warn('InCallManager start error:', err); }
+    try { InCallManager.start({ media: isVideoCall ? 'video' : 'audio', ringback: '_BUNDLE_' }); } catch (err) { console.warn('InCallManager start error:', err); }
 
     // Backend owns expiry. The caller only reconciles UI from the server deadline.
     const { ringExpiresAtMs } = getCallTiming({ createdAt, ringExpiresAt });
@@ -163,7 +193,7 @@ const OutGoing = () => {
     };
 
     const onCallAccepted = (payload) => {
-      console.log("📞 callAccepted RECEIVED");
+      console.log("📞 callAccepted RECEIVED", payload);
       if (!payload || payload.transactionId !== transactionId) return;
       if (noAnswerTimerRef.current) clearTimeout(noAnswerTimerRef.current);
 
@@ -180,13 +210,27 @@ const OutGoing = () => {
         handleEndCall();
         return;
       }
-      navigation.replace("OnGoing", {
-        ...ongoingCall,
-        name: name || 'User',
-        maxMinutes,
-        isCaller: true,
-        image,
-      });
+      const isVideoCallTarget = isVideoCall || payload?.isVideo === true || payload?.callType === 'video';
+      if (isVideoCallTarget) {
+        navigation.replace("VideoCall", {
+          ...ongoingCall,
+          name: name || 'User',
+          maxMinutes,
+          isCaller: true,
+          image,
+          gender,
+          hostId: hostId || host?._id,
+          host: host || { name, image, _id: hostId },
+        });
+      } else {
+        navigation.replace("OnGoing", {
+          ...ongoingCall,
+          name: name || 'User',
+          maxMinutes,
+          isCaller: true,
+          image,
+        });
+      }
     };
 
     const onCallRejected = ({ transactionId: rejectedTxn }) => {

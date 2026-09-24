@@ -67,7 +67,23 @@ const Incoming = ({ route }) => {
   const topSafeInset = getAppTopSafeInset(insets.top);
 
   // Params from socket payload
-  const { transactionId, channelName, agora = {}, name, maxMinutes, callerImage, image, fromNotification, gender, createdAt, ringExpiresAt } = route.params || {};
+  const {
+    transactionId,
+    channelName,
+    agora = {},
+    name,
+    maxMinutes,
+    callerImage,
+    image,
+    fromNotification,
+    gender,
+    createdAt,
+    ringExpiresAt,
+    isVideo,
+    callType,
+    callerId,
+  } = route.params || {};
+  const isVideoCall = isVideo === true || callType === 'video';
   const displayImage = callerImage || image; // Prioritize callerImage
 
   let parsedAgora = agora;
@@ -136,13 +152,26 @@ const Incoming = ({ route }) => {
       return;
     }
 
-    navigation.replace('OnGoing', {
-      ...ongoingCall,
-      name: name || 'Caller',
-      maxMinutes,
-      isCaller: false,
-      image: displayImage,
-    });
+    const isVideoCallTarget = isVideoCall || acceptedCallData?.isVideo === true || acceptedCallData?.callType === 'video';
+    if (isVideoCallTarget) {
+      navigation.replace('VideoCall', {
+        ...ongoingCall,
+        name: name || 'Caller',
+        maxMinutes,
+        isCaller: false,
+        image: displayImage,
+        gender,
+        hostId: callerId,
+      });
+    } else {
+      navigation.replace('OnGoing', {
+        ...ongoingCall,
+        name: name || 'Caller',
+        maxMinutes,
+        isCaller: false,
+        image: displayImage,
+      });
+    }
   };
 
   // Setup pan responders for swiping up

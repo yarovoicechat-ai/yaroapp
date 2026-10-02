@@ -61,8 +61,8 @@ const StoreAsset = ({ item, style, resizeMode = 'contain' }) => {
   return <Image source={{ uri: sourceUrl }} style={style} resizeMode={resizeMode} />;
 };
 
-// Store categories: Unique ID, Chat Bubble, Theme, Tassel, Mic Wave, Frames, Entry, VIP
-const STORE_CATEGORIES = ['Unique ID', 'Chat Bubble', 'Theme', 'Tassel', 'Mic Wave', 'Frames', 'Entry', 'VIP', 'King of Kings'];
+// Store categories: Unique ID, Chat Bubble, Theme, Tassel, Mic Wave, Frames, Entry, VIP, King of Kings, Badge, Tag
+const STORE_CATEGORIES = ['Unique ID', 'Chat Bubble', 'Theme', 'Tassel', 'Mic Wave', 'Frames', 'Entry', 'VIP', 'King of Kings', 'Badge', 'Tag'];
 
 const STORE_CATALOG = {
   'Unique ID': [
@@ -467,6 +467,14 @@ const STORE_CATALOG = {
   VIP: [
     { id: 'v-1', name: 'SVIP 1-Month Pass', price: 2999, validity: '30 Days', previewColor: '#7C3AED', icon: 'crown', tag: 'Noble VIP', desc: 'Unlock all basic privileges, entry badges, free mic decoration, and 100 bonus XP.' },
     { id: 'v-2', name: 'SVIP 3-Month Pass', price: 7999, validity: '90 Days', previewColor: '#BE185D', icon: 'shield-crown', tag: 'King SVIP', desc: 'Unlock premium anti-kick protection, exclusive supercar entry, frames, and 400 XP.' },
+  ],
+  Badge: [
+    { id: 'bd-1', name: 'Legendary Master Badge', price: 1500, validity: '30 Days', previewColor: '#F59E0B', icon: 'shield-star', tag: 'Master', desc: 'Golden master badge displayed prominently on your profile.' },
+    { id: 'bd-2', name: 'Diamond Heart Donor', price: 2000, validity: '30 Days', previewColor: '#EC4899', icon: 'heart-flash', tag: 'Top Donor', desc: 'Exclusive shining diamond heart badge celebrating generous patrons.' },
+  ],
+  Tag: [
+    { id: 'tg-1', name: 'Imperial Majesty Tag', price: 800, validity: '30 Days', previewColor: '#F59E0B', icon: 'tag', tag: 'Imperial', desc: 'Glowing imperial name tag shown in voice chat user lists.' },
+    { id: 'tg-2', name: 'Cyber Hero Tag', price: 600, validity: '30 Days', previewColor: '#06B6D4', icon: 'label-variant', tag: 'Cyber Hero', desc: 'Neon cyan laser title tag alongside your nickname.' },
   ],
 };
 

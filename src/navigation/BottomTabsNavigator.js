@@ -18,10 +18,11 @@ import Home from "../screens/user/Home";
 import OneToOne from "../screens/user/OneToOne";
 import Party from "../screens/user/Party";
 import ChatListScreen from "../screens/chats/chatList";
-import Profile from "../screens/user/Profile";
+import Me from "../screens/user/Me";
 import { AuthContext } from "../context/AuthProvider";
 import { apiUtil } from "../utils/apiUtil";
 import { getSocket } from "../sockets";
+import FloatingVoiceRoomWidget from "../components/FloatingVoiceRoomWidget";
 
 import {
   TAB_BAR_HORIZONTAL_MARGIN,
@@ -57,8 +58,8 @@ const TAB_CONFIG = {
     activeIcon: "chatbubbles",
     inactiveIcon: "chatbubble-ellipses-outline",
   },
-  Profile: {
-    label: "Profile",
+  Me: {
+    label: "Me",
     activeIcon: "person",
     inactiveIcon: "person-outline",
   },
@@ -292,33 +293,36 @@ export default function BottomTabsNavigator() {
   };
 
   return (
-    <Tab.Navigator
-      detachInactiveScreens={false}
-      screenOptions={{
-        freezeOnBlur: false,
-        animation: "none",
-        headerShown: false,
-        tabBarStyle: {
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: "transparent",
-          borderTopWidth: 0,
-          elevation: 0,
-        },
-      }}
-      tabBar={(props) => <CustomTabBar {...props} totalUnread={totalUnread} />}
-      screenListeners={{
-        focus: () => onTabStateChange(),
-      }}
-    >
-      <Tab.Screen name="Home" component={Home} />
-      <Tab.Screen name="OneToOne" component={OneToOne} />
-      <Tab.Screen name="Party" component={Party} />
-      <Tab.Screen name="ChatScreen" component={ChatListScreen} />
-      <Tab.Screen name="Profile" component={Profile} />
-    </Tab.Navigator>
+    <View style={{ flex: 1 }}>
+      <Tab.Navigator
+        detachInactiveScreens={false}
+        screenOptions={{
+          freezeOnBlur: false,
+          animation: "none",
+          headerShown: false,
+          tabBarStyle: {
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: "transparent",
+            borderTopWidth: 0,
+            elevation: 0,
+          },
+        }}
+        tabBar={(props) => <CustomTabBar {...props} totalUnread={totalUnread} />}
+        screenListeners={{
+          focus: () => onTabStateChange(),
+        }}
+      >
+        <Tab.Screen name="Home" component={Home} />
+        <Tab.Screen name="OneToOne" component={OneToOne} />
+        <Tab.Screen name="Party" component={Party} />
+        <Tab.Screen name="ChatScreen" component={ChatListScreen} />
+        <Tab.Screen name="Me" component={Me} />
+      </Tab.Navigator>
+      <FloatingVoiceRoomWidget />
+    </View>
   );
 }
 

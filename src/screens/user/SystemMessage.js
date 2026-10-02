@@ -78,29 +78,14 @@ const SystemMessage = () => {
     );
 
     return (
-        <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#08031a' }]}>
-          <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-          <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-            {/* Space Background decorative items (matches screenshots) */}
-            <View style={styles.starOverlay1} />
-            <View style={styles.starOverlay2} />
-            <View style={styles.planetWrapper}>
-                <LinearGradient
-                    colors={['rgba(124, 77, 255, 0.12)', 'rgba(3, 220, 254, 0.25)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.planetGlow}
-                />
-            </View>
-            <View style={styles.gridWrapper}>
-                <View style={styles.gridLine1} />
-                <View style={styles.gridLine2} />
-            </View>
+        <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
+          <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+          <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
 
             {/* Header */}
             <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="chevron-left" size={22} color="#fff" />
+                    <Icon name="chevron-left" size={24} color="#1E293B" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>{t('system_messages.title') || 'System Messages'}</Text>
                 <View style={styles.headerPlaceholder} />
@@ -108,7 +93,7 @@ const SystemMessage = () => {
 
             <View style={styles.headerSeparatorContainer}>
                 <LinearGradient
-                    colors={['#ff3366', '#03dcfe']}
+                    colors={['#6366F1', '#8B5CF6']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.headerTitleLine}
@@ -117,7 +102,7 @@ const SystemMessage = () => {
 
             {loading ? (
                 <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color="#03dcfe" style={{ marginTop: 40 }} />
+                    <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: 40 }} />
                 </View>
             ) : (
                 <FlatList
@@ -141,9 +126,9 @@ const SystemMessage = () => {
                                         </View>
                                     </View>
                                 </View>
-                                <Icon name="star" size={14} color="#03dcfe" style={styles.sparkle1} />
-                                <Icon name="star" size={10} color="#ff3366" style={styles.sparkle2} />
-                                <Icon name="star" size={12} color="#facc15" style={styles.sparkle3} />
+                                <Icon name="star" size={14} color="#6366F1" style={styles.sparkle1} />
+                                <Icon name="star" size={10} color="#EC4899" style={styles.sparkle2} />
+                                <Icon name="star" size={12} color="#F59E0B" style={styles.sparkle3} />
                             </View>
                             <Text style={styles.emptyText}>{t('system_messages.empty') || 'No system messages'}</Text>
                             <Text style={styles.emptySubText}>
@@ -158,64 +143,6 @@ const SystemMessage = () => {
 };
 
 const styles = StyleSheet.create({
-    // Decorative space elements
-    starOverlay1: {
-        position: 'absolute',
-        top: height * 0.15,
-        left: width * 0.1,
-        width: 2,
-        height: 2,
-        borderRadius: 1,
-        backgroundColor: '#fff',
-        opacity: 0.8,
-    },
-    starOverlay2: {
-        position: 'absolute',
-        top: height * 0.3,
-        right: width * 0.15,
-        width: 3,
-        height: 3,
-        borderRadius: 1.5,
-        backgroundColor: '#ff3366',
-        opacity: 0.5,
-    },
-    planetWrapper: {
-        position: 'absolute',
-        bottom: -height * 0.15,
-        right: -width * 0.15,
-        width: width * 0.65,
-        height: width * 0.65,
-        borderRadius: (width * 0.65) / 2,
-        overflow: 'hidden',
-    },
-    planetGlow: {
-        flex: 1,
-        borderRadius: (width * 0.65) / 2,
-    },
-    gridWrapper: {
-        position: 'absolute',
-        bottom: height * 0.05,
-        left: -width * 0.1,
-        width: width * 0.5,
-        height: height * 0.2,
-        opacity: 0.15,
-    },
-    gridLine1: {
-        position: 'absolute',
-        width: '100%',
-        height: 1.5,
-        backgroundColor: '#ff3366',
-        transform: [{ rotate: '30deg' }],
-    },
-    gridLine2: {
-        position: 'absolute',
-        width: '100%',
-        height: 1.5,
-        backgroundColor: '#ff3366',
-        top: 30,
-        transform: [{ rotate: '30deg' }],
-    },
-
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -227,17 +154,18 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 12,
-        borderWidth: 1.2,
-        borderColor: 'rgba(124, 77, 255, 0.4)',
-        backgroundColor: 'rgba(124, 77, 255, 0.1)',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
+        elevation: 1,
     },
     headerPlaceholder: {
         width: 36,
     },
     headerTitle: {
-        color: '#fff',
+        color: '#0F172A',
         fontSize: 20,
         fontWeight: '800',
     },
@@ -258,19 +186,20 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         overflow: 'hidden',
         position: 'relative',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
     },
     cardBorderOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        borderRadius: 20,
-        padding: 1.2,
-        pointerEvents: 'none',
+        display: 'none',
     },
     cardInner: {
-        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+        backgroundColor: '#FFFFFF',
         borderRadius: 19,
         padding: 16,
         flexDirection: 'row',
@@ -294,18 +223,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     title: {
-        color: '#fff',
+        color: '#0F172A',
         fontSize: 16,
         fontWeight: 'bold',
         flex: 1,
     },
     date: {
-        color: 'rgba(255,255,255,0.4)',
+        color: '#94A3B8',
         fontSize: 11,
         marginLeft: 10,
     },
     body: {
-        color: 'rgba(255,255,255,0.7)',
+        color: '#64748B',
         fontSize: 13,
         lineHeight: 18,
     },
@@ -317,21 +246,21 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     emptyText: {
-        color: '#ffffff',
+        color: '#0F172A',
         fontSize: 18,
         fontWeight: 'bold',
         marginTop: 20,
         textAlign: 'center',
     },
     emptySubText: {
-        color: 'rgba(255, 255, 255, 0.55)',
+        color: '#64748B',
         fontSize: 13,
         lineHeight: 18,
         textAlign: 'center',
         marginTop: 8,
     },
 
-    // Empty Illustration Design matching screenshot
+    // Empty Illustration Design
     emptyIllustrationWrapper: {
         width: 200,
         height: 150,
@@ -344,7 +273,7 @@ const styles = StyleSheet.create({
         width: 130,
         height: 130,
         borderRadius: 65,
-        backgroundColor: 'rgba(124, 77, 255, 0.08)',
+        backgroundColor: 'rgba(99, 102, 241, 0.08)',
     },
     airplaneOutline: {
         position: 'absolute',
@@ -363,6 +292,7 @@ const styles = StyleSheet.create({
     mailIcon: {
         position: 'absolute',
         zIndex: 1,
+        color: '#CBD5E1',
     },
     bubbleGlow: {
         position: 'absolute',

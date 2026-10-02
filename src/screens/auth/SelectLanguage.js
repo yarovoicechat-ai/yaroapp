@@ -96,7 +96,7 @@ const SelectLanguage = () => {
         } else {
           navigation.reset({
             index: 0,
-            routes: [{ name: 'UmangLoginScreen' }],
+            routes: [{ name: 'SignIn' }],
           });
         }
       } else {
@@ -113,24 +113,28 @@ const SelectLanguage = () => {
   };
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <ScreenBackgroundStatusBar backgroundColor="#FFFFFF" barStyle="dark-content" animated />
-      <ScreenBackgroundImage source={LangBG} style={ScreenBackgroundStyleSheet.absoluteFillObject} resizeMode="cover" />
-      <ScreenBackgroundStatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={styles.screen}>
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#EEF2FF']} style={StyleSheet.absoluteFillObject} />
       
       <View style={styles.container}>
         {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="#fff" />
+          <Icon name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
 
         {/* Card */}
         <View style={styles.card}>
           {/* Header */}
           <View style={styles.header}>
+            <View style={styles.iconCircle}>
+              <Icon name="language-outline" size={RFValue(28)} color="#6366F1" />
+            </View>
             <Text style={styles.title}>Languages</Text>
             <Text style={styles.subtitle}>Choose up to 2 languages you speak</Text>
-            <Text style={styles.counter}>{selectedLanguages.length}/2</Text>
+            <View style={styles.counterBadge}>
+              <Text style={styles.counter}>{selectedLanguages.length}/2 Selected</Text>
+            </View>
           </View>
 
           {/* Chips Container */}
@@ -181,70 +185,108 @@ const SelectLanguage = () => {
               disabled={selectedLanguages.length !== 2}
             >
               <LinearGradient
-                colors={selectedLanguages.length === 2 ? ['#FF6B00', '#FF2D87', '#C026D3'] : ['#444', '#444']}
+                colors={selectedLanguages.length === 2 ? ['#6366F1', '#4F46E5'] : ['#E2E8F0', '#CBD5E1']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientButton}
               >
-                <Text style={styles.submitText}>CONTINUE</Text>
-                <Icon name="arrow-forward" size={RFValue(16)} color="#fff" style={{ marginLeft: 8 }} />
+                <Text style={[
+                  styles.submitText,
+                  selectedLanguages.length !== 2 && { color: '#94A3B8' }
+                ]}>CONTINUE</Text>
+                <Icon name="arrow-forward" size={RFValue(16)} color={selectedLanguages.length === 2 ? '#fff' : '#94A3B8'} style={{ marginLeft: 8 }} />
               </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
       </View>
-    </ScreenBackgroundView>
+    </View>
   );
 };
 
 export default SelectLanguage;
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 45 : 25,
+    paddingTop: Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 25) + 10,
+    paddingHorizontal: width * 0.05,
   },
   backButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 45 : 25,
-    left: width * 0.04,
-    zIndex: 10,
-    padding: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   card: {
     flex: 1,
-    marginTop: height * 0.38,
-    marginHorizontal: width * 0.06,
-    backgroundColor: 'transparent',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    borderWidth: 0,
-    paddingHorizontal: width * 0.02,
-    paddingBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: width * 0.04,
+    paddingTop: 20,
+    paddingBottom: 24,
+    marginBottom: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   title: {
-    fontSize: RFValue(18),
+    fontSize: RFValue(20),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: RFValue(11),
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: RFValue(12),
+    color: '#64748B',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  counterBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
   },
   counter: {
-    fontSize: RFValue(12.5),
-    color: '#FF2D87',
-    fontWeight: 'bold',
+    fontSize: RFValue(12),
+    color: '#4F46E5',
+    fontWeight: '700',
   },
   chipsContainer: {
     flex: 1,
-    marginVertical: 8,
+    marginVertical: 12,
   },
   scrollContent: {
     paddingBottom: 10,
@@ -253,56 +295,56 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
   languageChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1.2,
-    borderColor: 'rgba(192, 38, 211, 0.35)',
+    borderColor: '#E2E8F0',
   },
   selectedChip: {
-    backgroundColor: 'rgba(192, 38, 211, 0.25)',
-    borderColor: '#FF2D87',
+    backgroundColor: '#EEF2FF',
+    borderColor: '#6366F1',
   },
   disabledChip: {
-    opacity: 0.3,
+    opacity: 0.35,
   },
   chipText: {
-    fontSize: RFValue(12),
-    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: RFValue(12.5),
+    color: '#475569',
     fontWeight: '500',
   },
   selectedChipText: {
-    color: '#ffffff',
+    color: '#4F46E5',
     fontWeight: 'bold',
   },
   disabledChipText: {
-    color: 'rgba(255, 255, 255, 0.3)',
+    color: '#94A3B8',
   },
   footer: {
-    marginTop: 6,
+    marginTop: 10,
     width: '100%',
   },
   submitButton: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
     width: '100%',
   },
   submitButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.8,
   },
   gradientButton: {
-    height: 44,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
+    borderRadius: 14,
   },
   submitText: {
-    fontSize: RFValue(13),
+    fontSize: RFValue(13.5),
     fontWeight: 'bold',
     color: '#ffffff',
     letterSpacing: 1,

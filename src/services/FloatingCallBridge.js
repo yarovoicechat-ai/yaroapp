@@ -56,11 +56,11 @@ export const FloatingCallBridge = {
       try {
         const hasPerm = await FloatingCallBridge.hasOverlayPermission();
         if (!hasPerm) {
-          console.warn('[ FLOATING ] Overlay permission missing, prompting settings');
-          FloatingCallBridge.requestOverlayPermission();
+          console.warn('[ FLOATING ] Overlay permission missing. Floating bubble disabled; audio remains active via foreground service.');
+          return;
         }
         FloatingCall.startFloatingCall({
-          callerName: params?.name || 'Meethi Voice',
+          callerName: params?.name || 'Yaro Voice',
           callerImage: params?.image || '',
           isMuted: !!params?.isMuted,
           isSpeaker: params?.isSpeaker !== undefined ? !!params.isSpeaker : true,

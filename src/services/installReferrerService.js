@@ -7,10 +7,10 @@ const REFERRAL_CLAIMED_KEY = 'referralClaimedPermanently';
 /**
  * Extracts referral code from URL string or Play Store install referrer string.
  * Supports:
- * - https://mithichat.live/refer/CODE
- * - https://mithichat.live/invite?ref=CODE
- * - mithichat://refer/CODE
- * - utm_source=mithichat&referralCode=CODE
+ * - https://yaroapp.in/refer/CODE
+ * - https://yaroapp.in/invite?ref=CODE
+ * - yaroapp://refer/CODE
+ * - utm_source=yaroapp&referralCode=CODE
  */
 export const extractReferralCodeFromUrlOrString = (rawString) => {
   if (!rawString || typeof rawString !== 'string') return null;
@@ -92,17 +92,32 @@ export const initializeReferralAttribution = async () => {
       }
     });
 
-    // Check Android Play Install Referrer (if native module available)
-    if (Platform.OS === 'android' && NativeModules.InstallReferrerModule) {
+    // Check Android Play Install Referrer via DeviceInfo & NativeModules
+    if (Platform.OS === 'android') {
       try {
-        NativeModules.InstallReferrerModule.getInstallReferrer((referrerString) => {
-          if (referrerString) {
-            console.log('[InstallReferrer] Play Store Referrer String:', referrerString);
-            captureAndStoreReferralCode(referrerString);
+        const DeviceInfo = require('react-native-device-info').default;
+        if (DeviceInfo && typeof DeviceInfo.getInstallReferrer === 'function') {
+          const referrerStr = await DeviceInfo.getInstallReferrer();
+          if (referrerStr) {
+            console.log('[InstallReferrer] Play Store Referrer from DeviceInfo:', referrerStr);
+            await captureAndStoreReferralCode(referrerStr);
           }
-        });
-      } catch (nativeErr) {
-        console.log('[InstallReferrer] Native InstallReferrerModule notice:', nativeErr.message);
+        }
+      } catch (devErr) {
+        // DeviceInfo getInstallReferrer might not be supported on all versions
+      }
+
+      if (NativeModules.InstallReferrerModule) {
+        try {
+          NativeModules.InstallReferrerModule.getInstallReferrer((referrerString) => {
+            if (referrerString) {
+              console.log('[InstallReferrer] Play Store Referrer String:', referrerString);
+              captureAndStoreReferralCode(referrerString);
+            }
+          });
+        } catch (nativeErr) {
+          console.log('[InstallReferrer] Native InstallReferrerModule notice:', nativeErr.message);
+        }
       }
     }
   } catch (err) {

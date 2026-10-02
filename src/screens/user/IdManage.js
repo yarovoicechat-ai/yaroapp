@@ -5,11 +5,9 @@ import { View,
   Image,
   ScrollView,
   TouchableOpacity,
-  
   Switch,
   Dimensions,
   ActivityIndicator,
-  Alert,
   View as ScreenBackgroundView,
   StatusBar as ScreenBackgroundStatusBar,
   StyleSheet as ScreenBackgroundStyleSheet
@@ -48,7 +46,6 @@ const IdManage = () => {
   const { t } = useTranslation();
 
   useEffect(() => {
-    // Force refresh profile on mount to get latest status
     fetchUserProfile();
     if (user) {
       setIsEnabled(!!user.isActive);
@@ -70,23 +67,21 @@ const IdManage = () => {
   };
 
   const toggleSwitch = async () => {
-    // Prevent multiple clicks
     if (toggling) return;
 
     setToggling(true);
     const newValue = !isEnabled;
-    setIsEnabled(newValue); // Optimistic update
+    setIsEnabled(newValue);
 
     try {
-      // Fixed: Use correct endpoint and payload for Host Availability
       const res = await apiUtil.patch('/user/status', {
         status: newValue
       });
 
       if (res.data.success) {
-        await fetchUserProfile(); // Sync context
+        await fetchUserProfile();
       } else {
-        setIsEnabled(!newValue); // Revert
+        setIsEnabled(!newValue);
         AlertService.show(t('id_manage.error') || "Error", t('id_manage.update_fail') || "Failed to update status", "error");
       }
     } catch (err) {
@@ -109,13 +104,13 @@ const IdManage = () => {
   };
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#08031a' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-      <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
+    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
+      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
       {/* Header */}
       <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back-ios" size={24} color="#fff" />
+          <Icon name="arrow-back-ios" size={22} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('id_manage.title') || 'ID Manage'}</Text>
         <View style={{ width: RF(24) }} />
@@ -123,13 +118,8 @@ const IdManage = () => {
       <AnimatedTitleLine />
 
       <ScrollView contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomPadding }]} showsVerticalScrollIndicator={false}>
-        {/* User Card with Glassmorphism */}
-        <LinearGradient
-          colors={['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.03)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.userCard}
-        >
+        {/* User Card */}
+        <View style={styles.userCard}>
           <View style={styles.userInfo}>
             <View style={styles.avatarBorder}>
               <Image
@@ -155,11 +145,11 @@ const IdManage = () => {
               <View style={styles.toggleRow}>
                 <Text style={styles.toggleLabel}>{t('id_manage.status_label') || 'ID Status (Active):'}</Text>
                 {toggling ? (
-                  <ActivityIndicator size="small" color="#03dcfe" />
+                  <ActivityIndicator size="small" color="#6366F1" />
                 ) : (
                   <Switch
-                    trackColor={{ false: 'rgba(255,255,255,0.1)', true: '#00C851' }}
-                    thumbColor={isEnabled ? '#ffffff' : '#f4f3f4'}
+                    trackColor={{ false: '#E2E8F0', true: '#10B981' }}
+                    thumbColor={isEnabled ? '#FFFFFF' : '#FFFFFF'}
                     onValueChange={toggleSwitch}
                     value={isEnabled}
                   />
@@ -167,25 +157,25 @@ const IdManage = () => {
               </View>
             </View>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* History Log Cards */}
         <Text style={styles.historyTitle}>Call Logs (Last 30 Days)</Text>
         
         {loadingHistory ? (
           <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#03dcfe" />
+            <ActivityIndicator size="large" color="#6366F1" />
           </View>
         ) : history.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Icon name="phone-disabled" size={48} color="rgba(255,255,255,0.2)" />
+            <Icon name="phone-disabled" size={48} color="#CBD5E1" />
             <Text style={styles.emptyText}>{t('id_manage.no_history') || 'No call logs found'}</Text>
           </View>
         ) : (
           history.map((item, index) => (
             <View key={index} style={styles.historyCard}>
               <View style={styles.historyIconWrapper}>
-                <Icon name="call" size={20} color="#03dcfe" />
+                <Icon name="call" size={20} color="#4F46E5" />
               </View>
               <View style={styles.historyDetails}>
                 <Text style={styles.historyDate}>{dayjs(item.callStart).format('DD MMM YYYY')}</Text>
@@ -213,7 +203,7 @@ const styles = StyleSheet.create({
     paddingBottom: HP(1.5),
   },
   backButton: { padding: 8 },
-  headerTitle: { color: '#fff', fontSize: RF(22), fontWeight: 'bold' },
+  headerTitle: { color: '#0F172A', fontSize: RF(22), fontWeight: 'bold' },
 
   contentContainer: { padding: WP(4), paddingBottom: HP(5) },
 
@@ -221,13 +211,14 @@ const styles = StyleSheet.create({
     borderRadius: 24, 
     padding: WP(5), 
     marginBottom: HP(3), 
-    borderWidth: 1.5, 
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1, 
+    borderColor: '#E2E8F0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
   userInfo: { flexDirection: 'row', alignItems: 'center' },
   avatarBorder: {
@@ -235,13 +226,9 @@ const styles = StyleSheet.create({
     height: WP(22), 
     borderRadius: WP(11), 
     borderWidth: 2, 
-    borderColor: '#03dcfe', 
+    borderColor: '#6366F1', 
     overflow: 'hidden', 
     marginRight: WP(5),
-    shadowColor: '#03dcfe',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   avatar: { width: '100%', height: '100%' },
   userDetails: { flex: 1 },
@@ -250,8 +237,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: HP(0.8),
   },
-  label: { color: 'rgba(255, 255, 255, 0.5)', fontSize: RF(14), fontWeight: '600' },
-  value: { color: '#ffffff', fontSize: RF(14), fontWeight: 'bold' },
+  label: { color: '#64748B', fontSize: RF(14), fontWeight: '600' },
+  value: { color: '#0F172A', fontSize: RF(14), fontWeight: 'bold' },
 
   toggleRow: { 
     flexDirection: 'row', 
@@ -259,13 +246,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     marginTop: HP(1.5),
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    borderTopColor: '#E2E8F0',
     paddingTop: HP(1.5),
   },
-  toggleLabel: { color: '#fff', fontWeight: 'bold', fontSize: RF(14) },
+  toggleLabel: { color: '#0F172A', fontWeight: 'bold', fontSize: RF(14) },
 
   historyTitle: {
-    color: '#ffffff',
+    color: '#0F172A',
     fontSize: RF(16),
     fontWeight: 'bold',
     marginBottom: HP(2),
@@ -280,13 +267,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: HP(8),
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 1,
   },
   emptyText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#94A3B8',
     fontSize: RF(14),
     marginTop: HP(2),
     fontWeight: '600',
@@ -294,19 +282,23 @@ const styles = StyleSheet.create({
   historyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     paddingHorizontal: WP(4),
     paddingVertical: HP(1.8),
     marginBottom: HP(1.2),
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
   },
   historyIconWrapper: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(3, 220, 254, 0.1)',
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: WP(4),
@@ -315,13 +307,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   historyDate: {
-    color: '#ffffff',
+    color: '#0F172A',
     fontSize: RF(15),
     fontWeight: '700',
     marginBottom: HP(0.5),
   },
   historyTime: {
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: '#64748B',
     fontSize: RF(12),
     fontWeight: '500',
   },
@@ -329,13 +321,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: WP(3),
     paddingVertical: HP(0.6),
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#EEF2FF',
   },
   historyDurationText: {
-    color: '#03dcfe',
+    color: '#4F46E5',
     fontSize: RF(13),
     fontWeight: 'bold',
   },
 });
 
-export default IdManage;
+export { IdManage as LegacyIdManage };
+export { default } from './IdManageStudio';

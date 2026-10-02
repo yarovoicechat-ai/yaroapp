@@ -1,5 +1,5 @@
 /**
- * Centralized Google Play Product Catalog for Meethi Chat (Client-side)
+ * Centralized Google Play Product Catalog for Yaro (Client-side)
  *
  * Product IDs must match exact One-time Products created in Google Play Console.
  */

@@ -210,7 +210,7 @@ const handleNotificationNavigation = async remoteMessage => {
     } else if (remoteMessage?.data?.type === 'missed_call' || remoteMessage?.data?.action === 'open_activity') {
         navigateWithRetry('Notifications');
     } else if (remoteMessage?.data?.action === 'login_redirect') {
-        navigateWithRetry('UmangLoginScreen');
+        navigateWithRetry('SignIn');
     }
 };
 

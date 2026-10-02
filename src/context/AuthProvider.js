@@ -6,9 +6,7 @@ import { AppState, DeviceEventEmitter } from 'react-native';
 import { attachSocketListeners } from '../utils/initializeSocket';
 import { syncFCMToken } from '../utils/NotificationManager';
 import { AUTH_SESSION_EXPIRED_EVENT, clearAuthSession } from '../utils/authSession';
-import { ensureNativeCallPermissions } from '../utils/permissions';
-import { OverlayPermissionManager } from '../utils/OverlayPermissionManager';
-import OverlayPermissionGateModal from '../components/OverlayPermissionGateModal';
+import { DUMMY_HOSTS } from '../constants/dummyData';
 
 export const AuthContext = createContext();
 
@@ -21,14 +19,60 @@ export const AuthProvider = ({ children }) => {
     gender: 'male',
     avatar: 'https://via.placeholder.com/150',
     mobile: '9876543210',
+    equippedFrame: 'Rose frame',
+    equippedMicWave: 'Golden Pulse Wave',
   };
   const [user, setUser] = useState(defaultUser);
   const [role, setRole] = useState('user');
   const [hosts, setHosts] = useState([]);
+  const [equippedFrame, setEquippedFrameState] = useState('Rose frame');
+  const [equippedMicWave, setEquippedMicWaveState] = useState('Golden Pulse Wave');
 
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [pendingOverlayGate, setPendingOverlayGate] = useState(false);
+
+  // Set & persist equipped frame across all screens (Profile, VoiceRoom, MyItems, Store)
+  const setEquippedFrame = useCallback(async (frame) => {
+    const frameName = typeof frame === 'object' && frame?.name ? frame.name : (frame || '');
+    const frameAsset = typeof frame === 'object' && frame?.name && (frame.imageUrl || frame.animationUrl)
+      ? {
+          name: frame.name,
+          imageUrl: frame.imageUrl || '',
+          animationUrl: frame.animationUrl || '',
+          expiresAt: frame.expiresAt || null,
+        }
+      : null;
+    setEquippedFrameState(frameName);
+    setUser(prev => prev ? { ...prev, equippedFrame: frameName, equippedFrameAsset: frameAsset } : prev);
+    try {
+      await AsyncStorage.setItem('equippedFrame', frameName);
+      if (frameAsset) await AsyncStorage.setItem('equippedFrameAsset', JSON.stringify(frameAsset));
+      else await AsyncStorage.removeItem('equippedFrameAsset');
+      const cached = await AsyncStorage.getItem('cachedUser');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        parsed.equippedFrame = frameName;
+        parsed.equippedFrameAsset = frameAsset;
+        await AsyncStorage.setItem('cachedUser', JSON.stringify(parsed));
+      }
+    } catch (_) {}
+  }, []);
+
+  // Set & persist equipped mic wave
+  const setEquippedMicWave = useCallback(async (wave) => {
+    const waveName = typeof wave === 'object' && wave?.name ? wave.name : (wave || '');
+    setEquippedMicWaveState(waveName);
+    setUser(prev => prev ? { ...prev, equippedMicWave: waveName } : prev);
+    try {
+      await AsyncStorage.setItem('equippedMicWave', waveName);
+      const cached = await AsyncStorage.getItem('cachedUser');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        parsed.equippedMicWave = waveName;
+        await AsyncStorage.setItem('cachedUser', JSON.stringify(parsed));
+      }
+    } catch (_) {}
+  }, []);
 
   // ✅ Fetch profile using accessToken
 const fetchUserProfile = useCallback(async () => {
@@ -39,20 +83,40 @@ const fetchUserProfile = useCallback(async () => {
 
     if (res.data.success) {
       const profile = res.data.data.user;
-      setUser(profile);
-      await AsyncStorage.setItem('cachedUser', JSON.stringify(profile));
-      return profile;
+      const [savedFrame, savedMicWave, savedFrameAsset] = await Promise.all([
+        AsyncStorage.getItem('equippedFrame'),
+        AsyncStorage.getItem('equippedMicWave'),
+        AsyncStorage.getItem('equippedFrameAsset'),
+      ]);
+      let activeFrameAsset = null;
+      try {
+        const parsed = savedFrameAsset ? JSON.parse(savedFrameAsset) : null;
+        if (parsed?.name === savedFrame && (!parsed.expiresAt || new Date(parsed.expiresAt).getTime() > Date.now())) {
+          activeFrameAsset = parsed;
+        }
+      } catch (_) {}
+      const effectiveFrame = savedFrameAsset && !activeFrameAsset ? 'default' : savedFrame;
+      if (savedFrameAsset && !activeFrameAsset) {
+        await AsyncStorage.removeItem('equippedFrameAsset');
+        await AsyncStorage.setItem('equippedFrame', 'default');
+      }
+      const mergedProfile = {
+        ...profile,
+        equippedFrame: profile.equippedFrame || effectiveFrame || 'Rose frame',
+        equippedFrameAsset: activeFrameAsset,
+        equippedMicWave: profile.equippedMicWave || savedMicWave || 'Golden Pulse Wave',
+      };
+      setUser(mergedProfile);
+      if (effectiveFrame) setEquippedFrameState(effectiveFrame);
+      if (savedMicWave) setEquippedMicWaveState(savedMicWave);
+      await AsyncStorage.setItem('cachedUser', JSON.stringify(mergedProfile));
+      return mergedProfile;
     }
   } catch (err) {
     console.log("STATUS =", err.response?.status);
     console.log("DATA =", err.response?.data);
     console.log("MESSAGE =", err.message);
 
-    // अभी clear मत करना
-    // await AsyncStorage.clear();
-
-    // setUser(null);
-    // setRole(null);
     return null;
   }
 }, []);
@@ -70,6 +134,7 @@ const fetchUserProfile = useCallback(async () => {
         'acceptingCall',
       ]);
       const stored = Object.fromEntries(values);
+      console.log('[AUTH_DEBUG] values from multiGet:', JSON.stringify(stored));
       const token = stored.accessToken;
 
       if (token && stored.refreshToken) {
@@ -86,7 +151,16 @@ const fetchUserProfile = useCallback(async () => {
         })();
         if (stored.cachedUser) {
           try {
-            setUser(JSON.parse(stored.cachedUser));
+            const parsedUser = JSON.parse(stored.cachedUser);
+            const [savedFrame, savedMicWave] = await Promise.all([
+              AsyncStorage.getItem('equippedFrame'),
+              AsyncStorage.getItem('equippedMicWave'),
+            ]);
+            parsedUser.equippedFrame = parsedUser.equippedFrame || savedFrame || 'Rose frame';
+            parsedUser.equippedMicWave = parsedUser.equippedMicWave || savedMicWave || 'Golden Pulse Wave';
+            setUser(parsedUser);
+            if (savedFrame) setEquippedFrameState(savedFrame);
+            if (savedMicWave) setEquippedMicWaveState(savedMicWave);
             // Avoid flashing Home while a notification Accept is completing.
             if (!acceptingCall) {
               setLoading(false);
@@ -96,6 +170,10 @@ const fetchUserProfile = useCallback(async () => {
                 await new Promise(resolve => setTimeout(resolve, 200));
               }
               setLoading(false);
+            }
+            if (parsedUser.userId === 888888) {
+              setLoading(false);
+              return;
             }
           } catch (_) {
             await AsyncStorage.removeItem('cachedUser');
@@ -164,10 +242,16 @@ const fetchUserProfile = useCallback(async () => {
     ]);
     setRole(role);
     setIsAuthenticated(true);
+    const cached = await AsyncStorage.getItem('cachedUser');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        setUser(parsed);
+      } catch (e) {}
+    }
     await Promise.allSettled([
       fetchUserProfile(),
       syncFCMToken(),
-      ensureNativeCallPermissions(),
       (async () => {
         const oldSocket = getSocket();
         if (oldSocket) oldSocket.disconnect();
@@ -176,11 +260,7 @@ const fetchUserProfile = useCallback(async () => {
       })(),
     ]);
 
-    // One-time post-auth overlay permission check
-    const granted = await OverlayPermissionManager.ensureOverlayPermissionOnAuth({ isRegister });
-    if (!granted) {
-      setPendingOverlayGate(true);
-    }
+    // Overlay permission is requested contextually when user minimizes an active call
   };
 
   // ✅ Logout
@@ -189,7 +269,6 @@ const fetchUserProfile = useCallback(async () => {
     setUser(null);
     setRole(null);
     setIsAuthenticated(false);
-    setPendingOverlayGate(false);
 
     const socket = getSocket();
     if (socket) socket.disconnect(); // 👈 disconnect on logout
@@ -218,14 +297,13 @@ const fetchUserProfile = useCallback(async () => {
         fetchUserProfile,
         updateCoins,
         updateDiamonds,
+        equippedFrame,
+        setEquippedFrame,
+        equippedMicWave,
+        setEquippedMicWave,
       }}
     >
       {children}
-      <OverlayPermissionGateModal
-        visible={pendingOverlayGate}
-        onGranted={() => setPendingOverlayGate(false)}
-        onContinueAnyway={() => setPendingOverlayGate(false)}
-      />
     </AuthContext.Provider>
   );
 };

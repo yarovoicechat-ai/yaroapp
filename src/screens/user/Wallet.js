@@ -25,6 +25,7 @@ import { apiUtil, exchangeCoins } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
 import BillingService from '../../services/BillingService';
 import { GOOGLE_PLAY_PRODUCTS } from '../../constants/googlePlayProducts';
+import DeviceInfo from 'react-native-device-info';
 
 const { width, height } = Dimensions.get('window');
 const RF = (size) => Math.sqrt(width * width + height * height) * (size / 1000);
@@ -50,7 +51,7 @@ const Wallet = () => {
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 42);
   const { user, fetchUserProfile } = useContext(AuthContext);
 
-  const [activeTab, setActiveTab] = useState('Diamonds'); // 'Diamonds' or 'Coins'
+  const [activeTab, setActiveTab] = useState('Diamonds'); // 'Diamonds' or 'Beans'
   const [loading, setLoading] = useState(false);
   const [purchasingPackId, setPurchasingPackId] = useState(null);
   const [productsCatalog, setProductsCatalog] = useState(GOOGLE_PLAY_PRODUCTS);
@@ -75,10 +76,11 @@ const Wallet = () => {
     setLoading(true);
 
     try {
+      const currentPackage = DeviceInfo.getBundleId() || 'yaro.vc.app';
       const res = await apiUtil.post('/payment/verify-google', {
         productId,
         purchaseToken,
-        packageName: 'com.umangchatlive',
+        packageName: currentPackage,
       });
 
       console.log(`[GP-BILLING] VERIFY API RESPONSE STATUS: ${res.status}`);
@@ -298,18 +300,18 @@ const Wallet = () => {
 
   const handleExchangeCoin = async (pack) => {
     if ((user?.coins || 0) < pack.coins) {
-      AlertService.show('Insufficient Coins', 'You do not have enough coins to exchange for this package.', 'error');
+      AlertService.show('Insufficient Beans', 'You do not have enough Beans to exchange for this package.', 'error');
       return;
     }
 
     AlertService.show(
-      'Confirm Exchange',
-      `Are you sure you want to exchange ${pack.coins.toLocaleString()} Coins for ${pack.diamonds.toLocaleString()} Diamonds?`,
+      'Confirm Conversion',
+      `Are you sure you want to convert ${pack.coins.toLocaleString()} Beans into ${pack.diamonds.toLocaleString()} Diamonds?`,
       'info',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Exchange',
+          text: 'Convert',
           onPress: async () => {
             setLoading(true);
             try {
@@ -317,17 +319,17 @@ const Wallet = () => {
 
               if (res.data.success) {
                 AlertService.show(
-                  'Exchange Successful 🎉',
-                  `Exchanged ${pack.coins.toLocaleString()} Coins for ${pack.diamonds.toLocaleString()} Diamonds!`,
+                  'Conversion Successful 🎉',
+                  `Converted ${pack.coins.toLocaleString()} Beans to ${pack.diamonds.toLocaleString()} Diamonds!`,
                   'success'
                 );
                 fetchUserProfile();
               } else {
-                AlertService.show('Exchange Failed', res.data.message || 'Exchange failed', 'error');
+                AlertService.show('Conversion Failed', res.data.message || 'Conversion failed', 'error');
               }
             } catch (err) {
               console.log('Exchange Error:', err);
-              const errMsg = err.response?.data?.message || err.message || 'Failed to complete exchange';
+              const errMsg = err.response?.data?.message || err.message || 'Failed to complete conversion';
               const statusStr = err.response?.status ? ` (Status: ${err.response.status})` : '';
               AlertService.show('Error', `${errMsg}${statusStr}`, 'error');
             } finally {
@@ -368,7 +370,7 @@ const Wallet = () => {
             {tabKey === 'Diamonds' ? (
               <Image source={diamondIcon} style={{ width: 16, height: 16, opacity: 0.6, marginRight: 4 }} resizeMode="contain" />
             ) : (
-              <Icon name={icon} size={16} color="rgba(255,255,255,0.5)" style={{ marginRight: 4 }} />
+              <Icon name={icon} size={16} color="#64748B" style={{ marginRight: 4 }} />
             )}
             <Text style={styles.tabText}>{label}</Text>
           </View>
@@ -381,31 +383,28 @@ const Wallet = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
       <LinearGradient
-        colors={['#060212', '#0e0423', '#030109']}
+        colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']}
         style={StyleSheet.absoluteFillObject}
       />
-      {/* Decorative stars */}
-      <View style={styles.starOverlay1} />
-      <View style={styles.starOverlay2} />
 
       {/* Header bar */}
       <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Icon name="chevron-left" size={24} color="#fff" />
+          <Icon name="chevron-left" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Wallet</Text>
         <TouchableOpacity
-          style={[styles.historyBtnHeader, activeTab === 'Coins' && styles.historyBtnCoin]}
+          style={[styles.historyBtnHeader, activeTab === 'Beans' && styles.historyBtnCoin]}
           onPress={() =>
-            navigation.navigate(activeTab === 'Coins' ? 'ExchangeHistory' : 'RechargeHistreoy')
+            navigation.navigate(activeTab === 'Beans' ? 'ExchangeHistory' : 'RechargeHistreoy')
           }
           activeOpacity={0.8}
         >
-          <Icon name="history" size={16} color={activeTab === 'Coins' ? '#FFD700' : '#d946ef'} style={{ marginRight: 4 }} />
-          <Text style={[styles.historyTextHeader, activeTab === 'Coins' && { color: '#FFD700' }]}>
-            {activeTab === 'Coins' ? 'Exchange History' : 'History'}
+          <Icon name="history" size={16} color={activeTab === 'Beans' ? '#D97706' : '#6C5CE7'} style={{ marginRight: 4 }} />
+          <Text style={[styles.historyTextHeader, activeTab === 'Beans' && { color: '#D97706' }]}>
+            {activeTab === 'Beans' ? 'Beans History' : 'History'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -413,7 +412,7 @@ const Wallet = () => {
       {/* Custom Tabs */}
       <View style={styles.tabBar}>
         {renderTabButton('Diamonds', 'Diamonds', 'diamond', '#03dcfe')}
-        {renderTabButton('Coins', 'Coins', 'stars', '#FFD700')}
+        {renderTabButton('Beans', 'Beans', 'grain', '#10B981')}
       </View>
 
       {loading && !purchasingPackId && (
@@ -541,56 +540,68 @@ const Wallet = () => {
           </View>
         ) : (
           <View style={styles.tabBody}>
-            {/* Coins Balance Card */}
+            {/* Beans Balance Card */}
             <View style={styles.balanceCardContainer}>
               <LinearGradient
-                colors={['#1c0c3a', '#100524']}
+                colors={['#ECFDF5', '#D1FAE5']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.balanceCard}
+                style={[styles.balanceCard, { borderColor: '#A7F3D0' }]}
               >
                 <View style={styles.balanceHeaderRow}>
                   <View style={styles.balanceLabelCol}>
-                    <Text style={styles.balanceLabel}>My Coins</Text>
+                    <Text style={[styles.balanceLabel, { color: '#065F46' }]}>My Beans</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={styles.balanceCount}>{(user?.coins || 0).toLocaleString()}</Text>
-                      <Icon name="stars" size={24} color="#FFD700" style={styles.balanceIcon} />
+                      <Text style={[styles.balanceCount, { color: '#047857' }]}>{(user?.coins || 0).toLocaleString()}</Text>
+                      <Icon name="stars" size={24} color="#10B981" style={styles.balanceIcon} />
                     </View>
-                    <Text style={styles.balanceValue}>≈ ₹{((user?.coins || 0) / 20).toFixed(2)}</Text>
+                    <Text style={[styles.balanceValue, { color: '#059669' }]}>≈ ₹{((user?.coins || 0) / 20).toFixed(2)}</Text>
                   </View>
 
                   {/* Gorgeous Pedestal */}
                   <View style={styles.pedestalContainer}>
-                    <View style={styles.pedestalRing3}>
-                      <View style={styles.pedestalRing2}>
-                        <View style={styles.pedestalRing1}>
-                          <Image source={require('../../assets/coin.webp')} style={styles.pedestalCoinImg} />
+                    <View style={[styles.pedestalRing3, { borderColor: 'rgba(16, 185, 129, 0.2)' }]}>
+                      <View style={[styles.pedestalRing2, { borderColor: 'rgba(16, 185, 129, 0.4)' }]}>
+                        <View style={[styles.pedestalRing1, { backgroundColor: '#10B981' }]}>
+                          <Text style={{ fontSize: 22 }}>🌱</Text>
                         </View>
                       </View>
                     </View>
                   </View>
                 </View>
 
-                <Text style={styles.balanceSubtext}>
-                  Use coins to exchange for diamonds and enjoy premium features.
+                <Text style={[styles.balanceSubtext, { color: '#065F46' }]}>
+                  Beans are earned through host calls, gifts received, and creator rewards. Convert Beans into Diamonds or withdraw to UPI/Bank.
                 </Text>
 
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('CoinHistory')}
-                  style={styles.historyBtn}
-                  activeOpacity={0.7}
-                >
-                  <Icon name="history" size={14} color="#FFD700" style={styles.iconMarginRight} />
-                  <Text style={styles.coinHistoryBtnText}>History</Text>
-                  <Icon name="chevron-right" size={12} color="#FFD700" />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('Withdrawal')}
+                    style={[styles.historyBtn, { backgroundColor: '#10B981', borderColor: '#059669' }]}
+                    activeOpacity={0.7}
+                  >
+                    <Icon name="account-balance-wallet" size={14} color="#FFF" style={styles.iconMarginRight} />
+                    <Text style={[styles.coinHistoryBtnText, { color: '#FFF' }]}>Withdraw</Text>
+                    <Icon name="chevron-right" size={12} color="#FFF" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('CoinHistory')}
+                    style={[styles.historyBtn, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}
+                    activeOpacity={0.7}
+                  >
+                    <Icon name="history" size={14} color="#047857" style={styles.iconMarginRight} />
+                    <Text style={[styles.coinHistoryBtnText, { color: '#047857' }]}>History</Text>
+                    <Icon name="chevron-right" size={12} color="#047857" />
+                  </TouchableOpacity>
+                </View>
               </LinearGradient>
             </View>
 
-            {/* Choose coin pack section */}
+            {/* Choose bean conversion pack section */}
             <View style={styles.gridTitleContainer}>
-              <Icon name="stars" size={16} color="#FFD700" style={styles.gridTitleIcon} />
-              <Text style={styles.gridTitle}>Choose a Coin Package</Text>
+              <Icon name="swap-horizontal-circle" size={18} color="#10B981" style={styles.gridTitleIcon} />
+              <Text style={styles.gridTitle}>Convert Beans to Diamonds</Text>
               <View style={styles.titleLine} />
             </View>
 
@@ -600,8 +611,8 @@ const Wallet = () => {
                 const isBestValue = pack.badge === 'BEST VALUE';
 
                 let btnColors = null;
-                if (isPopular) btnColors = ['#ec4899', '#be185d'];
-                if (isBestValue) btnColors = ['#ca8a04', '#a16207'];
+                if (isPopular) btnColors = ['#059669', '#047857'];
+                if (isBestValue) btnColors = ['#10B981', '#059669'];
 
                 return (
                   <TouchableOpacity
@@ -625,9 +636,9 @@ const Wallet = () => {
                     ) : null}
 
                     <View style={styles.packTop}>
-                      <Icon name="stars" size={22} color="#FFD700" />
+                      <Icon name="grain" size={20} color="#10B981" />
                       <Text style={styles.packLabelText}>{pack.coins.toLocaleString()}</Text>
-                      <Text style={styles.packLabelSub}>Coins</Text>
+                      <Text style={styles.packLabelSub}>Beans</Text>
                     </View>
 
                     <Icon name="keyboard-arrow-down" size={12} color="rgba(255,255,255,0.4)" style={styles.packArrow} />
@@ -640,11 +651,11 @@ const Wallet = () => {
 
                     {btnColors ? (
                       <LinearGradient colors={btnColors} style={styles.packButtonGradient}>
-                        <Text style={styles.packButtonText}>Exchange</Text>
+                        <Text style={styles.packButtonText}>Convert</Text>
                       </LinearGradient>
                     ) : (
-                      <View style={styles.packButtonBordered}>
-                        <Text style={styles.packButtonTextBordered}>Exchange</Text>
+                      <View style={[styles.packButtonBordered, { borderColor: '#10B981' }]}>
+                        <Text style={[styles.packButtonTextBordered, { color: '#047857' }]}>Convert</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -755,20 +766,25 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 215, 0, 0.3)',
   },
   historyTextHeader: {
-    color: '#d946ef',
+    color: '#6C5CE7',
     fontSize: RF(11.5),
-    fontWeight: '600',
+    fontWeight: '700',
   },
   tabBar: {
     flexDirection: 'row',
     width: WP(92),
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
     borderRadius: 14,
     padding: 4,
     alignSelf: 'center',
     marginVertical: HP(1.5),
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
   },
   tabButton: {
     flex: 1,
@@ -790,13 +806,13 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: RF(12),
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontWeight: '600',
+    color: '#64748B',
+    fontWeight: '700',
   },
   tabTextActive: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: RF(12),
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   scrollContent: {
     paddingBottom: HP(4),
@@ -813,7 +829,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    elevation: 3,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   balanceHeaderRow: {
     flexDirection: 'row',
@@ -825,9 +847,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   balanceLabel: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
     fontSize: RF(12),
-    fontWeight: '600',
+    fontWeight: '700',
   },
   balanceCountRow: {
     flexDirection: 'row',
@@ -836,7 +858,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   balanceCount: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: RF(30),
     fontWeight: 'bold',
   },
@@ -844,7 +866,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   balanceValue: {
-    color: '#d946ef',
+    color: '#6C5CE7',
     fontSize: RF(13.5),
     fontWeight: 'bold',
   },
@@ -893,8 +915,8 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   balanceSubtext: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: RF(10.5),
+    color: '#64748B',
+    fontSize: RF(11),
     lineHeight: 16,
     marginBottom: 14,
   },
@@ -902,21 +924,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#E2E8F0',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
   historyBtnText: {
-    color: '#03dcfe',
+    color: '#6C5CE7',
     fontSize: RF(11),
     fontWeight: 'bold',
     marginRight: 2,
   },
   coinHistoryBtnText: {
-    color: '#FFD700',
+    color: '#D97706',
     fontSize: RF(11),
     fontWeight: 'bold',
     marginRight: 2,
@@ -934,15 +956,15 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   gridTitle: {
-    color: '#fff',
-    fontSize: RF(13.5),
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    color: '#0F172A',
+    fontSize: RF(14),
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
   titleLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#E2E8F0',
     marginLeft: 6,
   },
   packsGrid: {
@@ -953,25 +975,30 @@ const styles = StyleSheet.create({
   },
   packCard: {
     width: '31%',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(124, 77, 255, 0.12)',
+    borderColor: '#E2E8F0',
     borderRadius: 16,
     padding: 10,
     alignItems: 'center',
     position: 'relative',
     marginVertical: 6,
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   packCardPopular: {
-    borderColor: 'rgba(236, 72, 153, 0.4)',
+    borderColor: '#EC4899',
   },
   packCardBestValue: {
-    borderColor: 'rgba(234, 179, 8, 0.4)',
+    borderColor: '#F59E0B',
   },
   popularTag: {
     position: 'absolute',
     top: -8,
-    backgroundColor: '#d946ef',
+    backgroundColor: '#EC4899',
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -993,13 +1020,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   packLabelText: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: RF(12.5),
-    fontWeight: 'bold',
+    fontWeight: '800',
     marginTop: 2,
   },
   packLabelSub: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#94A3B8',
     fontSize: RF(8.5),
     fontWeight: '600',
   },
@@ -1011,12 +1038,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   packDiamondsText: {
-    color: '#fff',
-    fontSize: RF(12.5),
-    fontWeight: 'bold',
+    color: '#0F172A',
+    fontSize: RF(13),
+    fontWeight: '800',
   },
   packDiamondsSub: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#64748B',
     fontSize: RF(8.5),
     fontWeight: '600',
   },
@@ -1029,22 +1056,22 @@ const styles = StyleSheet.create({
     minHeight: 28,
   },
   packButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: RF(10.5),
     fontWeight: 'bold',
   },
   packButtonBordered: {
     width: '100%',
-    backgroundColor: 'rgba(124, 77, 255, 0.1)',
+    backgroundColor: '#EDE9FE',
     borderWidth: 1,
-    borderColor: 'rgba(124, 77, 255, 0.3)',
+    borderColor: '#DDD6FE',
     borderRadius: 10,
     paddingVertical: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   packButtonTextBordered: {
-    color: '#d946ef',
+    color: '#6C5CE7',
     fontSize: RF(10.5),
     fontWeight: 'bold',
   },
@@ -1063,22 +1090,23 @@ const styles = StyleSheet.create({
   secureBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
+    borderColor: '#E2E8F0',
     paddingHorizontal: 10,
     paddingVertical: 5,
+    borderRadius: 12,
   },
   secureBadgeText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#64748B',
     fontSize: RF(9.5),
     fontWeight: '600',
   },
   footerSecureDesc: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: RF(10),
+    color: '#94A3B8',
+    fontSize: RF(9.5),
     textAlign: 'center',
+    marginTop: 4,
   },
   coinsInfoCards: {
     marginTop: 16,
@@ -1087,17 +1115,22 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
     borderRadius: 16,
     padding: 12,
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   infoCardIconBg: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(217, 70, 239, 0.12)',
+    backgroundColor: '#F3E8FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1106,12 +1139,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoCardTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: RF(12),
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   infoCardDesc: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#64748B',
     fontSize: RF(10),
     marginTop: 2,
   },
@@ -1123,7 +1156,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   bottomLockText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#94A3B8',
     fontSize: RF(10),
   },
 });

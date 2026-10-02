@@ -49,6 +49,32 @@ import HostProfile from "../screens/user/HostProfile";
 import CallsScreen from "../screens/chats/CallsScreen";
 import GiftsScreen from "../screens/chats/GiftsScreen";
 import SystemNoticeScreen from "../screens/chats/SystemNoticeScreen";
+import AgencyDetails from "../screens/user/AgencyDetails";
+import AgencyDashboard from "../screens/user/AgencyDashboard";
+import VoiceRoom from "../screens/user/VoiceRoom";
+import BDDashboard from "../screens/user/BDDashboard";
+import SVIP from "../screens/user/SVIP";
+import MyItems from "../screens/user/MyItems";
+import Medal from "../screens/user/Medal";
+import UserProfile from "../screens/user/UserProfile";
+import Profile from "../screens/user/Profile";
+import Me from "../screens/user/Me";
+
+// Newly created and verified production screens
+import UPIVerify from "../screens/user/UPIVerify";
+import LinkAccount from "../screens/user/LinkAccount";
+import SearchScreen from "../screens/user/SearchScreen";
+import VideoCallScreen from "../screens/call/VideoCallScreen";
+import LiveStreamScreen from "../screens/user/LiveStreamScreen";
+import LiveListScreen from "../screens/user/LiveListScreen";
+import ShortsFeedScreen from "../screens/user/ShortsFeedScreen";
+import UploadShortScreen from "../screens/user/UploadShortScreen";
+import StoreScreen from "../screens/user/StoreScreen";
+import FollowersScreen from "../screens/user/FollowersScreen";
+import TasksScreen from "../screens/user/TasksScreen";
+import FanClubScreen from "../screens/user/FanClubScreen";
+import VIPScreen from "../screens/user/VIPScreen";
+import DataCenter from "../screens/user/DataCenter";
 
 const Stack = createStackNavigator();
 
@@ -64,6 +90,7 @@ export default function AppStack() {
       <Stack.Screen name="OneToOne" component={OneToOne} />
       <Stack.Screen name="Wallet" component={Wallet} />
       <Stack.Screen name="Details" component={Details} />
+      <Stack.Screen name="TransactionDetails" component={Details} />
       <Stack.Screen name="Ranking" component={Ranking} />
       <Stack.Screen name="Level" component={Level} />
       <Stack.Screen name="LevelHelp" component={LevelHelp} />
@@ -111,12 +138,40 @@ export default function AppStack() {
       <Stack.Screen name="HostApply" component={HostApply} />
       <Stack.Screen name="CoinHistory" component={CoinHistory} />
       <Stack.Screen name="HostProfile" component={HostProfile} />
+      <Stack.Screen name="UserProfile" component={UserProfile} />
+      <Stack.Screen name="Profile" component={Profile} />
+      <Stack.Screen name="Me" component={Me} />
       <Stack.Screen name="Earning" component={Earning} />
       <Stack.Screen name="ExchangeCoins" component={ExchangeCoins} />
       <Stack.Screen name="InviteEarn" component={InviteEarn} />
       <Stack.Screen name="CallsScreen" component={CallsScreen} />
       <Stack.Screen name="GiftsScreen" component={GiftsScreen} />
       <Stack.Screen name="SystemNoticeScreen" component={SystemNoticeScreen} />
+      <Stack.Screen name="AgencyDetails" component={AgencyDetails} />
+      <Stack.Screen name="AgencyDashboard" component={AgencyDashboard} />
+      <Stack.Screen name="VoiceRoom" component={VoiceRoom} />
+      <Stack.Screen name="BDDashboard" component={BDDashboard} />
+      <Stack.Screen name="SVIP" component={SVIP} />
+      <Stack.Screen name="MyItems" component={MyItems} />
+      <Stack.Screen name="Medal" component={Medal} />
+
+      {/* Newly registered routes */}
+      <Stack.Screen name="UPIVerify" component={UPIVerify} />
+      <Stack.Screen name="LinkAccount" component={LinkAccount} />
+      <Stack.Screen name="Search" component={SearchScreen} />
+      <Stack.Screen name="VideoCall" component={VideoCallScreen} />
+      <Stack.Screen name="LiveStream" component={LiveStreamScreen} />
+      <Stack.Screen name="LiveList" component={LiveListScreen} />
+      <Stack.Screen name="ShortsFeed" component={ShortsFeedScreen} />
+      <Stack.Screen name="UploadShort" component={UploadShortScreen} />
+      <Stack.Screen name="Store" component={StoreScreen} />
+      <Stack.Screen name="Followers" component={FollowersScreen} />
+      <Stack.Screen name="LinkPhone" component={MobileVerification} />
+      <Stack.Screen name="Tasks" component={TasksScreen} />
+      <Stack.Screen name="FanClub" component={FanClubScreen} />
+      <Stack.Screen name="VIP" component={VIPScreen} />
+      <Stack.Screen name="BeansHistory" component={CoinHistory} />
+      <Stack.Screen name="DataCenter" component={DataCenter} />
     </Stack.Navigator>
   );
 }

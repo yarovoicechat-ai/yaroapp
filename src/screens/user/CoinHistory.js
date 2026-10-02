@@ -32,7 +32,7 @@ const TYPE_CONFIG = {
   call: { label: 'Audio/Video Call', icon: 'call', color: '#3B82F6', sign: '-' },
   call_earning: { label: 'Call Earning', icon: 'call', color: '#10B981', sign: '+' },
   message: { label: 'Chat Message', icon: 'chat', color: '#A855F7', sign: '-' },
-  recharge: { label: 'Coin Recharge', icon: 'account-balance-wallet', color: '#10B981', sign: '+' },
+  recharge: { label: 'Beans Recharge', icon: 'account-balance-wallet', color: '#10B981', sign: '+' },
   default: { label: 'Transaction', icon: 'swap-horiz', color: '#F59E0B', sign: '-' },
 };
 
@@ -106,16 +106,16 @@ const CoinHistory = () => {
 
   return (
     <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-      <ScreenBackgroundStatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
+      <ScreenBackgroundStatusBar barStyle="dark-content" backgroundColor="transparent" translucent animated />
       <View style={[styles.container, { paddingTop: topSafeInset + 8 }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Icon name="arrow-back" size={24} color="#fff" />
+            <Icon name="arrow-back" size={24} color="#1E293B" />
           </TouchableOpacity>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Coin History</Text>
+            <Text style={styles.headerTitle}>Beans History</Text>
           </View>
           <View style={{ width: 40 }} />
         </View>
@@ -130,14 +130,14 @@ const CoinHistory = () => {
               style={styles.heroCardBorder}
             >
               <LinearGradient
-                colors={['rgba(26, 16, 56, 0.95)', 'rgba(10, 5, 28, 0.95)']}
+                colors={['#FFFBEB', '#FEF3C7']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.heroCard}
               >
                 <View style={styles.heroCardRow}>
                   <View>
-                    <Text style={styles.heroSub}>Current Coin Balance</Text>
+                    <Text style={styles.heroSub}>Current Beans Balance</Text>
                     <View style={styles.heroBalanceRow}>
                       <Text style={styles.heroBalanceText}>{(user?.coins || 0).toLocaleString()}</Text>
                       <Image source={coinImg} style={styles.heroCoinIcon} resizeMode="contain" />
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    color: '#ffffff',
+    color: '#0F172A',
     fontSize: RFValue(17),
     fontWeight: 'bold',
   },
@@ -320,8 +320,9 @@ const styles = StyleSheet.create({
   },
   heroSub: {
     fontSize: RFValue(11),
-    color: 'rgba(255, 255, 255, 0.55)',
+    color: '#78350F',
     marginBottom: 2,
+    fontWeight: '600',
   },
   heroBalanceRow: {
     flexDirection: 'row',
@@ -330,7 +331,7 @@ const styles = StyleSheet.create({
   heroBalanceText: {
     fontSize: RFValue(24),
     fontWeight: 'bold',
-    color: '#FFD700',
+    color: '#92400E',
     marginRight: 8,
   },
   heroCoinIcon: {
@@ -338,9 +339,9 @@ const styles = StyleSheet.create({
     height: 26,
   },
   totalBadge: {
-    backgroundColor: 'rgba(255, 215, 0, 0.12)',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
+    borderColor: 'rgba(245, 158, 11, 0.25)',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -348,17 +349,18 @@ const styles = StyleSheet.create({
   },
   totalBadgeLbl: {
     fontSize: RFValue(10),
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#92400E',
+    fontWeight: '500',
   },
   totalBadgeVal: {
     fontSize: RFValue(12),
     fontWeight: 'bold',
-    color: '#FFD700',
+    color: '#B45309',
     marginTop: 1,
   },
   heroDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(180, 83, 9, 0.15)',
     marginVertical: 14,
   },
   statsRow: {
@@ -378,18 +380,19 @@ const styles = StyleSheet.create({
   },
   statBoxLbl: {
     fontSize: RFValue(10),
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#78350F',
     marginBottom: 2,
+    fontWeight: '500',
   },
   statBoxVal: {
     fontSize: RFValue(13),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#1E293B',
   },
   statBoxDivider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(180, 83, 9, 0.15)',
   },
   filterRow: {
     flexDirection: 'row',
@@ -408,9 +411,9 @@ const styles = StyleSheet.create({
   filterTabInactive: {
     height: 38,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -420,9 +423,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   filterText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
     fontSize: RFValue(12),
-    fontWeight: '500',
+    fontWeight: '600',
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -433,34 +436,35 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: {
     fontSize: RFValue(13),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
   },
   sectionHeaderCount: {
     fontSize: RFValue(11),
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#64748B',
+    fontWeight: '500',
   },
   centered: {
     paddingVertical: 40,
     alignItems: 'center',
   },
   loadingText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
     fontSize: RFValue(12),
     marginTop: 10,
   },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: '#E2E8F0',
   },
   emptyIconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255, 215, 0, 0.08)',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -468,12 +472,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: RFValue(14),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
     marginBottom: 4,
   },
   emptySubtitle: {
     fontSize: RFValue(11),
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#64748B',
   },
   listContainer: {
     gap: 10,
@@ -481,12 +485,17 @@ const styles = StyleSheet.create({
   txCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
     paddingHorizontal: 14,
     paddingVertical: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   txIconWrap: {
     width: 40,
@@ -503,7 +512,7 @@ const styles = StyleSheet.create({
   txTitle: {
     fontSize: RFValue(13),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
     marginBottom: 3,
   },
   txMetaRow: {
@@ -512,13 +521,13 @@ const styles = StyleSheet.create({
   },
   txMetaText: {
     fontSize: RFValue(10.5),
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: '#64748B',
   },
   txMetaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: '#CBD5E1',
     marginHorizontal: 6,
   },
   txAmountCol: {
@@ -540,6 +549,6 @@ const styles = StyleSheet.create({
   },
   txStatusText: {
     fontSize: RFValue(10),
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#94A3B8',
   },
 });

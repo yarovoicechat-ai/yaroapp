@@ -76,7 +76,7 @@ const Ranking = () => {
   const metrics = [
     { key: 'Time', label: 'Time', icon: 'time-outline' },
     { key: 'Call', label: 'Call', icon: 'call-outline' },
-    { key: 'Coins', label: 'Coin', icon: 'logo-usd' },
+    { key: 'Coins', label: 'Beans', icon: 'server-outline' },
     { key: 'Diamonds', label: 'Diamond', icon: 'diamond-outline' }
   ];
 
@@ -110,65 +110,7 @@ const Ranking = () => {
     fetchRanking();
   }, [fetchRanking]);
 
-const DEFAULT_RANKINGS = [
-  {
-    _id: 'r1',
-    user: { _id: 'u1', name: 'Aanya Sharma', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80' },
-    name: 'Aanya Sharma',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-    call: 1420,
-    time: 4820,
-    coins: 184500,
-    diamonds: 92000,
-    rank: 1,
-  },
-  {
-    _id: 'r2',
-    user: { _id: 'u2', name: 'Simran Kaur', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80' },
-    name: 'Simran Kaur',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
-    call: 1180,
-    time: 3950,
-    coins: 142100,
-    diamonds: 71000,
-    rank: 2,
-  },
-  {
-    _id: 'r3',
-    user: { _id: 'u3', name: 'Ananya Roy', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80' },
-    name: 'Ananya Roy',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
-    call: 950,
-    time: 3100,
-    coins: 98300,
-    diamonds: 49000,
-    rank: 3,
-  },
-  {
-    _id: 'r4',
-    user: { _id: 'u4', name: 'Priya Verma', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80' },
-    name: 'Priya Verma',
-    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80',
-    call: 820,
-    time: 2750,
-    coins: 76500,
-    diamonds: 38000,
-    rank: 4,
-  },
-  {
-    _id: 'r5',
-    user: { _id: 'u5', name: 'Ishita Joshi', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&auto=format&fit=crop&q=80' },
-    name: 'Ishita Joshi',
-    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&auto=format&fit=crop&q=80',
-    call: 690,
-    time: 2100,
-    coins: 61200,
-    diamonds: 30000,
-    rank: 5,
-  },
-];
-
-  const activeData = rankingData.length > 0 ? rankingData : DEFAULT_RANKINGS;
+  const activeData = rankingData;
 
   // Safe split of podium top 3 and list
   const topThree = activeData.slice(0, 3);
@@ -188,24 +130,19 @@ const DEFAULT_RANKINGS = [
       return (val / 1000).toFixed(1) + 'K';
     }
     return String(val);
-  };
-
-  return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#08031a' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-      <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-      {/* Space glow overlays */}
-      <View style={styles.starOverlay1} />
-      <View style={styles.starOverlay2} />
+  };  return (
+    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
+      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color="#fff" />
+          <Icon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('ranking.title') || 'Ranking'}</Text>
         <TouchableOpacity style={styles.helpButton}>
-          <Icon name="help-circle-outline" size={24} color="rgba(255, 255, 255, 0.6)" />
+          <Icon name="help-circle-outline" size={24} color="#64748B" />
         </TouchableOpacity>
       </View>
 
@@ -222,7 +159,7 @@ const DEFAULT_RANKINGS = [
             >
               {isSelected && (
                 <LinearGradient
-                  colors={['#03dcfe', '#2911fe']}
+                  colors={['#6366F1', '#4F46E5']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.tabHighlight}
@@ -258,7 +195,7 @@ const DEFAULT_RANKINGS = [
               <Icon
                 name={m.icon}
                 size={14}
-                color={isSelected ? '#03dcfe' : 'rgba(255, 255, 255, 0.5)'}
+                color={isSelected ? '#6366F1' : '#64748B'}
                 style={{ marginRight: 4 }}
               />
               <Text
@@ -272,7 +209,7 @@ const DEFAULT_RANKINGS = [
               <Icon
                 name="chevron-down"
                 size={10}
-                color={isSelected ? '#03dcfe' : 'rgba(255, 255, 255, 0.4)'}
+                color={isSelected ? '#6366F1' : '#94A3B8'}
                 style={{ marginLeft: 4 }}
               />
             </TouchableOpacity>
@@ -282,31 +219,32 @@ const DEFAULT_RANKINGS = [
 
       {/* Updates Timer */}
       <View style={styles.timerWrap}>
-        <Icon name="time-outline" size={14} color="#d946ef" style={{ marginRight: 4 }} />
+        <Icon name="time-outline" size={14} color="#8B5CF6" style={{ marginRight: 4 }} />
         <Text style={styles.timerText}>Live ranking from verified transactions</Text>
-      </View>
+      </View>w>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}>
         {/* Podium Top 3 */}
-        <View style={styles.podiumWrapper}>
+        {podiumList.length > 0 && (
+          <View style={styles.podiumWrapper}>
           {podiumList.map((item, idx) => {
             const isRank1 = item?.rank === 1;
             const isRank2 = item?.rank === 2;
             const isRank3 = item?.rank === 3;
 
-            let glowColor = '#0ea5e9';
-            let platformColors = ['rgba(11, 8, 44, 0.65)', 'rgba(14, 165, 233, 0.35)'];
+            let glowColor = '#0284C7';
+            let platformColors = ['#E0F2FE', '#BAE6FD'];
             let badgeIcon = 'shield';
             let avatarSize = 60;
 
             if (isRank1) {
-              glowColor = '#facc15';
-              platformColors = ['rgba(23, 11, 78, 0.75)', 'rgba(250, 204, 21, 0.45)'];
+              glowColor = '#D97706';
+              platformColors = ['#FEF3C7', '#FDE68A'];
               badgeIcon = 'crown';
               avatarSize = 76;
             } else if (isRank3) {
-              glowColor = '#f97316';
-              platformColors = ['rgba(11, 8, 44, 0.65)', 'rgba(249, 115, 22, 0.35)'];
+              glowColor = '#EA580C';
+              platformColors = ['#FFEDD5', '#FED7AA'];
               badgeIcon = 'shield';
               avatarSize = 60;
             }
@@ -341,7 +279,7 @@ const DEFAULT_RANKINGS = [
                         width: avatarSize,
                         height: avatarSize,
                         borderRadius: avatarSize / 2,
-                        backgroundColor: '#0c0628',
+                        backgroundColor: '#F1F5F9',
                       }}
                     />
                   </LinearGradient>
@@ -385,15 +323,16 @@ const DEFAULT_RANKINGS = [
             );
           })}
         </View>
+        )}
 
         {/* Scrollable list (4-10) */}
-        {loading && remainingList.length === 0 ? (
-          <ActivityIndicator size="large" color="#03dcfe" style={{ marginTop: 30 }} />
+        {loading && activeData.length === 0 ? (
+          <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: 30 }} />
         ) : (
           <View style={styles.listCard}>
-            {remainingList.length === 0 ? (
+            {activeData.length === 0 ? (
               <View style={styles.emptyWrap}>
-                <Text style={styles.emptyText}>No ranking logs found</Text>
+                <Text style={styles.emptyText}>No rankings recorded yet for this period.</Text>
               </View>
             ) : (
               remainingList.map((item, index) => {
@@ -408,14 +347,14 @@ const DEFAULT_RANKINGS = [
                     <View style={styles.rowDetails}>
                       <Text style={styles.rowName} numberOfLines={1}>{item.name || 'User'}</Text>
                       <View style={styles.rowScoreRow}>
-                        <Icon name="star" size={12} color="#a855f7" style={{ marginRight: 3 }} />
+                        <Icon name="star" size={12} color="#8B5CF6" style={{ marginRight: 3 }} />
                         <Text style={styles.rowScore}>
                           {formatScore(getMetricValue(item))}
                         </Text>
                       </View>
                     </View>
                     <TouchableOpacity style={styles.addFriendBtn} activeOpacity={0.7}>
-                      <Icon name="person-add" size={14} color="#03dcfe" />
+                      <Icon name="person-add" size={14} color="#6366F1" />
                     </TouchableOpacity>
                   </View>
                 );
@@ -429,7 +368,7 @@ const DEFAULT_RANKINGS = [
       {/* Sticky Bottom Rank Card */}
       {currentUserRank && <View style={styles.bottomSticky}>
         <LinearGradient
-          colors={['rgba(23, 11, 78, 0.95)', 'rgba(7, 6, 40, 0.95)']}
+          colors={['#FFFFFF', '#F8FAFC']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.stickyInner}
@@ -439,7 +378,7 @@ const DEFAULT_RANKINGS = [
           <View style={styles.stickyDetails}>
             <Text style={styles.stickyName}>You ({currentUserRank.name})</Text>
             <View style={styles.rowScoreRow}>
-              <Icon name="star" size={11} color="#a855f7" style={{ marginRight: 3 }} />
+              <Icon name="star" size={11} color="#8B5CF6" style={{ marginRight: 3 }} />
               <Text style={styles.stickyScore}>{formatScore(getMetricValue(currentUserRank))}</Text>
             </View>
           </View>
@@ -488,7 +427,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#0F172A',
   },
   helpButton: {
     width: 40,
@@ -500,15 +439,20 @@ const styles = StyleSheet.create({
   // Tabs container (Daily, Weekly, Monthly, All Time)
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     borderRadius: 24,
     marginHorizontal: 16,
     padding: 3,
     height: 46,
     alignItems: 'center',
     marginBottom: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
   },
   tabItem: {
     flex: 1,
@@ -534,7 +478,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   tabTextInactive: {
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: '#64748B',
   },
 
   // Filters Row
@@ -547,26 +491,26 @@ const styles = StyleSheet.create({
   filterCapsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#E2E8F0',
     borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   filterCapsuleActive: {
-    borderColor: 'rgba(3, 220, 254, 0.45)',
-    backgroundColor: 'rgba(3, 220, 254, 0.05)',
+    borderColor: '#6366F1',
+    backgroundColor: 'rgba(99, 102, 241, 0.08)',
   },
   filterText: {
     fontSize: 11,
     fontWeight: '600',
   },
   filterTextActive: {
-    color: '#03dcfe',
+    color: '#6366F1',
   },
   filterTextInactive: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#64748B',
   },
 
   // Timer
@@ -577,7 +521,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   timerText: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#64748B',
     fontSize: 11,
     fontWeight: '500',
   },
@@ -618,7 +562,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: '#FFFFFF',
   },
   badgeBlue: {
     top: 0,
@@ -640,7 +584,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   podiumName: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 11,
     fontWeight: '700',
     textAlign: 'center',
@@ -661,8 +605,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   platformCenter: {
     width: '95%',
@@ -671,39 +615,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#FCD34D',
   },
   platformValueCircle: {
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: '#CBD5E1',
   },
   platformValueText: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 9,
     fontWeight: 'bold',
   },
 
   // List (Ranks 4-10)
   listCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     borderRadius: 24,
     marginHorizontal: 16,
     padding: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
   },
   emptyWrap: {
     padding: 40,
     alignItems: 'center',
   },
   emptyText: {
-    color: 'rgba(255, 255, 255, 0.35)',
+    color: '#64748B',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -713,10 +662,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomColor: '#F1F5F9',
   },
   rowRank: {
-    color: 'rgba(255, 255, 255, 0.65)',
+    color: '#64748B',
     fontSize: 14,
     fontWeight: '700',
     width: 24,
@@ -726,14 +675,14 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#E2E8F0',
     marginRight: 12,
   },
   rowDetails: {
     flex: 1,
   },
   rowName: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 2,
@@ -743,7 +692,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rowScore: {
-    color: 'rgba(255, 255, 255, 0.75)',
+    color: '#64748B',
     fontSize: 11,
     fontWeight: '600',
   },
@@ -752,8 +701,8 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(3, 220, 254, 0.35)',
-    backgroundColor: 'rgba(3, 220, 254, 0.05)',
+    borderColor: '#C7D2FE',
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -772,11 +721,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 20,
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
   },
   stickyRank: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 16,
     fontWeight: 'bold',
     width: 32,
@@ -787,20 +741,20 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: '#03dcfe',
+    borderColor: '#6366F1',
     marginRight: 12,
   },
   stickyDetails: {
     flex: 1,
   },
   stickyName: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 13,
     fontWeight: '800',
     marginBottom: 2,
   },
   stickyScore: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#64748B',
     fontSize: 11,
     fontWeight: '700',
   },

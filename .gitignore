@@ -11,7 +11,8 @@ android/captures/
 *.apk
 *.aab
 *.keystore
-!android/app/umangchatlive-upload-key.keystore
+*.jks
+!android/app/debug.keystore
 
 # iOS build outputs
 ios/build/
@@ -34,3 +35,17 @@ diff.txt
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Scratch and test artifacts
+scratch/
+/*.xml
+/*.png
+/*.patch
+/yaro-before-migration-status.txt
+/nul
+

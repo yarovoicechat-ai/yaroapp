@@ -361,6 +361,18 @@ const OutGoing = () => {
             )}
           </View>
 
+          {Boolean(hostId || route.params?.userId || route.params?.meethiId || route.params?.host?.userId) && (
+            <Text style={styles.targetIdBadge}>
+              Host ID: {hostId || route.params?.userId || route.params?.meethiId || route.params?.host?.userId}
+            </Text>
+          )}
+
+          {Boolean(user?.userId || user?.meethiId || user?.id) && (
+            <Text style={styles.myIdBadge}>
+              {user?.role === 'host' ? 'My Host ID' : 'My ID'}: {user?.userId || user?.meethiId || user?.id}
+            </Text>
+          )}
+
           <View style={styles.statusRow}>
             <View style={styles.onlineDot} />
             <Text style={styles.statusText}>Online</Text>
@@ -629,6 +641,24 @@ const styles = StyleSheet.create({
     fontSize: RF(10),
     fontWeight: "bold",
     marginTop: -1,
+  },
+  targetIdBadge: {
+    color: '#03dcfe',
+    fontSize: RF(13),
+    fontWeight: '700',
+    backgroundColor: 'rgba(3, 220, 254, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(3, 220, 254, 0.25)',
+  },
+  myIdBadge: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: RF(11),
+    fontWeight: '600',
+    marginBottom: 6,
   },
   statusRow: {
     flexDirection: "row",

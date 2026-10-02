@@ -18,6 +18,38 @@ const AppTheme = {
   },
 };
 
+import { setupDeepLinkListener, executePendingDeepLink } from "./src/utils/deepLinkHandler";
+
+const linking = {
+  prefixes: [
+    'yaro://',
+    'voiceclub://',
+    'https://yaroapp.in',
+    'http://yaroapp.in',
+    'https://www.yaroapp.in',
+    'http://www.yaroapp.in',
+    'https://api.yaroapp.in',
+    'http://api.yaroapp.in',
+  ],
+  config: {
+    screens: {
+      VoiceRoom: {
+        path: 'room/:roomId',
+      },
+      UserProfile: {
+        path: 'user/:userId',
+      },
+      HostProfile: {
+        path: 'host/:hostId',
+      },
+      InviteEarn: {
+        path: 'refer/:code',
+      },
+      MainTabs: '*',
+    },
+  },
+};
+
 const AppWrapper = () => {
   const ui = useUI();
 
@@ -27,17 +59,29 @@ const AppWrapper = () => {
 
   useEffect(() => {
     requestUserPermission();
-    const unsubscribe = NotificationListen();
+    const unsubscribeNotifications = NotificationListen();
+    const unsubscribeDeepLink = setupDeepLinkListener();
+
     return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
-        unsubscribe();
+      if (unsubscribeNotifications && typeof unsubscribeNotifications === 'function') {
+        unsubscribeNotifications();
+      }
+      if (unsubscribeDeepLink && typeof unsubscribeDeepLink === 'function') {
+        unsubscribeDeepLink();
       }
     };
   }, []);
 
   return (
     <View style={styles.appRoot}>
-      <NavigationContainer ref={navigationRef} theme={AppTheme}>
+      <NavigationContainer
+        ref={navigationRef}
+        theme={AppTheme}
+        linking={linking}
+        onReady={() => {
+          executePendingDeepLink();
+        }}
+      >
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
         <AppNavigator />
       </NavigationContainer>
@@ -46,6 +90,7 @@ const AppWrapper = () => {
 };
 
 import { CallProvider } from "./src/context/CallContext";
+import { VoiceRoomProvider } from "./src/context/VoiceRoomContext";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function App() {
@@ -54,7 +99,9 @@ export default function App() {
       <AuthProvider>
         <UIProvider>
           <CallProvider>
-            <AppWrapper />
+            <VoiceRoomProvider>
+              <AppWrapper />
+            </VoiceRoomProvider>
           </CallProvider>
         </UIProvider>
       </AuthProvider>

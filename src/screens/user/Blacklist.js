@@ -81,13 +81,13 @@ const Blacklist = ({ navigation }) => {
   };
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#08031a' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-      <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
+    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
+      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
         {/* Header */}
         <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-          <Icon name="arrow-back" size={28} color="#fff" />
+          <Icon name="arrow-back" size={28} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('blocklist.title') || 'Blocklist'}</Text>
         <View style={{ width: 44 }} />
@@ -99,10 +99,10 @@ const Blacklist = ({ navigation }) => {
       >
         <View style={styles.userListContainer}>
           {loading ? (
-            <ActivityIndicator size="large" color="#ffffff" style={{ marginTop: 40 }} />
+            <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: 40 }} />
           ) : blockedUsers.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Icon name="people" size={60} color="rgba(255,255,255,0.2)" />
+              <Icon name="people" size={60} color="#CBD5E1" />
               <Text style={styles.emptyText}>{t('blocklist.empty') || 'No blocked users'}</Text>
             </View>
           ) : (
@@ -111,7 +111,7 @@ const Blacklist = ({ navigation }) => {
               return (
                 <View key={user.userId || index} style={styles.userCard}>
                   <View style={styles.userInfo}>
-                    <Icon name="account-circle" size={40} color="#fff" />
+                    <Icon name="account-circle" size={40} color="#6366F1" />
                     <View style={{ marginLeft: 15 }}>
                       <Text style={styles.userName}>{user.name || 'Unknown'}</Text>
                       <Text style={styles.userId}>ID: {user.userId || 'N/A'}</Text>
@@ -139,11 +139,6 @@ const styles = StyleSheet.create({
     width: width,
     height: height,
   },
-  gradientBackground: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -157,11 +152,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#0F172A',
     textAlign: 'center',
   },
   placeholder: {
-    width: 40, // Same width as back button to center the title
+    width: 40,
   },
   scrollContent: {
   },
@@ -175,22 +170,27 @@ const styles = StyleSheet.create({
     marginTop: 60,
   },
   emptyText: {
-    color: 'rgba(255,255,255,0.6)',
+    color: '#64748B',
     textAlign: 'center',
     marginTop: 15,
     fontSize: 16,
   },
-  userRow: {
+  userCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: '#E2E8F0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   userInfo: {
     flexDirection: 'row',
@@ -201,28 +201,33 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  userId: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
   },
   unblockButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     borderWidth: 1,
-    borderColor: '#fff',
+    borderColor: '#EF4444',
     borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
   },
   unblockButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 

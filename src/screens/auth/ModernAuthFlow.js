@@ -87,6 +87,7 @@ export function SignInScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const submit = async () => {
     if (phone.length < 10 || !password) return AlertService.show('Check details', 'Enter a valid mobile number and password.', 'error');
+
     try {
       setLoading(true);
       const deviceId = await DeviceInfo.getUniqueId();
@@ -246,31 +247,178 @@ export function PasswordSuccessScreen() {
 }
 
 export function ProfileDetailsScreen() {
-  const navigation = useNavigation(); const route = useRoute(); const params = route.params || {}; const { login } = useContext(AuthContext);
-  const [dob, setDob] = useState('15 Aug 1995'); const [gender] = useState('female'); const [country] = useState(DEFAULT_COUNTRY); const [language, setLanguage] = useState('English'); const [step, setStep] = useState(1); const [loading, setLoading] = useState(false);
-  const age = 30;
+  const navigation = useNavigation();
+  const route = useRoute();
+  const params = route.params || {};
+  const { login } = useContext(AuthContext);
+
+  const [dob, setDob] = useState('15 Aug 1998');
+  const [gender, setGender] = useState('female');
+  const [country, setCountry] = useState(DEFAULT_COUNTRY);
+  const [language, setLanguage] = useState('English');
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [avatarUri, setAvatarUri] = useState(null);
+  const [age, setAge] = useState(26);
+
+  const handlePickPhoto = async () => {
+    try {
+      const { requestGalleryAndSelect } = require('../../utils/verificationMedia');
+      const file = await requestGalleryAndSelect();
+      if (file?.uri) {
+        setAvatarUri(file.uri);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const handleOpenCountrySelect = () => {
+    navigation.navigate('CountrySelection', {
+      selectedCountry: country,
+      onSelect: (selected) => {
+        if (selected) setCountry(selected);
+      },
+    });
+  };
+
   const submit = async () => {
     try {
-      setLoading(true); const deviceId = await DeviceInfo.getUniqueId(); const payload = { deviceId, userFrom: 'app', gender, language: [language, 'Hindi'], country, age };
-      let url; if (params.idToken) { url = '/auth/user-google-auth'; payload.googleIdToken = params.idToken; } else { url = '/auth/user-signup'; payload.name = params.fullName; payload.phoneNumber = params.phoneNumber; payload.password = params.password; payload.firebaseIdToken = params.firebaseIdToken; }
-      const res = await apiPublic.post(url, payload); if (!res.data.success) throw new Error(res.data.message || 'Registration failed.');
-      const { accessToken, refreshToken, role, gender: savedGender, userId } = res.data.data; trackCompletedRegistration(params.idToken ? 'google' : 'phone', userId || params.phoneNumber || params.idToken);
-      await AsyncStorage.multiSet([['accessToken', accessToken], ['refreshToken', refreshToken], ['role', role]]);
-      if (params.idToken) await login({ accessToken, refreshToken, role, gender: savedGender, isRegister: true }); else navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
-    } catch (error) { AlertService.show('Registration Failed', error.response?.data?.message || error.message || 'Please try again.', 'error'); }
-    finally { setLoading(false); }
+      setLoading(true);
+      const deviceId = await DeviceInfo.getUniqueId();
+      const payload = {
+        deviceId,
+        userFrom: 'app',
+        gender,
+        language: [language, 'Hindi'],
+        country,
+        age,
+      };
+
+      let url;
+      if (params.idToken) {
+        url = '/auth/user-google-auth';
+        payload.googleIdToken = params.idToken;
+      } else {
+        url = '/auth/user-signup';
+        payload.name = params.fullName;
+        payload.phoneNumber = params.phoneNumber;
+        payload.password = params.password;
+        payload.firebaseIdToken = params.firebaseIdToken;
+      }
+
+      const res = await apiPublic.post(url, payload);
+      if (!res.data.success) throw new Error(res.data.message || 'Registration failed.');
+
+      const { accessToken, refreshToken, role, gender: savedGender, userId } = res.data.data;
+      trackCompletedRegistration(params.idToken ? 'google' : 'phone', userId || params.phoneNumber || params.idToken);
+      await AsyncStorage.multiSet([
+        ['accessToken', accessToken],
+        ['refreshToken', refreshToken],
+        ['role', role],
+      ]);
+
+      await login({ accessToken, refreshToken, role, gender: savedGender || gender, isRegister: true });
+    } catch (error) {
+      AlertService.show('Registration Failed', error.response?.data?.message || error.message || 'Please try again.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
-  const Detail = ({ icon, label, value, onPress, chevron }) => <TouchableOpacity style={s.detail} onPress={onPress} disabled={!onPress}><View style={s.detailIcon}><Icon name={icon} size={20} color={AUTH_COLORS.purple} /></View><View style={s.detailBody}><Text style={s.detailLabel}>{label}</Text><Text style={s.detailValue}>{value}</Text></View>{chevron && <Icon name="chevron-down" size={19} color={AUTH_COLORS.ink} />}</TouchableOpacity>;
+
+  const Detail = ({ icon, label, value, onPress, chevron }) => (
+    <TouchableOpacity style={s.detail} onPress={onPress} disabled={!onPress} activeOpacity={0.8}>
+      <View style={s.detailIcon}>
+        <Icon name={icon} size={20} color={AUTH_COLORS.purple} />
+      </View>
+      <View style={s.detailBody}>
+        <Text style={s.detailLabel}>{label}</Text>
+        <Text style={s.detailValue}>{value}</Text>
+      </View>
+      {chevron && <Icon name="chevron-down" size={19} color={AUTH_COLORS.ink} />}
+    </TouchableOpacity>
+  );
+
   return (
     <AuthScreen contentStyle={s.formContent}>
-      <BackButton onPress={() => step === 2 ? setStep(1) : navigation.goBack()} />
-      <AuthHeader title={step === 1 ? 'Profile Details' : 'Almost Done!'} subtitle={step === 1 ? 'Let others know you better.' : 'Add a few more details to complete your profile.'} />
-      {step === 2 && <View style={s.photo}><Icon name="person" size={50} color="#B894EB" /><View style={s.camera}><Icon name="camera" size={16} color="#FFF" /></View></View>}
-      <Detail icon="calendar-outline" label="Date of Birth" value={dob} chevron onPress={() => setDob(dob)} />
-      <Detail icon="bed-outline" label="Age" value={`${age} years`} />
-      <Detail icon="globe-outline" label="Country" value={country.name} chevron onPress={() => {}} />
-      <Detail icon="language-outline" label="Language" value={language} chevron onPress={() => setLanguage(language === 'English' ? 'Hindi' : 'English')} />
-      <GradientButton title={step === 1 ? 'Next' : 'Complete'} onPress={() => step === 1 ? setStep(2) : submit()} loading={loading} />
+      <BackButton onPress={() => (step === 2 ? setStep(1) : navigation.goBack())} />
+      <AuthHeader
+        title={step === 1 ? 'Profile Details' : 'Almost Done!'}
+        subtitle={step === 1 ? 'Let others know you better.' : 'Add your avatar and finalize your profile.'}
+      />
+
+      {step === 1 ? (
+        <>
+          {/* Gender Selector */}
+          <Text style={[s.detailLabel, { marginBottom: 8, marginTop: 4 }]}>Gender</Text>
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+            {[
+              { id: 'female', label: 'Female 👩' },
+              { id: 'male', label: 'Male 👨' },
+              { id: 'other', label: 'Other ✨' },
+            ].map((g) => {
+              const isSelected = gender === g.id;
+              return (
+                <TouchableOpacity
+                  key={g.id}
+                  style={{
+                    flex: 1,
+                    height: 48,
+                    borderRadius: 14,
+                    borderWidth: 1.5,
+                    borderColor: isSelected ? AUTH_COLORS.purple : '#E2E5F0',
+                    backgroundColor: isSelected ? '#FAF8FF' : '#FFFFFF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => setGender(g.id)}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? AUTH_COLORS.purple : '#475569' }}>
+                    {g.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Detail
+            icon="calendar-outline"
+            label="Date of Birth"
+            value={dob}
+            chevron
+            onPress={() => {
+              const years = ['15 Aug 1995', '22 Mar 1998', '10 Jun 2000', '05 Jan 2002'];
+              const next = years[(years.indexOf(dob) + 1) % years.length];
+              setDob(next);
+              setAge(2026 - parseInt(next.slice(-4), 10));
+            }}
+          />
+          <Detail icon="hourglass-outline" label="Age" value={`${age} years`} />
+          <Detail icon="globe-outline" label="Country" value={`${country.flag} ${country.name}`} chevron onPress={handleOpenCountrySelect} />
+          <Detail icon="language-outline" label="Language" value={language} chevron onPress={() => setLanguage(language === 'English' ? 'Hindi' : 'English')} />
+          <GradientButton title="Next" onPress={() => setStep(2)} />
+        </>
+      ) : (
+        <>
+          <TouchableOpacity style={s.photo} onPress={handlePickPhoto} activeOpacity={0.85}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={{ width: 88, height: 88, borderRadius: 44 }} />
+            ) : (
+              <Icon name="person" size={50} color="#B894EB" />
+            )}
+            <View style={s.camera}>
+              <Icon name="camera" size={16} color="#FFF" />
+            </View>
+          </TouchableOpacity>
+          <Text style={{ textAlign: 'center', fontSize: 12.5, color: '#64748B', marginBottom: 20 }}>
+            {avatarUri ? 'Tap avatar to change' : 'Add a photo so friends recognize you'}
+          </Text>
+
+          <Detail icon="person-outline" label="Selected Gender" value={gender.toUpperCase()} />
+          <Detail icon="globe-outline" label="Country" value={`${country.flag} ${country.name}`} />
+          <GradientButton title="Complete & Enter Yaro" onPress={submit} loading={loading} />
+        </>
+      )}
     </AuthScreen>
   );
 }

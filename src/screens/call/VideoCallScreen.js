@@ -58,6 +58,9 @@ export default function VideoCallScreen() {
     maxMinutes = 15,
   } = route.params || {};
 
+  const partnerId = route.params?.hostId || route.params?.userId || route.params?.meethiId || route.params?.targetId || '';
+  const myId = user?.userId || user?.meethiId || user?.id || '';
+
   const [callDuration, setCallDuration] = useState(0);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
@@ -348,12 +351,22 @@ export default function VideoCallScreen() {
             style={styles.metaAvatar}
           />
           <View>
-            <Text style={styles.metaName} numberOfLines={1}>{name}</Text>
+            <Text style={styles.metaName} numberOfLines={1}>
+              {name} {partnerId ? `(ID: ${partnerId})` : ''}
+            </Text>
             <Text style={styles.metaTimer}>
               {remoteUid ? `⏱ ${formatTime(callDuration)}` : 'Connecting...'}
             </Text>
           </View>
         </View>
+
+        {Boolean(myId) && (
+          <View style={styles.myIdPill}>
+            <Text style={styles.myIdText}>
+              {user?.role === 'host' ? 'Host' : 'You'}: {myId}
+            </Text>
+          </View>
+        )}
 
         <TouchableOpacity
           style={styles.safetyBtn}
@@ -532,14 +545,27 @@ const styles = StyleSheet.create({
   },
   metaName: {
     color: '#FFFFFF',
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700',
-    maxWidth: 120,
+    maxWidth: 140,
   },
   metaTimer: {
     color: '#38BDF8',
     fontSize: 11.5,
     fontWeight: '600',
+  },
+  myIdPill: {
+    backgroundColor: 'rgba(124, 58, 237, 0.85)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  myIdText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   safetyBtn: {
     width: 40,

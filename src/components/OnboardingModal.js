@@ -75,7 +75,7 @@ const OnboardingModal = ({ visible }) => {
           if (list.length > 0 && !selectedAvatar) {
             const firstAvatarUrl = list[0]?.avatarUrl?.startsWith('http')
               ? list[0]?.avatarUrl
-              : `https://api.mithichat.live${list[0]?.avatarUrl}`;
+              : `https://api.yaroapp.in${list[0]?.avatarUrl}`;
             setSelectedAvatar(firstAvatarUrl);
           }
         }
@@ -138,7 +138,7 @@ const OnboardingModal = ({ visible }) => {
   const handleSelectAvatar = item => {
     const avatarUrl = item.avatarUrl?.startsWith('http')
       ? item.avatarUrl
-      : `https://api.mithichat.live${item.avatarUrl}`;
+      : `https://api.yaroapp.in${item.avatarUrl}`;
     setSelectedAvatar(avatarUrl);
   };
 
@@ -227,7 +227,7 @@ const OnboardingModal = ({ visible }) => {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Image source={diamondIcon} style={{ width: 16, height: 16 }} resizeMode="contain" />
-                <Text style={styles.welcomeBadgeText}>WELCOME TO MEETHI CHAT</Text>
+                <Text style={styles.welcomeBadgeText}>WELCOME TO YARO</Text>
                 <Image source={diamondIcon} style={{ width: 16, height: 16 }} resizeMode="contain" />
               </View>
             </LinearGradient>
@@ -262,7 +262,7 @@ const OnboardingModal = ({ visible }) => {
                 renderItem={({ item }) => {
                   const avatarUrl = item.avatarUrl?.startsWith('http')
                     ? item.avatarUrl
-                    : `https://api.mithichat.live${item.avatarUrl}`;
+                    : `https://api.yaroapp.in${item.avatarUrl}`;
                   const isSelected = selectedAvatar === avatarUrl;
                   return (
                     <TouchableOpacity
@@ -286,7 +286,7 @@ const OnboardingModal = ({ visible }) => {
             ) : (
               <View style={styles.defaultAvatarContainer}>
                 <Image
-                  source={{ uri: selectedAvatar || 'https://api.mithichat.live/uploads/avatars/205766/77c96d4c-7224-4e7f-893a-542e9727d232.jpg' }}
+                  source={{ uri: selectedAvatar || 'https://api.yaroapp.in/uploads/avatars/205766/77c96d4c-7224-4e7f-893a-542e9727d232.jpg' }}
                   style={styles.defaultAvatarImage}
                 />
               </View>
@@ -358,7 +358,7 @@ const OnboardingModal = ({ visible }) => {
                   autoCorrect={false}
                 />
               </View>
-              <Text style={styles.hintText}>Entering a friend's referral code rewards your referrer +25 🪙 Coins on setup + 25 🪙 Coins after 5 min call!</Text>
+              <Text style={styles.hintText}>Entering a friend's referral code rewards your referrer +25 🫘 Beans on setup + 25 🫘 Beans after 5 min call!</Text>
             </View>
           </LinearGradient>
 

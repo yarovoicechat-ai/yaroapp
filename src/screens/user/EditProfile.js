@@ -7,17 +7,14 @@ import {
   ScrollView,
   StyleSheet,
   Image,
-  Alert,
-  FlatList,
   Dimensions,
-  Platform,
   Modal,
-  View as ScreenBackgroundView,
-  StatusBar as ScreenBackgroundStatusBar,
-  StyleSheet as ScreenBackgroundStyleSheet
+  StatusBar,
+  Clipboard,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import IonIcon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
@@ -26,163 +23,52 @@ import { apiUtil } from '../../utils/apiUtil';
 import { languages } from '../../constants/language';
 import { useTranslation } from 'react-i18next';
 import { AlertService } from '../../utils/AlertService';
-import { requestCameraAndCapture, requestGalleryAndSelect } from '../../utils/verificationMedia';
+import { pickAvatarCamera, pickAvatarGallery } from '../../utils/avatarMedia';
 import { uploadToCloudinary } from '../../utils/cloudinaryUtil';
+
+const { width } = Dimensions.get('window');
 
 const EditProfile = () => {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
-  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 42);
+  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 36);
   const { user, fetchUserProfile } = useContext(AuthContext);
   const navigation = useNavigation();
   const { t } = useTranslation();
+
   const [avatars, setAvatars] = useState([]);
   const [selectedAvatar, setSelectedAvatar] = useState('');
-  // Local state
   const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [usernameInput, setUsernameInput] = useState(''); // for input
-  const [canSetUsername, setCanSetUsername] = useState(false);
   const [userId, setUserId] = useState('');
   const [bio, setBio] = useState('');
   const [defaultBios, setDefaultBios] = useState([]);
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [photoPickerVisible, setPhotoPickerVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
 
-  const toggleLanguage = language => {
-    setSelectedLanguages(prev =>
-      prev.includes(language)
-        ? prev.filter(lang => lang !== language)
-        : [...prev, language],
-    );
-  };
-
-  const renderLanguageChips = () => (
-    <View style={styles.languageChipsRow}>
-      {languages.map(language => {
-        const isSelected = selectedLanguages.includes(language);
-        return (
-          <TouchableOpacity
-            key={language}
-            onPress={() => toggleLanguage(language)}
-            style={styles.chipTouch}
-            activeOpacity={0.8}
-          >
-            {isSelected ? (
-              <LinearGradient
-                colors={['#7c4dff', '#03dcfe']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.languageChipSelected}
-              >
-                <Text style={styles.languageChipTextSelected}>{language}</Text>
-              </LinearGradient>
-            ) : (
-              <View style={styles.languageChipUnselected}>
-                <Text style={styles.languageChipTextUnselected}>{language}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-
-  const handleCameraIconPress = () => {
-    const isVerified = user?.faceVerificationStatus === 'APPROVED' || user?.kycVerificationStatus === 'APPROVED';
-    if (!isVerified) {
-      AlertService.show(
-        'Verification Required',
-        'Verification complete hone k baad hi avatar/photo upload enable hoga. Kripya pehle Face ya KYC Verification poora karein.',
-        'info'
-      );
-      return;
-    }
-    setPhotoPickerVisible(true);
-  };
-
-  const processPhotoUpload = async source => {
-    try {
-      let captured = null;
-      if (source === 'camera') {
-        captured = await requestCameraAndCapture('front');
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setUserId(user.userId?.toString() || '');
+      setBio(user.bio || '');
+      setSelectedLanguages(user.language || []);
+      setSelectedAvatar(user.image || '');
+      fetchAvatars(user.gender || 'male');
+      if (user.role === 'host') {
+        fetchDefaultBios();
       } else {
-        captured = await requestGalleryAndSelect();
-      }
-
-      if (!captured) return;
-
-      AlertService.show('Uploading', 'Uploading custom avatar...', 'info');
-      const uploadedUrl = await uploadToCloudinary(captured, 'help');
-
-      const res = await apiUtil.post('/avatar-request', {
-        requestedAvatar: uploadedUrl,
-      });
-
-      if (res.data?.success) {
-        AlertService.show(
-          'Request Submitted',
-          'Avatar request successfully submitted! Admin verification review ke baad aapka avatar update ho jayega.',
-          'success'
-        );
-      } else {
-        AlertService.show('Upload Failed', res.data?.message || 'Failed to submit avatar request', 'error');
-      }
-    } catch (err) {
-      if (err.message && !err.message.includes('cancelled')) {
-        AlertService.show('Error', err.message || 'Avatar upload failed', 'error');
+        setDefaultBios([]);
       }
     }
-  };
-
-  const renderAvatars = () => {
-    const listData = [...avatars];
-
-    const renderAvatarItem = ({ item }) => {
-      const avatarUrl = item.avatarUrl?.startsWith('http')
-        ? item.avatarUrl
-        : `https://api.mithichat.live${item.avatarUrl}`;
-      const isSelected = selectedAvatar === avatarUrl;
-
-      return (
-        <TouchableOpacity
-          onPress={() => setSelectedAvatar(avatarUrl)}
-          style={styles.avatarThumbnailWrapper}
-          activeOpacity={0.8}
-        >
-          <Image
-            source={{ uri: avatarUrl }}
-            style={[styles.avatarThumbnail, isSelected && styles.avatarThumbnailSelected]}
-          />
-          {isSelected && (
-            <View style={styles.avatarCheckBadge}>
-              <Icon name="check" size={10} color="#fff" />
-            </View>
-          )}
-        </TouchableOpacity>
-      );
-    };
-
-    return (
-      <FlatList
-        data={listData}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={renderAvatarItem}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.avatarsCarouselContent}
-      />
-    );
-  };
+  }, [user]);
 
   const fetchAvatars = async gender => {
     try {
       const res = await apiUtil.get(`/avatar/${gender}`);
-      if (res.data) {
-        setAvatars(res.data || []);
-      }
+      if (res.data) setAvatars(res.data || []);
     } catch (err) {
-      console.log('❌ Failed to fetch avatars:', err.message);
+      console.log('Failed to fetch avatars:', err.message);
     }
   };
 
@@ -191,118 +77,95 @@ const EditProfile = () => {
       const res = await apiUtil.get('/user/default-bios');
       if (res.data?.success) setDefaultBios(res.data.data || []);
     } catch (err) {
-      console.log('Default bios fetch failed:', err.response?.data || err.message);
+      console.log('Default bios fetch error:', err.message);
     }
   };
 
-  // Load user data from context
-  useEffect(() => {
-    if (user) {
-      setName(user.name || '');
-      setUsername(user.userName || 'Add User Name');
-      setUserId(user.userId?.toString() || '');
-      setBio(user.bio || '');
-      setSelectedLanguages(user.language || []);
-      setSelectedAvatar(user.image || '');
-      fetchAvatars(user.gender || 'male');
-      if (user.role === 'host') fetchDefaultBios();
-      else setDefaultBios([]);
-
-      setCanSetUsername(!user.isUserName && !user.userName);
-      setUsernameInput(!user.userName ? '' : user.userName);
-    }
-  }, [user]);
-
-  const [usernameChecking, setUsernameChecking] = useState(false);
-  const [usernameStatus, setUsernameStatus] = useState(null);
-
-  const handleNameChange = text => {
-    setName(text.slice(0, 20));
+  const toggleLanguage = lang => {
+    setSelectedLanguages(prev =>
+      prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang]
+    );
   };
 
-  useEffect(() => {
-    if (!canSetUsername) return;
-    const trimmed = usernameInput.trim();
-    if (!trimmed) {
-      setUsernameStatus(null);
-      return;
+  const handleCopyId = () => {
+    if (userId) {
+      Clipboard.setString(userId);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+      AlertService.show('Copied', 'User ID copied to clipboard', 'info');
     }
+  };
 
-    let isMounted = true;
-    const timer = setTimeout(async () => {
-      setUsernameChecking(true);
-      try {
-        const res = await apiUtil.get(`/user/check-username?username=${encodeURIComponent(trimmed)}`);
-        if (isMounted) {
-          if (res.data?.success && res.data.data) {
-            setUsernameStatus(res.data.data);
-          } else {
-            setUsernameStatus({ available: false, message: 'Username is already taken' });
-          }
-        }
-      } catch (err) {
-        if (isMounted) {
-          setUsernameStatus({ available: false, message: 'Username is already taken' });
-        }
-      } finally {
-        if (isMounted) setUsernameChecking(false);
-      }
-    }, 400);
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timer);
-    };
-  }, [usernameInput, canSetUsername]);
-
-  const handleSetUsername = async () => {
-    if (!usernameInput || usernameInput.length < 3) {
-      AlertService.show(t('edit_profile.error'), t('edit_profile.username_length_error'), 'error');
-      return;
-    }
-
-    if (usernameStatus && !usernameStatus.available) {
-      AlertService.show('Unavailable', 'Username is already taken', 'error');
-      return;
-    }
-
+  const processPhotoUpload = async source => {
     try {
-      const res = await apiUtil.post('/user/set-username', {
-        userName: usernameInput.trim(),
+      let captured = null;
+      if (source === 'camera') {
+        captured = await pickAvatarCamera('front');
+      } else {
+        captured = await pickAvatarGallery();
+      }
+
+      if (!captured) return;
+
+      AlertService.show('Uploading', 'Uploading avatar...', 'info');
+      const uploadedUrl = await uploadToCloudinary(captured, 'avatar');
+
+      // Update avatar state immediately for instant feedback
+      setSelectedAvatar(uploadedUrl);
+
+      // Submit avatar update (zero verification required)
+      const res = await apiUtil.post('/avatar-request', {
+        requestedAvatar: uploadedUrl,
+        avatar: uploadedUrl,
+        profilePic: uploadedUrl,
+        image: uploadedUrl,
       });
 
-      if (res.data.success) {
-        AlertService.show(t('edit_profile.success'), t('edit_profile.username_success'), 'success');
-        fetchUserProfile();
-        setCanSetUsername(false);
+      const targetId = userId || user?._id || user?.userId;
+      if (targetId) {
+        await apiUtil.patch(`/user/${targetId}`, {
+          image: uploadedUrl,
+          profilePic: uploadedUrl,
+        }).catch(() => {});
+      }
+
+      if (res.data?.success) {
+        await fetchUserProfile();
+        AlertService.show(
+          'Avatar Updated',
+          'Aapka avatar successfully update ho gaya hai!',
+          'success'
+        );
       } else {
-        AlertService.show(t('edit_profile.error'), res.data.message || t('edit_profile.username_fail'), 'error');
+        AlertService.show('Upload Failed', res.data?.message || 'Failed to update avatar', 'error');
       }
     } catch (err) {
-      console.log(err);
-      AlertService.show(t('edit_profile.error'), t('edit_profile.something_wrong'), 'error');
+      if (err.message && !err.message.includes('cancelled')) {
+        AlertService.show('Error', err.message || 'Avatar upload failed', 'error');
+      }
     }
   };
 
   const handleSubmit = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      AlertService.show(t('edit_profile.error'), 'Name is required', 'error');
+      AlertService.show(t('edit_profile.error') || 'Error', 'Name is required', 'error');
       return;
     }
     if (trimmedName.length > 20) {
-      AlertService.show(t('edit_profile.error'), 'Name cannot exceed 20 characters', 'error');
+      AlertService.show(t('edit_profile.error') || 'Error', 'Name cannot exceed 20 characters', 'error');
       return;
     }
     if (bio.length > 100) {
-      AlertService.show(t('edit_profile.error'), t('edit_profile.bio_error'), 'error');
+      AlertService.show(t('edit_profile.error') || 'Error', t('edit_profile.bio_error') || 'Bio too long', 'error');
       return;
     }
     if (selectedLanguages.length > 2) {
-      AlertService.show(t('edit_profile.error'), t('edit_profile.lang_error'), 'error');
+      AlertService.show(t('edit_profile.error') || 'Error', t('edit_profile.lang_error') || 'Max 2 languages allowed', 'error');
       return;
     }
 
+    setSaving(true);
     try {
       const targetId = userId || user?._id || user?.userId;
       const res = await apiUtil.patch(`/user/${targetId}`, {
@@ -314,230 +177,345 @@ const EditProfile = () => {
 
       if (res.data.success) {
         await fetchUserProfile();
-        AlertService.show(t('edit_profile.success'), t('edit_profile.update_success'), 'success');
+        AlertService.show(t('edit_profile.success') || 'Success', t('edit_profile.update_success') || 'Profile updated successfully', 'success');
         navigation.goBack();
       } else {
-        AlertService.show(t('edit_profile.error'), res.data.message || t('edit_profile.update_fail'), 'error');
+        AlertService.show(t('edit_profile.error') || 'Error', res.data.message || t('edit_profile.update_fail') || 'Update failed', 'error');
       }
     } catch (err) {
-      console.log('❌ Update failed:', err.response?.data || err.message);
-      const serverMsg = err.response?.data?.message || err.message || t('edit_profile.something_wrong');
-      AlertService.show(t('edit_profile.error'), serverMsg, 'error');
+      console.log('Update failed:', err.response?.data || err.message);
+      const serverMsg = err.response?.data?.message || err.message || t('edit_profile.something_wrong') || 'Update failed';
+      AlertService.show(t('edit_profile.error') || 'Error', serverMsg, 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
-      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-      {/* Decorative background overlays (matches screenshots) */}
-      <View style={styles.starOverlay1} />
-      <View style={styles.starOverlay2} />
-      <View style={styles.planetWrapper}>
-        <LinearGradient
-          colors={['rgba(124, 77, 255, 0.12)', 'rgba(3, 220, 254, 0.25)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.planetGlow}
-        />
-      </View>
-      <View style={styles.gridWrapper}>
-        <View style={styles.gridLine1} />
-        <View style={styles.gridLine2} />
+    <View style={styles.container}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+
+      {/* Ambient background glow accents */}
+      <View style={styles.ambientCircle1} />
+      <View style={styles.ambientCircle2} />
+
+      {/* Top Header */}
+      <View style={[styles.header, { paddingTop: topSafeInset + 10 }]}>
+        <TouchableOpacity
+          style={styles.headerIconButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <IonIcon name="chevron-back" size={24} color="#1E293B" />
+        </TouchableOpacity>
+
+        <View style={styles.headerTitleWrap}>
+          <Text style={styles.headerTitle}>{t('edit_profile.title') || 'Edit Profile'}</Text>
+          <View style={styles.headerSubtitleDot} />
+          <Text style={styles.headerSubtitle}>Personalize</Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.headerSaveBtn, saving && styles.headerSaveBtnDisabled]}
+          onPress={handleSubmit}
+          disabled={saving}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#7C3AED', '#4F46E5']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.headerSaveGradient}
+          >
+            <Icon name="check" size={18} color="#FFFFFF" />
+            <Text style={styles.headerSaveText}>{saving ? '...' : 'Save'}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: bottomPadding }}
-        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="chevron-left" size={22} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('edit_profile.title') || 'Edit Profile'}</Text>
-          <View style={{ width: 36 }} />
-        </View>
-
-        <View style={styles.headerSeparatorContainer}>
+        {/* Avatar Hero Card */}
+        <View style={styles.avatarCard}>
           <LinearGradient
-            colors={['#ff3366', '#03dcfe']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.headerTitleLine}
-          />
-        </View>
+            colors={['rgba(124, 58, 237, 0.08)', 'rgba(79, 70, 229, 0.03)']}
+            style={styles.avatarCardGradient}
+          >
+            <View style={styles.avatarGlowContainer}>
+              <LinearGradient
+                colors={['#8B5CF6', '#EC4899', '#06B6D4']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.avatarGradientRing}
+              >
+                <View style={styles.avatarInnerWrapper}>
+                  <Image
+                    source={{ uri: selectedAvatar || 'https://via.placeholder.com/120' }}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                  />
+                </View>
+              </LinearGradient>
 
-        {/* Profile Image */}
-        <View style={styles.profileImageSection}>
-          <View style={styles.profileImageContainer}>
-            <LinearGradient
-              colors={['#03dcfe', '#d946ef']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.profileImageBorder}
-            >
-              <Image
-                source={{
-                  uri: selectedAvatar || 'https://via.placeholder.com/100',
-                }}
-                style={styles.profileImage}
-                resizeMode="cover"
-              />
-            </LinearGradient>
-            <TouchableOpacity style={styles.cameraIconBadge} activeOpacity={0.8} onPress={handleCameraIconPress}>
-              <Icon name="photo-camera" size={16} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Avatar selection carousel */}
-          {renderAvatars()}
-        </View>
-
-        {/* Form */}
-        <View style={styles.formContainer}>
-          {/* Name Field */}
-          <View style={styles.inputGroup}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>{t('edit_profile.name_label') || 'Name'}</Text>
-              <Text style={[styles.charCounter, name.length === 20 && styles.charCounterMax]}>{name.length}/20</Text>
-            </View>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={handleNameChange}
-                maxLength={20}
-                placeholder={t('edit_profile.enter_name')}
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              />
-            </View>
-          </View>
-
-          {/* Username Field */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('edit_profile.username_label') || 'Username'}</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                value={canSetUsername ? usernameInput : username}
-                onChangeText={text => setUsernameInput(text.trim())}
-                placeholder={t('edit_profile.set_username')}
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                editable={canSetUsername}
-              />
-              {canSetUsername ? (
-                <TouchableOpacity
-                  onPress={handleSetUsername}
-                  disabled={usernameChecking || (usernameStatus && !usernameStatus.available)}
-                  style={[
-                    styles.usernameCheckBtn,
-                    (usernameChecking || (usernameStatus && !usernameStatus.available)) && { opacity: 0.5 }
-                  ]}
+              {/* Camera Trigger Badge */}
+              <TouchableOpacity
+                style={styles.cameraBadgeButton}
+                activeOpacity={0.85}
+                onPress={() => setPhotoPickerVisible(true)}
+              >
+                <LinearGradient
+                  colors={['#7C3AED', '#4F46E5']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.cameraBadgeGradient}
                 >
-                  <Text style={styles.usernameCheckBtnText}>
-                    {t('edit_profile.set_btn') || 'Set'}
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <Icon name="check-circle" size={20} color="#10b981" style={{ marginRight: 16 }} />
-              )}
+                  <Icon name="photo-camera" size={17} color="#FFFFFF" />
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
-            {canSetUsername && usernameStatus && (
-              <Text style={[styles.statusHint, { color: usernameStatus.available ? '#10b981' : '#ef4444' }]}>
-                {usernameStatus.available ? '✓ Username is available' : `✕ ${usernameStatus.message || 'Username is already taken'}`}
-              </Text>
+
+            <Text style={styles.avatarHeroTitle}>{name || 'Your Profile'}</Text>
+            <Text style={styles.avatarHeroSub}>Tap camera badge to update avatar freely</Text>
+
+            {/* Avatar Preset Carousel */}
+            {avatars.length > 0 && (
+              <View style={styles.presetSection}>
+                <Text style={styles.presetHeading}>OR CHOOSE PRESET</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.presetScrollContent}
+                >
+                  {avatars.map((item, idx) => {
+                    const avatarUrl = item.avatarUrl?.startsWith('http')
+                      ? item.avatarUrl
+                      : `https://api.yaroapp.in${item.avatarUrl}`;
+                    const isSelected = selectedAvatar === avatarUrl;
+                    return (
+                      <TouchableOpacity
+                        key={idx.toString()}
+                        onPress={() => setSelectedAvatar(avatarUrl)}
+                        activeOpacity={0.8}
+                        style={[
+                          styles.presetThumbnailWrap,
+                          isSelected && styles.presetThumbnailSelectedWrap,
+                        ]}
+                      >
+                        <Image source={{ uri: avatarUrl }} style={styles.presetThumbnail} />
+                        {isSelected && (
+                          <View style={styles.presetCheckPill}>
+                            <Icon name="check" size={11} color="#FFFFFF" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
             )}
+          </LinearGradient>
+        </View>
+
+        {/* Form Details Card */}
+        <View style={styles.cardContainer}>
+          <Text style={styles.sectionHeaderTitle}>Basic Information</Text>
+
+          {/* Name Field */}
+          <View style={styles.fieldGroup}>
+            <View style={styles.fieldLabelRow}>
+              <View style={styles.fieldLabelWithIcon}>
+                <Icon name="badge" size={16} color="#7C3AED" style={{ marginRight: 6 }} />
+                <Text style={styles.fieldLabel}>Display Name</Text>
+              </View>
+              <Text style={[styles.charCount, name.length >= 20 && styles.charCountMax]}>
+                {name.length}/20
+              </Text>
+            </View>
+            <View style={styles.inputBox}>
+              <TextInput
+                style={styles.textInput}
+                value={name}
+                onChangeText={t => setName(t.slice(0, 20))}
+                maxLength={20}
+                placeholder="Enter display name"
+                placeholderTextColor="#94A3B8"
+              />
+            </View>
           </View>
 
-          {/* User ID Field */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('edit_profile.user_id_label') || 'User ID'}</Text>
-            <View style={[styles.inputWrapper, styles.inputWrapperDisabled]}>
+          {/* User ID Field with Copy */}
+          <View style={styles.fieldGroup}>
+            <View style={styles.fieldLabelRow}>
+              <View style={styles.fieldLabelWithIcon}>
+                <Icon name="fingerprint" size={16} color="#6366F1" style={{ marginRight: 6 }} />
+                <Text style={styles.fieldLabel}>Yaro User ID</Text>
+              </View>
+              <Text style={styles.readOnlyTag}>Permanent</Text>
+            </View>
+            <View style={[styles.inputBox, styles.inputBoxReadOnly]}>
               <TextInput
-                style={[styles.input, styles.inputDisabled]}
+                style={[styles.textInput, styles.textInputReadOnly]}
                 value={userId}
                 editable={false}
-                placeholderTextColor="rgba(255, 255, 255, 0.3)"
               />
+              <TouchableOpacity
+                style={styles.copyIdBtn}
+                onPress={handleCopyId}
+                activeOpacity={0.7}
+              >
+                <Icon
+                  name={copiedId ? 'done' : 'content-copy'}
+                  size={16}
+                  color={copiedId ? '#10B981' : '#6366F1'}
+                />
+                <Text style={[styles.copyIdText, copiedId && { color: '#10B981' }]}>
+                  {copiedId ? 'Copied' : 'Copy'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
           {/* Bio Field */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('edit_profile.bio_label') || 'Bio'}</Text>
-            <View style={[styles.inputWrapper, { height: 110 }]}>
+          <View style={styles.fieldGroup}>
+            <View style={styles.fieldLabelRow}>
+              <View style={styles.fieldLabelWithIcon}>
+                <Icon name="create" size={16} color="#EC4899" style={{ marginRight: 6 }} />
+                <Text style={styles.fieldLabel}>Bio</Text>
+              </View>
+              <Text style={[styles.charCount, bio.length >= 100 && styles.charCountMax]}>
+                {bio.length}/100
+              </Text>
+            </View>
+            <View style={[styles.inputBox, styles.bioInputBox]}>
               <TextInput
-                style={[styles.input, styles.bioInput]}
+                style={styles.bioTextInput}
                 value={bio}
                 onChangeText={setBio}
-                editable={user?.role !== 'host'}
                 maxLength={100}
                 multiline
-                numberOfLines={4}
+                numberOfLines={3}
                 textAlignVertical="top"
-                placeholder={t('edit_profile.write_something')}
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                placeholder="Share a short bio with friends..."
+                placeholderTextColor="#94A3B8"
+                editable={user?.role !== 'host'}
               />
             </View>
-            <Text style={styles.bioCount}>{bio.length}/100</Text>
-            {defaultBios.length > 0 ? (
-              <View style={styles.bioSuggestions}>
-                <Text style={styles.bioSuggestionTitle}>{user?.role === 'host' ? 'Select one approved bio' : 'Quick bio suggestions'}</Text>
-                {defaultBios.map(item => (
-                  <TouchableOpacity key={item._id} style={styles.bioSuggestionChip} onPress={() => setBio(item.text)} activeOpacity={0.8}>
-                    <Text style={styles.bioSuggestionText}>{item.text}</Text>
-                  </TouchableOpacity>
-                ))}
+
+            {/* Bio suggestions for hosts */}
+            {defaultBios.length > 0 && (
+              <View style={styles.bioSuggestionsWrap}>
+                <Text style={styles.bioSuggestionHeading}>Approved Quick Bios:</Text>
+                <View style={styles.bioChipsRow}>
+                  {defaultBios.map(item => (
+                    <TouchableOpacity
+                      key={item._id}
+                      style={styles.bioChip}
+                      onPress={() => setBio(item.text)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.bioChipText} numberOfLines={2}>
+                        {item.text}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            ) : null}
+            )}
           </View>
 
-          {/* Call Level dropdown placeholder (matches screenshot) */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Call Level</Text>
-            <View style={[styles.inputWrapper, styles.inputWrapperDisabled]}>
-              <Icon name="stars" size={18} color="#a855f7" style={{ marginLeft: 16, marginRight: -6 }} />
-              <TextInput
-                style={[styles.input, styles.inputDisabled, { flex: 1 }]}
-                value={`Level ${user?.level || 6}`}
-                editable={false}
-              />
-              <Icon name="keyboard-arrow-down" size={20} color="rgba(255, 255, 255, 0.4)" style={{ marginRight: 16 }} />
+          {/* Call Level Badge */}
+          <View style={styles.fieldGroup}>
+            <View style={styles.fieldLabelRow}>
+              <View style={styles.fieldLabelWithIcon}>
+                <Icon name="stars" size={16} color="#F59E0B" style={{ marginRight: 6 }} />
+                <Text style={styles.fieldLabel}>Call Level</Text>
+              </View>
+            </View>
+            <View style={[styles.inputBox, styles.inputBoxReadOnly]}>
+              <View style={styles.levelBadge}>
+                <LinearGradient
+                  colors={['#F59E0B', '#D97706']}
+                  style={styles.levelBadgeGradient}
+                >
+                  <Icon name="star" size={13} color="#FFFFFF" />
+                  <Text style={styles.levelBadgeText}>LV.{user?.level || 1}</Text>
+                </LinearGradient>
+              </View>
+              <Text style={styles.levelSubText}>Dynamic level calculated from active calling</Text>
             </View>
           </View>
 
-          {/* Language Selection */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('edit_profile.language') || 'Language'}</Text>
-            {renderLanguageChips()}
+          {/* Spoken Languages */}
+          <View style={[styles.fieldGroup, { marginBottom: 4 }]}>
+            <View style={styles.fieldLabelRow}>
+              <View style={styles.fieldLabelWithIcon}>
+                <Icon name="translate" size={16} color="#06B6D4" style={{ marginRight: 6 }} />
+                <Text style={styles.fieldLabel}>Languages Spoken</Text>
+              </View>
+              <Text style={styles.fieldSubHint}>Select up to 2</Text>
+            </View>
+            <View style={styles.languageChipsContainer}>
+              {languages.map(lang => {
+                const isSelected = selectedLanguages.includes(lang);
+                return (
+                  <TouchableOpacity
+                    key={lang}
+                    onPress={() => toggleLanguage(lang)}
+                    activeOpacity={0.75}
+                    style={styles.langTouch}
+                  >
+                    {isSelected ? (
+                      <LinearGradient
+                        colors={['#7C3AED', '#4F46E5']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.langPillActive}
+                      >
+                        <Icon name="check" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+                        <Text style={styles.langTextActive}>{lang}</Text>
+                      </LinearGradient>
+                    ) : (
+                      <View style={styles.langPillInactive}>
+                        <Text style={styles.langTextInactive}>{lang}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity
-            style={styles.submitButtonContainer}
-            onPress={handleSubmit}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['#03dcfe', '#2563eb']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.submitGradient}
-            >
-              <Text style={styles.submitButtonText}>{t('edit_profile.submit') || 'Submit'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
         </View>
+
+        {/* Primary Save Button */}
+        <TouchableOpacity
+          style={styles.submitBtnWrap}
+          onPress={handleSubmit}
+          disabled={saving}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={['#7C3AED', '#4F46E5']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.submitBtnGradient}
+          >
+            <Icon name="done-all" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.submitBtnText}>
+              {saving ? 'Updating Profile...' : 'Save All Changes'}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </ScrollView>
 
-      {/* Custom Glassmorphic Photo Source Picker Modal */}
+      {/* Sleek Custom Avatar Picker Modal */}
       <Modal
         visible={photoPickerVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setPhotoPickerVisible(false)}
       >
         <TouchableOpacity
@@ -545,497 +523,594 @@ const EditProfile = () => {
           activeOpacity={1}
           onPress={() => setPhotoPickerVisible(false)}
         >
-          <TouchableOpacity activeOpacity={1} style={styles.modalContainer}>
-            <LinearGradient
-              colors={['#1e1b4b', '#0f172a']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.modalGradientCard}
-            >
-              <View style={styles.modalHeaderHandle} />
+          <TouchableOpacity activeOpacity={1} style={styles.modalContentCard}>
+            <View style={styles.modalHandleBar} />
+            <Text style={styles.modalHeading}>Change Profile Photo</Text>
+            <Text style={styles.modalSubheading}>
+              Select a source to instantly update your avatar
+            </Text>
 
-              <Text style={styles.modalTitle}>Upload Profile Photo</Text>
-              <Text style={styles.modalSubtitle}>Choose photo source to set your avatar</Text>
-
-              <View style={styles.modalOptionsWrapper}>
-                {/* Camera Option */}
-                <TouchableOpacity
-                  style={styles.modalOptionCard}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setPhotoPickerVisible(false);
-                    processPhotoUpload('camera');
-                  }}
-                >
-                  <LinearGradient
-                    colors={['#7c4dff', '#6366f1']}
-                    style={styles.modalOptionIconGlow}
-                  >
-                    <Icon name="photo-camera" size={22} color="#fff" />
-                  </LinearGradient>
-                  <View style={styles.modalOptionTextCol}>
-                    <Text style={styles.modalOptionTitle}>Take Photo</Text>
-                    <Text style={styles.modalOptionSub}>Use front camera for live avatar</Text>
-                  </View>
-                  <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.4)" />
-                </TouchableOpacity>
-
-                {/* Gallery Option */}
-                <TouchableOpacity
-                  style={styles.modalOptionCard}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setPhotoPickerVisible(false);
-                    processPhotoUpload('gallery');
-                  }}
-                >
-                  <LinearGradient
-                    colors={['#ec4899', '#d946ef']}
-                    style={styles.modalOptionIconGlow}
-                  >
-                    <Icon name="photo-library" size={22} color="#fff" />
-                  </LinearGradient>
-                  <View style={styles.modalOptionTextCol}>
-                    <Text style={styles.modalOptionTitle}>Choose from Gallery</Text>
-                    <Text style={styles.modalOptionSub}>Pick photo from device gallery</Text>
-                  </View>
-                  <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.4)" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Close Button */}
+            <View style={styles.modalOptionsGrid}>
               <TouchableOpacity
-                style={styles.modalCancelBtn}
+                style={styles.modalTile}
                 activeOpacity={0.8}
-                onPress={() => setPhotoPickerVisible(false)}
+                onPress={() => {
+                  setPhotoPickerVisible(false);
+                  processPhotoUpload('camera');
+                }}
               >
-                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                <LinearGradient
+                  colors={['#8B5CF6', '#7C3AED']}
+                  style={styles.modalTileIconBox}
+                >
+                  <Icon name="photo-camera" size={24} color="#FFFFFF" />
+                </LinearGradient>
+                <View style={styles.modalTileTextWrap}>
+                  <Text style={styles.modalTileTitle}>Take Live Photo</Text>
+                  <Text style={styles.modalTileDesc}>Open camera for a quick selfie</Text>
+                </View>
+                <IonIcon name="chevron-forward" size={18} color="#94A3B8" />
               </TouchableOpacity>
-            </LinearGradient>
+
+              <TouchableOpacity
+                style={styles.modalTile}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setPhotoPickerVisible(false);
+                  processPhotoUpload('gallery');
+                }}
+              >
+                <LinearGradient
+                  colors={['#EC4899', '#D946EF']}
+                  style={styles.modalTileIconBox}
+                >
+                  <Icon name="photo-library" size={24} color="#FFFFFF" />
+                </LinearGradient>
+                <View style={styles.modalTileTextWrap}>
+                  <Text style={styles.modalTileTitle}>Choose From Gallery</Text>
+                  <Text style={styles.modalTileDesc}>Select from photos on device</Text>
+                </View>
+                <IonIcon name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              activeOpacity={0.7}
+              onPress={() => setPhotoPickerVisible(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-    </ScreenBackgroundView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  // Decorative space elements
-  starOverlay1: {
-    position: 'absolute',
-    top: Dimensions.get('window').height * 0.15,
-    left: Dimensions.get('window').width * 0.1,
-    width: 2,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: '#fff',
-    opacity: 0.8,
-  },
-  starOverlay2: {
-    position: 'absolute',
-    top: Dimensions.get('window').height * 0.3,
-    right: Dimensions.get('window').width * 0.15,
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#ff3366',
-    opacity: 0.5,
-  },
-  planetWrapper: {
-    position: 'absolute',
-    bottom: -Dimensions.get('window').height * 0.15,
-    right: -Dimensions.get('window').width * 0.15,
-    width: Dimensions.get('window').width * 0.65,
-    height: Dimensions.get('window').width * 0.65,
-    borderRadius: (Dimensions.get('window').width * 0.65) / 2,
-    overflow: 'hidden',
-  },
-  planetGlow: {
+  container: {
     flex: 1,
-    borderRadius: (Dimensions.get('window').width * 0.65) / 2,
+    backgroundColor: '#F8FAFC',
   },
-  gridWrapper: {
+  ambientCircle1: {
     position: 'absolute',
-    bottom: Dimensions.get('window').height * 0.05,
-    left: -Dimensions.get('window').width * 0.1,
-    width: Dimensions.get('window').width * 0.5,
-    height: Dimensions.get('window').height * 0.2,
-    opacity: 0.15,
+    top: -60,
+    right: -60,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
   },
-  gridLine1: {
+  ambientCircle2: {
     position: 'absolute',
-    width: '100%',
-    height: 1.5,
-    backgroundColor: '#ff3366',
-    transform: [{ rotate: '30deg' }],
+    top: 260,
+    left: -80,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(6, 182, 212, 0.06)',
   },
-  gridLine2: {
-    position: 'absolute',
-    width: '100%',
-    height: 1.5,
-    backgroundColor: '#ff3366',
-    top: 30,
-    transform: [{ rotate: '30deg' }],
-  },
-
-  scrollView: { flex: 1 },
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: 'transparent',
   },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    borderWidth: 1.2,
-    borderColor: 'rgba(124, 77, 255, 0.4)',
-    backgroundColor: 'rgba(124, 77, 255, 0.1)',
-    justifyContent: 'center',
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  headerTitleWrap: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
   },
   headerTitle: {
-    color: '#0F172A',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
+    color: '#0F172A',
   },
-  headerSeparatorContainer: {
+  headerSubtitleDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#7C3AED',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  headerSaveBtn: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
+  headerSaveBtnDisabled: {
+    opacity: 0.6,
+  },
+  headerSaveGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    gap: 4,
+  },
+  headerSaveText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  avatarCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
   },
-  headerTitleLine: {
-    width: 60,
-    height: 3,
-    borderRadius: 1.5,
-  },
-
-  // Profile Section
-  profileImageSection: {
+  avatarCardGradient: {
     alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
   },
-  profileImageContainer: {
+  avatarGlowContainer: {
     position: 'relative',
-    marginBottom: 20,
+    marginBottom: 14,
   },
-  profileImageBorder: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    padding: 3,
+  avatarGradientRing: {
+    width: 122,
+    height: 122,
+    borderRadius: 61,
+    padding: 3.5,
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
   },
-  profileImage: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    backgroundColor: '#0c0628',
+  avatarInnerWrapper: {
+    width: 115,
+    height: 115,
+    borderRadius: 57.5,
+    backgroundColor: '#F1F5F9',
+    overflow: 'hidden',
   },
-  cameraIconBadge: {
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cameraBadgeButton: {
     position: 'absolute',
     bottom: 2,
     right: 2,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#03dcfe',
-    borderWidth: 2,
-    borderColor: '#0c0628',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#03dcfe',
-    shadowOffset: { width: 0, height: 2 },
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    elevation: 5,
+    shadowColor: '#7C3AED',
     shadowOpacity: 0.4,
-    shadowRadius: 4,
-  },
-
-  // Avatars Carousel List
-  avatarsCarouselContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  addAvatarTouch: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarThumbnailWrapper: {
-    position: 'relative',
-    marginRight: 12,
-  },
-  avatarThumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  avatarThumbnailSelected: {
-    borderColor: '#03dcfe',
-  },
-  avatarCheckBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#10b981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#0c0628',
-  },
-
-  // Form Section
-  formContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 16,
+    shadowRadius: 6,
     overflow: 'hidden',
   },
-  inputWrapperDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.015)',
-    borderColor: 'rgba(255, 255, 255, 0.03)',
-  },
-  input: {
+  cameraBadgeGradient: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#fff',
-    fontSize: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarHeroTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  avatarHeroSub: {
+    fontSize: 12,
+    color: '#64748B',
     fontWeight: '500',
   },
-  inputDisabled: {
-    color: 'rgba(255, 255, 255, 0.4)',
+  presetSection: {
+    width: '100%',
+    marginTop: 18,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#EEF2F6',
   },
-  bioInput: {
-    height: 100,
-    paddingTop: 12,
+  presetHeading: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 1.2,
+    marginBottom: 10,
+    paddingLeft: 4,
   },
-  bioCount: { color: 'rgba(255,255,255,0.45)', fontSize: 11, textAlign: 'right', marginTop: 5 },
-  bioSuggestions: { marginTop: 10, gap: 8 },
-  bioSuggestionTitle: { color: '#f0abfc', fontSize: 12, fontWeight: '700' },
-  bioSuggestionChip: { borderWidth: 1, borderColor: 'rgba(217,70,239,0.3)', backgroundColor: 'rgba(217,70,239,0.08)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
-  bioSuggestionText: { color: 'rgba(255,255,255,0.82)', fontSize: 12, lineHeight: 17 },
-  usernameCheckBtn: {
-    backgroundColor: 'rgba(3, 220, 254, 0.1)',
+  presetScrollContent: {
+    gap: 12,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  presetThumbnailWrap: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#FFFFFF',
+  },
+  presetThumbnailSelectedWrap: {
+    borderColor: '#7C3AED',
+    borderWidth: 2.5,
+  },
+  presetThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  presetCheckPill: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 17,
+    height: 17,
+    borderRadius: 8.5,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  cardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+  },
+  sectionHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 16,
+    letterSpacing: 0.3,
+  },
+  fieldGroup: {
+    marginBottom: 18,
+  },
+  fieldLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  fieldLabelWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  fieldSubHint: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  charCount: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  charCountMax: {
+    color: '#EF4444',
+    fontWeight: '800',
+  },
+  readOnlyTag: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#6366F1',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1.2,
-    borderColor: 'rgba(3, 220, 254, 0.3)',
-    borderRadius: 10,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
     paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  inputBoxReadOnly: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '600',
+    padding: 0,
+  },
+  textInputReadOnly: {
+    color: '#64748B',
+  },
+  copyIdBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  copyIdText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#6366F1',
+  },
+  bioInputBox: {
+    height: 84,
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+  },
+  bioTextInput: {
+    flex: 1,
+    width: '100%',
+    fontSize: 13.5,
+    color: '#0F172A',
+    fontWeight: '500',
+    lineHeight: 19,
+    padding: 0,
+  },
+  bioSuggestionsWrap: {
+    marginTop: 10,
+  },
+  bioSuggestionHeading: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6366F1',
+    marginBottom: 6,
+  },
+  bioChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  bioChip: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    borderRadius: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
+    maxWidth: '100%',
+  },
+  bioChipText: {
+    fontSize: 11.5,
+    color: '#3730A3',
+    lineHeight: 16,
+  },
+  levelBadge: {
+    borderRadius: 10,
+    overflow: 'hidden',
     marginRight: 10,
   },
-  usernameCheckBtnText: {
-    color: '#03dcfe',
-    fontSize: 12,
-    fontWeight: '700',
+  levelBadgeGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    gap: 3,
   },
-
-  // Languages Tags Row
-  languageChipsRow: {
+  levelBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  levelSubText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  languageChipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    marginTop: 2,
   },
-  chipTouch: {
+  langTouch: {
     borderRadius: 20,
     overflow: 'hidden',
   },
-  languageChipSelected: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    justifyContent: 'center',
+  langPillActive: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  languageChipTextSelected: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  languageChipUnselected: {
-    paddingHorizontal: 16,
     paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  langTextActive: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  langPillInactive: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: '#E2E8F0',
   },
-  languageChipTextUnselected: {
-    color: 'rgba(255, 255, 255, 0.65)',
-    fontSize: 13,
+  langTextInactive: {
+    color: '#475569',
+    fontSize: 12.5,
     fontWeight: '600',
   },
-
-  // Submit Button
-  submitButtonContainer: {
-    width: '100%',
-    borderRadius: 24,
+  submitBtnWrap: {
+    borderRadius: 22,
     overflow: 'hidden',
-    marginTop: 20,
     elevation: 4,
-    shadowColor: '#03dcfe',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowRadius: 10,
+    marginTop: 4,
+    marginBottom: 12,
   },
-  submitGradient: {
-    paddingVertical: 15,
+  submitBtnGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 24,
+    paddingVertical: 15,
   },
-  submitButtonText: {
-    color: '#fff',
+  submitBtnText: {
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
-
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  charCounter: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  charCounterMax: {
-    color: '#ef4444',
-    fontWeight: 'bold',
-  },
-  statusHint: {
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
-    fontWeight: '500',
-  },
-
-  // Custom Glassmorphic Photo Picker Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'flex-end',
   },
-  modalContainer: {
-    width: '100%',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    overflow: 'hidden',
-  },
-  modalGradientCard: {
-    padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 28,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+  modalContentCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 28,
     alignItems: 'center',
   },
-  modalHeaderHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  modalHandleBar: {
+    width: 44,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#CBD5E1',
     marginBottom: 16,
   },
-  modalTitle: {
-    color: '#fff',
+  modalHeading: {
     fontSize: 18,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    color: '#0F172A',
+    marginBottom: 4,
   },
-  modalSubtitle: {
-    color: 'rgba(255, 255, 255, 0.55)',
+  modalSubheading: {
     fontSize: 13,
-    marginTop: 4,
+    color: '#64748B',
     marginBottom: 20,
   },
-  modalOptionsWrapper: {
+  modalOptionsGrid: {
     width: '100%',
     gap: 12,
   },
-  modalOptionCard: {
+  modalTile: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
     borderRadius: 18,
     padding: 14,
   },
-  modalOptionIconGlow: {
+  modalTileIconBox: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 14,
   },
-  modalOptionTextCol: {
+  modalTileTextWrap: {
     flex: 1,
   },
-  modalOptionTitle: {
-    color: '#fff',
+  modalTileTitle: {
     fontSize: 15,
     fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
   },
-  modalOptionSub: {
-    color: 'rgba(255, 255, 255, 0.5)',
+  modalTileDesc: {
     fontSize: 12,
-    marginTop: 2,
+    color: '#64748B',
   },
-  modalCancelBtn: {
-    marginTop: 18,
+  modalCancelButton: {
     width: '100%',
-    paddingVertical: 14,
+    backgroundColor: '#F1F5F9',
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingVertical: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginTop: 16,
   },
-  modalCancelBtnText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+  modalCancelText: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#475569',
   },
 });
 

@@ -148,8 +148,8 @@ const MobileOtp = () => {
 
   return (
     <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-      <ScreenBackgroundImage source={OtpBG} style={ScreenBackgroundStyleSheet.absoluteFillObject} resizeMode="cover" />
+      <ScreenBackgroundStatusBar backgroundColor="#FFFFFF" barStyle="dark-content" animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#EEF2FF']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -163,7 +163,7 @@ const MobileOtp = () => {
             style={[styles.backButton, { top: topSafeInset + 8 }]}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-back" size={RFValue(24)} color="#ffffff" />
+            <Icon name="arrow-back" size={RFValue(24)} color="#0F172A" />
           </TouchableOpacity>
 
           {/* Card */}
@@ -217,7 +217,7 @@ const MobileOtp = () => {
             {/* Primary Gradient Button */}
             <TouchableOpacity onPress={handleContinue} disabled={loading} style={styles.primaryButtonWrapper}>
               <LinearGradient
-                colors={['#FF6B00', '#FF2D87', '#C026D3']}
+                colors={['#6366F1', '#4F46E5']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryButton}
@@ -246,7 +246,7 @@ const MobileOtp = () => {
               onPress={() => navigation.goBack()}
             >
               <Text style={styles.changePhoneText}>Change Mobile Number</Text>
-              <Icon name="chevron-forward" size={RFValue(16)} color="#FF2D87" />
+              <Icon name="chevron-forward" size={RFValue(16)} color="#6366F1" />
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -258,22 +258,28 @@ const MobileOtp = () => {
 export default MobileOtp;
 
 const styles = StyleSheet.create({
-  scrollContainer: { flexGrow: 1, paddingTop: height * 0.45, paddingBottom: 20 },
+  scrollContainer: { flexGrow: 1, justifyContent: 'center', paddingVertical: 40 },
   keyboardView: { flex: 1 },
   backButton: {
-    padding: 20,
+    padding: 16,
     position: 'absolute',
-    left: 0,
+    left: 8,
     zIndex: 10,
   },
   card: {
-    marginHorizontal: width * 0.05,
-    backgroundColor: 'transparent',
+    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    borderWidth: 0,
-    paddingHorizontal: width * 0.04,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 20,
+    paddingVertical: 28,
     alignItems: 'center',
-    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 4,
   },
   iconCircle: {
     width: 64,
@@ -289,20 +295,20 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: RFValue(22),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
     textAlign: 'center',
     marginBottom: 6,
   },
   cardSubtitle: {
     fontSize: RFValue(13),
-    color: 'rgba(255,255,255,0.7)',
+    color: '#64748B',
     textAlign: 'center',
     marginBottom: 4,
   },
   phoneHighlight: {
     fontSize: RFValue(14),
     fontWeight: 'bold',
-    color: '#FF2D87',
+    color: '#6366F1',
     textAlign: 'center',
     marginBottom: height * 0.025,
   },
@@ -320,18 +326,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     fontSize: RFValue(18),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
     textAlign: 'center',
   },
   otpInputEmpty: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1.5,
-    borderColor: 'rgba(192,38,211,0.4)',
+    borderColor: '#CBD5E1',
   },
   otpInputFilled: {
-    backgroundColor: 'rgba(192, 38, 211, 0.25)',
+    backgroundColor: '#EEF2FF',
     borderWidth: 2,
-    borderColor: '#FF2D87',
+    borderColor: '#6366F1',
   },
   resendContainer: {
     flexDirection: 'row',
@@ -341,22 +347,22 @@ const styles = StyleSheet.create({
   },
   resendText: {
     fontSize: RFValue(13),
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
   },
   resendLink: {
     fontSize: RFValue(13),
-    color: '#FF2D87',
+    color: '#6366F1',
     fontWeight: 'bold',
   },
   resendLinkDisabled: {
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: '#94A3B8',
   },
   primaryButtonWrapper: { borderRadius: 12, overflow: 'hidden', marginBottom: height * 0.015, width: '100%' },
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 11,
+    paddingVertical: 13,
     borderRadius: 12,
   },
   primaryButtonText: {
@@ -371,23 +377,23 @@ const styles = StyleSheet.create({
     marginVertical: height * 0.015,
     width: '100%',
   },
-  orLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.15)' },
-  orText: { marginHorizontal: 12, fontSize: RFValue(11), color: 'rgba(255,255,255,0.4)', fontWeight: '600' },
+  orLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
+  orText: { marginHorizontal: 12, fontSize: RFValue(11), color: '#94A3B8', fontWeight: '600' },
   changePhoneBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: 'rgba(192,38,211,0.4)',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     width: '100%',
   },
   changePhoneText: {
     fontSize: RFValue(12),
-    color: '#ffffff',
+    color: '#0F172A',
     fontWeight: '600',
   },
 });

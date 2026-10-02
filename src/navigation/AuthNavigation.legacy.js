@@ -2,7 +2,7 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import AuthBubbleWelcome from "../screens/auth/AuthBubbleWelcome";
-import UmangLoginScreen from "../screens/auth/UmangLoginScreen";
+import { SignInScreen as UmangLoginScreen } from "../screens/auth/ModernAuthFlow";
 import CountrySelectionScreen from "../screens/auth/CountrySelection";
 import MobileVerificationScreen from "../screens/auth/phoneAuth";
 import PasswordSetupScreen from "../screens/auth/PasswordSetup";

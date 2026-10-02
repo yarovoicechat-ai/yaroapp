@@ -10,7 +10,15 @@ const configurationError = message => {
   return error;
 };
 
-export const getGoogleWebClientId = () => String(WEB_CLIENT_ID || '').trim();
+export const DEFAULT_WEB_CLIENT_ID = '775252509237-1us46o9umvvio0ngmbd4n1vhml8bfgdr.apps.googleusercontent.com';
+
+export const getGoogleWebClientId = () => {
+  const fromEnv = String(WEB_CLIENT_ID || '').trim();
+  if (fromEnv && fromEnv.startsWith(`${YARO_FIREBASE_PROJECT_NUMBER}-`) && fromEnv.endsWith('.apps.googleusercontent.com')) {
+    return fromEnv;
+  }
+  return DEFAULT_WEB_CLIENT_ID;
+};
 
 export const configureGoogleSignIn = () => {
   const webClientId = getGoogleWebClientId();

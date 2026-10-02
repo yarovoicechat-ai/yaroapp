@@ -83,14 +83,14 @@ const MandatoryUpdateScreen = ({ updateInfo, onUpdateCompleted }) => {
         </View>
 
         {/* Brand & Update Title */}
-        <Text style={styles.brandTitle}>Meethi Chat</Text>
+        <Text style={styles.brandTitle}>Yaro</Text>
         <View style={styles.badgeContainer}>
           <Text style={styles.badgeText}>UPDATE REQUIRED</Text>
         </View>
 
         <Text style={styles.headline}>New Version Available</Text>
         <Text style={styles.description}>
-          A mandatory update is required to continue using Meethi Chat. Please update the app now to enjoy the latest features and security improvements.
+          A mandatory update is required to continue using Yaro. Please update the app now to enjoy the latest features and security improvements.
         </Text>
 
         {/* Current Version Subtitle */}

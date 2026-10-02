@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  StatusBar,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { RFValue } from 'react-native-responsive-fontsize';
@@ -33,14 +34,15 @@ const EmailOTPVerification = ({ onVerify }) => {
 
   return (
     <LinearGradient
-      colors={['#004FFF', '#17096B']}
+      colors={['#F8FAFC', '#F1F5F9', '#EEF2FF']}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
       style={styles.container}
     >
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
+        style={{ flex: 1, justifyContent: 'center' }}
       >
         <View style={styles.content}>
           <Text style={styles.title}>Email Verification</Text>
@@ -56,14 +58,14 @@ const EmailOTPVerification = ({ onVerify }) => {
             value={otp}
             onChangeText={setOtp}
             placeholder="______"
-            placeholderTextColor="rgba(255,255,255,0.5)"
+            placeholderTextColor="#94A3B8"
             textAlign="center"
           />
 
           {/* Verify Button */}
           <TouchableOpacity onPress={handleVerify} style={styles.button}>
             <LinearGradient
-              colors={['#49BFFD', '#62EFFF']}
+              colors={['#6366F1', '#4F46E5']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.buttonGradient}
@@ -95,36 +97,41 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: RFValue(24),
-    color: 'white',
+    color: '#0F172A',
     fontWeight: 'bold',
     marginBottom: height * 0.02,
   },
   subtitle: {
     fontSize: RFValue(14),
-    color: 'white',
+    color: '#64748B',
     textAlign: 'center',
     marginBottom: height * 0.04,
   },
   otpInput: {
     width: '60%',
     fontSize: RFValue(20),
-    color: 'white',
+    color: '#0F172A',
     borderBottomWidth: 2,
-    borderBottomColor: 'white',
+    borderBottomColor: '#CBD5E1',
     marginBottom: height * 0.05,
     letterSpacing: 10,
     paddingVertical: height * 0.01,
   },
   button: {
     width: '80%',
-    borderRadius: RFValue(10),
+    borderRadius: RFValue(12),
     overflow: 'hidden',
     marginBottom: height * 0.03,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonGradient: {
-    paddingVertical: height * 0.015,
+    paddingVertical: height * 0.016,
     alignItems: 'center',
-    borderRadius: RFValue(10),
+    borderRadius: RFValue(12),
   },
   buttonText: {
     fontSize: RFValue(16),
@@ -135,7 +142,7 @@ const styles = StyleSheet.create({
     marginTop: height * 0.01,
   },
   resendText: {
-    color: '#62EFFF',
+    color: '#6366F1',
     fontSize: RFValue(14),
     fontWeight: 'bold',
   },

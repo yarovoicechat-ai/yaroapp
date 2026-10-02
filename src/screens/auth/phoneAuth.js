@@ -95,13 +95,13 @@ const MobileVerificationScreen = () => {
         if (data.canRegister) {
           await sendOtpAndNavigate(fullPhone);
         } else {
-          handleNavigation('Already Registered', data.message || 'Phone number already registered.', 'UmangLoginScreen');
+          handleNavigation('Already Registered', data.message || 'Phone number already registered.', 'SignIn');
         }
       } else {
         if (data.userExists) {
-          handleNavigation('Already Registered', data.message || 'Phone number already registered. Please log in.', 'UmangLoginScreen');
+          handleNavigation('Already Registered', data.message || 'Phone number already registered. Please log in.', 'SignIn');
         } else if (data.deviceExists) {
-          handleNavigation('Blocked', data.message || 'This device already has an account.', 'UmangLoginScreen');
+          handleNavigation('Blocked', data.message || 'This device already has an account.', 'SignIn');
         } else {
           AlertService.show('Error', data.message || 'Unable to proceed.', 'error');
         }
@@ -114,7 +114,7 @@ const MobileVerificationScreen = () => {
       if (statusCode === 409) {
         AlertService.show('Already Registered', apiMsg || 'Phone number or device already registered.', 'error', [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Go to Login', onPress: () => navigation.navigate('UmangLoginScreen') },
+          { text: 'Go to Login', onPress: () => navigation.navigate('SignIn') },
         ]);
       } else {
         await sendOtpAndNavigate(fullPhone);
@@ -133,11 +133,10 @@ const MobileVerificationScreen = () => {
 
   return (
     <LinearGradient
-      colors={['#0F021D', '#1F0433', '#2A0644', '#150228', '#0A0014']}
-      locations={[0, 0.25, 0.5, 0.75, 1]}
+      colors={['#F8FAFC', '#F1F5F9', '#EEF2FF']}
       style={styles.fullScreenGradient}
     >
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* Decorative Glow Circles */}
       <View style={styles.topGlowCircle} />
@@ -177,7 +176,7 @@ const MobileVerificationScreen = () => {
             </View>
 
             {/* App Title */}
-            <Text style={styles.brandTitle}>Meethi Chat</Text>
+            <Text style={styles.brandTitle}>Yaro</Text>
             <View style={styles.subtitleRow}>
               <Text style={styles.brandSubtitle}>Connect</Text>
               <Text style={styles.heartDot}> ♥ </Text>
@@ -222,7 +221,7 @@ const MobileVerificationScreen = () => {
                   <TextInput
                     style={styles.textInput}
                     placeholder="Enter Mobile Number"
-                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    placeholderTextColor="#94A3B8"
                     value={mobileNumber}
                     onChangeText={setMobileNumber}
                     keyboardType="phone-pad"
@@ -283,7 +282,7 @@ const MobileVerificationScreen = () => {
                 {/* Footer */}
                 <View style={styles.footerRow}>
                   <Text style={styles.footerText}>Already have an account? </Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('UmangLoginScreen')}>
+                  <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
                     <Text style={styles.footerLink}>Login</Text>
                   </TouchableOpacity>
                 </View>
@@ -360,26 +359,25 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: 'rgba(30, 10, 50, 0.9)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 3,
+    elevation: 2,
   },
   miniHeartBadge2: {
     position: 'absolute',
     bottom: 2,
     left: -4,
-    backgroundColor: 'rgba(30, 10, 50, 0.9)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 3,
+    elevation: 2,
   },
   brandTitle: {
     fontSize: RFValue(26),
     fontWeight: '900',
-    color: '#FF4BB4',
+    color: '#0F172A',
     letterSpacing: 0.8,
-    textShadowColor: 'rgba(255, 45, 135, 0.75)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
   },
   subtitleRow: {
     flexDirection: 'row',
@@ -388,34 +386,36 @@ const styles = StyleSheet.create({
   },
   brandSubtitle: {
     fontSize: RFValue(11),
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: '#64748B',
     fontWeight: '500',
     letterSpacing: 0.5,
   },
   heartDot: {
     fontSize: RFValue(10),
-    color: '#FF2D87',
+    color: '#EC4899',
   },
   cardBorderOuter: {
     marginHorizontal: width * 0.075,
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#FF2D87',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
     shadowRadius: 16,
-    elevation: 12,
+    elevation: 4,
   },
   cardBorderGradient: {
     padding: 1.5,
     borderRadius: 24,
   },
   cardContent: {
-    backgroundColor: 'rgba(20, 7, 36, 0.88)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 22.5,
     paddingHorizontal: width * 0.055,
     paddingVertical: 22,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   iconCircleWrapper: {
     marginBottom: 10,
@@ -432,30 +432,30 @@ const styles = StyleSheet.create({
     width: 49,
     height: 49,
     borderRadius: 24.5,
-    backgroundColor: '#150528',
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   cardTitle: {
     fontSize: RFValue(19),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
     textAlign: 'center',
     marginBottom: 2,
   },
   cardSubtitle: {
     fontSize: RFValue(11.5),
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
     textAlign: 'center',
     marginBottom: 16,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(12, 4, 25, 0.75)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 45, 135, 0.35)',
+    borderColor: '#CBD5E1',
     paddingHorizontal: 14,
     height: 48,
     marginBottom: 10,
@@ -467,20 +467,20 @@ const styles = StyleSheet.create({
     paddingRight: 2,
   },
   countryCodeText: {
-    color: '#FF2D87',
+    color: '#EC4899',
     fontSize: RFValue(14),
     fontWeight: '700',
   },
   divider: {
     width: 1,
     height: 22,
-    backgroundColor: 'rgba(255, 45, 135, 0.3)',
+    backgroundColor: '#CBD5E1',
     marginHorizontal: 10,
   },
   textInput: {
     flex: 1,
     fontSize: RFValue(13.5),
-    color: '#ffffff',
+    color: '#0F172A',
     paddingVertical: 0,
   },
   safetyRow: {
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
   },
   safetyText: {
     fontSize: RFValue(10.5),
-    color: 'rgba(255, 255, 255, 0.55)',
+    color: '#64748B',
   },
   termsRow: {
     flexDirection: 'row',
@@ -504,25 +504,25 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 4,
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 45, 135, 0.6)',
-    backgroundColor: 'rgba(12, 4, 25, 0.5)',
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
     flexShrink: 0,
   },
   checkboxChecked: {
-    backgroundColor: '#FF2D87',
-    borderColor: '#FF2D87',
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
   },
   termsText: {
     flex: 1,
     fontSize: RFValue(10.5),
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#64748B',
     lineHeight: 16,
   },
   termsLink: {
-    color: '#FF2D87',
+    color: '#6366F1',
     fontWeight: '600',
   },
   primaryButtonWrapper: {
@@ -530,11 +530,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 14,
     width: '100%',
-    shadowColor: '#FF1493',
+    shadowColor: '#6366F1',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
   primaryButton: {
     flexDirection: 'row',
@@ -561,10 +561,10 @@ const styles = StyleSheet.create({
   orLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#E2E8F0',
   },
   orText: {
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: '#94A3B8',
     fontSize: RFValue(11),
     marginHorizontal: 12,
   },
@@ -576,11 +576,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: RFValue(12),
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
   },
   footerLink: {
     fontSize: RFValue(12),
-    color: '#FF2D87',
+    color: '#6366F1',
     fontWeight: 'bold',
   },
 });

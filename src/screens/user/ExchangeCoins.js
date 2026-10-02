@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  StatusBar,
   ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -44,7 +45,7 @@ const ExchangeCoins = () => {
 
   const handleExchange = async (pack) => {
     if ((user?.coins || 0) < pack.coins) {
-      AlertService.show('Insufficient Coins', 'You do not have enough coins to exchange for this package.', 'error');
+      AlertService.show('Insufficient Beans', 'You do not have enough Beans to exchange for this package.', 'error');
       return;
     }
 
@@ -54,17 +55,17 @@ const ExchangeCoins = () => {
 
       if (res.data.success) {
         AlertService.show(
-          'Exchange Successful',
-          `Successfully exchanged ${pack.coins.toLocaleString()} Coins for ${pack.diamonds.toLocaleString()} Diamonds!`,
+          'Conversion Successful',
+          `Successfully converted ${pack.coins.toLocaleString()} Beans for ${pack.diamonds.toLocaleString()} Diamonds!`,
           'success'
         );
         fetchUserProfile(); // Refresh user profile coins & diamonds balances
       } else {
-        AlertService.show('Exchange Failed', res.data.message || 'Exchange failed', 'error');
+        AlertService.show('Conversion Failed', res.data.message || 'Conversion failed', 'error');
       }
     } catch (err) {
-      console.log('Exchange Coins Error:', err);
-      AlertService.show('Error', err.response?.data?.message || 'Failed to complete exchange', 'error');
+      console.log('Exchange Beans Error:', err);
+      AlertService.show('Error', err.response?.data?.message || 'Failed to complete conversion', 'error');
     } finally {
       setLoadingPack(null);
     }
@@ -72,51 +73,49 @@ const ExchangeCoins = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
       <LinearGradient
-        colors={['#060212', '#0e0423', '#030109']}
+        colors={['#F8FAFC', '#F1F5F9', '#EEF2FF']}
         style={StyleSheet.absoluteFillObject}
       />
-      {/* Space decorative overlays */}
-      <View style={styles.starOverlay1} />
-      <View style={styles.starOverlay2} />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Icon name="chevron-left" size={26} color="#fff" />
+          <Icon name="chevron-left" size={26} color="#0F172A" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Exchange Coins to Diamonds</Text>
+        <Text style={styles.headerTitle}>Exchange Beans to Diamonds</Text>
         <TouchableOpacity onPress={() => navigation.navigate('RechargeHistreoy')} style={styles.historyBtn}>
           <Text style={styles.historyBtnText}>History</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]} showsVerticalScrollIndicator={false}>
-        {/* My Coins Balance Card */}
+        {/* My Beans Balance Card */}
         <View style={styles.balanceCardContainer}>
           <LinearGradient
-            colors={['#7c4dff', '#b512e6']}
+            colors={['#10B981', '#059669']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.balanceCard}
           >
             <View style={styles.balanceHeaderRow}>
               <View style={styles.balanceLabelCol}>
-                <Text style={styles.balanceLabel}>My Coins</Text>
+                <Text style={styles.balanceLabel}>My Beans</Text>
                 <Text style={styles.balanceCount}>{(user?.coins || 0).toLocaleString()}</Text>
               </View>
               <View style={styles.logoWrapper}>
                 <LinearGradient
-                  colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)']}
+                  colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
                   style={styles.logoGlowShape}
                 >
-                  <Icon name="stars" size={48} color="#FFD700" />
+                  <Icon name="grain" size={48} color="#FFFFFF" />
                 </LinearGradient>
               </View>
             </View>
 
             <Text style={styles.balanceSubtext}>
-              Use coins to call, connect and enjoy premium features.
+              Convert earned Beans into Diamonds for gifting, room perks, and calls.
             </Text>
 
             <TouchableOpacity
@@ -125,28 +124,23 @@ const ExchangeCoins = () => {
               activeOpacity={0.7}
             >
               <Text style={styles.historyLinkText}>History</Text>
-              <Icon name="chevron-right" size={14} color="#03dcfe" />
+              <Icon name="chevron-right" size={14} color="#FDE047" />
             </TouchableOpacity>
           </LinearGradient>
         </View>
 
         {/* Exchange Rate Banner */}
         <View style={styles.rateBannerContainer}>
-          <LinearGradient
-            colors={['rgba(3, 220, 254, 0.12)', 'rgba(124, 77, 255, 0.12)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.rateBanner}
-          >
-            <Icon name="swap-horiz" size={20} color="#03dcfe" style={styles.rateIcon} />
+          <View style={styles.rateBanner}>
+            <Icon name="swap-horiz" size={20} color="#059669" style={styles.rateIcon} />
             <Text style={styles.rateText}>
-              Exchange Rate: <Text style={styles.rateHighlight}>100 Coins = 90 Diamonds</Text>
+              Exchange Rate: <Text style={styles.rateHighlight}>100 Beans = 90 Diamonds</Text>
             </Text>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Grid Title */}
-        <Text style={styles.gridTitle}>Choose an Exchange Package</Text>
+        <Text style={styles.gridTitle}>Choose a Conversion Package</Text>
 
         {/* Packages Grid */}
         <View style={styles.packsGrid}>
@@ -166,12 +160,12 @@ const ExchangeCoins = () => {
                   </View>
                 ) : null}
 
-                {/* Coin item count */}
+                {/* Bean item count */}
                 <View style={styles.valueRow}>
-                  <Icon name="stars" size={12} color="#FFD700" style={styles.itemIcon} />
+                  <Icon name="grain" size={14} color="#10B981" style={styles.itemIcon} />
                   <Text style={styles.valueText} numberOfLines={1}>{pack.coins.toLocaleString()}</Text>
                 </View>
-                <Text style={styles.valueSub}>Coins</Text>
+                <Text style={styles.valueSub}>Beans</Text>
 
                 {/* Down Arrow */}
                 <Icon name="arrow-downward" size={14} color="rgba(255,255,255,0.4)" style={styles.arrowIcon} />
@@ -258,18 +252,34 @@ const styles = StyleSheet.create({
     height: HP(7),
   },
   backBtn: {
-    padding: 4,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   headerTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: RF(15),
     fontWeight: 'bold',
   },
   historyBtn: {
-    padding: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
   },
   historyBtnText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#4F46E5',
     fontSize: RF(12),
     fontWeight: '600',
   },
@@ -285,7 +295,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    elevation: 3,
+    shadowColor: '#4F46E5',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
   },
   balanceHeaderRow: {
     flexDirection: 'row',
@@ -297,7 +311,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   balanceLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: RF(12),
     fontWeight: '600',
   },
@@ -319,7 +333,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   balanceSubtext: {
-    color: 'rgba(255, 255, 255, 0.55)',
+    color: 'rgba(255, 255, 255, 0.75)',
     fontSize: RF(10.5),
     lineHeight: 16,
     marginBottom: 14,
@@ -330,7 +344,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   historyLinkText: {
-    color: '#03dcfe',
+    color: '#FDE047',
     fontSize: RF(11),
     fontWeight: 'bold',
     marginRight: 2,
@@ -344,22 +358,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    paddingVertical: 10,
+    borderRadius: 14,
+    paddingVertical: 12,
+    backgroundColor: '#EEF2FF',
     borderWidth: 1,
-    borderColor: 'rgba(3, 220, 254, 0.2)',
+    borderColor: '#C7D2FE',
   },
   rateText: {
-    color: '#fff',
-    fontSize: RF(11),
+    color: '#334155',
+    fontSize: RF(11.5),
     fontWeight: '600',
   },
   rateHighlight: {
-    color: '#FFD700',
+    color: '#4F46E5',
     fontWeight: 'bold',
   },
   gridTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: RF(14),
     fontWeight: 'bold',
     marginBottom: 14,
@@ -375,14 +390,18 @@ const styles = StyleSheet.create({
   },
   packCard: {
     width: '31%',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
     borderRadius: 16,
     padding: 10,
     alignItems: 'center',
     position: 'relative',
     marginVertical: 6,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
   },
   tagBadge: {
     position: 'absolute',
@@ -409,13 +428,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   valueText: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: RF(11.5),
     fontWeight: 'bold',
     maxWidth: WP(18),
   },
   valueSub: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#64748B',
     fontSize: RF(8.5),
     fontWeight: '600',
     marginTop: 1,
@@ -425,28 +444,28 @@ const styles = StyleSheet.create({
   },
   exchangeBtn: {
     width: '100%',
-    backgroundColor: 'rgba(3, 220, 254, 0.15)',
+    backgroundColor: '#EEF2FF',
     borderWidth: 1,
-    borderColor: '#03dcfe',
+    borderColor: '#6366F1',
     borderRadius: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
   },
   pinkExchangeBtn: {
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
-    borderColor: '#ec4899',
+    backgroundColor: '#FDF2F8',
+    borderColor: '#EC4899',
   },
   goldExchangeBtn: {
-    backgroundColor: 'rgba(255, 152, 0, 0.15)',
-    borderColor: '#FF9800',
+    backgroundColor: '#FFFBEB',
+    borderColor: '#F59E0B',
   },
   disabledBtn: {
     opacity: 0.4,
   },
   exchangeBtnText: {
-    color: '#fff',
+    color: '#4F46E5',
     fontSize: RF(9.5),
     fontWeight: 'bold',
   },
@@ -455,7 +474,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: HP(4),
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    borderTopColor: '#E2E8F0',
     paddingTop: 18,
   },
   secureBadgeRow: {
@@ -470,12 +489,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   secureBadgeText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#64748B',
     fontSize: RF(8.5),
     fontWeight: '600',
   },
   footerSecureDesc: {
-    color: 'rgba(255, 255, 255, 0.3)',
+    color: '#94A3B8',
     fontSize: RF(8.5),
     textAlign: 'center',
     lineHeight: 14,
@@ -487,7 +506,7 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
   valueTextCyan: {
-    color: '#03dcfe',
+    color: '#0284C7',
     fontSize: RF(11.5),
     fontWeight: 'bold',
     maxWidth: WP(18),

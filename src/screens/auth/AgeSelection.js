@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
   StatusBar,
+  ScrollView,
   FlatList,
   Platform,
   View as ScreenBackgroundView,
@@ -151,20 +152,26 @@ const AgeSelectionScreen = () => {
   const formattedDate = `${String(day).padStart(2, '0')} / ${String(month).padStart(2, '0')} / ${year}`;
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <ScreenBackgroundStatusBar backgroundColor="#FFFFFF" barStyle="dark-content" animated />
-      <ScreenBackgroundImage source={AgeBG} style={ScreenBackgroundStyleSheet.absoluteFillObject} resizeMode="cover" />
-      <ScreenBackgroundStatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <View style={styles.container}>
+    <View style={styles.screen}>
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#EEF2FF']} style={StyleSheet.absoluteFillObject} />
+      
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="#fff" />
+          <Icon name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
 
         {/* Card Container */}
         <View style={styles.card}>
           {/* Header Text */}
           <View style={styles.headerTextSection}>
+            <View style={styles.iconCircle}>
+              <Icon name="calendar-outline" size={RFValue(28)} color="#6366F1" />
+            </View>
             <Text style={styles.title}>Enter your Date of Birth</Text>
             <Text style={styles.subtitle}>
               Please enter your date of birth to continue
@@ -173,12 +180,12 @@ const AgeSelectionScreen = () => {
 
           {/* Date of Birth Display Box */}
           <View style={styles.dateDisplayBox}>
-            <Icon name="calendar" size={RFValue(20)} color="#FF2D87" style={styles.calendarIcon} />
+            <Icon name="calendar" size={RFValue(20)} color="#6366F1" style={styles.calendarIcon} />
             <View style={styles.dateTextContainer}>
               <Text style={styles.dateLabel}>Date of Birth</Text>
               <Text style={styles.dateValue}>{formattedDate}</Text>
             </View>
-            <Icon name="chevron-down" size={RFValue(18)} color="rgba(255, 255, 255, 0.4)" />
+            <Icon name="chevron-down" size={RFValue(18)} color="#64748B" />
           </View>
 
           {/* Custom Wheel Picker */}
@@ -245,7 +252,7 @@ const AgeSelectionScreen = () => {
           {/* Confirm Button */}
           <TouchableOpacity style={styles.confirmButtonWrapper} onPress={handleConfirm}>
             <LinearGradient
-              colors={['#FF6B00', '#FF2D87', '#C026D3']}
+              colors={['#6366F1', '#4F46E5']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.confirmButton}
@@ -254,60 +261,87 @@ const AgeSelectionScreen = () => {
             </LinearGradient>
           </TouchableOpacity>
         </View>
-      </View>
-    </ScreenBackgroundView>
+      </ScrollView>
+    </View>
   );
 };
 
 export default AgeSelectionScreen;
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 40 : 20,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingTop: Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 25) + 10,
+    paddingHorizontal: width * 0.05,
+    paddingBottom: 30,
+    justifyContent: 'center',
   },
   backButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 45 : 25,
-    left: width * 0.04,
-    zIndex: 10,
-    padding: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    alignSelf: 'flex-start',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   card: {
-    flex: 1,
-    marginTop: height * 0.38,
-    marginHorizontal: width * 0.06,
-    backgroundColor: 'transparent',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    borderWidth: 0,
-    paddingHorizontal: width * 0.02,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: width * 0.05,
+    paddingVertical: 24,
     alignItems: 'center',
-    paddingBottom: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   headerTextSection: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   title: {
-    fontSize: RFValue(18),
+    fontSize: RFValue(19),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
     marginBottom: 4,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: RFValue(11),
-    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: RFValue(11.5),
+    color: '#64748B',
     textAlign: 'center',
     lineHeight: 16,
   },
   dateDisplayBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 12,
-    borderWidth: 1.2,
-    borderColor: '#FF2D87',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#6366F1',
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginBottom: 14,
@@ -321,28 +355,29 @@ const styles = StyleSheet.create({
   },
   dateLabel: {
     fontSize: RFValue(10),
-    color: 'rgba(255, 255, 255, 0.5)',
-    marginBottom: 1,
+    color: '#64748B',
+    marginBottom: 2,
+    fontWeight: '500',
   },
   dateValue: {
-    fontSize: RFValue(13),
+    fontSize: RFValue(13.5),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
   },
   pickerContainer: {
     width: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 14,
     borderWidth: 1.2,
-    borderColor: 'rgba(192, 38, 211, 0.35)',
+    borderColor: '#E2E8F0',
     paddingTop: 10,
     paddingBottom: 6,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   pickerHeaderRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: '#E2E8F0',
     paddingBottom: 6,
     marginHorizontal: 8,
   },
@@ -351,7 +386,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: RFValue(11),
     fontWeight: 'bold',
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#64748B',
     letterSpacing: 1,
   },
   wheelsContainer: {
@@ -369,8 +404,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderTopWidth: 1.5,
     borderBottomWidth: 1.5,
-    borderColor: '#FF2D87',
-    backgroundColor: 'rgba(255, 45, 135, 0.08)',
+    borderColor: '#6366F1',
+    backgroundColor: 'rgba(99, 102, 241, 0.08)',
     zIndex: 1,
   },
   wheelList: {
@@ -390,22 +425,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pickerItemTextSelected: {
-    color: '#FF2D87',
+    color: '#4F46E5',
     fontWeight: 'bold',
     fontSize: RFValue(15),
   },
   pickerItemTextUnselected: {
-    color: 'rgba(255, 255, 255, 0.3)',
+    color: '#94A3B8',
   },
   confirmButtonWrapper: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
     width: '100%',
   },
   confirmButton: {
-    height: 46,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 14,
   },
   confirmButtonText: {
     fontSize: RFValue(13.5),

@@ -472,7 +472,7 @@ const Massage = ({ route }) => {
             style={styles.navBackButton}
             onPress={handleGoBack}
           >
-            <Icon name="chevron-left" size={22} color="#fff" />
+            <Icon name="chevron-left" size={22} color="#1E293B" />
           </TouchableOpacity>
           
           <View style={styles.navUserInfo}>
@@ -494,10 +494,10 @@ const Massage = ({ route }) => {
           </View>
 
           <TouchableOpacity onPress={startCall} disabled={calling} style={styles.navBlockButton}>
-            {calling ? <ActivityIndicator size="small" color="#03dcfe" /> : <Icon name="call" size={20} color="#03dcfe" />}
+            {calling ? <ActivityIndicator size="small" color="#6C5CE7" /> : <Icon name="call" size={20} color="#6C5CE7" />}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.navBlockButton}>
-            <Icon name="more-vert" size={22} color="#fff" />
+            <Icon name="more-vert" size={22} color="#1E293B" />
           </TouchableOpacity>
         </View>
 
@@ -534,12 +534,12 @@ const Massage = ({ route }) => {
                 <View style={isSent ? styles.bubbleWrapperRight : styles.bubbleWrapperLeft}>
                   {isSent ? (
                     <LinearGradient
-                      colors={['#a855f7', '#03dcfe']}
+                      colors={['#8B5CF6', '#6C5CE7']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.bubbleSent}
                     >
-                      <Text style={styles.messageText}>{msg.content}</Text>
+                      <Text style={[styles.messageText, { color: '#FFFFFF' }]}>{msg.content}</Text>
                     </LinearGradient>
                   ) : (
                     <View style={styles.bubbleReceived}>
@@ -605,7 +605,7 @@ const Massage = ({ route }) => {
             
             <TextInput
               placeholder="Type your message (max 50)..."
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              placeholderTextColor="#94A3B8"
               style={styles.messageInput}
               value={inputText}
               onChangeText={setInputText}
@@ -613,7 +613,7 @@ const Massage = ({ route }) => {
               multiline
             />
             {inputText.length > 0 && (
-              <Text style={{ fontSize: 10, color: inputText.length >= 45 ? '#ff3b30' : '#03dcfe', marginRight: 6, fontWeight: 'bold' }}>
+              <Text style={{ fontSize: 10, color: inputText.length >= 45 ? '#ff3b30' : '#8B5CF6', marginRight: 6, fontWeight: 'bold' }}>
                 {inputText.length}/50
               </Text>
             )}
@@ -808,15 +808,20 @@ const Massage = ({ route }) => {
 
 const styles = StyleSheet.create({
   menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
-  giftModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  giftModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   giftModalContainer: {
-    backgroundColor: '#0c0721',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: '#E2E8F0',
     maxHeight: '60%',
     padding: 16,
+    elevation: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
   },
   giftModalHeader: {
     flexDirection: 'row',
@@ -824,21 +829,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: '#F1F5F9',
   },
-  giftModalTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  giftModalTitle: { color: '#0F172A', fontSize: 16, fontWeight: 'bold' },
   giftBalanceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 12 },
   giftBalancePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(3, 220, 254, 0.15)',
+    backgroundColor: '#F3E8FF',
     borderWidth: 1,
-    borderColor: '#03dcfe',
+    borderColor: '#DDD6FE',
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  giftBalanceText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  giftBalanceText: { color: '#7C3AED', fontSize: 12, fontWeight: 'bold' },
   rechargePlusBtn: { marginLeft: 6, paddingHorizontal: 2 },
   categoryTabsContainer: {
     flexDirection: 'row',
@@ -849,21 +854,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#F1F5F9',
     marginRight: 8,
   },
   activeCategoryTab: {
-    backgroundColor: 'rgba(3, 220, 254, 0.25)',
+    backgroundColor: '#EDE9FE',
     borderWidth: 1,
-    borderColor: '#03dcfe',
+    borderColor: '#8B5CF6',
   },
   categoryTabText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
     fontSize: 12,
     fontWeight: 'bold',
   },
   activeCategoryTabText: {
-    color: '#03dcfe',
+    color: '#8B5CF6',
   },
   giftsGridContainer: {
     flexDirection: 'row',
@@ -878,12 +883,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
   },
-  selectedGiftCard: { borderColor: '#03dcfe' },
+  selectedGiftCard: { borderColor: '#8B5CF6', backgroundColor: '#F5F3FF' },
   giftGridCardGradient: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 6 },
   giftIconMedia: { width: 38, height: 38, marginBottom: 4 },
-  giftCardName: { color: '#fff', fontSize: 11, fontWeight: 'bold', marginBottom: 2 },
+  giftCardName: { color: '#0F172A', fontSize: 11, fontWeight: 'bold', marginBottom: 2 },
   activeGiftOverlay: {
     position: 'absolute',
     top: '30%',
@@ -894,29 +900,34 @@ const styles = StyleSheet.create({
     elevation: 25,
   },
   activeGiftTextBadge: {
-    backgroundColor: 'rgba(12, 7, 33, 0.88)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#03dcfe',
+    borderColor: '#8B5CF6',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginTop: 10,
+    elevation: 8,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   activeGiftText: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 14,
     fontWeight: 'bold',
     textAlign: 'center',
   },
-  giftCostTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
-  giftCostTagText: { color: '#fbbf24', fontSize: 10, fontWeight: 'bold' },
+  giftCostTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+  giftCostTagText: { color: '#D97706', fontSize: 10, fontWeight: 'bold' },
   giftFooterBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: '#F1F5F9',
   },
   comboPillsContainer: {
     flexDirection: 'row',
@@ -926,21 +937,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#F1F5F9',
     marginRight: 6,
   },
   activeComboPill: {
-    backgroundColor: 'rgba(251, 191, 36, 0.25)',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: '#fbbf24',
+    borderColor: '#F59E0B',
   },
   comboPillText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
     fontSize: 12,
     fontWeight: 'bold',
   },
   activeComboPillText: {
-    color: '#fbbf24',
+    color: '#B45309',
   },
   sendGiftActionBtn: {
     borderRadius: 16,
@@ -953,80 +964,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sendGiftBtnText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: 'bold',
   },
   giftIconBtn: { paddingHorizontal: 8, paddingVertical: 6, justifyContent: 'center', alignItems: 'center' },
   sendingGiftOverlay: {
     position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-    backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 24,
     justifyContent: 'center', alignItems: 'center',
   },
   chatMenu: {
     position: 'absolute', top: 70, right: 16, width: 190,
-    paddingVertical: 8, borderRadius: 14, backgroundColor: '#17102f',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', elevation: 20,
+    paddingVertical: 8, borderRadius: 14, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#E2E8F0', elevation: 12,
+    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8,
   },
   chatMenuItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13 },
-  chatMenuText: { color: '#fff', fontSize: 14, fontWeight: '600', marginLeft: 12 },
-  // Decorative space elements
-  starOverlay1: {
-    position: 'absolute',
-    top: Dimensions.get('window').height * 0.15,
-    left: Dimensions.get('window').width * 0.1,
-    width: 2,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: '#fff',
-    opacity: 0.8,
-  },
-  starOverlay2: {
-    position: 'absolute',
-    top: Dimensions.get('window').height * 0.3,
-    right: Dimensions.get('window').width * 0.15,
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#ff3366',
-    opacity: 0.5,
-  },
-  planetWrapper: {
-    position: 'absolute',
-    bottom: -Dimensions.get('window').height * 0.15,
-    right: -Dimensions.get('window').width * 0.15,
-    width: Dimensions.get('window').width * 0.65,
-    height: Dimensions.get('window').width * 0.65,
-    borderRadius: (Dimensions.get('window').width * 0.65) / 2,
-    overflow: 'hidden',
-  },
-  planetGlow: {
-    flex: 1,
-    borderRadius: (Dimensions.get('window').width * 0.65) / 2,
-  },
-  gridWrapper: {
-    position: 'absolute',
-    bottom: Dimensions.get('window').height * 0.05,
-    left: -Dimensions.get('window').width * 0.1,
-    width: Dimensions.get('window').width * 0.5,
-    height: Dimensions.get('window').height * 0.2,
-    opacity: 0.15,
-  },
-  gridLine1: {
-    position: 'absolute',
-    width: '100%',
-    height: 1.5,
-    backgroundColor: '#ff3366',
-    transform: [{ rotate: '30deg' }],
-  },
-  gridLine2: {
-    position: 'absolute',
-    width: '100%',
-    height: 1.5,
-    backgroundColor: '#ff3366',
-    top: 30,
-    transform: [{ rotate: '30deg' }],
-  },
+  chatMenuText: { color: '#0F172A', fontSize: 14, fontWeight: '600', marginLeft: 12 },
+  // Decorative subtle space elements
+  starOverlay1: { opacity: 0 },
+  starOverlay2: { opacity: 0 },
+  planetWrapper: { opacity: 0 },
+  planetGlow: { opacity: 0 },
+  gridWrapper: { opacity: 0 },
+  gridLine1: { opacity: 0 },
+  gridLine2: { opacity: 0 },
 
   // Modern Navbar Header
   navBar: {
@@ -1038,17 +1001,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
-    borderWidth: 1.2,
-    borderColor: 'rgba(3, 220, 254, 0.35)',
-    backgroundColor: 'rgba(15, 10, 48, 0.85)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    elevation: 3,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   navBackButton: {
     width: 36,
     height: 36,
     borderRadius: 12,
-    borderWidth: 1.2,
-    borderColor: 'rgba(124, 77, 255, 0.4)',
-    backgroundColor: 'rgba(124, 77, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1067,7 +1035,7 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     borderWidth: 1.5,
-    borderColor: '#03dcfe',
+    borderColor: '#8B5CF6',
   },
   navOnlineDot: {
     position: 'absolute',
@@ -1078,18 +1046,18 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#10b981',
     borderWidth: 1.5,
-    borderColor: '#0f0a30',
+    borderColor: '#FFFFFF',
   },
   navTextWrapper: {
     flex: 1,
   },
   navUserName: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 16,
     fontWeight: '700',
   },
   navUserStatus: {
-    color: '#9ca3af',
+    color: '#64748B',
     fontSize: 11,
     marginTop: 2,
   },
@@ -1097,9 +1065,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 59, 48, 0.4)',
-    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1111,14 +1079,14 @@ const styles = StyleSheet.create({
   },
   dateDividerPill: {
     alignSelf: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#E2E8F0',
     paddingHorizontal: 14,
     paddingVertical: 5,
     borderRadius: 14,
     marginVertical: 12,
   },
   dateDividerText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1149,21 +1117,31 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 4, // Tail indicator on bottom right
+    borderBottomRightRadius: 4,
+    elevation: 2,
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   bubbleReceived: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 11,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderBottomRightRadius: 20,
-    borderBottomLeftRadius: 4, // Tail indicator on bottom left
+    borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: '#E2E8F0',
+    elevation: 1,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   messageText: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 15,
     lineHeight: 20,
   },
@@ -1177,7 +1155,7 @@ const styles = StyleSheet.create({
   },
   metaTime: {
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#94A3B8',
   },
 
   // Bottom Input Panel Styling
@@ -1192,16 +1170,16 @@ const styles = StyleSheet.create({
   inputBoxWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(11, 8, 44, 0.95)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 30,
     paddingHorizontal: 8,
     paddingVertical: 6,
-    borderWidth: 1.2,
-    borderColor: 'rgba(3, 220, 254, 0.4)',
-    elevation: 8,
-    shadowColor: '#03dcfe',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 4,
+    shadowColor: '#64748B',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
   },
   cameraIconBtn: {
@@ -1215,7 +1193,7 @@ const styles = StyleSheet.create({
   },
   messageInput: {
     flex: 1,
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 14,
     paddingHorizontal: 6,
     maxHeight: 100,

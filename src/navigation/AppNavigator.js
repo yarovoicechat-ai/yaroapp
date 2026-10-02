@@ -177,6 +177,7 @@ const AnimatedSplash = ({ onFinish }) => {
 import { AppState } from "react-native";
 import InAppUpdateService from "../services/InAppUpdateService";
 import MandatoryUpdateScreen from "../components/MandatoryUpdateScreen";
+import { executePendingDeepLink } from "../utils/deepLinkHandler";
 
 export default function AppNavigator() {
   const { user, loading, isAuthenticated } = useContext(AuthContext);
@@ -216,6 +217,15 @@ export default function AppNavigator() {
       InAppUpdateService.removeListeners();
     };
   }, []);
+
+  useEffect(() => {
+    if (splashFinished && isAuthenticated && !updateStatus.needsUpdate) {
+      const timer = setTimeout(() => {
+        executePendingDeepLink();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [splashFinished, isAuthenticated, updateStatus.needsUpdate]);
 
   // Splash screen will show while checking update or while splash animation completes
   if (loading || !splashFinished || updateStatus.checking) {

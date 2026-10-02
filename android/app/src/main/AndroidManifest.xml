@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -27,9 +29,12 @@
     <!-- System Overlay & Call Service Permissions -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" tools:node="remove" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" tools:node="remove" />
+
+    <!-- Disallow exact alarm permissions so no transitive library injects them -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" tools:node="remove" />
 
     <application
       android:name=".MainApplication"
@@ -38,7 +43,7 @@
       android:roundIcon="@mipmap/ic_launcher_round"
       android:allowBackup="false"
       android:theme="@style/AppTheme"
-      android:usesCleartextTraffic="true"
+      android:usesCleartextTraffic="false"
       android:supportsRtl="true">
       
       <!-- Meta / Facebook SDK Configuration -->
@@ -89,27 +94,48 @@
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="https" android:host="voicecallclub.com" android:pathPrefix="/refer" />
-            <data android:scheme="https" android:host="voicecallclub.com" android:pathPrefix="/invite" />
-            <data android:scheme="https" android:host="www.voicecallclub.com" android:pathPrefix="/refer" />
-            <data android:scheme="https" android:host="www.voicecallclub.com" android:pathPrefix="/invite" />
+            <data android:scheme="https" android:host="yaroapp.in" android:pathPrefix="/room" />
+            <data android:scheme="https" android:host="yaroapp.in" android:pathPrefix="/user" />
+            <data android:scheme="https" android:host="yaroapp.in" android:pathPrefix="/profile" />
+            <data android:scheme="https" android:host="yaroapp.in" android:pathPrefix="/host" />
+            <data android:scheme="https" android:host="yaroapp.in" android:pathPrefix="/refer" />
+            <data android:scheme="https" android:host="yaroapp.in" android:pathPrefix="/invite" />
+            <data android:scheme="https" android:host="www.yaroapp.in" android:pathPrefix="/room" />
+            <data android:scheme="https" android:host="www.yaroapp.in" android:pathPrefix="/user" />
+            <data android:scheme="https" android:host="www.yaroapp.in" android:pathPrefix="/profile" />
+            <data android:scheme="https" android:host="www.yaroapp.in" android:pathPrefix="/host" />
+            <data android:scheme="https" android:host="www.yaroapp.in" android:pathPrefix="/refer" />
+            <data android:scheme="https" android:host="www.yaroapp.in" android:pathPrefix="/invite" />
         </intent-filter>
 
-        <!-- Custom Deep Link Scheme (voiceclub://) -->
+        <!-- Fallback HTTP Domain links -->
         <intent-filter>
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="http" android:host="yaroapp.in" android:pathPrefix="/room" />
+            <data android:scheme="http" android:host="yaroapp.in" android:pathPrefix="/user" />
+            <data android:scheme="http" android:host="yaroapp.in" android:pathPrefix="/profile" />
+            <data android:scheme="http" android:host="yaroapp.in" android:pathPrefix="/host" />
+            <data android:scheme="http" android:host="yaroapp.in" android:pathPrefix="/refer" />
+            <data android:scheme="http" android:host="yaroapp.in" android:pathPrefix="/invite" />
+            <data android:scheme="http" android:host="www.yaroapp.in" android:pathPrefix="/room" />
+            <data android:scheme="http" android:host="www.yaroapp.in" android:pathPrefix="/user" />
+            <data android:scheme="http" android:host="www.yaroapp.in" android:pathPrefix="/profile" />
+            <data android:scheme="http" android:host="www.yaroapp.in" android:pathPrefix="/host" />
+            <data android:scheme="http" android:host="www.yaroapp.in" android:pathPrefix="/refer" />
+            <data android:scheme="http" android:host="www.yaroapp.in" android:pathPrefix="/invite" />
+        </intent-filter>
+
+        <!-- Custom Deep Link Scheme (yaro:// and voiceclub://) -->
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="yaro" />
             <data android:scheme="voiceclub" />
         </intent-filter>
       </activity>
-
-      <!-- Interactive System Overlay Floating Call Service -->
-      <service
-        android:name=".FloatingCallService"
-        android:enabled="true"
-        android:exported="false"
-        android:foregroundServiceType="microphone" />
 
     </application>
 </manifest>

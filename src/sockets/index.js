@@ -7,7 +7,7 @@ import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 import { clearAuthSession } from '../utils/authSession';
 
-const ACTIVE_SOCKET_URL = (SOCKET_URL || 'https://api.mithichat.live').replace(/\/$/, '');
+const ACTIVE_SOCKET_URL = (SOCKET_URL || 'https://api.yaroapp.in').replace(/\/$/, '');
 
 let socket = null;
 

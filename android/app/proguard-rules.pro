@@ -3,7 +3,7 @@
 -dontwarn com.google.devtools.build.android.desugar.runtime.ThrowableExtension
 
 # App Custom Package & Native Modules
--keep class com.umangchatlive.** { *; }
+-keep class yaro.vc.app.** { *; }
 
 # React Native Core & Native Modules Reflection
 -keep class com.facebook.react.** { *; }

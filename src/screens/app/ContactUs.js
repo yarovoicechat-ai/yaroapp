@@ -1,18 +1,16 @@
 import React from 'react';
-import { View,
+import {
+  View,
   Text,
   StyleSheet,
   ScrollView,
-  
   TouchableOpacity,
   Linking,
-  View as ScreenBackgroundView,
-  StatusBar as ScreenBackgroundStatusBar,
-  StyleSheet as ScreenBackgroundStyleSheet
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import ScreenBackgroundGradient from 'react-native-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
@@ -25,87 +23,105 @@ const ContactUs = () => {
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
 
   const handleEmailPress = () => {
-    Linking.openURL('mailto:support@meethichat.live');
+    Linking.openURL('mailto:support@yaroapp.in');
   };
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
-      <ScreenBackgroundGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-        <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-back" size={28} color="#1E293B" />
-          </TouchableOpacity>
-        </View>
-        <ScrollView contentContainerStyle={[styles.scrollContainer, { paddingBottom: bottomPadding }]} showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>{t('contact_us.title')}</Text>
+    <View style={styles.container}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+      <ScreenBackgroundGradient
+        colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Icon name="chevron-back" size={26} color="#0F172A" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Contact Us</Text>
+        <View style={{ width: 32 }} />
+      </View>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContainer, { paddingBottom: bottomPadding }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.contentCard}>
+          <Text style={styles.title}>{t('contact_us.title') || 'Need Help?'}</Text>
           <Text style={styles.content}>
-            {t('contact_us.part1')}
-            <Text
-              style={styles.link}
-              onPress={handleEmailPress}
-            >
-              support@meethichat.live
+            {t('contact_us.part1') || 'We are always here to help you! If you have any inquiries, technical questions or feedback, please reach out to us at '}
+            <Text style={styles.link} onPress={handleEmailPress}>
+              support@yaroapp.in
             </Text>
-            {t('contact_us.part2')}
-            <Text
-              style={styles.link}
-              onPress={handleEmailPress}
-            >
-              support@meethichat.live
+            {t('contact_us.part2') || '. You can also reach our customer support team directly at '}
+            <Text style={styles.link} onPress={handleEmailPress}>
+              support@yaroapp.in
             </Text>
-            {t('contact_us.part3')}
+            {t('contact_us.part3') || '. We will respond within 24-48 business hours.'}
           </Text>
-        </ScrollView>
-    </ScreenBackgroundView>
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   backButton: {
-    padding: 8,
+    padding: 6,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
   },
   scrollContainer: {
     padding: 20,
   },
+  contentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
     textAlign: 'center',
-    marginBottom: 30,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    marginBottom: 18,
   },
   content: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#FFFFFF',
+    fontSize: 15,
+    lineHeight: 25,
+    color: '#334155',
     textAlign: 'justify',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 20,
-    borderRadius: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
   },
   link: {
-    color: '#4DA8DA',
+    color: '#7C3AED',
+    fontWeight: '700',
     textDecorationLine: 'underline',
   },
 });

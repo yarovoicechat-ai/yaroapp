@@ -105,13 +105,13 @@ const Earning = () => {
 
         <View style={styles.cardFooter}>
           <View style={styles.footerDetail}>
-            <Icon name={isGift ? "card-giftcard" : "schedule"} size={16} color={isGift ? "#FF2D87" : "#aaa"} />
-            <Text style={[styles.footerDetailText, isGift && { color: '#FF2D87', fontWeight: '600' }]}>
+            <Icon name={isGift ? "card-giftcard" : "schedule"} size={16} color={isGift ? "#EC4899" : "#64748B"} />
+            <Text style={[styles.footerDetailText, isGift && { color: '#EC4899', fontWeight: '600' }]}>
               {isGift ? 'Gift Income' : formatDuration(item.duration)}
             </Text>
           </View>
           <View style={styles.footerDetail}>
-            <Icon name="event" size={16} color="#aaa" />
+            <Icon name="event" size={16} color="#64748B" />
             <Text style={styles.footerDetailText}>
               {item.date || (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Recent')}
             </Text>
@@ -124,7 +124,7 @@ const Earning = () => {
   const EmptyList = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconCircle}>
-        <Icon name="account-balance-wallet" size={48} color="rgba(255,255,255,0.4)" />
+        <Icon name="account-balance-wallet" size={48} color="#CBD5E1" />
       </View>
       <Text style={styles.emptyText}>
         {t('earning.no_earnings') || 'No earnings history found.'}
@@ -133,16 +133,16 @@ const Earning = () => {
   );
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#08031a' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-      <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
+    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
+      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
       {/* Header */}
       <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Icon name="arrow-back-ios" size={24} color="#fff" style={{ marginLeft: 6 }} />
+          <Icon name="arrow-back-ios" size={20} color="#1E293B" style={{ marginLeft: 6 }} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {t('profile.my_earnings') || 'My Earnings'}
@@ -160,15 +160,14 @@ const Earning = () => {
         {/* Coin Balance Card */}
         <View style={styles.coinCardContainer}>
           <LinearGradient
-            colors={['#1e1b4b', '#31108f']}
+            colors={['#059669', '#047857']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.coinCard}
           >
-            <View style={styles.glassOverlay} />
             <View style={styles.coinCardContent}>
               <View style={styles.balanceHeader}>
-                <Text style={styles.myCoinsLabel}>{t('earning.my_coins') || 'Available Balance'}</Text>
+                <Text style={styles.myCoinsLabel}>Available Beans</Text>
                 <View style={styles.goldBadge}>
                   <Icon name="stars" size={14} color="#FACC15" />
                   <Text style={styles.goldBadgeText}>Premium Host</Text>
@@ -192,7 +191,7 @@ const Earning = () => {
 
         {/* History Title */}
         <View style={styles.historyTitleRow}>
-          <Icon name="history" size={20} color="#03dcfe" />
+          <Icon name="history" size={20} color="#4F46E5" />
           <Text style={styles.historyTitle}>Call Income History</Text>
         </View>
 
@@ -200,7 +199,7 @@ const Earning = () => {
         {loading ? (
           <ActivityIndicator
             size="large"
-            color="#03dcfe"
+            color="#6366F1"
             style={{ marginTop: 40 }}
           />
         ) : (
@@ -224,7 +223,7 @@ const Earning = () => {
             onPress={() => navigation.navigate('Withdrawal')}
           >
             <LinearGradient
-              colors={['#2911fe', '#03dcfe']}
+              colors={['#6366F1', '#4F46E5']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.withdrawalGradient}
@@ -252,27 +251,33 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
   },
   headerTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
     flex: 1,
   },
   recordButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 15,
-    backgroundColor: 'rgba(3, 220, 254, 0.15)',
+    backgroundColor: '#EEF2FF',
     borderWidth: 1,
-    borderColor: 'rgba(3, 220, 254, 0.3)',
+    borderColor: '#C7D2FE',
   },
   recordText: {
-    color: '#03dcfe',
+    color: '#4F46E5',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -286,17 +291,11 @@ const styles = StyleSheet.create({
   coinCard: {
     borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    elevation: 8,
-    shadowColor: '#03dcfe',
+    elevation: 4,
+    shadowColor: '#4F46E5',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-  },
-  glassOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
   },
   coinCardContent: {
     padding: 24,
@@ -308,26 +307,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   myCoinsLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 13,
+    fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   goldBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(250, 204, 21, 0.12)',
+    backgroundColor: 'rgba(250, 204, 21, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
     borderWidth: 0.5,
-    borderColor: 'rgba(250, 204, 21, 0.3)',
+    borderColor: '#FACC15',
   },
   goldBadgeText: {
     color: '#FACC15',
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
     marginLeft: 4,
   },
   balanceRow: {
@@ -349,20 +348,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     padding: 12,
     borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   conversionLabel: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 255, 255, 0.85)',
     fontSize: 14,
+    fontWeight: '500',
   },
   conversionValue: {
-    color: '#03dcfe',
+    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
   // History Section
@@ -373,7 +371,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   historyTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 16,
     fontWeight: '700',
     marginLeft: 8,
@@ -388,12 +386,16 @@ const styles = StyleSheet.create({
 
   // Earning Card
   earningCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -406,36 +408,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(3, 220, 254, 0.2)',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
     borderWidth: 1,
-    borderColor: 'rgba(3, 220, 254, 0.3)',
+    borderColor: '#C7D2FE',
   },
   avatarInitial: {
-    color: '#03dcfe',
+    color: '#4F46E5',
     fontSize: 14,
     fontWeight: 'bold',
   },
   earningName: {
-    color: '#fff',
-    fontSize: 16,
+    color: '#0F172A',
+    fontSize: 15,
     fontWeight: '600',
     flex: 1,
   },
   coinBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(76, 217, 100, 0.1)',
+    backgroundColor: '#F0FDF4',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
     borderWidth: 0.5,
-    borderColor: 'rgba(76, 217, 100, 0.3)',
+    borderColor: '#BBF7D0',
   },
   smallCoinIcon: {
     width: 16,
@@ -443,13 +445,13 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   earningCoins: {
-    color: '#4CD964',
+    color: '#16A34A',
     fontSize: 14,
     fontWeight: '700',
   },
   cardDivider: {
-    height: 0.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    height: 1,
+    backgroundColor: '#F1F5F9',
     marginVertical: 12,
   },
   cardFooter: {
@@ -462,7 +464,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerDetailText: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#64748B',
     fontSize: 12,
     marginLeft: 6,
   },
@@ -473,20 +475,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 40,
     padding: 30,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   emptyIconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: '#E2E8F0',
   },
   emptyText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#94A3B8',
     fontSize: 15,
     textAlign: 'center',
   },
@@ -501,11 +507,11 @@ const styles = StyleSheet.create({
   withdrawalButton: {
     borderRadius: 24,
     overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#2911fe',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    elevation: 3,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
   },
   withdrawalGradient: {
     paddingVertical: 16,

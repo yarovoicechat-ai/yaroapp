@@ -26,29 +26,4 @@ export const OverlayPermissionManager = {
       FloatingCallBridge.requestOverlayPermission();
     }
   },
-
-  /**
-   * One-time check after successful Login or Register.
-   * Requests permission once if missing, or proceeds if already granted.
-   */
-  ensureOverlayPermissionOnAuth: async ({ isRegister = false } = {}) => {
-    if (isRegister) {
-      console.log('[OVERLAY] Register successful');
-    } else {
-      console.log('[OVERLAY] Login successful');
-    }
-
-    console.log('[OVERLAY] Checking permission');
-    const granted = await OverlayPermissionManager.checkActualOverlayPermission();
-    console.log(`[OVERLAY] Permission currently granted: ${granted}`);
-
-    if (granted) {
-      console.log('[OVERLAY] Navigating to Home');
-      return true;
-    } else {
-      console.log('[OVERLAY] Opening Android overlay settings');
-      OverlayPermissionManager.openOverlaySettings();
-      return false;
-    }
-  },
 };

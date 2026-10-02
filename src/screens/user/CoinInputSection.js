@@ -28,13 +28,13 @@ const CoinInputSection = ({
     const coins = parseFloat(withdrawalCoin);
     if (isNaN(coins) || coins <= 0) {
       setCalculatedINR('');
-      AlertService.show(t('withdrawal.invalid_input') || 'Invalid Input', t('withdrawal.invalid_amount') || 'Please enter a valid amount of coins.', 'error');
+      AlertService.show(t('withdrawal.invalid_input') || 'Invalid Input', t('withdrawal.invalid_amount') || 'Please enter a valid amount of beans.', 'error');
       return;
     }
     if (coins > user.coins) {
       AlertService.show(
         t('withdrawal.insufficient_balance') || 'Insufficient Balance',
-        t('withdrawal.exceeds_balance') || 'Withdrawal amount exceeds your coin balance.',
+        t('withdrawal.exceeds_balance') || 'Withdrawal amount exceeds your bean balance.',
         'error'
       );
       return;
@@ -49,7 +49,7 @@ const CoinInputSection = ({
 
   return (
     <>
-      {/* 💰 Coin Input with Calculate Button */}
+      {/* 🫘 Beans Input with Calculate Button */}
       <View style={{ marginBottom: 20, position: 'relative' }}>
         <TextInput
           ref={coinInputRef}
@@ -62,7 +62,7 @@ const CoinInputSection = ({
             color: '#fff',
             paddingRight: 100, // leave space for button
           }}
-          placeholder={t('withdrawal.input_coin') || 'Input Withdrawal Coin'}
+          placeholder={t('withdrawal.input_coin') || 'Input Withdrawal Beans'}
           placeholderTextColor="#a0a0a0"
           value={withdrawalCoin}
           onChangeText={handleCoinInput}

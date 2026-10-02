@@ -102,9 +102,9 @@ const ForgotPassword = () => {
   };
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <ScreenBackgroundStatusBar backgroundColor="#FFFFFF" barStyle="dark-content" animated />
-      <ScreenBackgroundImage source={ForgotBG} style={ScreenBackgroundStyleSheet.absoluteFillObject} resizeMode="cover" />
+    <View style={styles.screen}>
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#EEF2FF']} style={StyleSheet.absoluteFillObject} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -112,34 +112,37 @@ const ForgotPassword = () => {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContainer,
-            { paddingTop: topPadding + 60, paddingBottom: Math.max(insets.bottom, 24) }
+            { paddingTop: topPadding + 20, paddingBottom: Math.max(insets.bottom, 24) }
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Back Button */}
           <TouchableOpacity style={[styles.backButton, { top: topPadding + 10 }]} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-back" size={24} color="#fff" />
+            <Icon name="arrow-back" size={24} color="#0F172A" />
           </TouchableOpacity>
 
           {/* Card */}
           <View style={styles.card}>
+            <View style={styles.iconCircle}>
+              <Icon name="key-outline" size={RFValue(28)} color="#6366F1" />
+            </View>
             <Text style={styles.cardTitle}>Forgot Password?</Text>
             <Text style={styles.cardSubtitle}>
-              Don't worry! Enter your registered mobile number{'\n'}and we'll send you a OTP to reset your password.
+              Don't worry! Enter your registered mobile number{'\n'}and we'll send you an OTP to reset your password.
             </Text>
 
             {/* Phone Input */}
             <View style={styles.inputContainer}>
               <TouchableOpacity style={styles.countryCodePill} onPress={openCountrySelection}>
                 <Text style={styles.countryCodeText}>{selectedCountry.code}</Text>
-                <Icon name="chevron-down" size={RFValue(13)} color="#FF2D87" style={{ marginLeft: 2 }} />
+                <Icon name="chevron-down" size={RFValue(13)} color="#4F46E5" style={{ marginLeft: 2 }} />
               </TouchableOpacity>
               <View style={styles.divider} />
               <TextInput
                 style={styles.textInput}
                 placeholder="Enter Mobile Number"
-                placeholderTextColor="rgba(255,255,255,0.35)"
+                placeholderTextColor="#94A3B8"
                 value={mobileNumber}
                 onChangeText={setMobileNumber}
                 keyboardType="phone-pad"
@@ -150,7 +153,7 @@ const ForgotPassword = () => {
             {/* Send OTP Button */}
             <TouchableOpacity onPress={handleContinue} disabled={loading} style={styles.primaryButtonWrapper}>
               <LinearGradient
-                colors={['#FF6B00', '#FF2D87', '#C026D3']}
+                colors={['#6366F1', '#4F46E5']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryButton}
@@ -166,99 +169,118 @@ const ForgotPassword = () => {
               </LinearGradient>
             </TouchableOpacity>
 
-
-
             {/* Footer */}
             <View style={styles.footerRow}>
               <Text style={styles.footerText}>Remember your password? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('UmangLoginScreen')}>
+              <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
                 <Text style={styles.footerLink}>Login</Text>
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ScreenBackgroundView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   scrollContainer: { flexGrow: 1, justifyContent: 'center', paddingBottom: 20 },
   keyboardView: { flex: 1 },
-  backButton: { position: 'absolute', top: Platform.OS === 'ios' ? 40 : 20, left: width * 0.04, zIndex: 10, padding: 10 },
-  logoSection: { marginTop: height * 0.03, marginBottom: height * 0.03, alignItems: 'center' },
-  logo: { width: Math.min(width * 0.55, 220), height: Math.min(width * 0.32, 130) },
+  backButton: {
+    position: 'absolute',
+    left: width * 0.05,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
   card: {
     marginHorizontal: width * 0.05,
-    backgroundColor: 'transparent',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    borderWidth: 0,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     paddingHorizontal: width * 0.06,
+    paddingVertical: 32,
     alignItems: 'center',
-    marginBottom: 30,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    marginTop: 60,
   },
   iconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(192,38,211,0.12)',
+    backgroundColor: '#EEF2FF',
     borderWidth: 1.5,
-    borderColor: 'rgba(192,38,211,0.5)',
+    borderColor: '#C7D2FE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   cardTitle: {
     fontSize: RFValue(22),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
     textAlign: 'center',
     marginBottom: 8,
   },
   cardSubtitle: {
-    fontSize: RFValue(13),
-    color: 'rgba(255,255,255,0.55)',
+    fontSize: RFValue(12.5),
+    color: '#64748B',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 19,
     marginBottom: height * 0.03,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: 'rgba(192,38,211,0.45)',
+    borderColor: '#E2E8F0',
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === 'ios' ? 14 : 4,
     marginBottom: height * 0.025,
     width: '100%',
   },
   countryCodePill: { flexDirection: 'row', alignItems: 'center', paddingRight: 2 },
-  countryCodeText: { color: '#FF2D87', fontSize: RFValue(15), fontWeight: '700' },
-  divider: { width: 1, height: 22, backgroundColor: 'rgba(192,38,211,0.4)', marginHorizontal: 10 },
-  textInput: { flex: 1, fontSize: RFValue(14), color: '#ffffff', paddingVertical: 6 },
+  countryCodeText: { color: '#4F46E5', fontSize: RFValue(15), fontWeight: '700' },
+  divider: { width: 1, height: 22, backgroundColor: '#E2E8F0', marginHorizontal: 10 },
+  textInput: { flex: 1, fontSize: RFValue(14), color: '#0F172A', paddingVertical: 6 },
   primaryButtonWrapper: { borderRadius: 14, overflow: 'hidden', marginBottom: height * 0.02, width: '100%' },
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: height * 0.02,
+    paddingVertical: 14,
     borderRadius: 14,
   },
   primaryButtonText: {
-    fontSize: RFValue(15),
+    fontSize: RFValue(14),
     fontWeight: 'bold',
     color: '#ffffff',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
   },
   buttonArrow: { marginLeft: 10 },
-  orRow: { flexDirection: 'row', alignItems: 'center', marginBottom: height * 0.02, width: '100%' },
-  orLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.15)' },
-  orText: { color: 'rgba(255,255,255,0.45)', fontSize: RFValue(12), marginHorizontal: 12 },
-  footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  footerText: { fontSize: RFValue(13), color: 'rgba(255,255,255,0.5)' },
-  footerLink: { fontSize: RFValue(13), color: '#FF6B00', fontWeight: 'bold' },
+  footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  footerText: { fontSize: RFValue(13), color: '#64748B' },
+  footerLink: { fontSize: RFValue(13), color: '#4F46E5', fontWeight: 'bold' },
 });
 
 export default ForgotPassword;

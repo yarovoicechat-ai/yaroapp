@@ -2,22 +2,18 @@ import React, { useCallback, useContext, useEffect, useState, useRef } from 'rea
 import {
   StyleSheet,
   View,
-  Image,
   Text,
   TextInput,
   TouchableOpacity,
   Dimensions,
-  Alert,
   ActivityIndicator,
   Modal,
   KeyboardAvoidingView,
   Platform,
-  View as ScreenBackgroundView,
-  StatusBar as ScreenBackgroundStatusBar,
-  StyleSheet as ScreenBackgroundStyleSheet
+  ScrollView,
+  StatusBar,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { RFValue } from 'react-native-responsive-fontsize';
 import { AuthContext } from '../../context/AuthProvider';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -25,7 +21,7 @@ import { apiUtil } from '../../utils/apiUtil';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
+import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { AlertService } from '../../utils/AlertService';
 import { auth } from '../../configs/firebaseConfig';
 import { signInWithGoogleProvider } from '../../configs/googleSignIn';
@@ -38,11 +34,12 @@ import {
   signOutFirebasePhoneUser,
 } from '../../utils/firebasePhoneAuth';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const Account = () => {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
+  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 36);
   const { user, fetchUserProfile } = useContext(AuthContext);
   const { t } = useTranslation();
   const navigation = useNavigation();
@@ -80,7 +77,7 @@ const Account = () => {
         throw new Error(response.data?.message || 'Phone verification failed.');
       }
 
-      AlertService.show('Success', 'Phone number verified successfully!', 'success');
+      AlertService.show('Success', 'Phone number linked and verified successfully!', 'success');
       await fetchUserProfile();
       setPhoneModalVisible(false);
     } catch (error) {
@@ -132,7 +129,6 @@ const Account = () => {
     try {
       setGoogleLoading(true);
       const googleIdToken = await signInWithGoogleProvider();
-
       const res = await apiUtil.post('/auth/link-account', { googleIdToken });
 
       if (res.data?.success) {
@@ -243,73 +239,187 @@ const Account = () => {
       setPhoneLoading(false);
     }
   };
+
+  const isSecured = Boolean(user?.emailVerified || user?.phoneVerified);
+
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
-      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
+    <View style={styles.container}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+
+      {/* Decorative background glow */}
+      <View style={styles.glowTopRight} />
+      <View style={styles.glowBottomLeft} />
+
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={28} color="#1E293B" />
+      <View style={[styles.header, { paddingTop: topSafeInset + 10 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicon name="chevron-back" size={24} color="#1E293B" />
         </TouchableOpacity>
-        <Text style={styles.headerText}>{t('account.title') || 'Account'}</Text>
+
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>{t('account.title') || 'Account & Security'}</Text>
+          <View style={styles.securityPill}>
+            <Icon name="verified-user" size={12} color="#10B981" />
+            <Text style={styles.securityPillText}>Protected</Text>
+          </View>
+        </View>
+
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Google Email Section */}
-      <LinearGradient
-        colors={['#49BFFD', '#62EFFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.card}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.cardLeft}>
-          <Ionicon name="logo-google" size={24} color="#17096b" style={styles.icon} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardText} numberOfLines={1} ellipsizeMode="tail">
-              {(user?.email && user.email.trim() !== '') ? user.email : (t('account.google_email') || 'Google Account')}
-            </Text>
+        {/* Security Overview Hero Card */}
+        <LinearGradient
+          colors={['#7C3AED', '#4F46E5']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          <View style={styles.heroTopRow}>
+            <View style={styles.shieldIconWrapper}>
+              <Icon name="security" size={28} color="#FFFFFF" />
+            </View>
+            <View style={styles.heroTextWrapper}>
+              <Text style={styles.heroStatusLabel}>ACCOUNT PROTECTION STATUS</Text>
+              <Text style={styles.heroStatusTitle}>
+                {isSecured ? 'Strongly Secured' : 'Security Setup Incomplete'}
+              </Text>
+            </View>
           </View>
-        </View>
-        {user?.emailVerified ? (
-          <Icon name="check-circle" size={28} color="#16a34a" />
-        ) : googleLoading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <TouchableOpacity
-            style={styles.verifyButton}
-            onPress={handleLinkGoogle}
-          >
-            <Text style={styles.verifyText}>{t('account.verify') || 'Verify'}</Text>
-          </TouchableOpacity>
-        )}
-      </LinearGradient>
 
-      {/* Phone Number Section */}
-      <LinearGradient
-        colors={['#49BFFD', '#62EFFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.card}
-      >
-        <View style={styles.cardLeft}>
-          <Icon name="call" size={24} color="#17096b" style={styles.icon} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardText} numberOfLines={1} ellipsizeMode="tail">
-              {(user?.phoneNumber && String(user.phoneNumber).trim() !== '') ? String(user.phoneNumber) : (t('account.phone_number') || 'Phone Number')}
-            </Text>
+          <Text style={styles.heroDescription}>
+            Linking both your phone number and Google account protects your wallet balance, prevents unauthorized access, and provides immediate account recovery.
+          </Text>
+
+          <View style={styles.heroFooter}>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>USER ID</Text>
+              <Text style={styles.metaValue}>{user?.userId || 'N/A'}</Text>
+            </View>
+            <View style={styles.metaDivider} />
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>ROLE</Text>
+              <Text style={styles.metaValue}>{String(user?.role || 'User').toUpperCase()}</Text>
+            </View>
+            <View style={styles.metaDivider} />
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>STATUS</Text>
+              <Text style={[styles.metaValue, { color: '#34D399' }]}>ACTIVE</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Section: Linked Authentication Methods */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Connected Accounts</Text>
+          <Text style={styles.sectionSubtitle}>
+            Manage how you sign in and authorize security operations
+          </Text>
+
+          {/* Google Account Card */}
+          <View style={styles.authTile}>
+            <View style={[styles.tileIconBox, { backgroundColor: '#FEE2E2' }]}>
+              <Ionicon name="logo-google" size={22} color="#EA4335" />
+            </View>
+            <View style={styles.tileInfo}>
+              <Text style={styles.tileTitle}>Google Account</Text>
+              <Text style={styles.tileDesc} numberOfLines={1}>
+                {user?.email && user.email.trim() !== ''
+                  ? user.email
+                  : 'Link Google for 1-tap login'}
+              </Text>
+            </View>
+            {user?.emailVerified ? (
+              <View style={styles.verifiedBadge}>
+                <Icon name="check-circle" size={16} color="#10B981" />
+                <Text style={styles.verifiedText}>Linked</Text>
+              </View>
+            ) : googleLoading ? (
+              <ActivityIndicator size="small" color="#7C3AED" />
+            ) : (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleLinkGoogle}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.actionButtonText}>Link</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Phone Number Card */}
+          <View style={[styles.authTile, { borderBottomWidth: 0, paddingBottom: 0 }]}>
+            <View style={[styles.tileIconBox, { backgroundColor: '#EDE9FE' }]}>
+              <Icon name="phone-iphone" size={22} color="#7C3AED" />
+            </View>
+            <View style={styles.tileInfo}>
+              <Text style={styles.tileTitle}>Phone Number</Text>
+              <Text style={styles.tileDesc} numberOfLines={1}>
+                {user?.phoneNumber && String(user.phoneNumber).trim() !== ''
+                  ? String(user.phoneNumber)
+                  : 'Add verified mobile number'}
+              </Text>
+            </View>
+            {user?.phoneVerified ? (
+              <View style={styles.verifiedBadge}>
+                <Icon name="check-circle" size={16} color="#10B981" />
+                <Text style={styles.verifiedText}>Verified</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={openPhoneModal}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.actionButtonText}>Verify</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
-        {user?.phoneVerified ? (
-          <Icon name="check-circle" size={28} color="#16a34a" />
-        ) : (
+
+        {/* Section: Additional Security Options */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Security Preferences</Text>
+
           <TouchableOpacity
-            style={styles.verifyButton}
-            onPress={openPhoneModal}
+            style={styles.preferenceRow}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('PasswordSetup')}
           >
-            <Text style={styles.verifyText}>{t('account.verify') || 'Verify'}</Text>
+            <View style={[styles.tileIconBox, { backgroundColor: '#EEF2FF' }]}>
+              <Icon name="lock-outline" size={20} color="#4F46E5" />
+            </View>
+            <View style={styles.tileInfo}>
+              <Text style={styles.tileTitle}>Login Password</Text>
+              <Text style={styles.tileDesc}>Setup or change password for direct login</Text>
+            </View>
+            <Ionicon name="chevron-forward" size={18} color="#94A3B8" />
           </TouchableOpacity>
-        )}
-      </LinearGradient>
+
+          <TouchableOpacity
+            style={styles.preferenceRow}
+            activeOpacity={0.7}
+            onPress={() => AlertService.show('Session Active', 'You are currently logged in securely from this mobile device.', 'info')}
+          >
+            <View style={[styles.tileIconBox, { backgroundColor: '#F0FDF4' }]}>
+              <Icon name="devices" size={20} color="#16A34A" />
+            </View>
+            <View style={styles.tileInfo}>
+              <Text style={styles.tileTitle}>Trusted Devices</Text>
+              <Text style={styles.tileDesc}>Current session verified</Text>
+            </View>
+            <View style={styles.onlineDot} />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
       {/* ====== PHONE LINKING MODAL ====== */}
       <Modal
@@ -322,25 +432,30 @@ const Account = () => {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
-          <View style={[styles.modalContent, { paddingBottom: Math.max(20, (insets.bottom || 0) + 16) }]}>
-            {/* Modal Header */}
+          <View style={[styles.modalContent, { paddingBottom: Math.max(24, (insets.bottom || 0) + 16) }]}>
+            <View style={styles.modalHandleBar} />
+
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setPhoneModalVisible(false)}>
-                <Icon name="close" size={24} color="#fff" />
-              </TouchableOpacity>
               <Text style={styles.modalTitle}>
-                {phoneStep === 'input' ? 'Link Phone Number' : 'Enter OTP'}
+                {phoneStep === 'input' ? 'Link Phone Number' : 'Enter 6-Digit OTP'}
               </Text>
-              <View style={{ width: 24 }} />
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setPhoneModalVisible(false)}
+              >
+                <Icon name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
             </View>
 
             {phoneStep === 'input' ? (
-              /* ====== PHONE INPUT STEP ====== */
               <View style={styles.modalBody}>
-                <Text style={styles.modalLabel}>Enter your mobile number</Text>
-                <View style={styles.phoneInputContainer}>
+                <Text style={styles.modalSub}>
+                  Enter your mobile number to receive an SMS verification code.
+                </Text>
+
+                <View style={styles.phoneInputRow}>
                   <TouchableOpacity
-                    style={styles.countryCodeBtn}
+                    style={styles.countryPickerBtn}
                     onPress={() => {
                       setPhoneModalVisible(false);
                       navigation.navigate('CountrySelection', {
@@ -351,55 +466,62 @@ const Account = () => {
                       });
                     }}
                   >
-                    <Text style={styles.countryCodeText}>{selectedCountry.flag} {selectedCountry.code}</Text>
-                    <Icon name="chevron-down" size={16} color="#fff" style={{ marginLeft: 4 }} />
+                    <Text style={styles.countryPickerText}>{selectedCountry.flag} {selectedCountry.code}</Text>
+                    <Icon name="arrow-drop-down" size={18} color="#64748B" />
                   </TouchableOpacity>
+
                   <TextInput
-                    style={styles.phoneInput}
-                    placeholder="Enter mobile number"
-                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    style={styles.phoneInputBox}
+                    placeholder="Enter 10-digit number"
+                    placeholderTextColor="#94A3B8"
                     value={phoneNumber}
                     onChangeText={setPhoneNumber}
                     keyboardType="phone-pad"
                     maxLength={10}
+                    autoFocus
                   />
                 </View>
+
                 <TouchableOpacity
-                  style={styles.sendOtpButton}
+                  style={styles.modalPrimaryBtn}
                   onPress={handleSendOtp}
                   disabled={phoneLoading}
+                  activeOpacity={0.85}
                 >
                   <LinearGradient
-                    colors={['#49BFFD', '#62EFFF']}
+                    colors={['#7C3AED', '#4F46E5']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={styles.gradientBtn}
+                    style={styles.modalBtnGradient}
                   >
                     {phoneLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.sendOtpText}>Send OTP</Text>
+                      <Text style={styles.modalBtnText}>Send Verification Code</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
             ) : (
-              /* ====== OTP VERIFICATION STEP ====== */
               <View style={styles.modalBody}>
-                <Text style={styles.modalLabel}>
-                  We sent a 6-digit code to{'\n'}{selectedCountry.code}{phoneNumber}
+                <Text style={styles.modalSub}>
+                  We sent a 6-digit code to{' '}
+                  <Text style={{ fontWeight: '700', color: '#1E293B' }}>
+                    {selectedCountry.code} {phoneNumber}
+                  </Text>
                 </Text>
-                <View style={styles.otpContainer}>
+
+                <View style={styles.otpGrid}>
                   {otp.map((digit, index) => (
                     <TextInput
                       key={index}
                       ref={ref => { inputRefs.current[index] = ref; }}
                       style={[
-                        styles.otpInput,
-                        digit ? styles.otpInputFilled : styles.otpInputEmpty,
+                        styles.otpBox,
+                        digit ? styles.otpBoxFilled : styles.otpBoxEmpty,
                       ]}
                       value={digit}
-                      onChangeText={value => handleOtpChange(value, index)}
+                      onChangeText={val => handleOtpChange(val, index)}
                       onKeyPress={e => handleOtpKeyPress(e, index)}
                       keyboardType="numeric"
                       maxLength={1}
@@ -408,30 +530,36 @@ const Account = () => {
                     />
                   ))}
                 </View>
+
                 <TouchableOpacity
-                  style={styles.sendOtpButton}
+                  style={styles.modalPrimaryBtn}
                   onPress={handleVerifyOtp}
                   disabled={phoneLoading}
+                  activeOpacity={0.85}
                 >
                   <LinearGradient
-                    colors={['#49BFFD', '#62EFFF']}
+                    colors={['#7C3AED', '#4F46E5']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={styles.gradientBtn}
+                    style={styles.modalBtnGradient}
                   >
                     {phoneLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.sendOtpText}>Verify</Text>
+                      <Text style={styles.modalBtnText}>Confirm & Link Number</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
-                <View style={styles.resendRow}>
-                  <Text style={styles.resendLabel}>Didn't receive the code? </Text>
-                  <TouchableOpacity onPress={handleResendOtp} disabled={phoneLoading || resendSeconds > 0}>
-                    <Text style={[styles.resendLink, resendSeconds > 0 && { opacity: 0.5 }]}>
+
+                <View style={styles.resendContainer}>
+                  <Text style={styles.resendText}>Didn't receive code? </Text>
+                  <TouchableOpacity
+                    onPress={handleResendOtp}
+                    disabled={phoneLoading || resendSeconds > 0}
+                  >
+                    <Text style={[styles.resendAction, resendSeconds > 0 && { opacity: 0.6 }]}>
                       {resendSeconds > 0
-                        ? `Resend in 00:${String(resendSeconds).padStart(2, '0')}`
+                        ? `Resend in ${resendSeconds}s`
                         : 'Resend OTP'}
                     </Text>
                   </TouchableOpacity>
@@ -441,195 +569,382 @@ const Account = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </ScreenBackgroundView>
+    </View>
   );
 };
-
-export default Account;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  glowTopRight: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+  },
+  glowBottomLeft: {
+    position: 'absolute',
+    bottom: 100,
+    left: -60,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(79, 70, 229, 0.06)',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: width * 0.05,
-    paddingBottom: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  backIcon: {
-    width: 24,
-    height: 24,
-    tintColor: '#fff',
-    marginRight: 15,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
-  headerText: {
-    fontSize: RFValue(20),
+  headerTitleContainer: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
     color: '#0F172A',
-    fontWeight: '700',
-    flex: 1,
-    textAlign: 'center',
-    marginRight: 24, // balance back button
   },
-  card: {
+  securityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 3,
+    marginTop: 2,
+  },
+  securityPillText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  heroCard: {
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    elevation: 4,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  shieldIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  heroTextWrapper: {
+    flex: 1,
+  },
+  heroStatusLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: 'rgba(255, 255, 255, 0.75)',
+    letterSpacing: 1.2,
+    marginBottom: 2,
+  },
+  heroStatusTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  heroDescription: {
+    fontSize: 12.5,
+    color: 'rgba(255, 255, 255, 0.85)',
+    lineHeight: 18,
+    marginBottom: 18,
+  },
+  heroFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginHorizontal: width * 0.05,
-    borderRadius: 15,
-    paddingVertical: height * 0.02,
-    paddingHorizontal: width * 0.05,
-    marginBottom: height * 0.02,
-    elevation: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
   },
-  cardLeft: {
-    flexDirection: 'row',
+  metaItem: {
     alignItems: 'center',
     flex: 1,
-    marginRight: 10,
   },
-  icon: {
-    marginRight: 15,
+  metaLabel: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 2,
   },
-  cardText: {
-    fontSize: RFValue(16),
-    fontWeight: '500',
-    color: '#fff',
+  metaValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
-  status: {
-    fontSize: RFValue(14),
-    fontWeight: '600',
+  metaDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
-  verifyButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 5,
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
   },
-  verifyText: {
-    color: 'red',
-    fontSize: RFValue(14),
-    fontWeight: '600',
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
   },
-
-  // ====== Modal Styles ======
+  sectionSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 16,
+  },
+  authTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  tileIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  tileInfo: {
+    flex: 1,
+  },
+  tileTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  tileDesc: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 4,
+  },
+  verifiedText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  actionButton: {
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 14,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  preferenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  onlineDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: '#10B981',
+  },
   modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
-    backgroundColor: '#17096b',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    paddingBottom: 40,
-    minHeight: height * 0.45,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  modalHandleBar: {
+    width: 44,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#CBD5E1',
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 10,
   },
   modalTitle: {
-    fontSize: RFValue(18),
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalBody: {
-    padding: 25,
-    alignItems: 'center',
+    paddingTop: 6,
   },
-  modalLabel: {
-    fontSize: RFValue(14),
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-    marginBottom: 25,
-    lineHeight: RFValue(22),
+  modalSub: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 18,
+    lineHeight: 18,
   },
-  phoneInputContainer: {
+  phoneInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.3)',
-    marginBottom: 30,
-    paddingBottom: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 10,
+    marginBottom: 20,
   },
-  countryCodeBtn: {
+  countryPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRightWidth: 1,
+    borderRightColor: '#E2E8F0',
     marginRight: 10,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 8,
   },
-  countryCodeText: {
-    color: '#fff',
-    fontSize: RFValue(14),
+  countryPickerText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
   },
-  phoneInput: {
+  phoneInputBox: {
     flex: 1,
-    fontSize: RFValue(16),
-    color: '#fff',
-    paddingVertical: 5,
-  },
-  sendOtpButton: {
-    width: '100%',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  gradientBtn: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: 12,
-  },
-  sendOtpText: {
-    fontSize: RFValue(16),
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-
-  // OTP styles
-  otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 30,
-    width: '100%',
-  },
-  otpInput: {
-    width: width * 0.11,
-    height: width * 0.11,
-    borderRadius: width * 0.055,
-    fontSize: RFValue(18),
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  otpInputEmpty: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  otpInputFilled: {
-    backgroundColor: '#2d1b3d',
-    borderWidth: 2,
-    borderColor: '#8b5cf6',
-  },
-  resendRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  resendLabel: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: RFValue(13),
-  },
-  resendLink: {
-    color: '#8b5cf6',
-    fontSize: RFValue(13),
+    fontSize: 15,
+    color: '#0F172A',
     fontWeight: '600',
+    paddingVertical: 12,
+  },
+  modalPrimaryBtn: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  modalBtnGradient: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+  modalBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  otpGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    marginTop: 6,
+  },
+  otpBox: {
+    width: (width - 40 - 50) / 6,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+    backgroundColor: '#F8FAFC',
+  },
+  otpBoxFilled: {
+    borderColor: '#7C3AED',
+    backgroundColor: '#F5F3FF',
+  },
+  otpBoxEmpty: {
+    borderColor: '#E2E8F0',
+  },
+  resendContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+  resendText: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  resendAction: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7C3AED',
   },
 });
+
+export default Account;

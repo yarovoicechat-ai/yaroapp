@@ -45,18 +45,21 @@ We retain your personal data only for as long as is necessary for the purposes s
 
 **How to Request Account Deletion:**
 You have the right to request the deletion of your account and any associated personal data. 
-* **In-App Deletion:** You can delete your account directly within the App by navigating to Settings -> Account -> Delete Account.
-* **Email Request:** Alternatively, you can request account deletion by emailing us at the contact email below with the subject line "Account Deletion Request". We will process your request within 30 days and completely remove your identifiable data from our Firebase database.
+* **In-App Deletion:** You can delete your account directly within the App by navigating to Settings -> Delete Account. Deletion occurs immediately upon confirmation.
+* **Web Deletion Portal:** You can also submit a deletion request online via our public deletion page at: [https://yaroapp.in/delete-account](https://yaroapp.in/delete-account).
+* **Email Request:** Alternatively, you can request account deletion by emailing us at support@yaroapp.in with the subject line "Account Deletion Request". We will verify and process your request within 24 to 48 hours.
 
-*Note: As stated in Section 2, audio conversations are never recorded or stored, so there are no voice logs to delete.*
+*Note: As stated in Section 2, audio conversations are never recorded or stored, so there are no voice logs to delete. Necessary anonymized accounting transaction references are retained solely for tax and regulatory compliance.*
 
-## 7. Children's Privacy
-Our App is not intended for or targeted at children. We do not knowingly collect, solicit, or maintain personally identifiable information from anyone under the age of 13 (or under the age of 16 in certain European jurisdictions). 
-If you are under 13, please do not use this App or provide any personal information to us. If you are a parent or guardian and you are aware that your child has provided us with personal data without your consent, please contact us immediately. If we become aware that we have collected personal data from children without verification of parental consent, we will take immediate steps to remove that information from our servers.
+## 7. Age Policy & Child Safety (18+)
+Yaro is an adult social entertainment and voice chat application strictly intended for individuals aged 18 and older. We enforce an 18+ age requirement and do not permit registration by anyone under the age of 18. We do not knowingly collect, solicit, or maintain personally identifiable information from anyone under the age of 18.
+
+If you are under the age of 18, you are strictly prohibited from creating an account or using this App. If we become aware that an account has been created by an underage user, we immediately terminate the account and purge all associated personal information from our servers. Parents or guardians who suspect an underage account may contact us immediately at support@yaroapp.in.
 
 ## 8. Changes to This Privacy Policy
 We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Effective Date" at the top. You are advised to review this Privacy Policy periodically for any changes.
 
 ## 9. Contact Us
 If you have any questions about this Privacy Policy or your data, please contact us at:
-* **Email:** [Insert Developer/Support Email Here]
+* **Email:** support@yaroapp.in
+* **Website:** https://yaroapp.in

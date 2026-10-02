@@ -14,7 +14,7 @@ if (-not $connectedDevices) {
 foreach ($device in $connectedDevices) {
   Write-Host "Connecting Metro and local API on $device..."
   adb -s $device reverse tcp:8081 tcp:8081
-  adb -s $device reverse tcp:3001 tcp:3001
+  adb -s $device reverse tcp:3101 tcp:3101
 
   Write-Host "Launching app on $device..."
   adb -s $device shell am start -n yaro.vc.app/.MainActivity

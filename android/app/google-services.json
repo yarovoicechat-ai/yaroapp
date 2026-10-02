@@ -14,7 +14,31 @@
       },
       "oauth_client": [
         {
-          "client_id": "775252509237-aeqs5cd5viou7iv4r5chq8k15ccaq7ir.apps.googleusercontent.com",
+          "client_id": "775252509237-73rumup3i5kubqb1jrbhlr49qjn9ff3o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "yaro.vc.app",
+            "certificate_hash": "f4d9726854ec5eb66bede652eda22c719ac1ea4b"
+          }
+        },
+        {
+          "client_id": "775252509237-dlt02gvdfteh8olfb1opmnq4uulipupj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "yaro.vc.app",
+            "certificate_hash": "5b6307afc1ce813e382839eea1efeb940f8d5ad2"
+          }
+        },
+        {
+          "client_id": "775252509237-t0rqfg6d15s4s54l1lq5qv4qskbnkspq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "yaro.vc.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "775252509237-1us46o9umvvio0ngmbd4n1vhml8bfgdr.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,7 +51,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "775252509237-aeqs5cd5viou7iv4r5chq8k15ccaq7ir.apps.googleusercontent.com",
+              "client_id": "775252509237-1us46o9umvvio0ngmbd4n1vhml8bfgdr.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

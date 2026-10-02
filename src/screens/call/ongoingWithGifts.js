@@ -17,6 +17,8 @@ import {
   StatusBar,
   Animated,
   PanResponder,
+  Alert,
+  TextInput,
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -66,6 +68,85 @@ const OnGoing = ({ route, navigation }) => {
   const [callEnded, setCallEnded] = useState(false);
   const [endReason, setEndReason] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
+
+  // UGC Safety & Moderation (Report / Block on live call)
+  const [safetyModalVisible, setSafetyModalVisible] = useState(false);
+  const [safetyAction, setSafetyAction] = useState(null); // null | 'report'
+  const [reportReason, setReportReason] = useState('Inappropriate content');
+  const [reportDetails, setReportDetails] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
+
+  const REPORT_REASONS = [
+    'Inappropriate content',
+    'Harassment or bullying',
+    'Spam or scam',
+    'Underage user',
+    'Hate speech',
+    'Other',
+  ];
+
+  const targetParticipantId = route.params?.hostId || route.params?.userId || route.params?.targetUserId || route.params?.callerId || route.params?.receiverId;
+
+  const handleBlockFromCall = () => {
+    if (!targetParticipantId) {
+      AlertService.show('Notice', 'Unable to identify user ID to block.', 'warning');
+      return;
+    }
+
+    Alert.alert(
+      'Block User',
+      `Are you sure you want to block ${name || 'this user'}? This will immediately end the call and prevent them from contacting you again.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block & End Call',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await apiUtil.post(`/user/block-contact/${targetParticipantId}`);
+              if (res.data?.success) {
+                AlertService.show('Blocked', `${name || 'User'} has been blocked.`, 'success');
+              }
+            } catch (err) {
+              console.warn('Block user error:', err?.message);
+            } finally {
+              setSafetyModalVisible(false);
+              endCall();
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSendCallReport = async () => {
+    if (!targetParticipantId) {
+      AlertService.show('Notice', 'Unable to identify user ID to report.', 'warning');
+      return;
+    }
+
+    try {
+      setSubmittingReport(true);
+      const res = await apiUtil.post('/user/report', {
+        reportedUserId: targetParticipantId,
+        reason: reportReason,
+        description: reportDetails || reportReason,
+        reportedType: 'call',
+      });
+      if (res.data?.success) {
+        setSafetyModalVisible(false);
+        setReportDetails('');
+        setSafetyAction(null);
+        AlertService.show('Report Submitted', 'Thank you. Our moderation team will review this call.', 'success');
+      } else {
+        AlertService.show('Error', res.data?.message || 'Failed to submit report', 'error');
+      }
+    } catch (err) {
+      AlertService.show('Error', err.response?.data?.message || 'Failed to submit report', 'error');
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
 
   const agoraEngineRef = useRef(null);
   const isAgoraInitializingRef = useRef(false);
@@ -231,7 +312,7 @@ const OnGoing = ({ route, navigation }) => {
           // Never open Android settings during a live call. The foreground
           // service keeps audio alive even when the optional bubble is absent.
           FloatingCallBridge.startFloatingCall({
-            name: name || 'Meethi Voice',
+            name: name || 'Yaro Voice',
             image: (getUserAvatar(image || route.params, route?.params?.gender || 'neutral')?.uri || ''),
             isMuted,
             isSpeaker: isSpeakerOn,
@@ -271,7 +352,7 @@ const OnGoing = ({ route, navigation }) => {
           onExpand: restoreCallView,
         });
         FloatingCallBridge.startFloatingCall({
-          name: name || 'Meethi Voice',
+          name: name || 'Yaro Voice',
           image: (getUserAvatar(image || route.params, route?.params?.gender || 'neutral')?.uri || ''),
           isMuted,
           isSpeaker: isSpeakerOn,
@@ -321,7 +402,7 @@ const OnGoing = ({ route, navigation }) => {
           PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
           {
             title: 'Microphone Permission',
-            message: 'Meethi App needs access to your microphone so you can talk in voice calls.',
+            message: 'Yaro needs access to your microphone so you can talk in voice calls.',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',
@@ -922,7 +1003,7 @@ const OnGoing = ({ route, navigation }) => {
             onExpand: restoreCallView,
           });
           FloatingCallBridge.startFloatingCall({
-            name: name || 'Meethi Voice',
+            name: name || 'Yaro Voice',
             image: (getUserAvatar(image || route.params, route?.params?.gender || 'neutral')?.uri || ''),
             isMuted,
             isSpeaker: isSpeakerOn,
@@ -935,6 +1016,17 @@ const OnGoing = ({ route, navigation }) => {
       >
         <Icon name="chevron-down" size={23} color="#fff" />
         <Text style={styles.minimizeFloatingText}>MINIMIZE</Text>
+      </TouchableOpacity>
+
+      {/* Top Left: UGC Safety & Report Button */}
+      <TouchableOpacity
+        onPress={() => setSafetyModalVisible(true)}
+        activeOpacity={0.8}
+        style={[styles.safetyFloating, { top: topSafeInset + 10 }]}
+        accessibilityLabel="Safety and Moderation"
+      >
+        <Icon name="shield-alert-outline" size={17} color="#f43f5e" />
+        <Text style={styles.safetyFloatingText}>SAFETY</Text>
       </TouchableOpacity>
 
       {activeGift && (
@@ -971,6 +1063,11 @@ const OnGoing = ({ route, navigation }) => {
             )}
             <View style={styles.avatarNamePill}>
               <Text style={styles.avatarNameText} numberOfLines={1}>{user?.name || 'You'}</Text>
+              {Boolean(user?.userId || user?.meethiId || user?.id) && (
+                <Text style={styles.avatarIdText} numberOfLines={1}>
+                  {user?.role === 'host' ? 'Host' : 'ID'}: {user?.userId || user?.meethiId || user?.id}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -986,7 +1083,12 @@ const OnGoing = ({ route, navigation }) => {
               </View>
             )}
             <View style={styles.avatarNamePill}>
-              <Text style={styles.avatarNameText} numberOfLines={1}>{name || 'Meethi Voice Chat'}</Text>
+              <Text style={styles.avatarNameText} numberOfLines={1}>{name || 'Yaro Voice'}</Text>
+              {Boolean(route.params?.hostId || route.params?.userId || route.params?.meethiId || route.params?.callerId) && (
+                <Text style={styles.avatarIdText} numberOfLines={1}>
+                  ID: {route.params?.hostId || route.params?.userId || route.params?.meethiId || route.params?.callerId}
+                </Text>
+              )}
             </View>
           </View>
         </View>
@@ -1271,6 +1373,101 @@ const OnGoing = ({ route, navigation }) => {
           </LinearGradient>
         </View>
       </Modal>
+      {/* UGC Safety Moderation Modal */}
+      <Modal visible={safetyModalVisible} transparent animationType="fade">
+        <View style={styles.safetyModalOverlay}>
+          <View style={styles.safetyModalCard}>
+            <View style={styles.safetyModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Icon name="shield-check" size={22} color="#f43f5e" />
+                <Text style={styles.safetyModalTitle}>Safety & Moderation</Text>
+              </View>
+              <TouchableOpacity onPress={() => { setSafetyModalVisible(false); setSafetyAction(null); }}>
+                <Icon name="close" size={22} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            {safetyAction === 'report' ? (
+              <View style={{ marginTop: 12 }}>
+                <Text style={styles.safetySubtitle}>Why are you reporting this user?</Text>
+                <View style={styles.reasonsList}>
+                  {REPORT_REASONS.map((r) => (
+                    <TouchableOpacity
+                      key={r}
+                      style={[styles.reasonChip, reportReason === r && styles.reasonChipActive]}
+                      onPress={() => setReportReason(r)}
+                    >
+                      <Text style={[styles.reasonChipText, reportReason === r && styles.reasonChipTextActive]}>
+                        {r}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TextInput
+                  style={styles.safetyInput}
+                  placeholder="Additional details (optional)..."
+                  placeholderTextColor="#64748b"
+                  value={reportDetails}
+                  onChangeText={setReportDetails}
+                  multiline
+                  numberOfLines={3}
+                />
+
+                <View style={styles.safetyActionRow}>
+                  <TouchableOpacity
+                    style={styles.safetyCancelBtn}
+                    onPress={() => setSafetyAction(null)}
+                  >
+                    <Text style={styles.safetyCancelText}>Back</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.safetySubmitBtn}
+                    onPress={handleSendCallReport}
+                    disabled={submittingReport}
+                  >
+                    {submittingReport ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.safetySubmitText}>Submit Report</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={{ marginTop: 14 }}>
+                <Text style={styles.safetySubtitle}>
+                  Choose an action for this call with {name || 'user'}:
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.safetyOptionBtn}
+                  onPress={() => setSafetyAction('report')}
+                >
+                  <Icon name="flag-outline" size={22} color="#f59e0b" />
+                  <View style={{ marginLeft: 12, flex: 1 }}>
+                    <Text style={styles.safetyOptionTitle}>Report User</Text>
+                    <Text style={styles.safetyOptionSub}>Report offensive behavior, underage user, or policy violations</Text>
+                  </View>
+                  <Icon name="chevron-right" size={20} color="#64748b" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.safetyOptionBtn, { borderColor: 'rgba(244, 63, 94, 0.3)', backgroundColor: 'rgba(244, 63, 94, 0.08)' }]}
+                  onPress={handleBlockFromCall}
+                >
+                  <Icon name="account-cancel-outline" size={22} color="#f43f5e" />
+                  <View style={{ marginLeft: 12, flex: 1 }}>
+                    <Text style={[styles.safetyOptionTitle, { color: '#f43f5e' }]}>Block User & End Call</Text>
+                    <Text style={styles.safetyOptionSub}>Immediately disconnect and block all future interactions</Text>
+                  </View>
+                  <Icon name="chevron-right" size={20} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 };
@@ -1306,6 +1503,146 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
     marginLeft: 2,
+  },
+  safetyFloating: {
+    position: 'absolute',
+    left: WP(4),
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(244, 63, 94, 0.2)',
+    paddingHorizontal: WP(3),
+    paddingVertical: HP(0.8),
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 63, 94, 0.45)',
+    zIndex: 99,
+  },
+  safetyFloatingText: {
+    color: '#fca5a5',
+    fontSize: RF(10),
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginLeft: 4,
+  },
+  safetyModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(5, 2, 18, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: WP(5),
+  },
+  safetyModalCard: {
+    width: '100%',
+    backgroundColor: '#130d24',
+    borderRadius: 24,
+    padding: WP(5),
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    elevation: 20,
+  },
+  safetyModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: HP(1),
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  safetyModalTitle: {
+    color: '#ffffff',
+    fontSize: RF(15),
+    fontWeight: '700',
+  },
+  safetySubtitle: {
+    color: '#94a3b8',
+    fontSize: RF(12),
+    lineHeight: 18,
+    marginBottom: HP(1.5),
+  },
+  safetyOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: WP(3.5),
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: HP(1.5),
+  },
+  safetyOptionTitle: {
+    color: '#ffffff',
+    fontSize: RF(13),
+    fontWeight: '600',
+  },
+  safetyOptionSub: {
+    color: '#64748b',
+    fontSize: RF(10.5),
+    marginTop: 2,
+  },
+  reasonsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: HP(1.5),
+  },
+  reasonChip: {
+    paddingHorizontal: WP(3),
+    paddingVertical: HP(0.8),
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  reasonChipActive: {
+    backgroundColor: 'rgba(244, 63, 94, 0.25)',
+    borderColor: '#f43f5e',
+  },
+  reasonChipText: {
+    color: '#94a3b8',
+    fontSize: RF(11),
+  },
+  reasonChipTextActive: {
+    color: '#fca5a5',
+    fontWeight: '700',
+  },
+  safetyInput: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 14,
+    padding: WP(3),
+    color: '#ffffff',
+    fontSize: RF(12),
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    minHeight: HP(8),
+    textAlignVertical: 'top',
+    marginBottom: HP(2),
+  },
+  safetyActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  safetyCancelBtn: {
+    paddingVertical: HP(1),
+    paddingHorizontal: WP(4),
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  safetyCancelText: {
+    color: '#94a3b8',
+    fontSize: RF(12),
+    fontWeight: '600',
+  },
+  safetySubmitBtn: {
+    paddingVertical: HP(1),
+    paddingHorizontal: WP(5),
+    borderRadius: 12,
+    backgroundColor: '#f43f5e',
+  },
+  safetySubmitText: {
+    color: '#ffffff',
+    fontSize: RF(12),
+    fontWeight: '700',
   },
   ambientBackdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -1416,6 +1753,13 @@ const styles = StyleSheet.create({
     fontSize: RF(11),
     fontWeight: '600',
     textAlign: 'center',
+  },
+  avatarIdText: {
+    color: '#67e8f9',
+    fontSize: RF(9.5),
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 1,
   },
   timerText: {
     fontSize: RF(24),

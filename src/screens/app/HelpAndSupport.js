@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Linking,
-  View as ScreenBackgroundView,
-  StatusBar as ScreenBackgroundStatusBar,
-  StyleSheet as ScreenBackgroundStyleSheet
+  StatusBar,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -31,16 +29,17 @@ import { useTranslation } from 'react-i18next';
 import AnimatedTitleLine from '../../components/AnimatedTitleLine';
 import { AlertService } from '../../utils/AlertService';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const HelpAndSupport = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
-  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 40);
+  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 36);
   const { t } = useTranslation();
-  
-  // Toggle different views
+  const chatScrollRef = useRef(null);
+
+  // Toggle views
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [showHelpBot, setShowHelpBot] = useState(false);
   const [showTicketHistory, setShowTicketHistory] = useState(false);
@@ -51,13 +50,17 @@ const HelpAndSupport = () => {
   const [replyText, setReplyText] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
 
-  // Ticket history lists
+  // Ticket history
   const [ticketsList, setTicketsList] = useState([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
 
   // Chatbot states
   const [chatbotMessages, setChatbotMessages] = useState([
-    { id: 'welcome', sender: 'bot', text: 'Hello! I am the Meethi Chat Assistant. Choose a topic below or submit a support ticket.' },
+    {
+      id: 'welcome',
+      sender: 'bot',
+      text: 'Hello! Welcome to Yaro Assistant. Select a common issue below or submit a support ticket.',
+    },
   ]);
   const [botInputValue, setBotInputValue] = useState('');
   const [isBotTyping, setIsBotTyping] = useState(false);
@@ -70,19 +73,58 @@ const HelpAndSupport = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const reasons = ['Add Coin Issue', 'Call Issue', 'OTP / Login Issue', 'Face Verification Issue', 'KYC Verification Issue', 'User Report', 'Host Report', 'Withdraw Issue', 'Bank Account Issue', 'Notification Issue', 'Other'];
+  const reasons = [
+    'Add Diamonds / Beans Issue',
+    'Call Issue',
+    'OTP / Login Issue',
+    'Face Verification Issue',
+    'KYC Verification Issue',
+    'User Report',
+    'Host Report',
+    'Withdraw Issue',
+    'Bank Account Issue',
+    'Notification Issue',
+    'Other',
+  ];
+
+  const faqBotData = {
+    'How to use Yaro Voice Chat?':
+      'Open the Home screen, select an online host and tap Call. Calls use 100 diamonds per started minute. Keep a stable internet connection and allow microphone permission.',
+    'How to earn coins and diamonds?':
+      'Users purchase diamonds for calls and gifts. Hosts earn coins from eligible call time according to their host level and supported rewards.',
+    'How to withdraw my earnings?':
+      'Go to Profile > Withdrawal, enter coins and choose Bank or UPI. You will see 5% platform fee and final net payout.',
+    'Account & Verification':
+      'Face Verification requires a live selfie for hosts. KYC is for bank payouts using PAN, Voter ID, Driving Licence, or Passport.',
+    'Calls & Connectivity Issues':
+      'Ensure high speed 4G/5G or Wi-Fi with microphone permissions enabled.',
+    'Gifts & Transactions':
+      'Purchase diamonds via wallet. For missing transactions, provide transaction ID in a ticket.',
+    'Report a User or Problem':
+      'Submit a ticket with reason, detailed message, and screenshot.',
+  };
+
+  const botQuestions = [
+    'How to use Yaro Voice Chat?',
+    'How to earn coins and diamonds?',
+    'How to withdraw my earnings?',
+    'Account & Verification',
+    'Calls & Connectivity Issues',
+    'Gifts & Transactions',
+    'Report a User or Problem',
+  ];
 
   const handleEmailSupport = async () => {
-    const emailUrl = 'mailto:support@meethichat.live';
+    const emailUrl = 'mailto:support@yaroapp.in';
     try {
       const supported = await Linking.canOpenURL(emailUrl);
       if (supported) {
         await Linking.openURL(emailUrl);
       } else {
-        AlertService.show('Email Support', 'Please send an email to support@meethichat.live', 'info');
+        AlertService.show('Email Support', 'Please email us at support@yaroapp.in', 'info');
       }
-    } catch (err) {
-      AlertService.show('Email Support', 'Please send an email to support@meethichat.live', 'info');
+    } catch {
+      AlertService.show('Email Support', 'Please email us at support@yaroapp.in', 'info');
     }
   };
 
@@ -96,8 +138,11 @@ const HelpAndSupport = () => {
         setSelectedFile(res[0]);
       }
     } catch (err) {
-      if (err.code !== 'CANCELED' && err.code !== 'DOCUMENT_PICKER_CANCELED' && err.code !== 'OPERATION_CANCELED') {
-        console.log('DocumentPicker Error', err);
+      if (
+        err.code !== 'CANCELED' &&
+        err.code !== 'DOCUMENT_PICKER_CANCELED' &&
+        err.code !== 'OPERATION_CANCELED'
+      ) {
         AlertService.show('Error', 'Failed to pick file', 'error');
       }
     }
@@ -134,46 +179,38 @@ const HelpAndSupport = () => {
 
       const res = await apiUtil.post('/help', payload);
       if (res.data.success) {
-        AlertService.show('Success', 'Your request has been submitted successfully!', 'success', [
-          { text: 'OK', onPress: () => {
-            setShowTicketForm(false);
-            setQuery('');
-            setReason('None');
-            setSelectedFile(null);
-          }}
-        ]);
+        AlertService.show(
+          'Success',
+          'Your support ticket has been submitted. Our team will get back to you shortly.',
+          'success',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setShowTicketForm(false);
+                setQuery('');
+                setReason('None');
+                setSelectedFile(null);
+              },
+            },
+          ]
+        );
       } else {
         AlertService.show('Error', res.data.message || 'Failed to submit request', 'error');
       }
     } catch (err) {
       console.log('Submit Error', err);
-      AlertService.show('Error', getApiErrorMessage(err, 'Ticket submit nahi ho paaya. Dobara try karein.'), 'error');
+      AlertService.show(
+        'Error',
+        getApiErrorMessage(err, 'Failed to submit ticket. Please try again.'),
+        'error'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const faqBotData = {
-    'How to use Meethi Voice Chat?': 'Open the Home screen, select an online host and tap Call. Calls use 100 diamonds per started minute. Keep a stable internet connection and allow microphone permission.',
-    'How to earn coins and diamonds?': 'Users purchase diamonds for calls and gifts. Hosts earn coins from eligible call time according to their host level and from supported rewards.',
-    'How to withdraw my earnings?': 'Go to Profile > Withdrawal, enter coins and choose Bank or UPI. Before confirmation you will see the withdrawal amount, 5% platform fee, coins deducted and final amount you will receive.',
-    'Account & Verification': 'Go to Profile > Verification. Face Verification requires a fresh live selfie. KYC is a separate manual process using PAN, Voter ID, Driving Licence, Passport or another accepted government ID. Aadhaar Face Auth is not used.',
-    'Calls & Connectivity Issues': 'Use a stable Wi-Fi or 4G/5G connection and allow microphone permission. If a call duration or balance looks wrong, submit a ticket with call time, other user ID and a screenshot.',
-    'Gifts & Transactions': 'Buy diamonds using the plus button near your balance. During a call, tap the gift icon. For a missing transaction, submit a ticket with the date, amount and transaction reference.',
-    'Report a User or Problem': 'Open Help & Support > Submit a Ticket, choose the correct reason, describe the issue and attach a screenshot if available. Replies appear in Ticket History.',
-  };
-
-  const botQuestions = [
-    'How to use Meethi Voice Chat?',
-    'How to earn coins and diamonds?',
-    'How to withdraw my earnings?',
-    'Account & Verification',
-    'Calls & Connectivity Issues',
-    'Gifts & Transactions',
-    'Report a User or Problem'
-  ];
-
-  const handleSendBotMessage = (text) => {
+  const handleSendBotMessage = text => {
     if (!text.trim()) return;
 
     const userMsg = {
@@ -188,14 +225,16 @@ const HelpAndSupport = () => {
 
     setTimeout(() => {
       setIsBotTyping(false);
-      const replyText = faqBotData[text] || "Please choose one of the listed topics or submit a ticket so our support team can help you.";
+      const reply =
+        faqBotData[text] ||
+        'Thank you for reaching out! You can pick one of the topics below or submit a ticket to talk to our human support team.';
       const botMsg = {
         id: `bot-${Date.now()}`,
         sender: 'bot',
-        text: replyText,
+        text: reply,
       };
       setChatbotMessages(prev => [...prev, botMsg]);
-    }, 800);
+    }, 600);
   };
 
   const fetchTickets = async () => {
@@ -207,13 +246,13 @@ const HelpAndSupport = () => {
       }
     } catch (err) {
       console.log('Error fetching user tickets:', err);
-      AlertService.show('Unable to load tickets', getApiErrorMessage(err), 'error');
+      AlertService.show('Error', getApiErrorMessage(err), 'error');
     } finally {
       setLoadingTickets(false);
     }
   };
 
-  const handleOpenTicketDetail = (ticket) => {
+  const handleOpenTicketDetail = ticket => {
     setSelectedTicket(ticket);
     setShowTicketDetail(true);
     setReplyText('');
@@ -223,12 +262,13 @@ const HelpAndSupport = () => {
     if (!replyText.trim()) return;
     setReplyLoading(true);
     try {
-      const res = await apiUtil.post(`/help/${selectedTicket._id}/reply`, { message: replyText.trim() });
+      const res = await apiUtil.post(`/help/${selectedTicket._id}/reply`, {
+        message: replyText.trim(),
+      });
       if (res.data.success) {
         const updated = res.data.data;
         setSelectedTicket(updated);
-        // Update in list too
-        setTicketsList(prev => prev.map(t => t._id === updated._id ? updated : t));
+        setTicketsList(prev => prev.map(t => (t._id === updated._id ? updated : t)));
         setReplyText('');
         AlertService.show('Sent', 'Your reply has been submitted.', 'success');
       } else {
@@ -236,7 +276,7 @@ const HelpAndSupport = () => {
       }
     } catch (err) {
       console.log('Reply error:', err);
-      AlertService.show('Error', getApiErrorMessage(err, 'Reply send nahi ho paaya.'), 'error');
+      AlertService.show('Error', getApiErrorMessage(err, 'Failed to send reply.'), 'error');
     } finally {
       setReplyLoading(false);
     }
@@ -254,457 +294,451 @@ const HelpAndSupport = () => {
     }
   };
 
-  // Rendering of default FAQ Landing View
+  const getStatusColor = status => {
+    if (status === 'resolved') return '#10B981';
+    if (status === 'rejected') return '#EF4444';
+    if (status === 'reopened') return '#F59E0B';
+    return '#6366F1';
+  };
+
+  const getStatusLabel = status => {
+    if (status === 'resolved') return 'Resolved';
+    if (status === 'rejected') return 'Rejected';
+    if (status === 'reopened') return 'Reopened';
+    return 'Pending';
+  };
+
+  // 1. Landing View
   const renderLandingView = () => {
     const faqs = [
-      { q: 'How to use Meethi Voice Chat?', icon: 'person-outline', color: '#a855f7' },
-      { q: 'How to earn coins and diamonds?', icon: 'shield-checkmark-outline', color: '#3b82f6' },
-      { q: 'How to withdraw my earnings?', icon: 'wallet-outline', color: '#f59e0b' },
-      { q: 'Account & Verification', icon: 'shield-outline', color: '#10b981' },
-      { q: 'Calls & Connectivity Issues', icon: 'call-outline', color: '#ec4899' },
-      { q: 'Gifts & Transactions', icon: 'gift-outline', color: '#8b5cf6' },
-      { q: 'Report a User or Problem', icon: 'alert-circle-outline', color: '#06b6d4' }
+      { q: 'How to use Yaro Voice Chat?', icon: 'mic-outline', color: '#8B5CF6' },
+      { q: 'How to earn coins and diamonds?', icon: 'diamond-outline', color: '#06B6D4' },
+      { q: 'How to withdraw my earnings?', icon: 'wallet-outline', color: '#10B981' },
+      { q: 'Account & Verification', icon: 'shield-checkmark-outline', color: '#EC4899' },
+      { q: 'Calls & Connectivity Issues', icon: 'wifi-outline', color: '#F59E0B' },
+      { q: 'Gifts & Transactions', icon: 'gift-outline', color: '#3B82F6' },
+      { q: 'Report a User or Problem', icon: 'alert-circle-outline', color: '#EF4444' },
     ];
 
     return (
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]} showsVerticalScrollIndicator={false}>
-        {/* Support Header Card Banner with Headphones 3D Graphic */}
-        <View style={styles.bannerWrapper}>
-          <LinearGradient
-            colors={['#03dcfe', '#d946ef']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.bannerBorder}
-          >
-            <LinearGradient
-              colors={['rgba(23, 11, 78, 0.9)', 'rgba(7, 6, 40, 0.9)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.bannerBody}
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero Card */}
+        <LinearGradient
+          colors={['#7C3AED', '#4F46E5']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroBadge}>
+              <Icon name="support-agent" size={14} color="#FFFFFF" />
+              <Text style={styles.heroBadgeText}>24/7 SUPPORT</Text>
+            </View>
+            <View style={styles.liveIndicator}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>Live</Text>
+            </View>
+          </View>
+
+          <Text style={styles.heroTitle}>How can we help you today?</Text>
+          <Text style={styles.heroSub}>
+            Get immediate answers or connect directly with our support specialists.
+          </Text>
+
+          {/* Quick Action Buttons */}
+          <View style={styles.quickActionRow}>
+            <TouchableOpacity
+              style={styles.actionPill}
+              activeOpacity={0.8}
+              onPress={() => setShowHelpBot(true)}
             >
-              <View style={styles.bannerLeft}>
-                <Text style={styles.bannerTitle}>We're Here to Help You!</Text>
-                <Text style={styles.bannerSubtitle}>
-                  Facing an issue? Get quick solutions or contact our support team.
-                </Text>
-                
-                {/* Quick actions buttons row */}
-                <View style={styles.bannerActions}>
-                  <TouchableOpacity
-                    style={styles.chatSupportBtn}
-                    activeOpacity={0.8}
-                    onPress={() => setShowHelpBot(true)}
-                  >
-                    <IonIcon name="chatbubble-ellipses" size={14} color="#fff" style={{ marginRight: 4 }} />
-                    <Text style={styles.btnText}>Chat with Support</Text>
-                  </TouchableOpacity>
+              <IonIcon name="sparkles" size={15} color="#7C3AED" />
+              <Text style={styles.actionPillText}>AI Assistant</Text>
+            </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.emailBtn} activeOpacity={0.8} onPress={handleEmailSupport}>
-                    <IonIcon name="mail-outline" size={14} color="#fff" style={{ marginRight: 4 }} />
-                    <Text style={styles.btnText}>Email Us</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+            <TouchableOpacity
+              style={styles.actionPill}
+              activeOpacity={0.8}
+              onPress={() => setShowTicketForm(true)}
+            >
+              <Icon name="add-task" size={15} color="#7C3AED" />
+              <Text style={styles.actionPillText}>Submit Ticket</Text>
+            </TouchableOpacity>
 
-              {/* Headset 3D/Glowing vector representation */}
-              <View style={styles.bannerRight}>
-                <View style={styles.headsetCircleGlow}>
-                  <IonIcon name="headset" size={48} color="#a855f7" />
-                  <View style={styles.bubbleDot1} />
-                  <View style={styles.bubbleDot2} />
-                  <View style={styles.bubbleDot3} />
-                </View>
-              </View>
-            </LinearGradient>
-          </LinearGradient>
-        </View>
+            <TouchableOpacity
+              style={styles.actionPill}
+              activeOpacity={0.8}
+              onPress={() => {
+                setShowTicketHistory(true);
+                fetchTickets();
+              }}
+            >
+              <Icon name="history" size={15} color="#7C3AED" />
+              <Text style={styles.actionPillText}>My Tickets</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
 
-        {/* FAQ Header Row */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeader}>Frequently Asked Questions</Text>
-        </View>
+        {/* Popular Topics Section */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionHeading}>Frequently Asked Questions</Text>
+          <Text style={styles.sectionSub}>Instant answers to popular topics</Text>
 
-        {/* FAQs List Container Card */}
-        <View style={styles.faqsCard}>
           {faqs.map((faq, idx) => (
             <TouchableOpacity
               key={idx}
-              style={styles.faqRow}
+              style={[styles.faqRow, idx === faqs.length - 1 && { borderBottomWidth: 0 }]}
               activeOpacity={0.7}
               onPress={() => {
                 setShowHelpBot(true);
                 handleSendBotMessage(faq.q);
               }}
             >
-              <View style={styles.faqLeft}>
-                <View style={[styles.faqIconCircle, { backgroundColor: `${faq.color}15`, borderColor: `${faq.color}30` }]}>
-                  <IonIcon name={faq.icon} size={15} color={faq.color} />
-                </View>
-                <Text style={styles.faqQuestion}>{faq.q}</Text>
+              <View style={[styles.faqIconBox, { backgroundColor: `${faq.color}15` }]}>
+                <IonIcon name={faq.icon} size={18} color={faq.color} />
               </View>
-              <IonIcon name="chevron-forward" size={14} color="rgba(255, 255, 255, 0.3)" />
+              <Text style={styles.faqTitle}>{faq.q}</Text>
+              <IonIcon name="chevron-forward" size={16} color="#94A3B8" />
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Support options section */}
-        <Text style={styles.sectionHeader}>Other Support Options</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.supportOptionsScroll}
-        >
-          {/* Email Support Box */}
-          <TouchableOpacity style={styles.supportOptionBox} activeOpacity={0.8} onPress={handleEmailSupport}>
-            <View style={[styles.optionIconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.25)' }]}>
-              <IonIcon name="mail-unread-outline" size={18} color="#3b82f6" />
-            </View>
-            <Text style={styles.optionTitle}>Email Support</Text>
-            <Text style={styles.optionDesc} numberOfLines={1}>support@meethichat.live</Text>
-            <Text style={styles.optionCaption}>We will reply within 24 hrs</Text>
-            <IonIcon name="chevron-forward" size={10} color="#3b82f6" style={styles.optionArrow} />
-          </TouchableOpacity>
+        {/* Contact Channels Card */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionHeading}>Direct Support Channels</Text>
+          <Text style={styles.sectionSub}>Alternative ways to reach our care team</Text>
 
-          {/* Submit a Ticket Box */}
           <TouchableOpacity
-            style={styles.supportOptionBox}
-            activeOpacity={0.85}
-            onPress={() => setShowTicketForm(true)}
+            style={styles.channelRow}
+            activeOpacity={0.7}
+            onPress={handleEmailSupport}
           >
-            <View style={[styles.optionIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.25)' }]}>
-              <IonIcon name="document-text-outline" size={18} color="#10b981" />
+            <View style={[styles.faqIconBox, { backgroundColor: '#EEF2FF' }]}>
+              <Icon name="email" size={20} color="#4F46E5" />
             </View>
-            <Text style={styles.optionTitle}>Submit a Ticket</Text>
-            <Text style={styles.optionDesc}>Raise a ticket and our team will get back to you</Text>
-            <IonIcon name="chevron-forward" size={10} color="#10b981" style={styles.optionArrow} />
+            <View style={styles.channelInfo}>
+              <Text style={styles.channelTitle}>Email Care Team</Text>
+              <Text style={styles.channelSub}>support@yaroapp.in • Avg response &lt; 24h</Text>
+            </View>
+            <IonIcon name="open-outline" size={16} color="#94A3B8" />
           </TouchableOpacity>
-
-          {/* View Submitted Tickets Box */}
-          <TouchableOpacity
-            style={styles.supportOptionBox}
-            activeOpacity={0.85}
-            onPress={() => {
-              setShowTicketHistory(true);
-              fetchTickets();
-            }}
-          >
-            <View style={[styles.optionIconCircle, { backgroundColor: 'rgba(124, 77, 255, 0.1)', borderColor: 'rgba(124, 77, 255, 0.25)' }]}>
-              <IonIcon name="list-outline" size={18} color="#7c4dff" />
-            </View>
-            <Text style={styles.optionTitle}>Ticket History</Text>
-            <Text style={styles.optionDesc}>View responses for your submitted tickets</Text>
-            <IonIcon name="chevron-forward" size={10} color="#7c4dff" style={styles.optionArrow} />
-          </TouchableOpacity>
-        </ScrollView>
-
-        {/* Support Hours Card */}
-        <View style={styles.hoursCard}>
-          <View style={styles.hoursLeft}>
-            <View style={styles.clockCircle}>
-              <IonIcon name="time-outline" size={18} color="#a855f7" />
-            </View>
-            <View style={styles.hoursDetails}>
-              <Text style={styles.hoursTitle}>Support Hours</Text>
-              <Text style={styles.hoursDesc}>We are available 24/7 to assist you.</Text>
-            </View>
-          </View>
-          <View style={styles.hoursPill}>
-            <Text style={styles.hoursPillText}>24/7</Text>
-          </View>
         </View>
       </ScrollView>
     );
   };
 
-  // Rendering of Raise Ticket Form View
+  // 2. Ticket Form View
   const renderTicketForm = () => {
     return (
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]} showsVerticalScrollIndicator={false}>
-        {/* Ticket Form Heading */}
-        <View style={styles.formHeaderRow}>
-          <TouchableOpacity style={styles.formBackBtn} onPress={() => setShowTicketForm(false)}>
-            <IonIcon name="arrow-back" size={16} color="#03dcfe" style={{ marginRight: 4 }} />
-            <Text style={styles.formBackText}>Back to Support</Text>
-          </TouchableOpacity>
-          <Text style={styles.formTitle}>Submit a Ticket</Text>
-        </View>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionHeading}>Create Support Ticket</Text>
+          <Text style={styles.sectionSub}>Describe your query with full details</Text>
 
-        {/* Reason Selector Dropdown */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Select Reason</Text>
-          <TouchableOpacity
-            style={[styles.dropdownContainer, showDropdown && styles.activeBorder]}
-            onPress={() => setShowDropdown(!showDropdown)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.dropdownText}>{reason}</Text>
-            <Icon name={showDropdown ? "keyboard-arrow-up" : "keyboard-arrow-down"} size={22} color="#03dcfe" />
-          </TouchableOpacity>
+          {/* Reason Selector */}
+          <View style={styles.formGroup}>
+            <Text style={styles.inputLabel}>Issue Category</Text>
+            <TouchableOpacity
+              style={[styles.dropdownTrigger, showDropdown && styles.dropdownTriggerActive]}
+              onPress={() => setShowDropdown(!showDropdown)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.dropdownValue, reason === 'None' && { color: '#94A3B8' }]}>
+                {reason === 'None' ? 'Select an issue category...' : reason}
+              </Text>
+              <Icon
+                name={showDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                size={22}
+                color="#64748B"
+              />
+            </TouchableOpacity>
 
-          {showDropdown && (
-            <View style={styles.dropdownList}>
-              {reasons.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    setReason(item);
-                    setShowDropdown(false);
-                  }}
-                >
-                  <Text style={styles.dropdownItemText}>{item}</Text>
-                </TouchableOpacity>
-              ))}
+            {showDropdown && (
+              <View style={styles.dropdownMenu}>
+                {reasons.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.dropdownOption,
+                      reason === item && styles.dropdownOptionSelected,
+                    ]}
+                    onPress={() => {
+                      setReason(item);
+                      setShowDropdown(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownOptionText,
+                        reason === item && { color: '#7C3AED', fontWeight: '800' },
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                    {reason === item && <Icon name="check" size={16} color="#7C3AED" />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Custom Reason */}
+          {reason === 'Other' && (
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>Specify Reason</Text>
+              <TextInput
+                style={styles.textInputBox}
+                placeholder="Enter specific problem..."
+                placeholderTextColor="#94A3B8"
+                value={otherReason}
+                onChangeText={setOtherReason}
+              />
             </View>
           )}
-        </View>
 
-        {/* Custom Reason Specify */}
-        {reason === 'Other' && (
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Specify Reason</Text>
+          {/* Message Area */}
+          <View style={styles.formGroup}>
+            <View style={styles.labelCountRow}>
+              <Text style={styles.inputLabel}>Describe the issue</Text>
+              <Text style={styles.countText}>{query.length}/300</Text>
+            </View>
             <TextInput
-              style={styles.textInput}
-              placeholder="Enter details of your reason..."
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              value={otherReason}
-              onChangeText={setOtherReason}
-            />
-          </View>
-        )}
-
-        {/* Ticket Query Content */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Describe your issue</Text>
-          <View style={styles.textAreaContainer}>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Please type details here..."
-              placeholderTextColor="rgba(255,255,255,0.3)"
+              style={styles.textAreaBox}
+              placeholder="Explain clearly what happened, including relevant user IDs or transaction times..."
+              placeholderTextColor="#94A3B8"
               multiline
-              numberOfLines={6}
+              numberOfLines={5}
               value={query}
               onChangeText={setQuery}
               textAlignVertical="top"
               maxLength={300}
             />
-            <Text style={styles.charCounter}>{query.length}/300</Text>
           </View>
-        </View>
 
-        {/* Attachments Section */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Attachments (Optional)</Text>
+          {/* Attachment */}
+          <View style={styles.formGroup}>
+            <Text style={styles.inputLabel}>Screenshot / Attachment (Optional)</Text>
+            <TouchableOpacity
+              style={[styles.attachBox, selectedFile && styles.attachBoxActive]}
+              onPress={handleFilePick}
+              activeOpacity={0.8}
+            >
+              <Icon
+                name={selectedFile ? 'check-circle' : 'cloud-upload'}
+                size={28}
+                color={selectedFile ? '#10B981' : '#7C3AED'}
+              />
+              <Text style={styles.attachTitle} numberOfLines={1}>
+                {selectedFile ? selectedFile.name : 'Upload Screenshot'}
+              </Text>
+              <Text style={styles.attachSub}>Supports JPG, PNG, WEBP, MP4 (max 5MB)</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Submit Button */}
           <TouchableOpacity
-            style={[styles.uploadButton, selectedFile && styles.uploadButtonActive]}
-            onPress={handleFilePick}
-            activeOpacity={0.8}
+            style={styles.primaryButton}
+            onPress={handleSubmit}
+            disabled={loading}
+            activeOpacity={0.85}
           >
-            <Icon
-              name={selectedFile ? "check-circle" : "cloud-upload"}
-              size={32}
-              color={selectedFile ? "#10b981" : "#03dcfe"}
-            />
-            <Text style={styles.uploadText}>
-              {selectedFile ? selectedFile.name : 'Upload Screenshot / Video'}
-            </Text>
-            <Text style={styles.uploadSubtext}>Supports JPG, PNG, MP4 up to 5MB</Text>
+            <LinearGradient
+              colors={['#7C3AED', '#4F46E5']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.primaryButtonGradient}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Icon name="send" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.primaryButtonText}>Submit Ticket</Text>
+                </>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-
-        {/* Submit Ticket Capsule Button */}
-        <TouchableOpacity
-          style={styles.submitBtn}
-          onPress={handleSubmit}
-          activeOpacity={0.8}
-          disabled={loading}
-        >
-          <LinearGradient
-            colors={['#03dcfe', '#2911fe']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.submitGradient}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Text style={styles.submitBtnText}>Submit to Support</Text>
-                <IonIcon name="send-outline" size={14} color="#fff" style={{ marginLeft: 6 }} />
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
       </ScrollView>
     );
   };
 
-  // Rendering of FAQ Helper Chatbot Screen
+  // 3. Chatbot View
   const renderHelpBotView = () => {
     return (
-      <View style={styles.chatBotContainer}>
-        {/* Chat log */}
+      <View style={styles.chatContainer}>
+        {/* Banner */}
+        <View style={styles.chatNoticeBanner}>
+          <IonIcon name="sparkles" size={18} color="#7C3AED" />
+          <Text style={styles.chatNoticeText}>
+            Yaro AI answers instantly. Tap suggested topics below.
+          </Text>
+        </View>
+
+        {/* Message Stream */}
         <ScrollView
-          style={styles.chatMessagesScroll}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          ref={(ref) => { this.scrollView = ref; }}
-          onContentSizeChange={() => this.scrollView?.scrollToEnd({ animated: true })}
+          style={styles.chatStream}
+          contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+          ref={chatScrollRef}
+          onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}
         >
-          {chatbotMessages.map((msg) => {
+          {chatbotMessages.map(msg => {
             const isBot = msg.sender === 'bot';
             return (
-              <View key={msg.id} style={[styles.chatRow, isBot ? styles.chatRowBot : styles.chatRowUser]}>
+              <View
+                key={msg.id}
+                style={[styles.chatBubbleRow, isBot ? styles.chatRowLeft : styles.chatRowRight]}
+              >
                 {isBot && (
                   <View style={styles.botAvatarBadge}>
-                    <IonIcon name="logo-android" size={14} color="#fff" />
+                    <Icon name="smart-toy" size={14} color="#FFFFFF" />
                   </View>
                 )}
-                <View style={[styles.chatBubble, isBot ? styles.chatBubbleBot : styles.chatBubbleUser]}>
-                  <Text style={styles.chatText}>{msg.text}</Text>
+                <View
+                  style={[
+                    styles.chatBubble,
+                    isBot ? styles.chatBubbleBot : styles.chatBubbleUser,
+                  ]}
+                >
+                  <Text
+                    style={[styles.chatMessageText, !isBot && { color: '#FFFFFF' }]}
+                  >
+                    {msg.text}
+                  </Text>
                 </View>
               </View>
             );
           })}
           {isBotTyping && (
-            <View style={[styles.chatRow, styles.chatRowBot]}>
+            <View style={[styles.chatBubbleRow, styles.chatRowLeft]}>
               <View style={styles.botAvatarBadge}>
-                <IonIcon name="logo-android" size={14} color="#fff" />
+                <Icon name="smart-toy" size={14} color="#FFFFFF" />
               </View>
               <View style={[styles.chatBubble, styles.chatBubbleBot, { paddingVertical: 10 }]}>
-                <ActivityIndicator size="small" color="#a855f7" />
+                <ActivityIndicator size="small" color="#7C3AED" />
               </View>
             </View>
           )}
         </ScrollView>
 
-        {/* Quick FAQ Question list */}
-        <View style={styles.quickQuestionsRow}>
-          <Text style={styles.quickQuestionsTitle}>Frequently Asked Questions:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 6 }}>
+        {/* Topic Suggestion Chips */}
+        <View style={styles.topicCarouselWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.topicChipsScroll}
+          >
             {botQuestions.map((q, idx) => (
               <TouchableOpacity
                 key={idx}
-                style={styles.quickQuestionChip}
+                style={styles.topicChip}
                 onPress={() => handleSendBotMessage(q)}
-                activeOpacity={0.8}
+                activeOpacity={0.75}
               >
-                <Text style={styles.quickQuestionText}>{q}</Text>
+                <Text style={styles.topicChipText}>{q}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {/* TextInput Box */}
-        <View style={[styles.botInputBar, { paddingBottom: Math.max(10, insets.bottom + 8) }]}>
+        {/* Input Bar */}
+        <View style={[styles.chatInputBar, { paddingBottom: Math.max(12, insets.bottom + 6) }]}>
           <TextInput
-            style={styles.botTextInput}
-            placeholder="Type your question..."
-            placeholderTextColor="rgba(255,255,255,0.4)"
+            style={styles.chatInputField}
+            placeholder="Ask a question..."
+            placeholderTextColor="#94A3B8"
             value={botInputValue}
             onChangeText={setBotInputValue}
             onSubmitEditing={() => handleSendBotMessage(botInputValue)}
           />
           <TouchableOpacity
-            style={styles.botSendBtn}
+            style={[styles.chatSendBtn, !botInputValue.trim() && { opacity: 0.5 }]}
             onPress={() => handleSendBotMessage(botInputValue)}
-            activeOpacity={0.8}
+            disabled={!botInputValue.trim()}
           >
-            <IonIcon name="send" size={16} color="#fff" />
+            <Icon name="send" size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  // Rendering of Submitted Tickets History List
+  // 4. Ticket History View
   const renderTicketHistoryView = () => {
-    const getStatusColor = (status) => {
-      if (status === 'resolved') return '#10b981';
-      if (status === 'rejected') return '#ef4444';
-      if (status === 'reopened') return '#f59e0b';
-      return '#6366f1';
-    };
-    const getStatusLabel = (status) => {
-      if (status === 'resolved') return 'Resolved';
-      if (status === 'rejected') return 'Rejected';
-      if (status === 'reopened') return 'Reopened';
-      return 'Pending';
-    };
-
     return (
       <View style={{ flex: 1 }}>
         {loadingTickets ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#03dcfe" />
-            <Text style={{ color: 'rgba(255,255,255,0.6)', marginTop: 10, fontSize: 13 }}>Loading tickets...</Text>
+          <View style={styles.centerLoadingBox}>
+            <ActivityIndicator size="large" color="#7C3AED" />
+            <Text style={styles.loadingText}>Loading support tickets...</Text>
           </View>
         ) : ticketsList.length === 0 ? (
-          <View style={styles.modalEmptyState}>
-            <IonIcon name="document-text-outline" size={48} color="rgba(255,255,255,0.2)" />
-            <Text style={styles.modalEmptyStateText}>No tickets submitted yet</Text>
-            <TouchableOpacity style={styles.historySupportBtn} onPress={() => setShowTicketForm(true)}>
-              <Text style={styles.historySupportBtnText}>Submit a Ticket</Text>
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconCircle}>
+              <Icon name="inbox" size={44} color="#A78BFA" />
+            </View>
+            <Text style={styles.emptyTitle}>No tickets yet</Text>
+            <Text style={styles.emptySub}>
+              You have not created any support requests. If you experience an issue, submit a ticket anytime.
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyActionBtn}
+              onPress={() => setShowTicketForm(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.emptyActionText}>Submit a Ticket</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <FlatList
             data={ticketsList}
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}
+            keyExtractor={item => item._id}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => {
               const statusColor = getStatusColor(item.status);
-              const hasUnread = item.replies && item.replies.length > 0 && item.replies[item.replies.length - 1]?.sender === 'admin';
+              const hasUnread =
+                item.replies &&
+                item.replies.length > 0 &&
+                item.replies[item.replies.length - 1]?.sender === 'admin';
+
               return (
                 <TouchableOpacity
                   style={styles.ticketCard}
                   activeOpacity={0.85}
                   onPress={() => handleOpenTicketDetail(item)}
                 >
-                  {/* Ticket number + status row */}
-                  <View style={styles.ticketHeader}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={styles.ticketNumberText}>
-                        {item.ticketNumber || '#—'}
-                      </Text>
-                      {hasUnread && (
-                        <View style={styles.newReplyDot} />
-                      )}
+                  <View style={styles.ticketCardHeader}>
+                    <View style={styles.ticketIdRow}>
+                      <Text style={styles.ticketIdText}>{item.ticketNumber || '#TICKET'}</Text>
+                      {hasUnread && <View style={styles.unreadBadge} />}
                     </View>
-                    <View style={[styles.ticketStatusBadge, { backgroundColor: `${statusColor}20`, borderColor: `${statusColor}50` }]}>
-                      <Text style={[styles.ticketStatusText, { color: statusColor }]}>
+                    <View style={[styles.statusPill, { backgroundColor: `${statusColor}18` }]}>
+                      <Text style={[styles.statusPillText, { color: statusColor }]}>
                         {getStatusLabel(item.status)}
                       </Text>
                     </View>
                   </View>
 
-                  {/* Reason badge */}
-                  <View style={styles.ticketReasonBadge}>
-                    <Text style={styles.ticketReasonText}>{item.reason}</Text>
-                  </View>
-
-                  <Text style={styles.ticketDate}>
-                    {new Date(item.createdAt).toLocaleDateString()} • {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <Text style={styles.ticketReason}>{item.reason}</Text>
+                  <Text style={styles.ticketMessage} numberOfLines={2}>
+                    {item.message}
                   </Text>
 
-                  <Text style={styles.ticketBody} numberOfLines={2}>{item.message}</Text>
-
-                  {/* Admin reply preview */}
-                  {item.adminReply ? (
-                    <View style={styles.adminReplyPreview}>
-                      <IonIcon name="chatbubble-outline" size={12} color="#10b981" />
-                      <Text style={styles.adminReplyPreviewText} numberOfLines={1}>
-                        Admin: {item.adminReply}
-                      </Text>
+                  <View style={styles.ticketCardFooter}>
+                    <Text style={styles.ticketDateText}>
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </Text>
+                    <View style={styles.viewThreadRow}>
+                      <Text style={styles.viewThreadText}>View Thread</Text>
+                      <IonIcon name="chevron-forward" size={13} color="#7C3AED" />
                     </View>
-                  ) : (
-                    <Text style={styles.adminReplyAwaiting}>Awaiting response...</Text>
-                  )}
-
-                  {/* Tap to view */}
-                  <View style={styles.tapToViewRow}>
-                    <Text style={styles.tapToViewText}>Tap to view full conversation</Text>
-                    <IonIcon name="chevron-forward" size={12} color="rgba(255,255,255,0.3)" />
                   </View>
                 </TouchableOpacity>
               );
@@ -718,93 +752,115 @@ const HelpAndSupport = () => {
           animationType="slide"
           onRequestClose={() => setShowTicketDetail(false)}
         >
-          <View style={styles.detailModalContainer}>
-            {/* Modal Header */}
-            <View style={[styles.detailModalHeader, { paddingTop: topSafeInset + 10 }]}>
-              <TouchableOpacity onPress={() => setShowTicketDetail(false)} style={styles.detailBackBtn}>
-                <IonIcon name="arrow-back" size={20} color="#fff" />
+          <View style={styles.detailContainer}>
+            <View style={[styles.detailHeader, { paddingTop: topSafeInset + 10 }]}>
+              <TouchableOpacity
+                onPress={() => setShowTicketDetail(false)}
+                style={styles.detailBackButton}
+              >
+                <IonIcon name="chevron-back" size={24} color="#1E293B" />
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
-                <Text style={styles.detailModalTitle}>{selectedTicket?.ticketNumber || 'Ticket'}</Text>
-                <Text style={styles.detailModalSubtitle}>{selectedTicket?.reason}</Text>
+                <Text style={styles.detailTitle}>{selectedTicket?.ticketNumber || 'Ticket'}</Text>
+                <Text style={styles.detailSubtitle} numberOfLines={1}>
+                  {selectedTicket?.reason}
+                </Text>
               </View>
               {selectedTicket && (
-                <View style={[styles.ticketStatusBadge, {
-                  backgroundColor: `${getStatusColor(selectedTicket.status)}20`,
-                  borderColor: `${getStatusColor(selectedTicket.status)}50`,
-                }]}>
-                  <Text style={[styles.ticketStatusText, { color: getStatusColor(selectedTicket.status) }]}>
+                <View
+                  style={[
+                    styles.statusPill,
+                    { backgroundColor: `${getStatusColor(selectedTicket.status)}18` },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusPillText,
+                      { color: getStatusColor(selectedTicket.status) },
+                    ]}
+                  >
                     {getStatusLabel(selectedTicket.status)}
                   </Text>
                 </View>
               )}
             </View>
 
-            {/* Conversation Thread */}
-            <ScrollView style={styles.threadScroll} contentContainerStyle={{ padding: 16, paddingBottom: 20 }}>
-              {/* Original message */}
+            {/* Conversation Messages */}
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+            >
               {selectedTicket && (
-                <View style={styles.threadBubbleUser}>
-                  <View style={styles.threadBubbleHeader}>
-                    <Text style={styles.threadBubbleSender}>You</Text>
-                    <Text style={styles.threadBubbleTime}>
-                      {new Date(selectedTicket.createdAt).toLocaleDateString()} {new Date(selectedTicket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <View style={styles.threadOriginalBox}>
+                  <View style={styles.threadMetaRow}>
+                    <Text style={styles.threadSender}>You (Original)</Text>
+                    <Text style={styles.threadTime}>
+                      {new Date(selectedTicket.createdAt).toLocaleDateString()}
                     </Text>
                   </View>
-                  <Text style={styles.threadBubbleText}>{selectedTicket.message}</Text>
+                  <Text style={styles.threadContent}>{selectedTicket.message}</Text>
                   {selectedTicket.image ? (
-                    <Image source={{ uri: selectedTicket.image }} style={{ width: '100%', height: 140, borderRadius: 8, marginTop: 8 }} resizeMode="cover" />
+                    <Image
+                      source={{ uri: selectedTicket.image }}
+                      style={styles.threadAttachment}
+                      resizeMode="cover"
+                    />
                   ) : null}
                 </View>
               )}
 
-              {/* All replies in thread */}
-              {selectedTicket?.replies?.map((reply, idx) => (
+              {selectedTicket?.replies?.map((rep, idx) => (
                 <View
                   key={idx}
-                  style={reply.sender === 'admin' ? styles.threadBubbleAdmin : styles.threadBubbleUser}
+                  style={rep.sender === 'admin' ? styles.threadAdminBox : styles.threadUserBox}
                 >
-                  <View style={styles.threadBubbleHeader}>
-                    <Text style={[styles.threadBubbleSender, reply.sender === 'admin' && { color: '#10b981' }]}>
-                      {reply.sender === 'admin' ? '🛡️ Support Team' : 'You'}
+                  <View style={styles.threadMetaRow}>
+                    <Text
+                      style={[
+                        styles.threadSender,
+                        rep.sender === 'admin' && { color: '#059669', fontWeight: '800' },
+                      ]}
+                    >
+                      {rep.sender === 'admin' ? '🛡️ Yaro Care Team' : 'You'}
                     </Text>
-                    <Text style={styles.threadBubbleTime}>
-                      {new Date(reply.createdAt).toLocaleDateString()} {new Date(reply.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <Text style={styles.threadTime}>
+                      {new Date(rep.createdAt).toLocaleDateString()}
                     </Text>
                   </View>
-                  <Text style={styles.threadBubbleText}>{reply.message}</Text>
+                  <Text style={styles.threadContent}>{rep.message}</Text>
                 </View>
               ))}
-
-              {(!selectedTicket?.replies || selectedTicket.replies.length === 0) && !selectedTicket?.adminReply && (
-                <View style={styles.awaitingBox}>
-                  <IonIcon name="time-outline" size={20} color="rgba(255,255,255,0.3)" />
-                  <Text style={styles.awaitingText}>Support team will reply soon...</Text>
-                </View>
-              )}
             </ScrollView>
 
             {/* Reply Input */}
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-              <View style={[styles.replyInputBar, { paddingBottom: Math.max(12, insets.bottom + 8) }]}>
+              <View
+                style={[
+                  styles.replyBar,
+                  { paddingBottom: Math.max(12, insets.bottom + 8) },
+                ]}
+              >
                 <TextInput
-                  style={styles.replyTextInput}
-                  placeholder="Write your reply or reopen request..."
-                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  style={styles.replyInput}
+                  placeholder="Write a reply..."
+                  placeholderTextColor="#94A3B8"
                   value={replyText}
                   onChangeText={setReplyText}
                   multiline
                   maxLength={500}
                 />
                 <TouchableOpacity
-                  style={[styles.replySendBtn, (!replyText.trim() || replyLoading) && { opacity: 0.5 }]}
+                  style={[
+                    styles.replySendButton,
+                    (!replyText.trim() || replyLoading) && { opacity: 0.5 },
+                  ]}
                   onPress={handleUserReply}
                   disabled={!replyText.trim() || replyLoading}
                 >
                   {replyLoading ? (
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <IonIcon name="send" size={16} color="#fff" />
+                    <Icon name="send" size={18} color="#FFFFFF" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -823,882 +879,712 @@ const HelpAndSupport = () => {
   };
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#08031a' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-      <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-      {/* Background Star overlays */}
-      <View style={styles.starOverlay1} />
-      <View style={styles.starOverlay2} />
+    <View style={styles.container}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-      {/* Header Bar */}
-      <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
-        <TouchableOpacity style={styles.backButton} onPress={handleHeaderBack}>
-          <IonIcon name="chevron-back" size={24} color="#fff" />
+      {/* Top Header */}
+      <View style={[styles.header, { paddingTop: topSafeInset + 10 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleHeaderBack}
+          activeOpacity={0.7}
+        >
+          <IonIcon name="chevron-back" size={24} color="#1E293B" />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>
-          {showHelpBot ? 'Meethi Support Bot' : showTicketHistory ? 'Ticket History' : t('help.title') || 'Help & Support'}
+          {showHelpBot
+            ? 'Yaro Assistant'
+            : showTicketHistory
+            ? 'Ticket History'
+            : showTicketForm
+            ? 'New Ticket'
+            : t('help.title') || 'Help & Support'}
         </Text>
-        <TouchableOpacity style={styles.headerHeadsetBtn} onPress={() => setShowHelpBot(true)}>
-          <IonIcon name="headset-outline" size={20} color="#a855f7" />
+
+        <TouchableOpacity
+          style={styles.headerRightAction}
+          onPress={() => setShowHelpBot(true)}
+          activeOpacity={0.7}
+        >
+          <IonIcon name="sparkles" size={18} color="#7C3AED" />
         </TouchableOpacity>
       </View>
       <AnimatedTitleLine />
 
       {renderContent()}
-    </ScreenBackgroundView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  starOverlay1: {
-    position: 'absolute',
-    top: height * 0.15,
-    left: width * 0.12,
-    width: 2,
-    height: 2,
-    backgroundColor: '#fff',
-    opacity: 0.25,
-  },
-  starOverlay2: {
-    position: 'absolute',
-    top: height * 0.5,
-    right: width * 0.18,
-    width: 2.5,
-    height: 2.5,
-    backgroundColor: '#fff',
-    opacity: 0.35,
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 10,
+    backgroundColor: '#FFFFFF',
   },
   backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   headerTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  headerHeadsetBtn: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
+  headerRightAction: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F3FF',
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+  },
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 60,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
-
-  // Support Card Banner
-  bannerWrapper: {
-    width: '100%',
-    marginBottom: 20,
-  },
-  bannerBorder: {
+  heroCard: {
     borderRadius: 24,
-    padding: 1.5,
+    padding: 20,
+    marginBottom: 16,
+    elevation: 4,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
   },
-  bannerBody: {
-    flexDirection: 'row',
-    borderRadius: 22.5,
-    padding: 16,
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  bannerLeft: {
-    flex: 1.3,
-  },
-  bannerTitle: {
-    color: '#e242eb',
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-  bannerSubtitle: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 11,
-    fontWeight: '500',
-    lineHeight: 16,
-    marginBottom: 14,
-  },
-  bannerActions: {
-    flexDirection: 'row',
-  },
-  chatSupportBtn: {
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563eb',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 8,
-  },
-  emailBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  btnText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '800',
-  },
-
-  bannerRight: {
-    flex: 0.8,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  headsetCircleGlow: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: 'rgba(168, 85, 247, 0.12)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(168, 85, 247, 0.35)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  bubbleDot1: {
-    position: 'absolute',
-    top: 10,
-    left: -4,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#d946ef',
-  },
-  bubbleDot2: {
-    position: 'absolute',
-    top: 2,
-    right: 6,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#03dcfe',
-  },
-  bubbleDot3: {
-    position: 'absolute',
-    bottom: 8,
-    right: -2,
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#a855f7',
-  },
-
-  // FAQ Section
-  sectionHeaderRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 12,
   },
-  sectionHeader: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
   },
-  viewAllText: {
-    color: '#d946ef',
+  heroBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  liveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#34D399',
+  },
+  liveText: {
+    color: '#34D399',
     fontSize: 11,
     fontWeight: '700',
   },
-  faqsCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+  heroTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  heroSub: {
+    fontSize: 12.5,
+    color: 'rgba(255, 255, 255, 0.85)',
+    lineHeight: 18,
+    marginBottom: 18,
+  },
+  quickActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    borderRadius: 14,
+    gap: 5,
+  },
+  actionPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    paddingVertical: 6,
-    marginBottom: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 3,
+  },
+  sectionSub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 14,
   },
   faqRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: 12,
-    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.03)',
+    borderBottomColor: '#F1F5F9',
   },
-  faqLeft: {
-    flexDirection: 'row',
+  faqIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
-    flex: 1,
-  },
-  faqIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 12,
   },
-  faqQuestion: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 12,
+  faqTitle: {
+    flex: 1,
+    fontSize: 13.5,
     fontWeight: '600',
+    color: '#1E293B',
   },
-
-  // Other Support Options Grid
-  supportOptionsScroll: {
-    paddingRight: 16,
-    paddingBottom: 4,
-    marginBottom: 16,
-  },
-  supportOptionBox: {
-    width: 145,
-    marginRight: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    padding: 12,
-    position: 'relative',
-    height: 120,
-  },
-  optionIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  optionTitle: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  optionDesc: {
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 9,
-    fontWeight: '500',
-    lineHeight: 12,
-  },
-  optionCaption: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 7,
-    fontWeight: '500',
-    marginTop: 4,
-  },
-  optionArrow: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-  },
-
-  // Support Hours
-  hoursCard: {
+  channelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    padding: 12,
+    paddingVertical: 10,
   },
-  hoursLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  channelInfo: {
     flex: 1,
   },
-  clockCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(168, 85, 247, 0.1)',
-    borderColor: 'rgba(168, 85, 247, 0.25)',
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  hoursDetails: {
-    flex: 1,
-  },
-  hoursTitle: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '800',
+  channelTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
     marginBottom: 2,
   },
-  hoursDesc: {
-    color: 'rgba(255, 255, 255, 0.45)',
-    fontSize: 9,
-    fontWeight: '500',
+  channelSub: {
+    fontSize: 11.5,
+    color: '#64748B',
   },
-  hoursPill: {
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.35)',
-    backgroundColor: 'rgba(168, 85, 247, 0.1)',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  formGroup: {
+    marginBottom: 16,
   },
-  hoursPillText: {
-    color: '#a855f7',
-    fontSize: 8,
-    fontWeight: '800',
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 6,
   },
-
-  // Raise Ticket Form Styling
-  formHeaderRow: {
+  labelCountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 6,
   },
-  formBackBtn: {
+  countText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  dropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(3, 220, 254, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(3, 220, 254, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 10,
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  formBackText: {
-    color: '#03dcfe',
-    fontSize: 9,
-    fontWeight: '800',
+  dropdownTriggerActive: {
+    borderColor: '#7C3AED',
   },
-  formTitle: {
-    color: '#fff',
+  dropdownValue: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  dropdownMenu: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    marginTop: 6,
+    paddingVertical: 6,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  dropdownOptionSelected: {
+    backgroundColor: '#F5F3FF',
+  },
+  dropdownOptionText: {
+    fontSize: 13,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  textInputBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 13.5,
+    color: '#0F172A',
+  },
+  textAreaBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 13.5,
+    color: '#0F172A',
+    minHeight: 110,
+  },
+  attachBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#CBD5E1',
+    borderRadius: 18,
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 14,
+  },
+  attachBoxActive: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  attachTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginTop: 6,
+  },
+  attachSub: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  primaryButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginTop: 8,
+    elevation: 3,
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  primaryButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
   },
-  inputContainer: {
-    marginBottom: 16,
+  chatContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  label: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  dropdownContainer: {
+  chatNoticeBanner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 48,
+    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9D5FF',
   },
-  activeBorder: {
-    borderColor: '#03dcfe',
-  },
-  dropdownText: {
-    color: '#fff',
+  chatNoticeText: {
     fontSize: 12,
+    color: '#6D28D9',
     fontWeight: '600',
   },
-  dropdownList: {
-    backgroundColor: 'rgba(11, 8, 44, 0.98)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
-    marginTop: 6,
-    paddingVertical: 6,
-  },
-  dropdownItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  dropdownItemText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  textInput: {
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 48,
-    color: '#fff',
-    fontSize: 12,
-  },
-  textAreaContainer: {
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  textArea: {
-    color: '#fff',
-    fontSize: 12,
-    height: 100,
-  },
-  charCounter: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 9,
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  uploadButton: {
-    height: 100,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 10,
-  },
-  uploadButtonActive: {
-    borderColor: '#10b981',
-    borderStyle: 'solid',
-  },
-  uploadText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 6,
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  uploadSubtext: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 8,
-    fontWeight: '500',
-  },
-  submitBtn: {
-    marginTop: 10,
-    borderRadius: 24,
-    overflow: 'hidden',
-    marginBottom: 40,
-  },
-  submitGradient: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  submitBtnText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  chatBotContainer: {
+  chatStream: {
     flex: 1,
-    backgroundColor: '#070628',
   },
-  chatMessagesScroll: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-  },
-  chatRow: {
+  chatBubbleRow: {
     flexDirection: 'row',
-    marginVertical: 6,
+    marginBottom: 14,
     alignItems: 'flex-end',
-    width: '100%',
   },
-  chatRowBot: {
+  chatRowLeft: {
     justifyContent: 'flex-start',
   },
-  chatRowUser: {
+  chatRowRight: {
     justifyContent: 'flex-end',
   },
   botAvatarBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#a855f7',
-    justifyContent: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#7C3AED',
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 8,
-    marginBottom: 4,
   },
   chatBubble: {
-    borderRadius: 16,
+    maxWidth: '75%',
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    maxLength: '80%',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
   },
   chatBubbleBot: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderTopLeftRadius: 4,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-    maxWidth: '80%',
+    borderColor: '#E2E8F0',
+    borderBottomLeftRadius: 4,
   },
   chatBubbleUser: {
-    backgroundColor: '#3b82f6',
-    borderTopRightRadius: 4,
-    maxWidth: '80%',
+    backgroundColor: '#7C3AED',
+    borderBottomRightRadius: 4,
   },
-  chatText: {
-    color: '#fff',
-    fontSize: 13,
-    lineHeight: 18,
+  chatMessageText: {
+    fontSize: 13.5,
+    color: '#1E293B',
+    lineHeight: 19,
   },
-  quickQuestionsRow: {
+  topicCarouselWrap: {
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    borderTopColor: '#E2E8F0',
     paddingVertical: 8,
-    backgroundColor: 'rgba(7, 6, 40, 0.4)',
   },
-  quickQuestionsTitle: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 11,
-    fontWeight: '600',
-    paddingHorizontal: 16,
-    marginBottom: 2,
-  },
-  quickQuestionChip: {
-    backgroundColor: 'rgba(168, 85, 247, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.3)',
-    borderRadius: 16,
+  topicChipsScroll: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginHorizontal: 4,
+    gap: 8,
   },
-  quickQuestionText: {
-    color: '#c084fc',
-    fontSize: 11,
+  topicChip: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  topicChipText: {
+    fontSize: 12,
+    color: '#334155',
     fontWeight: '600',
   },
-  botInputBar: {
+  chatInputBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: '#070628',
+    borderTopColor: '#E2E8F0',
+    gap: 8,
   },
-  botTextInput: {
+  chatInputField: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    color: '#fff',
-    fontSize: 13,
-    marginRight: 10,
-    height: 40,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    fontSize: 13.5,
+    color: '#0F172A',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: '#E2E8F0',
   },
-  botSendBtn: {
+  chatSendBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
+    backgroundColor: '#7C3AED',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  modalEmptyState: {
+  centerLoadingBox: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    justifyContent: 'center',
   },
-  modalEmptyStateText: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 14,
-    marginTop: 12,
-    marginBottom: 20,
-  },
-  historySupportBtn: {
-    backgroundColor: '#03dcfe',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  historySupportBtnText: {
-    color: '#fff',
+  loadingText: {
     fontSize: 13,
-    fontWeight: 'bold',
+    color: '#64748B',
+    marginTop: 10,
   },
-  ticketCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 16,
-    padding: 16,
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F5F3FF',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 16,
   },
-  ticketHeader: {
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 6,
+  },
+  emptySub: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  emptyActionBtn: {
+    backgroundColor: '#7C3AED',
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderRadius: 16,
+  },
+  emptyActionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  ticketCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  ticketCardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
-  ticketReasonBadge: {
-    backgroundColor: 'rgba(3, 220, 254, 0.1)',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  ticketIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  ticketReasonText: {
-    color: '#03dcfe',
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  ticketStatusBadge: {
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  statusPending: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-  },
-  statusResolved: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  statusRejected: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-  },
-  ticketStatusText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  ticketDate: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 10,
-    marginBottom: 12,
-  },
-  ticketLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  ticketBody: {
-    color: '#fff',
-    fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  ticketImageAttachment: {
-    width: '100%',
-    height: 150,
-    borderRadius: 8,
-    backgroundColor: '#000',
-    marginBottom: 12,
-  },
-  ticketDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    marginVertical: 10,
-  },
-  adminReplySection: {
-    marginTop: 4,
-  },
-  adminReplyLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  adminReplyBody: {
-    color: '#c084fc',
-    fontSize: 12,
-    lineHeight: 18,
-    backgroundColor: 'rgba(168, 85, 247, 0.08)',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.15)',
-  },
-  adminReplyAwaiting: {
-    color: 'rgba(255, 255, 255, 0.3)',
-    fontSize: 11,
-    fontStyle: 'italic',
-    marginTop: 4,
-  },
-  // New: Ticket Number
-  ticketNumberText: {
-    color: '#03dcfe',
-    fontSize: 12,
+  ticketIdText: {
+    fontSize: 13,
     fontWeight: '800',
-    fontFamily: 'monospace',
+    color: '#4F46E5',
   },
-  newReplyDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#10b981',
+  unreadBadge: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
   },
-  adminReplyPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 6,
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
-  adminReplyPreviewText: {
-    color: '#10b981',
+  statusPillText: {
     fontSize: 11,
-    flex: 1,
+    fontWeight: '800',
   },
-  tapToViewRow: {
+  ticketReason: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  ticketMessage: {
+    fontSize: 12.5,
+    color: '#64748B',
+    lineHeight: 17,
+    marginBottom: 12,
+  },
+  ticketCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginTop: 8,
-    gap: 4,
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
-  tapToViewText: {
-    color: 'rgba(255,255,255,0.25)',
-    fontSize: 10,
+  ticketDateText: {
+    fontSize: 11.5,
+    color: '#94A3B8',
   },
-  // Detail Modal
-  detailModalContainer: {
+  viewThreadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  viewThreadText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  detailContainer: {
     flex: 1,
-    backgroundColor: '#07042e',
+    backgroundColor: '#F8FAFC',
   },
-  detailModalHeader: {
+  detailHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
-    gap: 10,
+    borderBottomColor: '#E2E8F0',
+    gap: 12,
   },
-  detailBackBtn: {
+  detailBackButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  detailModalTitle: {
-    color: '#03dcfe',
-    fontSize: 14,
+  detailTitle: {
+    fontSize: 16,
     fontWeight: '800',
-    fontFamily: 'monospace',
+    color: '#0F172A',
   },
-  detailModalSubtitle: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 11,
-    marginTop: 2,
+  detailSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
   },
-  threadScroll: {
-    flex: 1,
-  },
-  threadBubbleUser: {
-    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+  threadOriginalBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.25)',
-    borderRadius: 12,
-    borderBottomRightRadius: 4,
-    padding: 12,
+    borderColor: '#E2E8F0',
     marginBottom: 12,
-    alignSelf: 'flex-end',
-    maxWidth: '90%',
-    width: '90%',
   },
-  threadBubbleAdmin: {
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+  threadAdminBox: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 18,
+    padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
-    borderRadius: 12,
-    borderBottomLeftRadius: 4,
-    padding: 12,
+    borderColor: '#BBF7D0',
     marginBottom: 12,
-    alignSelf: 'flex-start',
-    maxWidth: '90%',
-    width: '90%',
   },
-  threadBubbleHeader: {
+  threadUserBox: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    marginBottom: 12,
+  },
+  threadMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 6,
   },
-  threadBubbleSender: {
-    color: '#a78bfa',
-    fontSize: 11,
+  threadSender: {
+    fontSize: 12,
     fontWeight: '700',
+    color: '#334155',
   },
-  threadBubbleTime: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 10,
+  threadTime: {
+    fontSize: 11,
+    color: '#94A3B8',
   },
-  threadBubbleText: {
-    color: '#fff',
+  threadContent: {
     fontSize: 13,
-    lineHeight: 19,
+    color: '#0F172A',
+    lineHeight: 18,
   },
-  awaitingBox: {
+  threadAttachment: {
+    width: '100%',
+    height: 160,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+  replyBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 30,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
     gap: 8,
   },
-  awaitingText: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 13,
-    fontStyle: 'italic',
-  },
-  // Reply input bar
-  replyInputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    gap: 10,
-  },
-  replyTextInput: {
+  replyInput: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    color: '#fff',
-    fontSize: 13,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    maxHeight: 100,
+    paddingVertical: 9,
+    fontSize: 13,
+    color: '#0F172A',
+    maxHeight: 80,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  replySendBtn: {
+  replySendButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#6366f1',
-    justifyContent: 'center',
+    backgroundColor: '#7C3AED',
     alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

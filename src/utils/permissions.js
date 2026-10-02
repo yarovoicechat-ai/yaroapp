@@ -4,12 +4,16 @@ import { FloatingCallBridge } from '../services/FloatingCallBridge';
 export const requestMicrophonePermission = async () => {
   if (Platform.OS === 'android') {
     try {
+      const alreadyGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+      if (alreadyGranted) return true;
+
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
         {
           title: 'Microphone Permission',
-          message: 'Meethi Chat needs access to your microphone to make voice calls.',
-          buttonPositive: 'OK',
+          message: 'Yaro needs microphone access for voice calls and speaking in voice rooms.',
+          buttonPositive: 'Allow',
+          buttonNegative: 'Deny',
         }
       );
       return granted === PermissionsAndroid.RESULTS.GRANTED;
@@ -19,6 +23,34 @@ export const requestMicrophonePermission = async () => {
     }
   }
   return true;
+};
+
+export const requestCameraAndAudioPermissions = async () => {
+  if (Platform.OS === 'android') {
+    try {
+      const hasAudio = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+      const hasCamera = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
+      if (hasAudio && hasCamera) return { audio: true, camera: true, allGranted: true };
+
+      const toRequest = [];
+      if (!hasAudio) toRequest.push(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+      if (!hasCamera) toRequest.push(PermissionsAndroid.PERMISSIONS.CAMERA);
+
+      const results = await PermissionsAndroid.requestMultiple(toRequest);
+      const audioGranted = hasAudio || results[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED;
+      const cameraGranted = hasCamera || results[PermissionsAndroid.PERMISSIONS.CAMERA] === PermissionsAndroid.RESULTS.GRANTED;
+
+      return {
+        audio: audioGranted,
+        camera: cameraGranted,
+        allGranted: audioGranted && cameraGranted,
+      };
+    } catch (err) {
+      console.warn('Camera/Audio permission request error:', err);
+      return { audio: false, camera: false, allGranted: false };
+    }
+  }
+  return { audio: true, camera: true, allGranted: true };
 };
 
 export const requestAllCallPermissions = async () => {

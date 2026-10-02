@@ -40,14 +40,13 @@ const LevelHelp = () => {
 
   return (
     <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <ScreenBackgroundStatusBar backgroundColor="#FFFFFF" barStyle="dark-content" animated />
-      <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-      <ScreenBackgroundStatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <ScreenBackgroundStatusBar backgroundColor="transparent" barStyle="dark-content" translucent animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
       <View style={[styles.container, { paddingTop: topSafeInset }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Icon name="arrow-back" size={24} color="#fff" />
+            <Icon name="arrow-back" size={24} color="#1E293B" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Level Upgrade Guide</Text>
           <View style={{ width: 40 }} />
@@ -56,20 +55,20 @@ const LevelHelp = () => {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}>
           {/* 🌟 New Host 7-Day Offer Banner */}
           <LinearGradient
-            colors={['#FFD700', '#FF8C00', '#FF2D87']}
+            colors={['#F59E0B', '#FBBF24']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.promoBorder}
           >
             <LinearGradient
-              colors={['rgba(28, 14, 54, 0.95)', 'rgba(12, 5, 26, 0.95)']}
+              colors={['#FFFBEB', '#FEF3C7']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.promoCard}
             >
               <View style={styles.promoHeaderRow}>
                 <View style={styles.fireIconWrap}>
-                  <Icon name="local-fire-department" size={24} color="#FFD700" />
+                  <Icon name="local-fire-department" size={24} color="#D97706" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.promoTitle}>🎁 New Host 7-Day Welcome Level</Text>
@@ -89,7 +88,7 @@ const LevelHelp = () => {
 
           {/* How to Upgrade Section */}
           <View style={styles.sectionHeader}>
-            <Icon name="trending-up" size={20} color="#03dcfe" style={{ marginRight: 6 }} />
+            <Icon name="trending-up" size={20} color="#6366F1" style={{ marginRight: 6 }} />
             <Text style={styles.sectionTitle}>How to Upgrade Your Level</Text>
           </View>
 
@@ -105,7 +104,7 @@ const LevelHelp = () => {
             </View>
 
             <View style={styles.stepCard}>
-              <View style={[styles.stepNumBadge, { backgroundColor: '#A855F7' }]}>
+              <View style={[styles.stepNumBadge, { backgroundColor: '#8B5CF6' }]}>
                 <Text style={styles.stepNumText}>2</Text>
               </View>
               <View style={styles.stepInfo}>
@@ -119,15 +118,15 @@ const LevelHelp = () => {
                 <Text style={styles.stepNumText}>3</Text>
               </View>
               <View style={styles.stepInfo}>
-                <Text style={styles.stepTitle}>Earn Higher Coins Per Minute</Text>
-                <Text style={styles.stepSub}>As you advance to higher levels, your earning rate per minute increases up to 66 Coins/Min!</Text>
+                <Text style={styles.stepTitle}>Earn Higher Beans Per Minute</Text>
+                <Text style={styles.stepSub}>As you advance to higher levels, your earning rate per minute increases up to 66 Beans/Min!</Text>
               </View>
             </View>
           </View>
 
           {/* Complete Level Rates Table */}
           <View style={styles.sectionHeader}>
-            <Icon name="stars" size={20} color="#FFD700" style={{ marginRight: 6 }} />
+            <Icon name="stars" size={20} color="#D97706" style={{ marginRight: 6 }} />
             <Text style={styles.sectionTitle}>Level Earnings & Requirements</Text>
           </View>
 
@@ -151,7 +150,7 @@ const LevelHelp = () => {
                 <Text style={[styles.tdText, { flex: 1 }]}>{item.calls} Calls</Text>
                 <Text style={[styles.tdText, { flex: 1 }]}>{item.minutes} Mins</Text>
                 <Text style={[styles.tdRateText, { flex: 1.2, textAlign: 'right' }]}>
-                  {item.rate} Coins
+                  {item.rate} Beans
                 </Text>
               </View>
             ))}
@@ -159,9 +158,9 @@ const LevelHelp = () => {
 
           {/* Tips Footer */}
           <View style={styles.tipsCard}>
-            <Icon name="lightbulb" size={20} color="#FFD700" style={{ marginRight: 8 }} />
+            <Icon name="lightbulb" size={20} color="#D97706" style={{ marginRight: 8 }} />
             <Text style={styles.tipsText}>
-              <Text style={{ fontWeight: 'bold', color: '#FFD700' }}>Pro Tip: </Text>
+              <Text style={{ fontWeight: 'bold', color: '#92400E' }}>Pro Tip: </Text>
               Keep your profile online during peak hours to receive more calls and fast-track your level upgrade!
             </Text>
           </View>
@@ -189,7 +188,7 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   headerTitle: {
-    color: '#ffffff',
+    color: '#0F172A',
     fontSize: RFValue(17),
     fontWeight: 'bold',
   },
@@ -213,33 +212,33 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   promoTitle: {
-    color: '#FFD700',
+    color: '#92400E',
     fontSize: RFValue(13),
     fontWeight: 'bold',
     marginBottom: 2,
   },
   promoDesc: {
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: '#78350F',
     fontSize: RFValue(11),
     lineHeight: 16,
   },
   boldGold: {
-    color: '#FFD700',
+    color: '#B45309',
     fontWeight: 'bold',
   },
   promoDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(180, 83, 9, 0.15)',
     marginVertical: 12,
   },
   promoNote: {
-    color: 'rgba(255, 255, 255, 0.65)',
+    color: '#92400E',
     fontSize: RFValue(10.5),
     lineHeight: 15,
   },
@@ -250,7 +249,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   sectionTitle: {
-    color: '#ffffff',
+    color: '#0F172A',
     fontSize: RFValue(14),
     fontWeight: 'bold',
   },
@@ -261,11 +260,16 @@ const styles = StyleSheet.create({
   stepCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
     padding: 14,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
   },
   stepNumBadge: {
     width: 28,
@@ -284,33 +288,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stepTitle: {
-    color: '#ffffff',
+    color: '#0F172A',
     fontSize: RFValue(12.5),
     fontWeight: 'bold',
     marginBottom: 2,
   },
   stepSub: {
-    color: 'rgba(255, 255, 255, 0.55)',
+    color: '#64748B',
     fontSize: RFValue(10.5),
     lineHeight: 14,
   },
   tableCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
     padding: 14,
     marginBottom: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
   },
   tableHeaderRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: '#E2E8F0',
     paddingBottom: 10,
     marginBottom: 6,
   },
   thText: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#64748B',
     fontSize: RFValue(11),
     fontWeight: 'bold',
   },
@@ -319,10 +328,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomColor: '#F1F5F9',
   },
   promoTableRow: {
-    backgroundColor: 'rgba(255, 215, 0, 0.06)',
+    backgroundColor: '#FEF3C7',
     borderRadius: 10,
     paddingHorizontal: 6,
   },
@@ -339,30 +348,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   tdNameText: {
-    color: '#ffffff',
+    color: '#0F172A',
     fontSize: RFValue(11),
     fontWeight: '600',
   },
   tdText: {
-    color: 'rgba(255, 255, 255, 0.75)',
+    color: '#64748B',
     fontSize: RFValue(11),
   },
   tdRateText: {
-    color: '#FFD700',
+    color: '#D97706',
     fontSize: RFValue(11.5),
     fontWeight: 'bold',
   },
   tipsCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 215, 0, 0.08)',
+    backgroundColor: '#FFFBEB',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.2)',
+    borderColor: '#FDE68A',
     padding: 14,
   },
   tipsText: {
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: '#78350F',
     fontSize: RFValue(11),
     flex: 1,
     lineHeight: 16,

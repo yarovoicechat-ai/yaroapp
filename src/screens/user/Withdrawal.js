@@ -246,16 +246,16 @@ const Withdrawal = () => {
   );
 
   return (
-    <View style={[{ flex: 1, backgroundColor: '#08031a' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-      <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
+    <View style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
+      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
       {/* Header */}
       <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Icon name="arrow-back-ios" size={24} color="#fff" style={{ marginLeft: 6 }} />
+          <Icon name="arrow-back-ios" size={20} color="#1E293B" style={{ marginLeft: 6 }} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('withdrawal.title') || 'Withdrawal'}</Text>
         <View style={{ width: 40 }} />
@@ -295,12 +295,12 @@ const Withdrawal = () => {
           </View>
           <View style={styles.ruleItem}>
             <Icon name="check-circle" size={16} color="#4CD964" style={styles.ruleCheckIcon} />
-            <Text style={styles.ruleText}>{COIN_TO_INR_RATIO} Coins = 1 INR</Text>
+            <Text style={styles.ruleText}>{COIN_TO_INR_RATIO} Beans = 1 INR</Text>
           </View>
           <View style={styles.ruleItem}>
             <Icon name="check-circle" size={16} color="#4CD964" style={styles.ruleCheckIcon} />
             <Text style={styles.ruleText}>
-              {t('withdrawal.min_withdrawal') || 'Minimum withdrawal is ₹'}{MIN_WITHDRAWAL_INR} ({Math.ceil(MIN_WITHDRAWAL_INR * COIN_TO_INR_RATIO)} Coins)
+              {t('withdrawal.min_withdrawal') || 'Minimum withdrawal is ₹'}{MIN_WITHDRAWAL_INR} ({Math.ceil(MIN_WITHDRAWAL_INR * COIN_TO_INR_RATIO)} Beans)
             </Text>
           </View>
         </View>
@@ -325,7 +325,7 @@ const Withdrawal = () => {
               <Image source={require('../../assets/coin.webp')} style={styles.tinyCoinIcon} />
               <TextInput
                 style={styles.coinInput}
-                placeholder={t('withdrawal.input_coin') || 'Input Coins'}
+                placeholder={t('withdrawal.input_coin') || 'Input Beans'}
                 placeholderTextColor="#aaa"
                 keyboardType="numeric"
                 value={withdrawalAmount}
@@ -406,14 +406,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
     textAlign: 'center',
     flex: 1,
   },
@@ -426,12 +428,12 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    elevation: 8,
-    shadowColor: '#03dcfe',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    borderColor: '#E2E8F0',
+    elevation: 3,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
     marginBottom: 20,
   },
   coinGradient: {
@@ -443,15 +445,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalCoinsText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.85)',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   coinAmount: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 32,
     fontWeight: '800',
   },
@@ -459,21 +461,24 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
 
   // Rules Card
   rulesCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
     marginBottom: 20,
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   rulesHeader: {
     flexDirection: 'row',
@@ -481,9 +486,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   rulesTitle: {
-    color: '#03dcfe',
+    color: '#6C5CE7',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     marginLeft: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -497,9 +502,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   ruleText: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#475569',
+    fontSize: 13.5,
+    fontWeight: '600',
   },
 
   // KYC Banner
@@ -507,11 +512,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#7b2cbf',
+    backgroundColor: '#6C5CE7',
     borderRadius: 20,
     padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
     marginBottom: 20,
   },
   kycLeft: {
@@ -527,7 +530,7 @@ const styles = StyleSheet.create({
   kycVerifyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -541,17 +544,22 @@ const styles = StyleSheet.create({
 
   // Amount Card
   amountCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
     marginBottom: 20,
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   cardSectionLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#0F172A',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '800',
     marginBottom: 12,
   },
   amountInputRow: {
@@ -559,9 +567,9 @@ const styles = StyleSheet.create({
   },
   coinInput: {
     flex: 1,
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     paddingVertical: 12,
   },
   tinyCoinIcon: {
@@ -573,31 +581,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#F8FAFC',
     padding: 14,
     borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   conversionBoxLabel: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
     fontSize: 14,
+    fontWeight: '600',
   },
   conversionBoxValue: {
-    color: '#4CD964',
+    color: '#16A34A',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
   // Tabs Container
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 6,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
   },
   tab: {
     flex: 1,
@@ -608,34 +617,40 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   activeTab: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: '#EDE9FE',
   },
   tabText: {
-    color: '#aaa',
+    color: '#64748B',
     fontSize: 14,
     fontWeight: '600',
   },
   activeTabText: {
-    color: '#fff',
+    color: '#6C5CE7',
+    fontWeight: '800',
   },
 
   // Form Container
   formContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
     marginBottom: 25,
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#E2E8F0',
     marginBottom: 12,
   },
   inputIcon: {
@@ -643,7 +658,7 @@ const styles = StyleSheet.create({
   },
   formInput: {
     flex: 1,
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 15,
     paddingVertical: 14,
   },
@@ -652,15 +667,15 @@ const styles = StyleSheet.create({
   upiInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 16,
     paddingLeft: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#E2E8F0',
   },
   upiFormInput: {
     flex: 1,
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 15,
     paddingVertical: 14,
   },

@@ -62,7 +62,7 @@ class FloatingCallService : Service() {
 
     private var isMuted = false
     private var isSpeaker = true
-    private var callerName = "Voice Call Club"
+    private var callerName = "Yaro"
     private var callerImage = ""
 
     private var isExpanded = false
@@ -89,7 +89,7 @@ class FloatingCallService : Service() {
 
         when (intent.action) {
             ACTION_START -> {
-                callerName = intent.getStringExtra(EXTRA_CALLER_NAME) ?: "Voice Call Club"
+                callerName = intent.getStringExtra(EXTRA_CALLER_NAME) ?: "Yaro"
                 callerImage = intent.getStringExtra(EXTRA_CALLER_IMAGE) ?: ""
                 isMuted = intent.getBooleanExtra(EXTRA_IS_MUTED, false)
                 isSpeaker = intent.getBooleanExtra(EXTRA_IS_SPEAKER, true)
@@ -485,23 +485,10 @@ class FloatingCallService : Service() {
     private fun safeStartForeground() {
         try {
             val notification = createNotification()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    notification,
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
+            startForeground(NOTIFICATION_ID, notification)
             android.util.Log.d("FLOATING", "[ FLOATING ] safeStartForeground executed successfully")
         } catch (e: Exception) {
             android.util.Log.e("FLOATING", "[ FLOATING ] safeStartForeground exception: ${e.message}", e)
-            try {
-                startForeground(NOTIFICATION_ID, createNotification())
-            } catch (ex: Exception) {
-                ex.printStackTrace()
-            }
         }
     }
 

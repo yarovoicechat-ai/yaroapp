@@ -16,7 +16,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import ScreenBackgroundGradient from 'react-native-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { countries } from '../../constants/countries';
@@ -163,15 +163,14 @@ const CountrySelectionScreen = () => {
   };
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <ScreenBackgroundStatusBar backgroundColor="#FFFFFF" barStyle="dark-content" animated />
-      <ScreenBackgroundGradient colors={['#080416', '#05020E', '#020106']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-      <ScreenBackgroundStatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={styles.screen}>
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#EEF2FF']} style={StyleSheet.absoluteFillObject} />
       <View style={[styles.container, { paddingTop: topSafeInset }]}>
         {/* Custom Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Icon name="chevron-back" size={24} color="#FF2D87" />
+            <Icon name="chevron-back" size={24} color="#0F172A" />
           </TouchableOpacity>
           <Text style={styles.title}>Select Country</Text>
           <View style={{ width: 40 }} />
@@ -179,11 +178,11 @@ const CountrySelectionScreen = () => {
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <Icon name="search" size={18} color="rgba(255, 255, 255, 0.35)" style={styles.searchIcon} />
+          <Icon name="search" size={18} color="#64748B" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search country or code"
-            placeholderTextColor="rgba(255, 255, 255, 0.35)"
+            placeholderTextColor="#94A3B8"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -228,13 +227,17 @@ const CountrySelectionScreen = () => {
           </View>
         </View>
       </View>
-    </ScreenBackgroundView>
+    </View>
   );
 };
 
 export default CountrySelectionScreen;
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   container: {
     flex: 1,
   },
@@ -247,24 +250,39 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   backButton: {
-    padding: 6,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   title: {
     fontSize: RFValue(17),
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0F172A',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(192, 38, 211, 0.25)',
+    borderColor: '#E2E8F0',
     marginHorizontal: width * 0.04,
     paddingHorizontal: 14,
-    height: 46,
+    height: 48,
     marginBottom: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
   },
   searchIcon: {
     marginRight: 10,
@@ -272,7 +290,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: RFValue(13),
-    color: '#ffffff',
+    color: '#0F172A',
     paddingVertical: 0,
   },
   listWrapper: {
@@ -289,9 +307,10 @@ const styles = StyleSheet.create({
   },
   sectionHeaderTitle: {
     fontSize: RFValue(12),
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#64748B',
     marginTop: 6,
     marginBottom: 8,
+    fontWeight: '600',
   },
   sectionHeader: {
     backgroundColor: 'transparent',
@@ -301,22 +320,26 @@ const styles = StyleSheet.create({
   sectionTitleText: {
     fontSize: RFValue(13),
     fontWeight: 'bold',
-    color: '#FF2D87',
+    color: '#4F46E5',
   },
   countryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E2E8F0',
     paddingHorizontal: 14,
-    height: 48,
+    height: 50,
     marginBottom: 8,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
   },
   countryItemActive: {
-    borderColor: '#FF2D87',
-    backgroundColor: 'rgba(255, 45, 135, 0.06)',
+    borderColor: '#6366F1',
+    backgroundColor: '#EEF2FF',
   },
   countryFlag: {
     marginRight: 12,
@@ -327,29 +350,29 @@ const styles = StyleSheet.create({
   countryName: {
     flex: 1,
     fontSize: RFValue(13),
-    color: '#ffffff',
+    color: '#0F172A',
     fontWeight: '500',
   },
   countryCode: {
     fontSize: RFValue(13),
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
     marginRight: 12,
   },
   checkOuter: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkOuterActive: {
-    borderColor: '#FF2D87',
-    backgroundColor: '#FF2D87',
+    borderColor: '#6366F1',
+    backgroundColor: '#6366F1',
   },
   indexContainer: {
-    width: 24,
+    width: 28,
     alignItems: 'center',
     paddingRight: 6,
     paddingTop: 4,
@@ -361,7 +384,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#FF2D87',
+    backgroundColor: '#6366F1',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -376,6 +399,6 @@ const styles = StyleSheet.create({
   indexText: {
     fontSize: RFValue(9),
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#64748B',
   },
 });

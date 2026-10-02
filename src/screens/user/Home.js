@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  TextInput,
   Linking,
   View as ScreenBackgroundView,
   StatusBar as ScreenBackgroundStatusBar,
@@ -29,16 +30,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getTabScreenBottomPadding } from '../../utils/safeAreaUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import OnboardingModal from '../../components/OnboardingModal';
-import { requestAllCallPermissions } from '../../utils/permissions';
 import { CALL_DIAMONDS_PER_MINUTE, hasCallStartIdentity } from '../../utils/callValidation';
 import { normalizeLanguages } from '../../utils/hostPresentation';
 import { getUserAvatar } from '../../utils/avatarUtil';
-import { DUMMY_HOSTS, DUMMY_BANNERS } from '../../constants/dummyData';
+import { DUMMY_BANNERS, DUMMY_HOSTS } from '../../constants/dummyData';
 import { AlertService } from '../../utils/AlertService';
-const coinIcon = require('../../assets/coin.webp');
+import EmptyStateView from '../../components/EmptyStateView';
+import { HostCardSkeleton } from '../../components/SkeletonLoader';
+const diamondIcon = require('../../assets/icons/diamond.png');
 
 const { width, height } = Dimensions.get('window');
-const LIVE_BANNERS_URL = 'https://api.mithichat.live/api/public/banners';
+const LIVE_BANNERS_URL = 'https://api.yaroapp.in/api/public/banners';
 
 const CallAppUI = () => {
   const insets = useSafeAreaInsets();
@@ -47,6 +49,7 @@ const CallAppUI = () => {
   const [selectedTab, setSelectedTab] = useState('All');
   const [filterLanguage, setFilterLanguage] = useState('All');
   const [langModalVisible, setLangModalVisible] = useState(false);
+  const [languageSearch, setLanguageSearch] = useState('');
   const flatListRef = useRef(null);
   const bannerFetchSeqRef = useRef(0);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
@@ -183,12 +186,13 @@ const CallAppUI = () => {
       if (res.data?.success) {
         const fetchedData = res.data.data?.hostsData || res.data.data;
         const hostList = fetchedData?.hosts || (Array.isArray(fetchedData) ? fetchedData : []);
-        if (Array.isArray(hostList) && hostList.length > 0) {
-          setHosts(hostList);
-        }
+        setHosts(Array.isArray(hostList) ? hostList : []);
+        return;
       }
+      setHosts((prev) => (Array.isArray(prev) ? prev : []));
     } catch (err) {
       console.log('Failed to fetch hosts via API fallback:', err?.message);
+      setHosts((prev) => (Array.isArray(prev) ? prev : []));
     }
   }, [setHosts]);
 
@@ -335,7 +339,6 @@ const CallAppUI = () => {
   };
 
   useEffect(() => {
-    requestAllCallPermissions().catch(err => console.log('Upfront permissions error:', err));
     fetchUserProfileRef.current();
     fetchBanners();
     fetchUnreadNotifications();
@@ -408,6 +411,26 @@ const CallAppUI = () => {
     setDiamonds(user?.diamonds || 0);
   }, [user]);
 
+  const displayHosts = useMemo(() => {
+    let list = Array.isArray(hosts) ? hosts : [];
+    if (filterLanguage && filterLanguage !== 'All') {
+      list = list.filter((h) => {
+        const langs = normalizeLanguages(h?.languages, h?.language);
+        return langs.some((l) => l.toLowerCase().includes(filterLanguage.toLowerCase()));
+      });
+    }
+    if (selectedTab === 'Verified') {
+      return list.filter((host) => host.isVerified || host.verified || host.tags?.includes('Verified') || host.tags?.includes('VIP'));
+    }
+    if (selectedTab === 'Trending') {
+      return [...list].sort((a, b) => Number(b.callsCount || 0) - Number(a.callsCount || 0));
+    }
+    if (selectedTab === 'New') {
+      return [...list].reverse();
+    }
+    return list;
+  }, [hosts, selectedTab, filterLanguage]);
+
   const tabsConfig = [
     { key: 'All', label: 'All' },
     { key: 'Trending', label: 'Trending' },
@@ -449,7 +472,7 @@ const CallAppUI = () => {
           </View>
 
           <Text style={styles.hostLanguagesSub} numberOfLines={1}>
-            {displayLanguages}
+            ID: {host.userId || host.meethiId || host._id?.slice(-6) || 'N/A'} • {displayLanguages}
           </Text>
         </View>
 
@@ -506,7 +529,7 @@ const CallAppUI = () => {
           <Icon name="chevron-down" size={15} color="#64748B" />
         </TouchableOpacity>
 
-        {/* Right: Coin Balance & Notification Bell */}
+        {/* Right: Diamonds Balance, Search & Notification Bell */}
         <View style={styles.headerRightActionsGroup}>
           <TouchableOpacity
             style={styles.coinBalancePillCard}
@@ -514,12 +537,12 @@ const CallAppUI = () => {
             activeOpacity={0.8}
           >
             <Image
-              source={coinIcon}
+              source={diamondIcon}
               style={styles.coinIconImage}
               resizeMode="contain"
             />
             <Text style={styles.coinBalanceValText}>
-              {diamonds > 0 ? diamonds.toLocaleString('en-US') : '1,250'}
+              {Number(diamonds || 0).toLocaleString('en-US')}
             </Text>
             <View style={styles.plusIconBadgeBtn}>
               <Icon name="add" size={10} color="#FFFFFF" />
@@ -528,13 +551,19 @@ const CallAppUI = () => {
 
           <TouchableOpacity
             style={styles.bellButtonCircleBtn}
+            onPress={() => navigation.navigate('Search')}
+            activeOpacity={0.8}
+          >
+            <Icon name="search-outline" size={20} color="#1E293B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.bellButtonCircleBtn}
             onPress={() => navigation.navigate('Notifications')}
             activeOpacity={0.8}
           >
             <Icon name="notifications-outline" size={20} color="#1E293B" />
-            {unreadNotifications > 0 ? (
-              <View style={styles.redBadgeDotSmall} />
-            ) : (
+            {unreadNotifications > 0 && (
               <View style={styles.redBadgeDotSmall} />
             )}
           </TouchableOpacity>
@@ -581,7 +610,7 @@ const CallAppUI = () => {
             {/* Right Graphic / Image */}
             <View style={styles.promoRightGraphicSection}>
               <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80' }}
+                source={{ uri: 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
                 style={styles.heroHostImage}
                 resizeMode="cover"
               />
@@ -625,75 +654,209 @@ const CallAppUI = () => {
           })}
         </View>
 
-        {/* Loader */}
-        {loading && <ActivityIndicator size="large" color="#6C5CE7" style={{ marginVertical: 15 }} />}
-
         {/* Hosts Listing matching reference design */}
-        <View style={styles.hostsCardsListContainer}>
-          {!loading && ((hosts && hosts.length > 0) ? hosts : DUMMY_HOSTS).map((host, index) => renderUserCard(host, index))}
-        </View>
+        {loading ? (
+          <View style={styles.hostsCardsListContainer}>
+            {[1, 2, 3, 4].map((k) => (
+              <HostCardSkeleton key={k} />
+            ))}
+          </View>
+        ) : displayHosts && displayHosts.length > 0 ? (
+          <View style={styles.hostsCardsListContainer}>
+            {displayHosts.map((host, index) => renderUserCard(host, index))}
+          </View>
+        ) : (
+          <EmptyStateView
+            icon="people-outline"
+            title="No Hosts Available"
+            subtitle="There are currently no hosts matching this filter. Try switching tabs or pull down to refresh."
+            actionText="Refresh Hosts"
+            onAction={onRefresh}
+          />
+        )}
       </ScrollView>
 
-      {/* Language Modal */}
-      <Modal
-        visible={langModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setLangModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setLangModalVisible(false)}
-        >
-          <View style={styles.bottomSheetContent}>
-            <LinearGradient
-              colors={['#0e0a30', '#180f55']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={[
-                styles.bottomSheetGradient,
-                { paddingBottom: Math.max(24, (insets.bottom || 0) + 16) },
-              ]}
-            >
-              <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>{t('profile.language') || 'Filter Language'}</Text>
+      {/* Discover hosts by language - Ultra-Modern Glassmorphic Modal */}
+      <Modal visible={langModalVisible} transparent animationType="slide" onRequestClose={() => setLangModalVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(10, 6, 28, 0.7)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setLangModalVisible(false)} activeOpacity={1} />
+          <View style={{
+            backgroundColor: '#FAF8FC',
+            borderTopLeftRadius: 32,
+            borderTopRightRadius: 32,
+            paddingTop: 12,
+            paddingHorizontal: 18,
+            paddingBottom: Math.max(20, insets.bottom + 12),
+            maxHeight: '82%',
+            elevation: 25,
+            shadowColor: '#000',
+            shadowOpacity: 0.25,
+            shadowRadius: 15,
+          }}>
+            {/* Pill Drag Handle */}
+            <View style={{ width: 44, height: 5, borderRadius: 3, backgroundColor: '#D4CCE4', alignSelf: 'center', marginBottom: 14 }} />
 
-              <ScrollView
-                style={{ width: '100%' }}
-                contentContainerStyle={styles.languageSheetScrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.languageGrid}>
-                  {['All', 'English', 'Hindi', 'Bengali', 'Arabic', 'Urdu'].map(lang => (
+            {/* Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <LinearGradient
+                    colors={['#8B5CF6', '#6366F1']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '900', letterSpacing: 1.2 }}>LANGUAGE FILTER</Text>
+                  </LinearGradient>
+                  {filterLanguage !== 'All' && (
                     <TouchableOpacity
-                      key={lang}
-                      style={[styles.glassCard, filterLanguage === lang && styles.glassCardActive]}
-                      onPress={() => {
-                        setFilterLanguage(lang);
-                        setLangModalVisible(false);
+                      onPress={() => { setFilterLanguage('All'); setLangModalVisible(false); }}
+                      style={{ backgroundColor: '#EDE9FE', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10 }}
+                    >
+                      <Text style={{ color: '#6D28D9', fontSize: 10, fontWeight: '800' }}>Reset to All ✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <Text style={{ color: '#1E1438', fontSize: 22, fontWeight: '900', marginTop: 4 }}>
+                  Talk Your Language
+                </Text>
+                <Text style={{ color: '#7E7495', fontSize: 12, marginTop: 2 }}>
+                  Find and connect with hosts who speak your mother tongue.
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setLangModalVisible(false)}
+                style={{ width: 36, height: 36, borderRadius: 14, backgroundColor: '#EDE7F6', alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.8}
+              >
+                <Icon name="close" size={20} color="#5C4D78" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Input Bar */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#FFFFFF',
+              borderWidth: 1,
+              borderColor: '#E8E1F2',
+              borderRadius: 16,
+              paddingHorizontal: 12,
+              marginTop: 14,
+              marginBottom: 10,
+              elevation: 1,
+            }}>
+              <Icon name="search" size={18} color="#8E82A5" />
+              <TextInput
+                value={languageSearch}
+                onChangeText={setLanguageSearch}
+                placeholder="Search language or dialect..."
+                placeholderTextColor="#A59BB8"
+                style={{ flex: 1, color: '#1F1538', paddingVertical: 10, paddingHorizontal: 8, fontSize: 13, fontWeight: '600' }}
+              />
+              {languageSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setLanguageSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Icon name="close-circle" size={17} color="#A59BB8" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Language Scroll Grid */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 4, paddingBottom: 10 }}>
+              {[
+                { name: 'All', native: 'All Languages (सभी)', mark: '🌐', gradient: ['#6366F1', '#4F46E5'] },
+                { name: 'Hindi', native: 'हिन्दी', mark: 'हि', gradient: ['#F59E0B', '#D97706'] },
+                { name: 'English', native: 'English', mark: 'EN', gradient: ['#3B82F6', '#2563EB'] },
+                { name: 'Bengali', native: 'বাংলা', mark: 'বা', gradient: ['#10B981', '#059669'] },
+                { name: 'Telugu', native: 'తెలుగు', mark: 'తె', gradient: ['#8B5CF6', '#7C3AED'] },
+                { name: 'Marathi', native: 'मराठी', mark: 'म', gradient: ['#EC4899', '#DB2777'] },
+                { name: 'Tamil', native: 'தமிழ்', mark: 'த', gradient: ['#F97316', '#EA580C'] },
+                { name: 'Urdu', native: 'اردو', mark: 'اردو', gradient: ['#14B8A6', '#0D9488'] },
+                { name: 'Gujarati', native: 'ગુજરાતી', mark: 'ગુ', gradient: ['#06B6D4', '#0891B2'] },
+                { name: 'Punjabi', native: 'ਪੰਜਾਬੀ', mark: 'ਪੰ', gradient: ['#EAB308', '#CA8A04'] },
+                { name: 'Malayalam', native: 'മലയാളം', mark: 'മ', gradient: ['#6366F1', '#4338CA'] },
+                { name: 'Kannada', native: 'ಕನ್ನಡ', mark: 'ಕ', gradient: ['#A855F7', '#9333EA'] },
+                { name: 'Arabic', native: 'العربية', mark: 'ع', gradient: ['#F43F5E', '#E11D48'] },
+              ].filter(item => `${item.name} ${item.native}`.toLowerCase().includes(languageSearch.trim().toLowerCase())).map((item) => {
+                const active = filterLanguage === item.name;
+                const availableHosts = Array.isArray(hosts) ? hosts : [];
+                const count = item.name === 'All'
+                  ? availableHosts.length
+                  : availableHosts.filter(h => normalizeLanguages(h?.languages, h?.language).some(v => v.toLowerCase() === item.name.toLowerCase())).length;
+
+                return (
+                  <TouchableOpacity
+                    key={item.name}
+                    onPress={() => {
+                      setFilterLanguage(item.name);
+                      setLangModalVisible(false);
+                      setLanguageSearch('');
+                    }}
+                    activeOpacity={0.85}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: active ? '#F5F0FF' : '#FFFFFF',
+                      borderColor: active ? '#8B5CF6' : '#EFEBF5',
+                      borderWidth: active ? 1.5 : 1,
+                      borderRadius: 18,
+                      padding: 12,
+                      marginBottom: 8,
+                      elevation: active ? 2 : 1,
+                      shadowColor: active ? '#8B5CF6' : '#000',
+                      shadowOpacity: active ? 0.12 : 0.03,
+                      shadowRadius: 4,
+                    }}
+                  >
+                    <LinearGradient
+                      colors={item.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 14,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
                       }}
                     >
-                      <Icon
-                        name={lang === 'All' ? 'globe-outline' : 'language-outline'}
-                        size={24}
-                        color={filterLanguage === lang ? '#03dcfe' : 'rgba(255,255,255,0.6)'}
-                      />
-                      <Text style={[styles.glassCardText, filterLanguage === lang && styles.glassCardTextActive]}>
-                        {lang === 'All' ? t('home.tabs.all') || 'All' : lang}
+                      <Text style={{ color: '#FFFFFF', fontSize: item.mark.length > 2 ? 12 : 17, fontWeight: '900' }}>
+                        {item.mark}
                       </Text>
-                      {filterLanguage === lang && (
-                        <View style={styles.selectedBadge}>
-                          <Icon name="checkmark" size={12} color="#fff" />
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </LinearGradient>
+                    </LinearGradient>
+
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ color: '#1B1435', fontSize: 15, fontWeight: '800' }}>{item.name}</Text>
+                        <Text style={{ color: '#887E9F', fontSize: 12, fontWeight: '600' }}>({item.native})</Text>
+                      </View>
+                      <Text style={{ color: '#9E94B3', fontSize: 11, marginTop: 2 }}>
+                        {count > 0 ? `${count} active host${count > 1 ? 's' : ''}` : 'Discover new connections'}
+                      </Text>
+                    </View>
+
+                    <View style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: active ? '#8B5CF6' : '#F1EDF8',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <Icon
+                        name={active ? 'checkmark' : 'chevron-forward'}
+                        size={16}
+                        color={active ? '#FFFFFF' : '#9E94B3'}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* Mandatory Onboarding Modal for New Users */}
@@ -748,18 +911,18 @@ const styles = StyleSheet.create({
   coinBalancePillCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFBEB',
+    backgroundColor: '#F0F9FF',
     borderRadius: 20,
     paddingLeft: 8,
     paddingRight: 6,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: '#BAE6FD',
     gap: 6,
     elevation: 2,
-    shadowColor: '#D97706',
+    shadowColor: '#0284C7',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   coinIconImage: {
@@ -767,7 +930,7 @@ const styles = StyleSheet.create({
     height: 20,
   },
   coinBalanceValText: {
-    color: '#1E293B',
+    color: '#0369A1',
     fontSize: 13.5,
     fontWeight: '800',
   },
@@ -775,7 +938,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#6C5CE7',
+    backgroundColor: '#0284C7',
     justifyContent: 'center',
     alignItems: 'center',
   },

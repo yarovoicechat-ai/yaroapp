@@ -15,13 +15,10 @@ import {
   RefreshControl,
   StatusBar,
   Modal,
-  View as ScreenBackgroundView,
-  StatusBar as ScreenBackgroundStatusBar,
-  StyleSheet as ScreenBackgroundStyleSheet
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
@@ -37,6 +34,7 @@ const { width } = Dimensions.get('window');
 
 const InviteEarn = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
@@ -49,8 +47,8 @@ const InviteEarn = () => {
   const [showRulesModal, setShowRulesModal] = useState(false);
 
   const [referralData, setReferralData] = useState({
-    referralCode: user?.referralCode || `MC${user?.userId || ''}`,
-    referralLink: `https://mithichat.live/refer/${user?.referralCode || ''}`,
+    referralCode: user?.referralCode || `YR${user?.userId || ''}`,
+    referralLink: `https://yaroapp.in/refer/${user?.referralCode || ''}`,
     totalReferrals: 0,
     totalEarnedCoins: 0,
     hasRedeemedReferral: false,
@@ -59,6 +57,13 @@ const InviteEarn = () => {
 
   const [inputCode, setInputCode] = useState('');
   const [claiming, setClaiming] = useState(false);
+
+  useEffect(() => {
+    const incomingCode = route.params?.referralCode || route.params?.code;
+    if (incomingCode) {
+      setInputCode(String(incomingCode).toUpperCase());
+    }
+  }, [route.params?.referralCode, route.params?.code]);
 
   const loadReferralDetails = useCallback(async () => {
     try {
@@ -85,7 +90,7 @@ const InviteEarn = () => {
   };
 
   const handleCopyCode = () => {
-    const code = referralData.referralCode || `MC${user?.userId || ''}`;
+    const code = referralData.referralCode || user?.referralCode || `YR${user?.userId || ''}`;
     if (code) {
       Clipboard.setString(code);
       setCopiedCode(true);
@@ -95,7 +100,7 @@ const InviteEarn = () => {
   };
 
   const handleCopyLink = () => {
-    const link = referralData.referralLink || `https://mithichat.live/refer/${referralData.referralCode || ''}`;
+    const link = referralData.referralLink || `https://yaroapp.in/refer/${referralData.referralCode || ''}`;
     if (link) {
       Clipboard.setString(link);
       setCopiedLink(true);
@@ -105,16 +110,16 @@ const InviteEarn = () => {
   };
 
   const getShareMessage = () => {
-    const code = referralData.referralCode || `MC${user?.userId || ''}`;
-    const link = referralData.referralLink || `https://mithichat.live/refer/${code}`;
-    return `✨ *MEETHI CHAT — SPECIAL INVITATION* ✨\n\n🎉 Join me on Meethi Chat, the #1 Live Video & Voice Social App!\n\n🎁 *Exclusive Bonus:* Use my Referral Code *${code}* during profile setup to claim *100 FREE Welcome Diamonds*!\n\n👇 *Download App & Claim Bonus:* \n${link}\n\n🔥 Install now & let's connect!`;
+    const code = referralData.referralCode || user?.referralCode || `YR${user?.userId || ''}`;
+    const link = referralData.referralLink || `https://yaroapp.in/refer/${code}`;
+    return `✨ *YAROAPP — SPECIAL INVITATION* ✨\n\n🎉 Join me on YaroApp, the #1 Live Video & Voice Social App!\n\n🎁 *Exclusive Bonus:* Use my Referral Code *${code}* during profile setup to claim *100 FREE Welcome Diamonds*!\n\n👇 *Download App & Claim Bonus:* \n${link}\n\n🔥 Install now & let's connect!`;
   };
 
   const handleNativeShare = async () => {
     try {
       await Share.share({
         message: getShareMessage(),
-        title: 'Invite Friends & Earn Coins on Meethi Chat',
+        title: 'Invite Friends & Earn Beans on YaroApp',
       });
     } catch (err) {
       console.log('Share error:', err.message);
@@ -163,10 +168,8 @@ const InviteEarn = () => {
   };
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
-      <ScreenBackgroundStatusBar backgroundColor="#FFFFFF" barStyle="dark-content" animated />
-      <LinearGradient colors={['#020817', '#0a1128', '#000000']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-      <ScreenBackgroundStatusBar backgroundColor="#020817" barStyle="light-content" />
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" translucent={false} />
 
       {/* Professional Top Header Bar */}
       <View style={[styles.topHeader, { paddingTop: topSafeInset + 8 }]}>
@@ -175,7 +178,7 @@ const InviteEarn = () => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Icon name="arrow-back" size={24} color="#fff" />
+          <Icon name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.topHeaderTitle}>Invite & Earn</Text>
 
@@ -185,7 +188,7 @@ const InviteEarn = () => {
             onPress={() => setShowRulesModal(true)}
             activeOpacity={0.8}
           >
-            <Icon name="help-outline" size={16} color="#fbbf24" style={{ marginRight: 3 }} />
+            <Icon name="help-outline" size={16} color="#D97706" style={{ marginRight: 3 }} />
             <Text style={styles.rulesBtnHeaderText}>Rules</Text>
           </TouchableOpacity>
 
@@ -194,9 +197,9 @@ const InviteEarn = () => {
             <Text style={styles.coinPillText}>{user?.diamonds || 0}</Text>
           </View>
 
-          <View style={[styles.coinPillHeader, { borderColor: '#fbbf24', backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
+          <View style={[styles.coinPillHeader, { borderColor: '#FDE68A', backgroundColor: '#FEF3C7' }]}>
             <Image source={coinIcon} style={styles.headerAssetIcon} resizeMode="contain" />
-            <Text style={styles.coinPillText}>{user?.coins || 0}</Text>
+            <Text style={[styles.coinPillText, { color: '#B45309' }]}>{user?.coins || 0}</Text>
           </View>
         </View>
       </View>
@@ -217,7 +220,9 @@ const InviteEarn = () => {
             style={styles.heroBorder}
           >
             <LinearGradient
-              colors={['rgba(15, 10, 50, 0.96)', 'rgba(5, 3, 25, 0.96)']}
+              colors={['#4F46E5', '#6366F1', '#7C3AED']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
               style={styles.heroCard}
             >
               <View style={styles.heroBadgeRow}>
@@ -229,7 +234,7 @@ const InviteEarn = () => {
 
               <Text style={styles.heroTitle}>Invite Friends & Earn Rewards</Text>
               <Text style={styles.heroSub}>
-                New friends get <Text style={styles.highlightCyan}>100 Diamonds</Text>. You get <Text style={styles.highlightGold}>25 Coins</Text> on sign-up + <Text style={styles.highlightGold}>25 Coins</Text> after 5 mins call time!
+                New friends get <Text style={styles.highlightCyan}>100 Diamonds</Text>. You get <Text style={styles.highlightGold}>25 Beans</Text> on sign-up + <Text style={styles.highlightGold}>25 Beans</Text> after 5 mins call time!
               </Text>
 
               {/* Dynamic Reward Exchange Display */}
@@ -238,19 +243,19 @@ const InviteEarn = () => {
                   <Text style={styles.exchangeBoxLabel}>NEW FRIEND GETS</Text>
                   <View style={styles.exchangeBoxValRow}>
                     <Image source={diamondIcon} style={styles.assetIconMd} resizeMode="contain" />
-                    <Text style={[styles.exchangeBoxVal, { color: '#03dcfe' }]}>+100 DIAMONDS</Text>
+                    <Text style={[styles.exchangeBoxVal, { color: '#38BDF8' }]}>+100 DIAMONDS</Text>
                   </View>
                 </View>
 
                 <View style={styles.exchangeArrowCircle}>
-                  <Icon name="swap-horiz" size={20} color="#03dcfe" />
+                  <Icon name="swap-horiz" size={20} color="#FFFFFF" />
                 </View>
 
                 <View style={styles.rewardExchangeBox}>
                   <Text style={styles.exchangeBoxLabel}>YOU RECEIVE</Text>
                   <View style={styles.exchangeBoxValRow}>
                     <Image source={coinIcon} style={styles.assetIconMd} resizeMode="contain" />
-                    <Text style={styles.exchangeBoxVal}>+50 COINS</Text>
+                    <Text style={[styles.exchangeBoxVal, { color: '#FDE68A' }]}>+50 BEANS</Text>
                   </View>
                 </View>
               </View>
@@ -261,14 +266,14 @@ const InviteEarn = () => {
         {/* Professional VIP Referral Code & Link Pass Card */}
         <View style={styles.passCardWrapper}>
           <LinearGradient
-            colors={['#fbbf24', '#d946ef']}
+            colors={['#F59E0B', '#EC4899']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.passCardBorder}
           >
             <View style={styles.passCardInner}>
               <View style={styles.passCardHeader}>
-                <Icon name="vpn-key" size={18} color="#fbbf24" />
+                <Icon name="vpn-key" size={18} color="#F59E0B" />
                 <Text style={styles.passCardTitle}>YOUR EXCLUSIVE REFERRAL CODE</Text>
               </View>
 
@@ -279,19 +284,19 @@ const InviteEarn = () => {
                 onPress={handleCopyCode}
               >
                 <Text style={styles.codeText}>
-                  {referralData.referralCode || `MC${user?.userId || ''}`}
+                  {referralData.referralCode || `YR${user?.userId || ''}`}
                 </Text>
                 <View style={styles.copyBadgeBtn}>
-                  <Icon name={copiedCode ? 'check' : 'content-copy'} size={14} color="#03dcfe" />
+                  <Icon name={copiedCode ? 'check' : 'content-copy'} size={14} color="#D97706" />
                   <Text style={styles.copyBadgeBtnText}>{copiedCode ? 'COPIED' : 'COPY'}</Text>
                 </View>
               </TouchableOpacity>
 
               {/* Link Box */}
               <View style={styles.linkContainer}>
-                <Icon name="link" size={16} color="rgba(255,255,255,0.4)" style={{ marginRight: 6 }} />
+                <Icon name="link" size={16} color="#64748B" style={{ marginRight: 6 }} />
                 <Text style={styles.linkText} numberOfLines={1}>
-                  {referralData.referralLink || `https://mithichat.live/refer/${user?.referralCode || ''}`}
+                  {referralData.referralLink || `https://yaroapp.in/refer/${user?.referralCode || ''}`}
                 </Text>
                 <TouchableOpacity style={styles.linkCopyBtn} activeOpacity={0.8} onPress={handleCopyLink}>
                   <Text style={styles.linkCopyBtnText}>{copiedLink ? 'COPIED' : 'COPY LINK'}</Text>
@@ -326,11 +331,11 @@ const InviteEarn = () => {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <LinearGradient
-              colors={['rgba(3, 220, 254, 0.12)', 'rgba(3, 220, 254, 0.02)']}
+              colors={['rgba(99, 102, 241, 0.08)', 'rgba(99, 102, 241, 0.02)']}
               style={styles.statCardGradient}
             >
               <View style={styles.statIconRing}>
-                <Icon name="group-add" size={22} color="#03dcfe" />
+                <Icon name="group-add" size={22} color="#6366F1" />
               </View>
               <Text style={styles.statNumber}>{referralData.totalReferrals || 0}</Text>
               <Text style={styles.statLabel}>Invited Friends</Text>
@@ -339,14 +344,14 @@ const InviteEarn = () => {
 
           <View style={styles.statCard}>
             <LinearGradient
-              colors={['rgba(251, 191, 36, 0.12)', 'rgba(251, 191, 36, 0.02)']}
+              colors={['rgba(245, 158, 11, 0.08)', 'rgba(245, 158, 11, 0.02)']}
               style={styles.statCardGradient}
             >
-              <View style={[styles.statIconRing, { backgroundColor: 'rgba(251, 191, 36, 0.2)' }]}>
+              <View style={[styles.statIconRing, { backgroundColor: '#FEF3C7' }]}>
                 <Image source={coinIcon} style={styles.statAssetIcon} resizeMode="contain" />
               </View>
               <Text style={styles.statNumber}>{referralData.totalEarnedCoins || 0}</Text>
-              <Text style={styles.statLabel}>Earned Coins</Text>
+              <Text style={styles.statLabel}>Earned Beans</Text>
             </LinearGradient>
           </View>
         </View>
@@ -354,7 +359,7 @@ const InviteEarn = () => {
         {/* Redeem Code Section */}
         <View style={styles.sectionGlassCard}>
           <View style={styles.sectionCardHeader}>
-            <Icon name="confirmation-number" size={18} color="#fbbf24" style={{ marginRight: 6 }} />
+            <Icon name="confirmation-number" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
             <Text style={styles.sectionCardTitle}>REDEEM INVITE CODE</Text>
           </View>
 
@@ -367,8 +372,8 @@ const InviteEarn = () => {
             <View style={styles.redeemRow}>
               <TextInput
                 style={styles.redeemInput}
-                placeholder="Enter friend's referral code (e.g. MC1000000120)"
-                placeholderTextColor="rgba(255,255,255,0.4)"
+                placeholder="Enter friend's referral code (e.g. YR1000000120)"
+                placeholderTextColor="#94A3B8"
                 value={inputCode}
                 onChangeText={text => setInputCode(text.toUpperCase())}
                 autoCapitalize="characters"
@@ -414,15 +419,15 @@ const InviteEarn = () => {
               <View style={styles.flowStepBadge}><Text style={styles.flowStepNum}>2</Text></View>
               <View style={styles.flowStepTextWrap}>
                 <Text style={styles.flowStepTitle}>New User Bonus (+100 Diamonds)</Text>
-                <Text style={styles.flowStepDesc}>Friend installs Meethi Chat & enters your code. Friend receives +100 Diamonds instantly, and you get +25 Coins!</Text>
+                <Text style={styles.flowStepDesc}>Friend installs YaroApp & enters your code. Friend receives +100 Diamonds instantly, and you get +25 Beans!</Text>
               </View>
             </View>
 
             <View style={styles.flowStepItem}>
               <View style={styles.flowStepBadge}><Text style={styles.flowStepNum}>3</Text></View>
               <View style={styles.flowStepTextWrap}>
-                <Text style={styles.flowStepTitle}>Step 2 Reward: 5 Min Call (+25 Coins)</Text>
-                <Text style={styles.flowStepDesc}>When your friend completes 5 minutes (300s) of voice/video calls, you get another +25 Coins!</Text>
+                <Text style={styles.flowStepTitle}>Step 2 Reward: 5 Min Call (+25 Beans)</Text>
+                <Text style={styles.flowStepDesc}>When your friend completes 5 minutes (300s) of voice/video calls, you get another +25 Beans!</Text>
               </View>
             </View>
           </View>
@@ -460,7 +465,7 @@ const InviteEarn = () => {
                     </View>
                     <View style={styles.totalCoinsPill}>
                       <Icon name="monetization-on" size={14} color="#fbbf24" style={{ marginRight: 3 }} />
-                      <Text style={styles.totalCoinsText}>+{item.totalCoinsEarned || (isStep2Done ? 50 : 25)} Coins</Text>
+                      <Text style={styles.totalCoinsText}>+{item.totalCoinsEarned || (isStep2Done ? 50 : 25)} Beans</Text>
                     </View>
                   </View>
 
@@ -469,7 +474,7 @@ const InviteEarn = () => {
                     <View style={styles.stepProgressRow}>
                       <View style={styles.stepBadgeDone}>
                         <Icon name="check-circle" size={14} color="#10b981" style={{ marginRight: 4 }} />
-                        <Text style={styles.stepBadgeDoneText}>Step 1: Registered (+25 Coins)</Text>
+                        <Text style={styles.stepBadgeDoneText}>Step 1: Registered (+25 Beans)</Text>
                       </View>
                     </View>
 
@@ -477,13 +482,13 @@ const InviteEarn = () => {
                       {isStep2Done ? (
                         <View style={styles.stepBadgeDone}>
                           <Icon name="check-circle" size={14} color="#10b981" style={{ marginRight: 4 }} />
-                          <Text style={styles.stepBadgeDoneText}>Step 2: 5 Min Call (+25 Coins)</Text>
+                          <Text style={styles.stepBadgeDoneText}>Step 2: 5 Min Call (+25 Beans)</Text>
                         </View>
                       ) : (
                         <View style={styles.stepBadgePending}>
                           <Icon name="lock" size={12} color="#fbbf24" style={{ marginRight: 4 }} />
                           <Text style={styles.stepBadgePendingText}>
-                            Call Progress: {callTimeFormatted} / 5:00 (+25 Coins)
+                            Call Progress: {callTimeFormatted} / 5:00 (+25 Beans)
                           </Text>
                         </View>
                       )}
@@ -497,7 +502,7 @@ const InviteEarn = () => {
               <Icon name="person-add-disabled" size={40} color="rgba(255,255,255,0.25)" />
               <Text style={styles.emptyTitle}>No Friends Invited Yet</Text>
               <Text style={styles.emptySub}>
-                Share your referral link above to start earning 25 Coins on signup + 25 Coins after 5 mins call time!
+                Share your referral link above to start earning 25 Beans on signup + 25 Beans after 5 mins call time!
               </Text>
             </View>
           )}
@@ -516,11 +521,11 @@ const InviteEarn = () => {
           <View style={[styles.modalContent, { paddingBottom: Math.max(18, (insets.bottom || 0) + 12) }]}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
-                <Icon name="gavel" size={20} color="#fbbf24" style={{ marginRight: 6 }} />
+                <Icon name="gavel" size={20} color="#D97706" style={{ marginRight: 6 }} />
                 <Text style={styles.modalTitle}>Referral System Rules (नियम)</Text>
               </View>
               <TouchableOpacity onPress={() => setShowRulesModal(false)} style={styles.modalCloseBtn}>
-                <Icon name="close" size={20} color="#fff" />
+                <Icon name="close" size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
 
@@ -538,9 +543,9 @@ const InviteEarn = () => {
               <View style={styles.ruleItem}>
                 <View style={styles.ruleNumBadge}><Text style={styles.ruleNumText}>2</Text></View>
                 <View style={styles.ruleTextWrap}>
-                  <Text style={styles.ruleItemTitle}>Referrer Bonus (+50 Total Coins)</Text>
+                  <Text style={styles.ruleItemTitle}>Referrer Bonus (+50 Total Beans)</Text>
                   <Text style={styles.ruleItemDesc}>
-                    The referrer receives +25 Coins on friend's signup + +25 Coins when friend completes 5 minutes (300s) of calls.
+                    The referrer receives +25 Beans on friend's signup + +25 Beans when friend completes 5 minutes (300s) of calls.
                   </Text>
                 </View>
               </View>
@@ -548,9 +553,9 @@ const InviteEarn = () => {
               <View style={styles.ruleItem}>
                 <View style={styles.ruleNumBadge}><Text style={styles.ruleNumText}>3</Text></View>
                 <View style={styles.ruleTextWrap}>
-                  <Text style={styles.ruleItemTitle}>Maximum Reward Limit (50 Coins)</Text>
+                  <Text style={styles.ruleItemTitle}>Maximum Reward Limit (50 Beans)</Text>
                   <Text style={styles.ruleItemDesc}>
-                    The maximum reward per referred friend is exactly 50 Coins (25 Coins on signup + 25 Coins on call milestone). No Diamonds are awarded.
+                    The maximum reward per referred friend is exactly 50 Beans (25 Beans on signup + 25 Beans on call milestone). No Diamonds are awarded.
                   </Text>
                 </View>
               </View>
@@ -571,14 +576,14 @@ const InviteEarn = () => {
               onPress={() => setShowRulesModal(false)}
               activeOpacity={0.85}
             >
-              <LinearGradient colors={['#fbbf24', '#d946ef']} style={styles.modalDoneGradient}>
+              <LinearGradient colors={['#F59E0B', '#D97706']} style={styles.modalDoneGradient}>
                 <Text style={styles.modalDoneText}>I Understand (समझ गया)</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-    </ScreenBackgroundView>
+    </View>
   );
 };
 
@@ -589,15 +594,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    backgroundColor: '#020817',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderBottomColor: '#E2E8F0',
   },
   backBtn: {
     padding: 6,
   },
   topHeaderTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -609,30 +614,30 @@ const styles = StyleSheet.create({
   rulesBtnHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: '#fbbf24',
+    borderColor: '#FDE68A',
     borderRadius: 14,
     paddingHorizontal: 9,
     paddingVertical: 4,
   },
   rulesBtnHeaderText: {
-    color: '#fbbf24',
+    color: '#B45309',
     fontWeight: 'bold',
     fontSize: 12,
   },
   coinPillHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(3, 220, 254, 0.15)',
+    backgroundColor: '#EFF6FF',
     borderWidth: 1,
-    borderColor: '#03dcfe',
+    borderColor: '#BFDBFE',
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   coinPillText: {
-    color: '#fff',
+    color: '#1E40AF',
     fontWeight: 'bold',
     fontSize: 13,
   },
@@ -668,6 +673,11 @@ const styles = StyleSheet.create({
     borderRadius: 20.5,
     padding: 20,
     alignItems: 'center',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
   },
   heroBadgeRow: {
     marginBottom: 12,
@@ -675,39 +685,39 @@ const styles = StyleSheet.create({
   heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderWidth: 1,
-    borderColor: '#fbbf24',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
   heroBadgeText: {
-    color: '#fbbf24',
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: 'bold',
     letterSpacing: 1,
   },
   heroTitle: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 22,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
   },
   heroSub: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 19,
     marginBottom: 16,
   },
   highlightGold: {
-    color: '#fbbf24',
+    color: '#FDE68A',
     fontWeight: 'bold',
   },
   highlightCyan: {
-    color: '#03dcfe',
+    color: '#BAE6FD',
     fontWeight: 'bold',
   },
   rewardExchangeRow: {
@@ -719,16 +729,16 @@ const styles = StyleSheet.create({
   },
   rewardExchangeBox: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: 14,
     paddingVertical: 10,
     paddingHorizontal: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   exchangeBoxLabel: {
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.85)',
     fontSize: 10,
     fontWeight: 'bold',
     letterSpacing: 0.5,
@@ -739,7 +749,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   exchangeBoxVal: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -747,7 +757,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -761,9 +771,16 @@ const styles = StyleSheet.create({
     padding: 1.5,
   },
   passCardInner: {
-    backgroundColor: 'rgba(15, 10, 45, 0.96)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 18.5,
     padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   passCardHeader: {
     flexDirection: 'row',
@@ -771,7 +788,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   passCardTitle: {
-    color: '#fbbf24',
+    color: '#D97706',
     fontSize: 11,
     fontWeight: 'bold',
     letterSpacing: 1,
@@ -781,17 +798,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: '#FFFBEB',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#fbbf24',
+    borderColor: '#F59E0B',
     borderStyle: 'dashed',
     paddingHorizontal: 18,
     paddingVertical: 12,
     marginBottom: 10,
   },
   codeText: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 22,
     fontWeight: 'bold',
     letterSpacing: 3,
@@ -799,44 +816,44 @@ const styles = StyleSheet.create({
   copyBadgeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(3, 220, 254, 0.15)',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: '#03dcfe',
+    borderColor: '#FDE68A',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
     gap: 4,
   },
   copyBadgeBtnText: {
-    color: '#03dcfe',
+    color: '#B45309',
     fontSize: 11,
     fontWeight: 'bold',
   },
   linkContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: '#E2E8F0',
   },
   linkText: {
     flex: 1,
-    color: 'rgba(255,255,255,0.7)',
+    color: '#475569',
     fontSize: 12,
     marginRight: 8,
   },
   linkCopyBtn: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#EDE9FE',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   linkCopyBtnText: {
-    color: '#fff',
+    color: '#7C3AED',
     fontSize: 10,
     fontWeight: 'bold',
   },
@@ -856,7 +873,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#25D366',
   },
   shareBg: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#4F46E5',
   },
   shareHubBtnText: {
     color: '#fff',
@@ -875,7 +892,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   statCardGradient: {
     padding: 16,
@@ -885,30 +908,35 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: 'rgba(3, 220, 254, 0.15)',
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   statNumber: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 24,
     fontWeight: 'bold',
   },
   statLabel: {
-    color: 'rgba(255,255,255,0.6)',
+    color: '#64748B',
     fontSize: 12,
     marginTop: 2,
   },
 
   /* Shared Glass Cards */
   sectionGlassCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.09)',
+    borderColor: '#E2E8F0',
     padding: 16,
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   sectionCardHeader: {
     flexDirection: 'row',
@@ -916,24 +944,24 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sectionCardTitle: {
-    color: 'rgba(255,255,255,0.7)',
+    color: '#0F172A',
     fontSize: 12,
     fontWeight: 'bold',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
 
   /* Redeem */
   claimedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: '#DCFCE7',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: '#86EFAC',
   },
   claimedBannerText: {
-    color: '#10b981',
+    color: '#16A34A',
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -943,12 +971,12 @@ const styles = StyleSheet.create({
   },
   redeemInput: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: '#CBD5E1',
     paddingHorizontal: 14,
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 14,
     height: 46,
   },
@@ -981,14 +1009,14 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#F59E0B',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     marginTop: 2,
   },
   flowStepNum: {
-    color: '#020817',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -996,12 +1024,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   flowStepTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 14,
     fontWeight: 'bold',
   },
   flowStepDesc: {
-    color: 'rgba(255,255,255,0.65)',
+    color: '#64748B',
     fontSize: 12,
     marginTop: 2,
     lineHeight: 17,
@@ -1009,10 +1037,10 @@ const styles = StyleSheet.create({
 
   /* Friends List */
   friendCard: {
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#E2E8F0',
     padding: 12,
     marginBottom: 10,
   },
@@ -1025,34 +1053,34 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#03dcfe',
+    borderColor: '#6366F1',
     marginRight: 10,
   },
   friendDetails: {
     flex: 1,
   },
   friendName: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 13,
     fontWeight: 'bold',
   },
   friendDate: {
-    color: 'rgba(255,255,255,0.4)',
+    color: '#94A3B8',
     fontSize: 10,
     marginTop: 2,
   },
   totalCoinsPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: '#fbbf24',
+    borderColor: '#FDE68A',
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   totalCoinsText: {
-    color: '#fbbf24',
+    color: '#B45309',
     fontWeight: 'bold',
     fontSize: 11,
   },
@@ -1060,7 +1088,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: '#E2E8F0',
     gap: 6,
   },
   stepProgressRow: {
@@ -1070,30 +1098,30 @@ const styles = StyleSheet.create({
   stepBadgeDone: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    backgroundColor: '#DCFCE7',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: '#86EFAC',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   stepBadgeDoneText: {
-    color: '#10b981',
+    color: '#16A34A',
     fontSize: 11,
     fontWeight: 'bold',
   },
   stepBadgePending: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.3)',
+    borderColor: '#FDE68A',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   stepBadgePendingText: {
-    color: '#fbbf24',
+    color: '#B45309',
     fontSize: 11,
     fontWeight: 'bold',
   },
@@ -1102,13 +1130,13 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
   emptyTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 15,
     fontWeight: 'bold',
     marginTop: 10,
   },
   emptySub: {
-    color: 'rgba(255,255,255,0.5)',
+    color: '#64748B',
     fontSize: 12,
     marginTop: 4,
     textAlign: 'center',
@@ -1117,7 +1145,7 @@ const styles = StyleSheet.create({
   /* Modal Rules Styling */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -1125,11 +1153,16 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxHeight: '80%',
-    backgroundColor: '#0a1128',
+    backgroundColor: '#FFFFFF',
     borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: '#fbbf24',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1137,14 +1170,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: '#E2E8F0',
   },
   modalTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   modalTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -1163,14 +1196,14 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#F59E0B',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
     marginTop: 2,
   },
   ruleNumText: {
-    color: '#020817',
+    color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 12,
   },
@@ -1178,12 +1211,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ruleItemTitle: {
-    color: '#fbbf24',
+    color: '#0F172A',
     fontSize: 13,
     fontWeight: 'bold',
   },
   ruleItemDesc: {
-    color: 'rgba(255,255,255,0.75)',
+    color: '#64748B',
     fontSize: 12,
     marginTop: 2,
     lineHeight: 17,
@@ -1198,7 +1231,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalDoneText: {
-    color: '#020817',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
   },

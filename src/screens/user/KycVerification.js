@@ -37,12 +37,12 @@ const Field = ({ label, value, onChangeText, ...props }) => (
   <View style={styles.field}>
     <Text style={styles.label}>{label}</Text>
     <TextInput style={[styles.input, props.multiline && styles.multiline]} value={value} onChangeText={onChangeText}
-      placeholderTextColor="rgba(255,255,255,.32)" {...props} />
+      placeholderTextColor="#94A3B8" {...props} />
   </View>
 );
 const FileButton = ({ label, file, onPress, camera }) => (
   <TouchableOpacity style={[styles.fileButton, file && styles.fileReady]} onPress={onPress}>
-    <Icon name={file ? 'check-circle' : camera ? 'photo-camera' : 'upload-file'} size={21} color={file ? '#10b981' : '#03dcfe'} />
+    <Icon name={file ? 'check-circle' : camera ? 'photo-camera' : 'upload-file'} size={21} color={file ? '#10B981' : '#6366F1'} />
     <View style={styles.fileCopy}><Text style={styles.fileLabel}>{label}</Text><Text numberOfLines={1} style={styles.fileName}>{file?.name || (camera ? 'Capture using camera' : 'Choose JPG or PNG')}</Text></View>
   </TouchableOpacity>
 );
@@ -138,8 +138,7 @@ export default function KycVerification() {
           },
           bankDetails: user?.role === 'host' ? {
             accountHolderName: form.accountHolderName, bankName: form.bankName,
-            accountNumber: form.accountNumber, confirmAccountNumber: form.confirmAccountNumber,
-            ifscCode: form.ifscCode.toUpperCase(), branchName: form.branchName, upiId: form.upiId,
+            accountNumber: form.accountNumber, ifscCode: form.ifscCode, branchName: form.branchName, upiId: form.upiId,
           } : undefined,
         }));
       } else {
@@ -172,17 +171,17 @@ export default function KycVerification() {
   const current = statusCopy[status.overallStatus] || statusCopy.NOT_SUBMITTED;
   const locked = ['PENDING', 'UNDER_REVIEW', 'APPROVED'].includes(status.overallStatus);
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#08031a' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-      <ScreenBackgroundGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
+    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
+      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+      <ScreenBackgroundGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
       <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Icon name="arrow-back" size={26} color="#fff" /></TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()}><Icon name="arrow-back" size={26} color="#1E293B" /></TouchableOpacity>
         <Text style={styles.headerTitle}>KYC Verification</Text><View style={styles.headerGap} />
       </View>
       <AnimatedTitleLine />
-      {loading ? <ActivityIndicator style={styles.loader} color="#03dcfe" size="large" /> : (
+      {loading ? <ActivityIndicator style={styles.loader} color="#6366F1" size="large" /> : (
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]} keyboardShouldPersistTaps="handled">
-          <View style={styles.statusCard}><Icon name={status.overallStatus === 'APPROVED' ? 'verified' : 'badge'} size={34} color="#03dcfe" />
+          <View style={styles.statusCard}><Icon name={status.overallStatus === 'APPROVED' ? 'verified' : 'badge'} size={34} color="#6366F1" />
             <View style={styles.statusText}><Text style={styles.statusTitle}>{current[0]}</Text><Text style={styles.muted}>{current[1]}</Text></View>
           </View>
           {status.rejectionReasonText ? <View style={styles.warning}><Text style={styles.warningTitle}>Rejection reason</Text><Text style={styles.warningText}>{status.rejectionReasonText}</Text></View> : null}
@@ -230,7 +229,7 @@ export default function KycVerification() {
               <FileButton label="Cancelled cheque / passbook" file={files.bankProof} onPress={() => chooseImage('bankProof')} />
             </Section> : null}
             <TouchableOpacity style={styles.consent} onPress={() => setConsent(value => !value)}>
-              <Icon name={consent ? 'check-box' : 'check-box-outline-blank'} size={24} color={consent ? '#10b981' : '#94a3b8'} />
+              <Icon name={consent ? 'check-box' : 'check-box-outline-blank'} size={24} color={consent ? '#10B981' : '#94A3B8'} />
               <Text style={styles.consentText}>I confirm that the submitted information and documents are correct and belong to me. I consent to their use for account and KYC verification.</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.submit, (!consent || submitting) && styles.disabled]} onPress={submit} disabled={!consent || submitting}>
@@ -246,21 +245,21 @@ export default function KycVerification() {
 const Section = ({ title, children }) => <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>;
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18 },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' }, headerGap: { width: 26 }, loader: { marginTop: 80 },
-  content: { padding: 20, paddingBottom: 70 }, statusCard: { flexDirection: 'row', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(3,220,254,.25)', backgroundColor: 'rgba(255,255,255,.04)' },
-  statusText: { flex: 1, marginLeft: 13 }, statusTitle: { color: '#fff', fontSize: 17, fontWeight: '800', marginBottom: 5 },
-  muted: { color: 'rgba(255,255,255,.6)', fontSize: 13, lineHeight: 19 }, warning: { padding: 15, marginTop: 14, backgroundColor: 'rgba(245,158,11,.10)', borderRadius: 15, borderWidth: 1, borderColor: 'rgba(245,158,11,.35)' },
-  warningTitle: { color: '#fbbf24', fontWeight: '800' }, warningText: { color: '#fde68a', marginTop: 5, lineHeight: 19 }, requested: { color: '#fff', marginTop: 7, fontWeight: '700' },
-  section: { marginTop: 18, padding: 16, borderRadius: 20, backgroundColor: 'rgba(255,255,255,.035)', borderWidth: 1, borderColor: 'rgba(255,255,255,.10)' },
-  sectionTitle: { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 15 }, field: { marginBottom: 13 }, label: { color: 'rgba(255,255,255,.72)', fontSize: 12, fontWeight: '700', marginBottom: 6 },
-  input: { height: 48, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,.12)', backgroundColor: 'rgba(0,0,0,.16)', color: '#fff' },
+  headerTitle: { color: '#0F172A', fontSize: 20, fontWeight: '800' }, headerGap: { width: 26 }, loader: { marginTop: 80 },
+  content: { padding: 20, paddingBottom: 70 }, statusCard: { flexDirection: 'row', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF', elevation: 1 },
+  statusText: { flex: 1, marginLeft: 13 }, statusTitle: { color: '#0F172A', fontSize: 17, fontWeight: '800', marginBottom: 5 },
+  muted: { color: '#64748B', fontSize: 13, lineHeight: 19 }, warning: { padding: 15, marginTop: 14, backgroundColor: '#FFFBEB', borderRadius: 15, borderWidth: 1, borderColor: '#FDE68A' },
+  warningTitle: { color: '#92400E', fontWeight: '800' }, warningText: { color: '#78350F', marginTop: 5, lineHeight: 19 }, requested: { color: '#0F172A', marginTop: 7, fontWeight: '700' },
+  section: { marginTop: 18, padding: 16, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  sectionTitle: { color: '#0F172A', fontSize: 16, fontWeight: '800', marginBottom: 15 }, field: { marginBottom: 13 }, label: { color: '#475569', fontSize: 12, fontWeight: '700', marginBottom: 6 },
+  input: { height: 48, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: '#F8FAFC', color: '#0F172A' },
   multiline: { minHeight: 85, height: 85, paddingTop: 13, textAlignVertical: 'top' }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
-  chip: { paddingHorizontal: 11, paddingVertical: 8, borderRadius: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,.14)' }, chipActive: { borderColor: '#03dcfe', backgroundColor: 'rgba(3,220,254,.12)' },
-  chipText: { color: 'rgba(255,255,255,.58)', fontSize: 11 }, chipTextActive: { color: '#03dcfe', fontWeight: '800' },
-  fileButton: { flexDirection: 'row', alignItems: 'center', minHeight: 58, padding: 12, marginTop: 10, borderRadius: 15, borderWidth: 1, borderColor: 'rgba(3,220,254,.28)', backgroundColor: 'rgba(3,220,254,.04)' },
+  chip: { paddingHorizontal: 11, paddingVertical: 8, borderRadius: 15, borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: '#F8FAFC' }, chipActive: { borderColor: '#6366F1', backgroundColor: 'rgba(99, 102, 241, 0.08)' },
+  chipText: { color: '#64748B', fontSize: 11 }, chipTextActive: { color: '#6366F1', fontWeight: '800' },
+  fileButton: { flexDirection: 'row', alignItems: 'center', minHeight: 58, padding: 12, marginTop: 10, borderRadius: 15, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' },
   fileReady: { borderColor: 'rgba(16,185,129,.55)', backgroundColor: 'rgba(16,185,129,.06)' }, fileCopy: { flex: 1, marginLeft: 11 },
-  fileLabel: { color: '#fff', fontWeight: '700', fontSize: 13 }, fileName: { color: 'rgba(255,255,255,.48)', fontSize: 11, marginTop: 3 },
+  fileLabel: { color: '#0F172A', fontWeight: '700', fontSize: 13 }, fileName: { color: '#64748B', fontSize: 11, marginTop: 3 },
   selfie: { width: '100%', height: 300, borderRadius: 18, marginTop: 13 }, consent: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 20 },
-  consentText: { flex: 1, marginLeft: 10, color: 'rgba(255,255,255,.7)', lineHeight: 19 }, submit: { height: 56, marginTop: 20, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: '#7c3aed' },
+  consentText: { flex: 1, marginLeft: 10, color: '#64748B', lineHeight: 19 }, submit: { height: 56, marginTop: 20, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: '#6366F1' },
   disabled: { opacity: .45 }, submitText: { color: '#fff', fontWeight: '900', fontSize: 15 },
 });

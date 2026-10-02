@@ -10,14 +10,12 @@ import {
   ActivityIndicator,
   View as ScreenBackgroundView,
   StatusBar as ScreenBackgroundStatusBar,
-  StyleSheet as ScreenBackgroundStyleSheet
+  StyleSheet as ScreenBackgroundStyleSheet,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import { RFValue } from 'react-native-responsive-fontsize';
-import {
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiUtil } from '../../utils/apiUtil';
 import { SOCKET_URL } from '@env';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +38,6 @@ const CallHistoryScreen = () => {
     try {
       setLoading(true);
       const response = await apiUtil.get(`/call/history?days=${selectedDays}`);
-      console.log('📞 Call History:', response.data);
       setHistory(response.data.data);
     } catch (error) {
       console.log(
@@ -57,69 +54,64 @@ const CallHistoryScreen = () => {
   }, [selectedDays]);
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#08031a' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-      <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
+    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
+      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
       <View style={styles.container}>
         <ScrollView contentContainerStyle={{ paddingBottom: bottomPadding }} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Icon name="arrow-back" size={28} color="#fff" />
+              <Icon name="arrow-back" size={24} color="#1E293B" />
             </TouchableOpacity>
             <Text style={styles.headerText}>{t('history.call_history') || 'Call History'}</Text>
             <View style={{ width: 44 }} />
           </View>
 
-          {/* Tabs */}
-          <LinearGradient
-            colors={['#2819F8', '#1EE5F3']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.tabBorder}
-          >
+          {/* Day Tabs */}
+          <View style={styles.tabBorder}>
             <View style={styles.innerTabWrapper}>
-              {[7, 15, 30].map((days) => (
-                <TouchableOpacity
-                  key={days}
-                  onPress={() => setSelectedDays(days)}
-                  style={[
-                    styles.tabItem,
-                    selectedDays === days ? {} : styles.nonActiveTab,
-                    selectedDays === days && {
-                      backgroundColor: undefined, // Let gradient show
-                    }
-                  ]}
-                >
-                  {selectedDays === days ? (
-                    <LinearGradient
-                      colors={['#8E2DE2', '#4A00E0']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={[StyleSheet.absoluteFill, { borderRadius: RFValue(25) }]}
-                    />
-                  ) : null}
-                  <Text style={styles.tabText}>
-                    {days === 30 ? (t('history.one_month') || '1 Month') : `${days} ${t('history.days') || 'Days'}`}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {[7, 15, 30].map((days) => {
+                const isSelected = selectedDays === days;
+                return (
+                  <TouchableOpacity
+                    key={days}
+                    onPress={() => setSelectedDays(days)}
+                    style={[
+                      styles.tabItem,
+                      isSelected ? styles.activeTabItem : styles.nonActiveTab,
+                    ]}
+                  >
+                    {isSelected ? (
+                      <LinearGradient
+                        colors={['#8B5CF6', '#6C5CE7']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[StyleSheet.absoluteFill, { borderRadius: RFValue(25) }]}
+                      />
+                    ) : null}
+                    <Text style={[styles.tabText, isSelected ? styles.activeTabText : styles.inactiveTabText]}>
+                      {days === 30 ? (t('history.one_month') || '1 Month') : `${days} ${t('history.days') || 'Days'}`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          </LinearGradient>
+          </View>
 
           {/* Loading */}
           {loading && (
             <ActivityIndicator
               size="large"
-              color="#fff"
-              style={{ marginTop: 20 }}
+              color="#6C5CE7"
+              style={{ marginTop: 24 }}
             />
           )}
 
-          {/* Total Timing */}
+          {/* Total Timing Banner */}
           {!loading && history && (
             <LinearGradient
-              colors={['#2819F8', '#1EE5F3']}
+              colors={['#EDE9FE', '#DDD6FE']}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.totalTiming}
@@ -130,7 +122,7 @@ const CallHistoryScreen = () => {
               />
               <Text style={styles.totalTimingText}>
                 {t('history.total_timing') || 'Total Timing :'} {' '}
-                <Text style={{ fontWeight: 'bold' }}>
+                <Text style={{ fontWeight: 'bold', color: '#4C1D95' }}>
                   {history.totalTiming}
                 </Text>
               </Text>
@@ -140,9 +132,8 @@ const CallHistoryScreen = () => {
           {/* Call List */}
           {!loading && history?.calls?.length > 0
             ? history.calls.map((call, index) => (
-              <LinearGradient
+              <View
                 key={index}
-                colors={['#00c6ff', '#0072ff']}
                 style={styles.card}
               >
                 <View style={styles.cardHeader}>
@@ -153,12 +144,11 @@ const CallHistoryScreen = () => {
                   <View style={styles.info}>
                     <Text style={styles.name}>{t('history.name_label') || 'Name :'} {call.name}</Text>
                     <Text style={styles.id}>{t('history.id_label') || 'ID :'} {call.id}</Text>
-                    <Text style={styles.commission}>
+                    <Text style={styles.type}>
                       {t('history.type_label') || 'Type :'} {call.type.replace('_', ' ').toUpperCase()}
                     </Text>
-                    {/* ✅ Show Commission only if exists */}
                     {call.commission !== undefined && (
-                      <Text style={[styles.commission, { color: '#FFD700' }]}>
+                      <Text style={styles.commission}>
                         {t('history.commission') || 'Commission :'} {call.commission}
                       </Text>
                     )}
@@ -195,18 +185,18 @@ const CallHistoryScreen = () => {
                 {/* Start / End Time */}
                 <View style={styles.bottomRow}>
                   <Text style={styles.detailText}>
-                    {t('history.start') || 'Start:'} {new Date(call.callStart).toLocaleTimeString()}
+                    {t('history.start') || 'Start:'} {call.callStart ? new Date(call.callStart).toLocaleTimeString() : 'N/A'}
                   </Text>
                   <View style={styles.verticalDivider} />
                   <Text style={styles.detailText}>
-                    {t('history.end') || 'End:'} {new Date(call.callEnd).toLocaleTimeString()}
+                    {t('history.end') || 'End:'} {call.callEnd ? new Date(call.callEnd).toLocaleTimeString() : 'N/A'}
                   </Text>
                 </View>
-              </LinearGradient>
+              </View>
             ))
             : !loading && (
               <Text
-                style={{ color: '#fff', textAlign: 'center', marginTop: 30 }}
+                style={{ color: '#94A3B8', textAlign: 'center', marginTop: 30, fontSize: 14, fontWeight: '600' }}
               >
                 {t('history.no_call_history') || 'No call history found.'}
               </Text>
@@ -217,7 +207,8 @@ const CallHistoryScreen = () => {
   );
 };
 
-export default CallHistoryScreen;
+export { CallHistoryScreen as LegacyCallHistoryScreen };
+export { default } from './CallHistoryStudio';
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: RFValue(15) },
@@ -225,53 +216,87 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: RFValue(20),
+    marginBottom: RFValue(16),
   },
-  backIcon: { width: RFValue(20), height: RFValue(20), tintColor: '#fff' },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
   headerText: {
     fontSize: RFValue(18),
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#0F172A',
+    fontWeight: '800',
     textAlign: 'center',
   },
   tabBorder: {
     borderRadius: RFValue(25),
-    padding: RFValue(2),
-    marginBottom: RFValue(20),
+    marginBottom: RFValue(16),
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 3,
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   innerTabWrapper: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#002060',
     borderRadius: RFValue(25),
-    padding: RFValue(2),
   },
   tabItem: {
     flex: 1,
     paddingVertical: RFValue(8),
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RFValue(25),
   },
+  activeTabItem: {},
   nonActiveTab: {
     backgroundColor: 'transparent',
   },
   tabText: {
-    color: '#fff',
     fontSize: RFValue(12),
+    fontWeight: '700',
+  },
+  activeTabText: {
+    color: '#FFFFFF',
+  },
+  inactiveTabText: {
+    color: '#64748B',
   },
   totalTiming: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: RFValue(10),
-    borderRadius: RFValue(15),
-    marginBottom: RFValue(15),
+    paddingVertical: RFValue(11),
+    borderRadius: RFValue(16),
+    marginBottom: RFValue(16),
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
   },
   icon: { width: RFValue(18), height: RFValue(18), marginRight: RFValue(8) },
-  totalTimingText: { color: '#fff', fontSize: RFValue(13) },
+  totalTimingText: { color: '#6C5CE7', fontSize: RFValue(13), fontWeight: '700' },
   card: {
-    borderRadius: RFValue(15),
-    padding: RFValue(12),
-    marginBottom: RFValue(15),
+    borderRadius: RFValue(18),
+    padding: RFValue(14),
+    marginBottom: RFValue(12),
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    elevation: 2,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
   profileImage: {
@@ -279,23 +304,28 @@ const styles = StyleSheet.create({
     height: RFValue(45),
     borderRadius: RFValue(25),
     marginRight: RFValue(10),
+    backgroundColor: '#E2E8F0',
   },
   info: { flex: 1 },
-  name: { color: '#fff', fontSize: RFValue(13) },
-  id: { color: '#ccc', fontSize: RFValue(11) },
-  commission: { color: '#fff', fontSize: RFValue(12), marginTop: 4 },
+  name: { color: '#0F172A', fontSize: RFValue(13), fontWeight: '800' },
+  id: { color: '#64748B', fontSize: RFValue(11), marginTop: 2 },
+  type: { color: '#3B82F6', fontSize: RFValue(11.5), fontWeight: '700', marginTop: 3 },
+  commission: { color: '#D97706', fontSize: RFValue(12), fontWeight: '700', marginTop: 3 },
   voiceGiftRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
     marginTop: RFValue(10),
+    paddingTop: RFValue(8),
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
-  detailText: { color: '#fff', fontSize: RFValue(12) },
+  detailText: { color: '#475569', fontSize: RFValue(11.5), fontWeight: '600' },
   coinIcon: { width: RFValue(12), height: RFValue(12), marginLeft: 3 },
   verticalDivider: {
     width: 1,
     height: RFValue(14),
-    backgroundColor: '#fff',
+    backgroundColor: '#E2E8F0',
   },
   bottomRow: {
     flexDirection: 'row',

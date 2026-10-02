@@ -1,11 +1,13 @@
 {
   "name": "MyNewApp",
-  "version": "1.8.9",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
     "android:both": "powershell -ExecutionPolicy Bypass -File run-both.ps1",
     "android:both:release": "powershell -ExecutionPolicy Bypass -File run-both-release.ps1",
+    "build:release:bundle": "cd android && .\\gradlew.bat bundleRelease",
+    "build:release:apk": "cd android && .\\gradlew.bat assembleRelease",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
@@ -13,6 +15,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@dasimems/react-native-svga": "^0.1.4",
     "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-native-documents/picker": "^12.0.0",

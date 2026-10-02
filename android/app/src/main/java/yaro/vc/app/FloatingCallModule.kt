@@ -91,57 +91,21 @@ class FloatingCallModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun startFloatingCall(params: ReadableMap) {
-        android.util.Log.d("FLOATING", "[ FLOATING ] Native module received startFloatingCall request")
-        val callerName = if (params.hasKey("callerName")) params.getString("callerName") else "Voice Call Club"
-        val callerImage = if (params.hasKey("callerImage")) params.getString("callerImage") else ""
-        val isMuted = if (params.hasKey("isMuted")) params.getBoolean("isMuted") else false
-        val isSpeaker = if (params.hasKey("isSpeaker")) params.getBoolean("isSpeaker") else true
-
-        val intent = Intent(reactContext, FloatingCallService::class.java).apply {
-            action = FloatingCallService.ACTION_START
-            putExtra(FloatingCallService.EXTRA_CALLER_NAME, callerName)
-            putExtra(FloatingCallService.EXTRA_CALLER_IMAGE, callerImage)
-            putExtra(FloatingCallService.EXTRA_IS_MUTED, isMuted)
-            putExtra(FloatingCallService.EXTRA_IS_SPEAKER, isSpeaker)
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            reactContext.startForegroundService(intent)
-        } else {
-            reactContext.startService(intent)
-        }
-        android.util.Log.d("FLOATING", "[ FLOATING ] startForegroundService intent dispatched to FloatingCallService")
+        android.util.Log.d("FLOATING", "[ FLOATING ] Foreground floating call service postponed for this release")
     }
 
     @ReactMethod
     fun updateFloatingCallState(params: ReadableMap) {
-        val isMuted = if (params.hasKey("isMuted")) params.getBoolean("isMuted") else false
-        val isSpeaker = if (params.hasKey("isSpeaker")) params.getBoolean("isSpeaker") else true
-
-        val intent = Intent(reactContext, FloatingCallService::class.java).apply {
-            action = FloatingCallService.ACTION_UPDATE
-            putExtra(FloatingCallService.EXTRA_IS_MUTED, isMuted)
-            putExtra(FloatingCallService.EXTRA_IS_SPEAKER, isSpeaker)
-        }
-        reactContext.startService(intent)
+        // Foreground floating call service postponed for this release
     }
 
     @ReactMethod
     fun stopFloatingCall() {
-        android.util.Log.d("FLOATING", "[ FLOATING ] stopFloatingCall native method invoked")
-        try {
-            val intent = Intent(reactContext, FloatingCallService::class.java).apply {
-                action = FloatingCallService.ACTION_STOP
-            }
-            reactContext.startService(intent)
-            reactContext.stopService(intent)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        android.util.Log.d("FLOATING", "[ FLOATING ] stopFloatingCall called (postponed)")
     }
 
     @ReactMethod
     fun isFloatingCallActive(promise: Promise) {
-        promise.resolve(FloatingCallService.instance != null)
+        promise.resolve(false)
     }
 }

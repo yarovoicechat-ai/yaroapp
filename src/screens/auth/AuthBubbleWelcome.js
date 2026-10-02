@@ -123,7 +123,7 @@ const AuthBubbleWelcome = () => {
   };
 
   const handleOpenLogin = () => {
-    navigation.navigate('UmangLoginScreen');
+    navigation.navigate('SignIn');
   };
 
   const handleOpenCreateAccount = () => {
@@ -132,12 +132,11 @@ const AuthBubbleWelcome = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" transparent backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Background Image with Cover Mode & Ambient Dark Overlay */}
-      <Image source={MobileLoginBG} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      {/* Light Theme Background Gradient */}
       <LinearGradient
-        colors={['rgba(6, 2, 18, 0.70)', 'rgba(14, 4, 35, 0.88)', 'rgba(3, 1, 9, 0.98)']}
+        colors={['#F8FAFC', '#F1F5F9', '#EEF2FF']}
         style={StyleSheet.absoluteFillObject}
       />
 
@@ -266,7 +265,7 @@ export default AuthBubbleWelcome;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#060212',
+    backgroundColor: '#F8FAFC',
   },
   safeArea: {
     flex: 1,
@@ -285,25 +284,25 @@ const styles = StyleSheet.create({
   promptHeading: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#0F172A',
     textAlign: 'center',
     marginBottom: 4,
     letterSpacing: 0.5,
   },
   promptSubheading: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.60)',
+    color: '#64748B',
     textAlign: 'center',
     marginBottom: 24,
   },
   bubbleWrapper: {
     width: '100%',
     marginBottom: 18,
-    shadowColor: '#C026D3',
+    shadowColor: '#6366F1',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.40,
+    shadowOpacity: 0.25,
     shadowRadius: 12,
-    elevation: 10,
+    elevation: 8,
   },
   bubbleTouch: {
     borderRadius: 28,
@@ -313,8 +312,8 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 20,
     borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.30)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.40)',
   },
   bubbleInnerContent: {
     flexDirection: 'row',
@@ -340,7 +339,7 @@ const styles = StyleSheet.create({
   },
   bubbleDesc: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.88)',
+    color: 'rgba(255, 255, 255, 0.92)',
   },
   bottomSection: {
     paddingHorizontal: 20,
@@ -356,10 +355,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#E2E8F0',
   },
   orText: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#94A3B8',
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 1,
@@ -370,12 +369,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.20)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     paddingVertical: 14,
     marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 2,
   },
   googleIcon: {
     width: 22,
@@ -384,12 +388,12 @@ const styles = StyleSheet.create({
   },
   googleBtnText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: '700',
+    color: '#0F172A',
   },
   termsFooter: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: '#64748B',
     textAlign: 'center',
   },
 });

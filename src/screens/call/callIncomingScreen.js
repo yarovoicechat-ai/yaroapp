@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useContext } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthContext } from "../../context/AuthProvider";
 import {
   StyleSheet,
   View,
@@ -65,6 +66,7 @@ const Incoming = ({ route }) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
+  const { user } = useContext(AuthContext);
 
   // Params from socket payload
   const {
@@ -433,6 +435,18 @@ const Incoming = ({ route }) => {
             )}
           </View>
 
+          {Boolean(callerId || route.params?.userId || route.params?.meethiId) && (
+            <Text style={styles.callerIdBadge}>
+              Caller ID: {callerId || route.params?.userId || route.params?.meethiId}
+            </Text>
+          )}
+
+          {Boolean(user?.userId || user?.meethiId || user?.id) && (
+            <Text style={styles.myHostIdBadge}>
+              {user?.role === 'host' ? 'Host (You)' : 'My ID'}: {user?.userId || user?.meethiId || user?.id}
+            </Text>
+          )}
+
           <View style={styles.statusRow}>
             <View style={styles.onlineDot} />
             <Text style={styles.statusText}>Online</Text>
@@ -613,6 +627,24 @@ const styles = StyleSheet.create({
     fontSize: RF(10),
     fontWeight: "bold",
     marginTop: -1,
+  },
+  callerIdBadge: {
+    color: '#03dcfe',
+    fontSize: RF(13),
+    fontWeight: '700',
+    backgroundColor: 'rgba(3, 220, 254, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(3, 220, 254, 0.25)',
+  },
+  myHostIdBadge: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: RF(11),
+    fontWeight: '600',
+    marginBottom: 6,
   },
   statusRow: {
     flexDirection: "row",

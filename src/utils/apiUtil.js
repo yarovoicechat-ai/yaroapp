@@ -7,7 +7,7 @@ import { AlertService } from "./AlertService";
 import i18next from "i18next";
 import { clearAuthSession } from './authSession';
 
-const PRODUCTION_BASE_URL = 'https://api.mithichat.live/api';
+const PRODUCTION_BASE_URL = 'https://api.yaroapp.in/api';
 const normalizeApiBaseUrl = rawUrl => {
   const origin = String(rawUrl || PRODUCTION_BASE_URL)
     .trim()
@@ -211,3 +211,4 @@ apiUtil.interceptors.response.use(
 // Exports
 // --------------------
 export { apiUtil, apiPublic, exchangeCoins, getApiErrorMessage, API_BASE_URL };
+export default apiUtil;

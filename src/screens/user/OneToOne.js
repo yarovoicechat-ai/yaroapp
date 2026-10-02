@@ -293,6 +293,9 @@ export default function OneToOne() {
                       <Text style={styles.name} numberOfLines={1}>{host.name || 'Host'}</Text>
                       <Icon name="checkmark-circle" size={16} color="#A78BFA" />
                     </View>
+                    <Text style={styles.hostIdText} numberOfLines={1}>
+                      ID: {host.userId || host.meethiId || host._id?.slice(-6) || 'N/A'}
+                    </Text>
                     <View style={styles.chips}>
                       {(languages.length ? languages : ['English']).map((lang) => (
                         <View key={lang} style={styles.chip}><Text style={styles.chipText}>{lang}</Text></View>
@@ -382,7 +385,8 @@ const styles = StyleSheet.create({
   grid: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }, card: { width: CARD_WIDTH, height: CARD_WIDTH * 1.3, borderRadius: 22, overflow: 'hidden', backgroundColor: '#EDE9FE' },
   online: { position: 'absolute', top: 10, right: 10, width: 13, height: 13, borderRadius: 7, backgroundColor: '#22C55E', borderWidth: 2, borderColor: '#fff' },
   info: { position: 'absolute', left: 11, right: 11, bottom: 12 }, nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 42 }, name: { color: '#fff', fontSize: 17, fontWeight: '900', flexShrink: 1 },
-  chips: { flexDirection: 'row', gap: 5, marginTop: 7, paddingRight: 36 }, chip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(250,245,255,0.94)' }, chipText: { color: '#6B21A8', fontSize: 9, fontWeight: '700' },
+  hostIdText: { color: 'rgba(255,255,255,0.85)', fontSize: 10.5, fontWeight: '700', marginTop: 1 },
+  chips: { flexDirection: 'row', gap: 5, marginTop: 5, paddingRight: 36 }, chip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, backgroundColor: 'rgba(250,245,255,0.94)' }, chipText: { color: '#6B21A8', fontSize: 9, fontWeight: '700' },
   call: { position: 'absolute', right: 9, bottom: 9, width: 45, height: 45, borderRadius: 23, overflow: 'hidden', elevation: 5 }, callFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36 },

@@ -233,4 +233,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Language;
+export { Language as LegacyLanguage };
+export { default } from './LanguageStudio';

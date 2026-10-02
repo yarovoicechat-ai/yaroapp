@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 
 import { getUserAvatar } from '../../utils/avatarUtil';
+import AvatarWithFrame from '../../components/AvatarWithFrame';
 import avatar from '../../assets/avtar.webp';
 
 const { width, height } = Dimensions.get('window');
@@ -34,10 +35,10 @@ const Frame = () => {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 42);
-  const { user } = useContext(AuthContext);
+  const { user, equippedFrame, setEquippedFrame } = useContext(AuthContext);
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [selectedFrame, setSelectedFrame] = useState('Galaxy Wings');
+  const [selectedFrame, setSelectedFrame] = useState(user?.equippedFrame || equippedFrame || 'Galaxy Wings');
 
   // Local mock list matching the mockup image precisely
   const frameList = [
@@ -111,26 +112,23 @@ const Frame = () => {
 
   if (loading) {
     return (
-      <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#08031a' }, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-        <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-        <ActivityIndicator size="large" color="#03dcfe" />
+      <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+        <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
+        <ActivityIndicator size="large" color="#6366F1" />
       </ScreenBackgroundView>
     );
   }
 
   return (
-    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#08031a' }]}>
-      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="light-content" animated />
-      <LinearGradient colors={['#08031a', '#050212', '#020108']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
-      {/* Stars backgrounds */}
-      <View style={styles.starOverlay1} />
-      <View style={styles.starOverlay2} />
+    <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }]}>
+      <ScreenBackgroundStatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={ScreenBackgroundStyleSheet.absoluteFillObject} />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <IonIcon name="chevron-back" size={24} color="#fff" />
+          <IonIcon name="chevron-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('frame.title') || 'Frame'}</Text>
         <View style={{ width: 44 }} />
@@ -141,32 +139,17 @@ const Frame = () => {
         
         {/* Current Frame Card */}
         <View style={styles.cardWrapper}>
-          <LinearGradient
-            colors={['#03dcfe', '#d946ef']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardBorder}
-          >
-            <LinearGradient
-              colors={['rgba(23, 11, 78, 0.85)', 'rgba(7, 6, 40, 0.85)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.cardBody}
-            >
+          <View style={styles.cardBorder}>
+            <View style={styles.cardBody}>
               {/* User Avatar Details */}
               <View style={styles.leftCol}>
                 <View style={styles.avatarWrap}>
-                  <LinearGradient
-                    colors={['#c084fc', '#03dcfe']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.avatarRing}
-                  >
-                    <Image
-                      source={getUserAvatar(user)}
-                      style={styles.avatarImg}
-                    />
-                  </LinearGradient>
+                  <AvatarWithFrame
+                    user={user}
+                    frame={selectedFrame}
+                    size={64}
+                    showOnlineDot={false}
+                  />
                   {/* Badge */}
                   <View style={styles.avatarLevelBadge}>
                     <Text style={styles.avatarLevelText}>Lv.5</Text>
@@ -191,7 +174,7 @@ const Frame = () => {
                 {/* Horizontal Progress Bar */}
                 <View style={styles.progressBarBg}>
                   <LinearGradient
-                    colors={['#d946ef', '#8b5cf6']}
+                    colors={['#6366F1', '#4F46E5']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={[styles.progressBarFill, { width: '55%' }]}
@@ -203,35 +186,27 @@ const Frame = () => {
               <View style={styles.rightCol}>
                 <View style={styles.currentFrameBox}>
                   {/* Outer glowing frame border mockup */}
-                  <View style={[styles.galaxyBoxBorder, { borderColor: '#a855f7' }]}>
+                  <View style={[styles.galaxyBoxBorder, { borderColor: '#8B5CF6' }]}>
                     <View style={styles.galaxyBoxInside}>
-                      <IonIcon name="person" size={24} color="rgba(255, 255, 255, 0.2)" />
+                      <IonIcon name="person" size={24} color="#94A3B8" />
                     </View>
                   </View>
                 </View>
                 <Text style={styles.currentFrameLabel}>Current Frame</Text>
-                <Text style={styles.currentFrameName}>Galaxy Wings</Text>
+                <Text style={styles.currentFrameName}>{selectedFrame}</Text>
               </View>
-            </LinearGradient>
-          </LinearGradient>
+            </View>
+          </View>
         </View>
 
         {/* Levels & Frames Table */}
         <View style={styles.tableCard}>
-          <LinearGradient
-            colors={['#0e0938', '#070425']}
-            style={styles.tableInner}
-          >
+          <View style={styles.tableInner}>
             {/* Table Header Row */}
-            <LinearGradient
-              colors={['#002273', '#1144f0']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.tableHeaderRow}
-            >
+            <View style={styles.tableHeaderRow}>
               <Text style={styles.headerCellLeft}>Level</Text>
               <Text style={styles.headerCellRight}>Frame</Text>
-            </LinearGradient>
+            </View>
 
             {/* Table Rows list */}
             {frameList.map((item, idx) => {
@@ -240,7 +215,12 @@ const Frame = () => {
                 <TouchableOpacity
                   key={idx}
                   activeOpacity={item.isLocked ? 1 : 0.85}
-                  onPress={() => !item.isLocked && setSelectedFrame(item.name)}
+                  onPress={() => {
+                    if (!item.isLocked) {
+                      setSelectedFrame(item.name);
+                      setEquippedFrame?.(item.name);
+                    }
+                  }}
                   style={[
                     styles.tableRow,
                     isActive && styles.tableRowActive,
@@ -249,7 +229,7 @@ const Frame = () => {
                   {/* Left Column (Level Badge & title) */}
                   <View style={styles.rowLeftCol}>
                     <LinearGradient
-                      colors={item.isDefault ? ['#475569', '#334155'] : item.isLocked ? ['#b45309', '#78350f'] : ['#8b5cf6', '#d946ef']}
+                      colors={item.isDefault ? ['#94A3B8', '#64748B'] : item.isLocked ? ['#F59E0B', '#D97706'] : ['#8B5CF6', '#6366F1']}
                       style={styles.rowBadgeHex}
                     >
                       <Text style={styles.rowBadgeText}>{item.level}</Text>
@@ -276,7 +256,7 @@ const Frame = () => {
                   <View style={styles.rowRightCol}>
                     {item.isLocked ? (
                       <View style={styles.lockBadge}>
-                        <IonIcon name="lock-closed" size={12} color="rgba(255,255,255,0.4)" />
+                        <IonIcon name="lock-closed" size={12} color="#94A3B8" />
                       </View>
                     ) : isActive ? (
                       <View style={styles.checkboxChecked}>
@@ -289,25 +269,14 @@ const Frame = () => {
                 </TouchableOpacity>
               );
             })}
-          </LinearGradient>
+          </View>
         </View>
 
         {/* How to Unlock bottom card encouragement banner */}
         <View style={styles.footerBanner}>
-          <LinearGradient
-            colors={['rgba(23, 11, 78, 0.45)', 'rgba(7, 6, 40, 0.45)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.footerInner}
-          >
-            <LinearGradient
-              colors={['#8b5cf6', '#d946ef']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.footerBorderOverlay}
-            />
+          <View style={styles.footerInner}>
             <View style={styles.footerLeft}>
-              <IonIcon name="ribbon-outline" size={24} color="#a855f7" />
+              <IonIcon name="ribbon-outline" size={24} color="#6366F1" />
             </View>
             <View style={styles.footerMiddle}>
               <Text style={styles.footerTitle}>How to Unlock Frames?</Text>
@@ -317,7 +286,7 @@ const Frame = () => {
               <Text style={styles.footerBtnText}>Upgrade Now</Text>
               <IonIcon name="chevron-forward" size={10} color="#fff" style={{ marginLeft: 3 }} />
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
         </View>
 
       </ScrollView>
@@ -326,24 +295,6 @@ const Frame = () => {
 };
 
 const styles = StyleSheet.create({
-  starOverlay1: {
-    position: 'absolute',
-    top: height * 0.25,
-    left: width * 0.1,
-    width: 2,
-    height: 2,
-    backgroundColor: '#fff',
-    opacity: 0.25,
-  },
-  starOverlay2: {
-    position: 'absolute',
-    top: height * 0.55,
-    right: width * 0.12,
-    width: 2,
-    height: 2,
-    backgroundColor: '#fff',
-    opacity: 0.35,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -358,7 +309,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 20,
     fontWeight: '700',
   },
@@ -373,7 +324,14 @@ const styles = StyleSheet.create({
   },
   cardBorder: {
     borderRadius: 24,
-    padding: 1.5,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   cardBody: {
     flexDirection: 'row',
@@ -402,20 +360,18 @@ const styles = StyleSheet.create({
     width: 59,
     height: 59,
     borderRadius: 29.5,
-    backgroundColor: '#0c0628',
+    backgroundColor: '#E2E8F0',
   },
   avatarLevelBadge: {
     position: 'absolute',
     bottom: -6,
-    backgroundColor: '#0c0628',
-    borderWidth: 1.2,
-    borderColor: '#c084fc',
+    backgroundColor: '#6366F1',
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 1.5,
   },
   avatarLevelText: {
-    color: '#c084fc',
+    color: '#FFFFFF',
     fontSize: 8,
     fontWeight: '900',
   },
@@ -425,15 +381,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   voiceChatTitle: {
-    color: '#fff',
-    fontSize: 12,
+    color: '#0F172A',
+    fontSize: 13,
     fontWeight: '800',
     marginBottom: 4,
   },
   levelBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8b5cf6',
+    backgroundColor: '#6366F1',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -451,39 +407,39 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   progressLabel: {
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: '#64748B',
     fontSize: 8,
     fontWeight: '600',
   },
   progressVal: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 8,
     fontWeight: '700',
   },
   progressBarBg: {
     width: '100%',
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 2,
+    height: 5,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2.5,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 2.5,
   },
 
   rightCol: {
     width: '30%',
     alignItems: 'center',
     borderLeftWidth: 1,
-    borderLeftColor: 'rgba(255,255,255,0.06)',
+    borderLeftColor: '#E2E8F0',
     paddingLeft: 6,
   },
   currentFrameBox: {
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
@@ -500,18 +456,18 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 2,
-    backgroundColor: '#070628',
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   currentFrameLabel: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#64748B',
     fontSize: 8,
     fontWeight: '600',
     marginBottom: 2,
   },
   currentFrameName: {
-    color: '#d946ef',
+    color: '#6366F1',
     fontSize: 9,
     fontWeight: '800',
     textAlign: 'center',
@@ -521,9 +477,15 @@ const styles = StyleSheet.create({
   tableCard: {
     borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
     marginBottom: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   tableInner: {
     flex: 1,
@@ -532,16 +494,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 12,
     paddingHorizontal: 16,
+    backgroundColor: '#F1F5F9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
   headerCellLeft: {
     flex: 1,
-    color: '#fff',
+    color: '#334155',
     fontWeight: '800',
     fontSize: 12,
   },
   headerCellRight: {
     flex: 1.5,
-    color: '#fff',
+    color: '#334155',
     fontWeight: '800',
     fontSize: 12,
     textAlign: 'center',
@@ -552,13 +517,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.03)',
+    borderBottomColor: '#F1F5F9',
   },
   tableRowActive: {
-    backgroundColor: 'rgba(3, 220, 254, 0.04)',
+    backgroundColor: '#EEF2FF',
     borderLeftWidth: 3,
-    borderLeftColor: '#c084fc',
-    borderColor: '#c084fc',
+    borderLeftColor: '#6366F1',
   },
   rowLeftCol: {
     flex: 1,
@@ -579,7 +543,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   rowLevelTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -598,7 +562,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: '#F8FAFC',
   },
   frameRingInner: {
     width: 28,
@@ -630,22 +594,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowFrameName: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 2,
   },
   inUseTag: {
-    backgroundColor: 'rgba(192, 132, 252, 0.12)',
+    backgroundColor: '#EEF2FF',
     borderWidth: 0.8,
-    borderColor: 'rgba(192, 132, 252, 0.35)',
+    borderColor: '#C7D2FE',
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
     alignSelf: 'flex-start',
   },
   inUseTagText: {
-    color: '#c084fc',
+    color: '#4F46E5',
     fontSize: 7,
     fontWeight: '800',
   },
@@ -659,9 +623,9 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#E2E8F0',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -669,7 +633,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#8b5cf6',
+    backgroundColor: '#6366F1',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -678,7 +642,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: '#CBD5E1',
   },
 
   // Footer Banner
@@ -690,17 +654,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 20,
-    padding: 12,
-  },
-  footerBorderOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 20,
-    padding: 1,
-    pointerEvents: 'none',
+    padding: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   footerLeft: {
     marginRight: 10,
@@ -709,27 +671,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   footerTitle: {
-    color: '#fff',
-    fontSize: 10,
+    color: '#0F172A',
+    fontSize: 12,
     fontWeight: '800',
     marginBottom: 2,
   },
   footerSubtitle: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 8,
+    color: '#64748B',
+    fontSize: 9,
     fontWeight: '600',
   },
   footerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#6366F1',
     borderRadius: 14,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
   },
   footerBtnText: {
     color: '#fff',
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800',
   },
 });

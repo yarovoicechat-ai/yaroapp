@@ -5,8 +5,8 @@ import { API_BASE_URL } from './apiUtil';
 
 export { DEFAULT_FEMALE_AVATAR, DEFAULT_MALE_AVATAR, DEFAULT_NEUTRAL_AVATAR };
 
-// Get backend domain base (e.g. 'https://api.mithichat.live')
-const SERVER_DOMAIN = (API_BASE_URL || 'https://api.mithichat.live/api').replace(/\/api\/?$/i, '');
+// Get backend domain base (e.g. 'https://api.yaroapp.in')
+const SERVER_DOMAIN = (API_BASE_URL || 'https://api.yaroapp.in/api').replace(/\/api\/?$/i, '');
 
 /**
  * Normalizes gender string safely to 'female', 'male', or 'neutral'

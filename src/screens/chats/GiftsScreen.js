@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,17 @@ import {
   StatusBar,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
-
+import { AuthContext } from '../../context/AuthProvider';
+import { apiUtil } from '../../utils/apiUtil';
+import EmptyStateView from '../../components/EmptyStateView';
 
 const coinIcon = require('../../assets/coin.webp');
 
@@ -25,91 +29,58 @@ const GIFT_FILTER_TABS = [
   { id: 'system', label: 'System', icon: 'shield-checkmark-outline' },
 ];
 
-const DUMMY_GIFTS_LIST = [
-  {
-    id: 'g1',
-    name: 'Aanya',
-    age: 22,
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-    quote: '“Hope this makes you smile 💜”',
-    giftName: 'Rose Bouquet',
-    price: 299,
-    time: '2 min ago',
-    giftEmoji: '💐',
-    type: 'received',
-  },
-  {
-    id: 'g2',
-    name: 'Mina',
-    age: 21,
-    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80',
-    quote: '“You’re amazing just the way you are! ♡”',
-    giftName: 'Love Heart',
-    price: 99,
-    time: '20 min ago',
-    giftEmoji: '💖',
-    type: 'received',
-  },
-  {
-    id: 'g3',
-    name: 'Sophia',
-    age: 20,
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
-    quote: '“A little hug for you 🤍”',
-    giftName: 'Teddy Bear',
-    price: 199,
-    time: '1 hour ago',
-    giftEmoji: '🧸',
-    type: 'received',
-  },
-  {
-    id: 'g4',
-    name: 'Daniel',
-    age: 24,
-    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&auto=format&fit=crop&q=80',
-    quote: '“Keep shining ✨”',
-    giftName: 'Diamond',
-    price: 499,
-    time: '3 hours ago',
-    giftEmoji: '💎',
-    type: 'sent',
-  },
-  {
-    id: 'g5',
-    name: 'Aanya',
-    age: 22,
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-    quote: '“Let’s go on more adventures together! 💜”',
-    giftName: 'Sports Car',
-    price: 999,
-    time: '6 hours ago',
-    giftEmoji: '🏎️',
-    type: 'received',
-  },
-  {
-    id: 'g6',
-    name: 'Mina',
-    age: 21,
-    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80',
-    quote: '“You’re a king 👑”',
-    giftName: 'Crown',
-    price: 599,
-    time: '1 day ago',
-    giftEmoji: '👑',
-    type: 'received',
-  },
-];
-
 export default function GiftsScreen() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
   const navigation = useNavigation();
+  const { user, fetchUserProfile } = useContext(AuthContext);
+
   const [activeFilter, setActiveFilter] = useState('all_gifts');
+  const [gifts, setGifts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchGifts = useCallback(async () => {
+    try {
+      const res = await apiUtil.get('/gift/all');
+      const data = res.data?.data || res.data || [];
+      if (Array.isArray(data)) {
+        const formatted = data.map((g, idx) => ({
+          id: g._id || `gift_${idx}`,
+          name: g.name || 'Special Gift',
+          age: g.category || '',
+          avatar: g.icon || g.image || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400',
+          giftName: g.name || 'Gift',
+          giftEmoji: '🎁',
+          price: String(g.coins || g.diamonds || 10),
+          time: 'Active',
+          type: 'all_gifts',
+          quote: g.description || 'Interactive virtual gift',
+        }));
+        setGifts(formatted);
+      }
+    } catch (e) {
+      console.log('Error fetching gifts:', e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGifts();
+    fetchUserProfile?.();
+  }, [fetchGifts, fetchUserProfile]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([fetchGifts(), fetchUserProfile?.()]);
+    setRefreshing(false);
+  };
 
   const filteredData = activeFilter === 'all_gifts'
-    ? DUMMY_GIFTS_LIST
-    : DUMMY_GIFTS_LIST.filter(item => item.type === activeFilter);
+    ? gifts
+    : gifts.filter(g => g.type === activeFilter);
 
   const renderGiftItem = ({ item }) => (
     <View style={styles.cardWrapper}>
@@ -120,29 +91,24 @@ export default function GiftsScreen() {
       <View style={styles.cardMainContent}>
         <View style={styles.nameAgeBadgeRow}>
           <Text style={styles.userNameText}>{item.name}</Text>
-          <Text style={styles.userAgeText}>{item.age}</Text>
+          {item.age ? <Text style={styles.userAgeText}>{item.age}</Text> : null}
         </View>
-        <Text style={styles.giftSentNoticeText}>sent you a gift</Text>
+        <Text style={styles.giftSentNoticeText}>Virtual Gift</Text>
         <Text style={styles.giftQuoteText} numberOfLines={1}>
           {item.quote}
         </Text>
       </View>
 
       <View style={styles.giftDetailGraphicBox}>
-        <Text style={{ fontSize: 26 }}>{item.giftEmoji}</Text>
+        <Text style={{ fontSize: 24 }}>{item.giftEmoji}</Text>
         <View style={{ marginLeft: 6 }}>
           <Text style={styles.giftNameText}>{item.giftName}</Text>
           <View style={styles.giftPriceCoinRow}>
             <Image source={coinIcon} style={{ width: 13, height: 13, marginRight: 3 }} />
             <Text style={styles.giftCoinValText}>{item.price}</Text>
           </View>
-          <Text style={styles.giftTimeAgoText}>{item.time}</Text>
         </View>
       </View>
-
-      <TouchableOpacity activeOpacity={0.8} style={styles.viewGiftPillBtn}>
-        <Text style={styles.viewGiftPillText}>View</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -160,11 +126,6 @@ export default function GiftsScreen() {
           >
             <Icon name="arrow-back" size={20} color="#1E293B" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.langPillBtn} activeOpacity={0.8}>
-            <Icon name="language-outline" size={17} color="#1E293B" />
-            <Text style={styles.langPillValText}>English</Text>
-            <Icon name="chevron-down" size={14} color="#64748B" />
-          </TouchableOpacity>
         </View>
 
         <View style={styles.rightActionsGroup}>
@@ -174,15 +135,18 @@ export default function GiftsScreen() {
             activeOpacity={0.8}
           >
             <Image source={coinIcon} style={styles.coinIconImg} resizeMode="contain" />
-            <Text style={styles.coinValText}>120</Text>
+            <Text style={styles.coinValText}>{Number(user?.diamonds || 0).toLocaleString()}</Text>
             <View style={styles.plusIconBadgeCircle}>
               <Icon name="add" size={10} color="#FFFFFF" />
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.bellButtonCircle} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.bellButtonCircle}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Notifications')}
+          >
             <Icon name="notifications-outline" size={19} color="#1E293B" />
-            <View style={styles.redBadgeDotSmall} />
           </TouchableOpacity>
         </View>
       </View>
@@ -191,15 +155,16 @@ export default function GiftsScreen() {
       <View style={styles.mainTitleRow}>
         <View>
           <Text style={styles.mainHeaderTitle}>Gifts 🎁</Text>
-          <Text style={styles.mainHeaderSubtitle}>Gifts you received from special people</Text>
+          <Text style={styles.mainHeaderSubtitle}>Explore sendable gifts for voice rooms and live streams</Text>
         </View>
 
         <View style={styles.titleRightIcons}>
-          <TouchableOpacity style={styles.actionCircleBtn} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.actionCircleBtn}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Search')}
+          >
             <Icon name="search" size={20} color="#1E293B" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionCircleBtn} activeOpacity={0.8}>
-            <Icon name="options-outline" size={20} color="#1E293B" />
           </TouchableOpacity>
         </View>
       </View>
@@ -241,16 +206,30 @@ export default function GiftsScreen() {
       </ScrollView>
 
       {/* List */}
-      <FlatList
-        data={filteredData}
-        renderItem={renderGiftItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={[
-          styles.listContainer,
-          { paddingBottom: bottomPadding },
-        ]}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#7C3AED" style={{ marginVertical: 32 }} />
+      ) : (
+        <FlatList
+          data={filteredData}
+          renderItem={renderGiftItem}
+          keyExtractor={item => item.id}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7C3AED" />}
+          ListEmptyComponent={
+            <EmptyStateView
+              icon="gift-outline"
+              title="No Gifts Available"
+              subtitle="There are no gifts found under this category. Pull down to refresh."
+              actionText="Refresh"
+              onAction={onRefresh}
+            />
+          }
+          contentContainerStyle={[
+            styles.listContainer,
+            { paddingBottom: bottomPadding },
+          ]}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }

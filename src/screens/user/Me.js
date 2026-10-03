@@ -47,9 +47,17 @@ export default function MeScreen() {
   const { t } = useTranslation();
   const { user, fetchUserProfile, logout, loading, equippedFrame } = useContext(AuthContext);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [systemConfig, setSystemConfig] = useState({ isFamilyEnabled: true, isCpEnabled: true });
 
   useEffect(() => {
     fetchUserProfile();
+    apiUtil.get('/system-config/public', { suppressGlobalError: true })
+      .then(res => {
+        if (res?.data?.data) {
+          setSystemConfig(res.data.data);
+        }
+      })
+      .catch(() => {});
   }, [fetchUserProfile]);
 
   const handleCopyId = () => {
@@ -182,6 +190,34 @@ export default function MeScreen() {
       ),
       onPress: () => navigation.navigate('Level'),
     },
+    ...(systemConfig?.isFamilyEnabled !== false
+      ? [
+          {
+            id: 'family',
+            label: 'Family Guild',
+            icon: (
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#EEF2FF' }]}>
+                <MaterialCommunityIcons name="shield-account" size={26} color="#4F46E5" />
+              </View>
+            ),
+            onPress: () => navigation.navigate('Family'),
+          },
+        ]
+      : []),
+    ...(systemConfig?.isCpEnabled !== false
+      ? [
+          {
+            id: 'cpSpace',
+            label: 'CP Space',
+            icon: (
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#FDF2F8' }]}>
+                <MaterialCommunityIcons name="heart-multiple" size={26} color="#EC4899" />
+              </View>
+            ),
+            onPress: () => navigation.navigate('CpSpace'),
+          },
+        ]
+      : []),
     ...(isApprovedHost
       ? [
           {

@@ -61,8 +61,8 @@ const StoreAsset = ({ item, style, resizeMode = 'contain' }) => {
   return <Image source={{ uri: sourceUrl }} style={style} resizeMode={resizeMode} />;
 };
 
-// Store categories: Unique ID, Chat Bubble, Theme, Tassel, Mic Wave, Frames, Entry, VIP, King of Kings, Badge, Tag
-const STORE_CATEGORIES = ['Unique ID', 'Chat Bubble', 'Theme', 'Tassel', 'Mic Wave', 'Frames', 'Entry', 'VIP', 'King of Kings', 'Badge', 'Tag'];
+// Store categories: Unique ID, Frames, Chat Bubble, Theme, Tassel, Entry, Mic Wave, Profile Card, Room Card, Profile Entry, VIP, King of Kings, Badge, Tag
+const STORE_CATEGORIES = ['Unique ID', 'Frames', 'Chat Bubble', 'Theme', 'Tassel', 'Entry', 'Mic Wave', 'Profile Card', 'Room Card', 'Profile Entry', 'VIP', 'King of Kings', 'Badge', 'Tag'];
 
 const STORE_CATALOG = {
   'Unique ID': [
@@ -502,7 +502,20 @@ export default function StoreScreen() {
         if (isMounted && Array.isArray(payload.items)) {
           const liveCatalog = STORE_CATEGORIES.reduce((result, category) => ({ ...result, [category]: [] }), {});
           payload.items.map(normalizeStoreItem).forEach((item) => {
-            if (liveCatalog[item.category]) liveCatalog[item.category].push(item);
+            const rawCat = String(item.category || '').trim();
+            const cat = (rawCat === 'Frame' || rawCat === 'Frames') ? 'Frames'
+              : (rawCat === 'Entry' || rawCat === 'Entry Effect' || rawCat === 'Entry Effects' || rawCat === 'Entrance') ? 'Entry'
+              : (rawCat === 'Chat Bubble' || rawCat === 'Chat Bubbles') ? 'Chat Bubble'
+              : (rawCat === 'Theme' || rawCat === 'Themes') ? 'Theme'
+              : (rawCat === 'Tassel' || rawCat === 'Tassels') ? 'Tassel'
+              : (rawCat === 'Mic Wave' || rawCat === 'Mic Waves') ? 'Mic Wave'
+              : (rawCat === 'Profile Card' || rawCat === 'Profile Cards') ? 'Profile Card'
+              : (rawCat === 'Room Card' || rawCat === 'Room Cards') ? 'Room Card'
+              : (rawCat === 'Profile Entry' || rawCat === 'Profile Entries') ? 'Profile Entry'
+              : rawCat;
+            if (liveCatalog[cat]) {
+              liveCatalog[cat].push({ ...item, category: cat });
+            }
           });
           setCatalog(liveCatalog);
           const firstItem = liveCatalog['Unique ID']?.[0] || Object.values(liveCatalog).flat()[0] || null;

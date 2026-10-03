@@ -196,22 +196,27 @@ export default function MyItems() {
       .then(response => {
         if (!active) return;
         const owned = response?.data?.data?.items || [];
-        const mapped = owned.map(entry => ({
-          id: String(entry._id),
-          name: entry.name,
-          type: entry.category === 'Frames' ? 'Frame' : entry.category,
-          validity: entry.expiresAt ? `Until ${new Date(entry.expiresAt).toLocaleDateString()}` : 'Permanent',
-          inUse: entry.category === 'Frames'
-            ? entry.name === equippedFrame
-            : entry.category === 'Mic Wave' && entry.name === equippedMicWave,
-          coverType: entry.category === 'Frames' ? 'avatar_frame' : entry.category === 'Entry' ? 'portal_entry' : entry.category === 'Mic Wave' ? 'mic_wave' : '',
-          previewColor: '#8B5CF6',
-          badgeText: entry.source === 'level' ? 'LEVEL' : 'OWNED',
-          description: entry.source === 'level' ? 'Unlocked by your level.' : 'Purchased from Yaro Store.',
-          imageUrl: entry.imageUrl,
-          animationUrl: entry.animationUrl,
-          expiresAt: entry.expiresAt,
-        }));
+        const mapped = owned.map(entry => {
+          const isFrame = entry.category === 'Frames' || entry.category === 'Frame';
+          const isEntry = entry.category === 'Entry' || entry.category === 'Entry Effects' || entry.category === 'Entry Effect';
+          const isMicWave = entry.category === 'Mic Wave';
+          return {
+            id: String(entry._id),
+            name: entry.name,
+            type: isFrame ? 'Frame' : isEntry ? 'Entry' : entry.category,
+            validity: entry.expiresAt ? `Until ${new Date(entry.expiresAt).toLocaleDateString()}` : 'Permanent',
+            inUse: isFrame
+              ? entry.name === equippedFrame
+              : isMicWave && entry.name === equippedMicWave,
+            coverType: isFrame ? 'avatar_frame' : isEntry ? 'portal_entry' : isMicWave ? 'mic_wave' : '',
+            previewColor: '#8B5CF6',
+            badgeText: entry.source === 'level' ? 'LEVEL' : 'OWNED',
+            description: entry.source === 'level' ? 'Unlocked by your level.' : 'Purchased from Yaro Store.',
+            imageUrl: entry.imageUrl,
+            animationUrl: entry.animationUrl,
+            expiresAt: entry.expiresAt,
+          };
+        });
         const defaults = INITIAL_ITEMS.slice(0, 2).map(item => ({
           ...item,
           inUse: item.type === 'Frame' ? item.name === equippedFrame : item.name === equippedMicWave,

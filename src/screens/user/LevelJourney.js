@@ -143,8 +143,14 @@ export default function LevelJourney() {
   const { t } = useTranslation();
   const { user, fetchUserProfile } = useContext(AuthContext);
 
-  const currentLevel = Number(user?.level) || 1;
+  const [journeyType, setJourneyType] = useState('wealth'); // 'wealth' | 'charm'
+  const currentWealthLevel = Number(user?.wealthLevel || user?.level) || 1;
+  const currentCharmLevel = Number(user?.charmLevel) || 1;
+  const currentLevel = journeyType === 'wealth' ? currentWealthLevel : currentCharmLevel;
+
   const [levels, setLevels] = useState([]);
+  const [wealthLevels, setWealthLevels] = useState([]);
+  const [charmLevels, setCharmLevels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('All'); // 'All' | 'Unlocked' | 'Upcoming'
@@ -157,6 +163,16 @@ export default function LevelJourney() {
       await fetchUserProfile();
       const response = await apiUtil.get('/store/levels', { suppressGlobalError: true });
       const items = response?.data?.data?.levels;
+      const wealthItems = response?.data?.data?.wealthLevels;
+      const charmItems = response?.data?.data?.charmLevels;
+
+      if (Array.isArray(wealthItems) && wealthItems.length > 0) {
+        setWealthLevels([...wealthItems].sort((a, b) => Number(a.level) - Number(b.level)));
+      }
+      if (Array.isArray(charmItems) && charmItems.length > 0) {
+        setCharmLevels([...charmItems].sort((a, b) => Number(a.level) - Number(b.level)));
+      }
+
       if (Array.isArray(items) && items.length > 0) {
         setLevels([...items].sort((a, b) => Number(a.level) - Number(b.level)));
       } else {
@@ -172,19 +188,26 @@ export default function LevelJourney() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  const activeLevelList = useMemo(() => {
+    if (journeyType === 'wealth') {
+      return wealthLevels.length > 0 ? wealthLevels : levels;
+    }
+    return charmLevels.length > 0 ? charmLevels : levels;
+  }, [journeyType, wealthLevels, charmLevels, levels]);
+
   const nextMilestone = useMemo(
-    () => levels.find((item) => Number(item.level) > currentLevel),
-    [levels, currentLevel]
+    () => activeLevelList.find((item) => Number(item.level) > currentLevel),
+    [activeLevelList, currentLevel]
   );
 
   const visibleLevels = useMemo(() => {
-    return levels.filter((item) => {
+    return activeLevelList.filter((item) => {
       const lvl = Number(item.level);
       if (filter === 'Unlocked') return lvl <= currentLevel;
       if (filter === 'Upcoming') return lvl > currentLevel;
       return true;
     });
-  }, [levels, filter, currentLevel]);
+  }, [activeLevelList, filter, currentLevel]);
 
   const currentTierMeta = getTierMeta(currentLevel);
 
@@ -214,6 +237,51 @@ export default function LevelJourney() {
             activeOpacity={0.8}
           >
             <Icon name="help-circle-outline" size={21} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Wealth & Charm Dual Switcher */}
+        <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 12 }}>
+          <TouchableOpacity
+            onPress={() => setJourneyType('wealth')}
+            style={{
+              flex: 1,
+              paddingVertical: 9,
+              borderRadius: 14,
+              alignItems: 'center',
+              backgroundColor: journeyType === 'wealth' ? '#F59E0B' : 'rgba(255,255,255,0.08)',
+            }}
+          >
+            <Text
+              style={{
+                color: journeyType === 'wealth' ? '#0F172A' : '#E2E8F0',
+                fontWeight: 'bold',
+                fontSize: 13,
+              }}
+            >
+              💎 Wealth Level
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setJourneyType('charm')}
+            style={{
+              flex: 1,
+              paddingVertical: 9,
+              borderRadius: 14,
+              alignItems: 'center',
+              backgroundColor: journeyType === 'charm' ? '#EC4899' : 'rgba(255,255,255,0.08)',
+            }}
+          >
+            <Text
+              style={{
+                color: journeyType === 'charm' ? '#FFFFFF' : '#E2E8F0',
+                fontWeight: 'bold',
+                fontSize: 13,
+              }}
+            >
+              🌸 Charm Level
+            </Text>
           </TouchableOpacity>
         </View>
 

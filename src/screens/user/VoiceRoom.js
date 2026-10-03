@@ -1489,7 +1489,7 @@ export default function VoiceRoomScreen() {
         style={styles.comeOnMicBanner}
         activeOpacity={0.85}
         onPress={() => {
-          const emptySeat = seats.find((s) => !s.user && !s.isLocked);
+          const emptySeat = seats.find((s) => (isRoomOwner ? true : s.seatIndex > 0) && !s.user && !s.isLocked);
           if (emptySeat) {
             handleSeatPress(emptySeat);
           } else {

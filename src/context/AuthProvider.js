@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
   // Set & persist equipped frame across all screens (Profile, VoiceRoom, MyItems, Store)
   const setEquippedFrame = useCallback(async (frame) => {
     const frameName = typeof frame === 'object' && frame?.name ? frame.name : (frame || '');
-    const frameAsset = typeof frame === 'object' && frame?.name && (frame.imageUrl || frame.animationUrl)
+    let frameAsset = typeof frame === 'object' && frame?.name && (frame.imageUrl || frame.animationUrl)
       ? {
           name: frame.name,
           imageUrl: frame.imageUrl || '',
@@ -42,6 +42,15 @@ export const AuthProvider = ({ children }) => {
           expiresAt: frame.expiresAt || null,
         }
       : null;
+
+    if (!frameAsset && frameName && frameName.toLowerCase() === 'new frame') {
+      frameAsset = {
+        name: 'New Frame',
+        imageUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051788786-1640-Yaro_Logo.png',
+        animationUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051846825-5141-ic_head_frame_vip9.svga',
+      };
+    }
+
     setEquippedFrameState(frameName);
     setUser(prev => prev ? { ...prev, equippedFrame: frameName, equippedFrameAsset: frameAsset } : prev);
     try {
@@ -55,6 +64,12 @@ export const AuthProvider = ({ children }) => {
         parsed.equippedFrameAsset = frameAsset;
         await AsyncStorage.setItem('cachedUser', JSON.stringify(parsed));
       }
+      apiUtil.post('/store/equip', {
+        name: frameName,
+        category: 'Frames',
+        imageUrl: frameAsset?.imageUrl || '',
+        animationUrl: frameAsset?.animationUrl || '',
+      }, { suppressGlobalError: true }).catch(() => undefined);
     } catch (_) {}
   }, []);
 
@@ -100,9 +115,21 @@ const fetchUserProfile = useCallback(async () => {
         await AsyncStorage.removeItem('equippedFrameAsset');
         await AsyncStorage.setItem('equippedFrame', 'default');
       }
+      const effectiveFrame = profile.equippedFrame && profile.equippedFrame !== 'Rose frame'
+        ? profile.equippedFrame
+        : (savedFrame || profile.equippedFrame || 'Rose frame');
+
+      if (!activeFrameAsset && effectiveFrame && effectiveFrame.toLowerCase() === 'new frame') {
+        activeFrameAsset = {
+          name: 'New Frame',
+          imageUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051788786-1640-Yaro_Logo.png',
+          animationUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051846825-5141-ic_head_frame_vip9.svga',
+        };
+      }
+
       const mergedProfile = {
         ...profile,
-        equippedFrame: profile.equippedFrame || effectiveFrame || 'Rose frame',
+        equippedFrame: effectiveFrame,
         equippedFrameAsset: activeFrameAsset,
         equippedMicWave: profile.equippedMicWave || savedMicWave || 'Golden Pulse Wave',
       };

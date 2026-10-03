@@ -52,12 +52,33 @@ const normalizeStoreItem = (item) => ({
 });
 
 const StoreAsset = ({ item, style, resizeMode = 'contain' }) => {
+  const [svgaFailed, setSvgaFailed] = React.useState(false);
   const animationUrl = item?.animationUrl;
-  const sourceUrl = animationUrl || item?.imageUrl;
-  if (!sourceUrl) return null;
-  if (/\.svga(?:\?|$)/i.test(animationUrl || '')) {
-    return <SvgaPlayer source={animationUrl} style={style} loops={0} />;
+  const imageUrl = item?.imageUrl || item?.image;
+  const isSvga = animationUrl && /.svga(?:?|$)/i.test(animationUrl) && !svgaFailed;
+
+  if (isSvga) {
+    return (
+      <View style={[style, { justifyContent: 'center', alignItems: 'center' }]}>
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
+            resizeMode={resizeMode}
+          />
+        ) : null}
+        <SvgaPlayer
+          source={animationUrl}
+          style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
+          loops={0}
+          onError={() => setSvgaFailed(true)}
+        />
+      </View>
+    );
   }
+
+  const sourceUrl = imageUrl || animationUrl;
+  if (!sourceUrl) return null;
   return <Image source={{ uri: sourceUrl }} style={style} resizeMode={resizeMode} />;
 };
 
@@ -182,8 +203,8 @@ const STORE_CATALOG = {
       badgeText: 'NEW',
       tag: 'NEW',
       previewColor: '#06B6D4',
-      imageUrl: 'https://res.cloudinary.com/dtbvqszox/image/upload/v1740924900/yaro/frames/new_frame.png',
-      animationUrl: 'https://res.cloudinary.com/dtbvqszox/raw/upload/v1740924900/yaro/frames/new_frame.svga',
+      imageUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051788786-1640-Yaro_Logo.png',
+      animationUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051846825-5141-ic_head_frame_vip9.svga',
       desc: 'Exclusive high-grade animated VIP avatar frame with shimmering cosmic particle glow.',
     },
     {
@@ -1882,5 +1903,49 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  /* Uploaded Frame Preview in Banner */
+  uploadedFramePreview: {
+    width: 66,
+    height: 66,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  uploadedFrameAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#3B0764',
+  },
+  uploadedFrameAsset: {
+    position: 'absolute',
+    top: -5,
+    left: -5,
+    width: 76,
+    height: 76,
+    zIndex: 10,
+  },
+  /* Uploaded Frame in Item Grid */
+  gridUploadedFrame: {
+    width: 54,
+    height: 54,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  gridUploadedAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1E1B4B',
+  },
+  gridUploadedAsset: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    width: 62,
+    height: 62,
+    zIndex: 10,
   },
 });

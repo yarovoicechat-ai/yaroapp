@@ -19,6 +19,14 @@ import { SvgaPlayer } from '@dasimems/react-native-svga';
  * - 'Sakura Blossom Frame' / 'sakura': Cherry blossom pastel flower ring
  * - Custom object: { name, previewColor, border, waveColors }
  */
+const KNOWN_FRAME_ASSETS = {
+  'new frame': {
+    name: 'New Frame',
+    imageUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051788786-1640-Yaro_Logo.png',
+    animationUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051846825-5141-ic_head_frame_vip9.svga',
+  },
+};
+
 export default function AvatarWithFrame({
   user,
   avatarSource,
@@ -30,11 +38,15 @@ export default function AvatarWithFrame({
 }) {
   const avatar = avatarSource || getUserAvatar(user);
   const activeFrame = frame || user?.equippedFrame;
-  const uploadedFrame = typeof activeFrame === 'object'
-    ? activeFrame
-    : user?.equippedFrameAsset?.name === activeFrame ? user.equippedFrameAsset : null;
-
   const frameName = (activeFrame?.name || activeFrame?.id || (typeof activeFrame === 'string' ? activeFrame : '')).toLowerCase();
+  const uploadedFrame = (typeof activeFrame === 'object' && activeFrame)
+    ? activeFrame
+    : (user?.equippedFrameAsset && (user?.equippedFrameAsset?.name || '').toLowerCase() === frameName)
+      ? user.equippedFrameAsset
+      : (user?.storeInventory?.find(i => (i.name || '').toLowerCase() === frameName))
+      || KNOWN_FRAME_ASSETS[frameName]
+      || null;
+
   const hasFrame = Boolean(activeFrame && frameName !== 'default' && frameName !== 'none');
 
   // Ring dimensions proportional to avatar size
@@ -264,10 +276,38 @@ export default function AvatarWithFrame({
         />
       </LinearGradient>
 
-      {uploadedFrame?.animationUrl && /\.svga(?:\?|$)/i.test(uploadedFrame.animationUrl) ? (
-        <SvgaPlayer source={uploadedFrame.animationUrl} style={[styles.uploadedFrame, { width: size, height: size }]} loops={0} />
-      ) : (uploadedFrame?.animationUrl || uploadedFrame?.imageUrl || uploadedFrame?.image) ? (
-        <Image source={{ uri: uploadedFrame.animationUrl || uploadedFrame.imageUrl || uploadedFrame.image }} style={[styles.uploadedFrame, { width: size, height: size }]} resizeMode="contain" />
+      {/* Uploaded Animated or Static Frame Overlay */}
+      {uploadedFrame && (uploadedFrame.animationUrl || uploadedFrame.imageUrl || uploadedFrame.image) ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: (size - size * 1.2) / 2,
+            left: (size - size * 1.2) / 2,
+            width: size * 1.2,
+            height: size * 1.2,
+            zIndex: 10,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          pointerEvents="none"
+        >
+          {/* Always render uploaded image as base layer */}
+          {(uploadedFrame.imageUrl || uploadedFrame.image) ? (
+            <Image
+              source={{ uri: uploadedFrame.imageUrl || uploadedFrame.image }}
+              style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
+              resizeMode="contain"
+            />
+          ) : null}
+          {/* Render SVGA on top if animationUrl exists */}
+          {uploadedFrame.animationUrl && /\.svga(?:\?|$)/i.test(uploadedFrame.animationUrl) ? (
+            <SvgaPlayer
+              source={uploadedFrame.animationUrl}
+              style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
+              loops={0}
+            />
+          ) : null}
+        </View>
       ) : null}
 
       {/* Frame Decorative Ornaments (Flowers, Wings, Crowns) */}

@@ -22,10 +22,37 @@ import { getUserAvatar } from '../../utils/avatarUtil';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
 import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
-import { SvgaPlayer } from '@dasimems/react-native-svga';
+import SvgaView from '../../components/SvgaView';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
+
+const ItemAsset = ({ item, style, resizeMode = 'contain' }) => {
+  const animationUrl = item?.animationUrl;
+  const imageUrl = item?.imageUrl || item?.image;
+  const source = animationUrl || imageUrl;
+  if (!source) return null;
+
+  return (
+    <SvgaView
+      source={source}
+      style={style}
+      resizeMode={resizeMode}
+      loops={0}
+      fallbackImage={imageUrl}
+    />
+  );
+};
+
+const getFormatBadge = (item) => {
+  const anim = String(item?.animationUrl || '').toLowerCase();
+  const img = String(item?.imageUrl || item?.image || '').toLowerCase();
+  if (anim.includes('.svga')) return { label: '✨ SVGA Animation', color: '#8B5CF6', bg: '#F5F3FF' };
+  if (anim.includes('.gif') || img.includes('.gif')) return { label: '✨ Animated GIF', color: '#EC4899', bg: '#FDF2F8' };
+  if (anim.includes('.webp') || img.includes('.webp')) return { label: '✨ Animated WebP', color: '#06B6D4', bg: '#ECFEFF' };
+  if (img.includes('.png') || img.includes('.jpg') || img.includes('.jpeg')) return { label: '✨ HD Frame', color: '#10B981', bg: '#ECFDF5' };
+  return { label: '✨ Exclusive Item', color: '#F59E0B', bg: '#FFFBEB' };
+};
 
 const CATEGORIES = ['All', 'Frame', 'Mic Wave', 'Entry', 'Badge', 'Tag', 'Theme', 'Unique ID', 'VIP', 'King of Kings', 'Chat Bubble', 'Tassel'];
 
@@ -269,9 +296,14 @@ export default function MyItems() {
 
     const assetUrl = item.animationUrl || item.imageUrl;
     if (assetUrl) {
-      const media = /\.svga(?:\?|$)/i.test(item.animationUrl || '')
-        ? <SvgaPlayer source={item.animationUrl} style={styles.ownedAsset} loops={0} />
-        : <Image source={{ uri: assetUrl }} style={styles.ownedAsset} resizeMode="contain" />;
+      const media = (
+        <SvgaView
+          source={item.animationUrl || item.imageUrl}
+          style={styles.ownedAsset}
+          loops={0}
+          fallbackImage={item.imageUrl}
+        />
+      );
       if (item.coverType === 'avatar_frame') {
         return (
           <View style={styles.ownedFramePreview}>
@@ -410,6 +442,65 @@ export default function MyItems() {
     );
   };
 
+  const renderModalShowcase = (item) => {
+    const avatar = getUserAvatar(user);
+    const hasMedia = Boolean(item?.animationUrl || item?.imageUrl);
+
+    if (item?.type === 'Frame' || item?.coverType === 'avatar_frame') {
+      return (
+        <View style={styles.modalFrameShowcase}>
+          <AvatarWithFrame
+            user={user}
+            frame={item}
+            size={110}
+            showOnlineDot={false}
+          />
+        </View>
+      );
+    }
+
+    if (item?.type === 'Entry' || item?.coverType === 'portal_entry') {
+      return (
+        <LinearGradient
+          colors={['#0F0C20', '#1E1435', '#2E1065']}
+          style={styles.modalEntryShowcase}
+        >
+          {hasMedia ? (
+            <ItemAsset item={item} style={styles.modalEntryAsset} />
+          ) : (
+            <MaterialCommunityIcons name="human" size={48} color="#C084FC" />
+          )}
+        </LinearGradient>
+      );
+    }
+
+    if (item?.type === 'Mic Wave' || item?.coverType === 'mic_wave') {
+      const u = item?.previewColor || '#F59E0B';
+      return (
+        <View style={styles.modalMicShowcase}>
+          <View style={[styles.popupMicRingOuter, { borderColor: u + '50' }]}>
+            <View style={[styles.popupMicRingInner, { borderColor: u + '80' }]}>
+              <Image source={avatar} style={{ width: 68, height: 68, borderRadius: 34 }} />
+            </View>
+          </View>
+          <View style={[styles.popupMicIconBadge, { backgroundColor: u }]}>
+            <MaterialCommunityIcons name="microphone" size={16} color="#FFFFFF" />
+          </View>
+        </View>
+      );
+    }
+
+    if (hasMedia) {
+      return (
+        <View style={styles.modalGenericShowcase}>
+          <ItemAsset item={item} style={styles.modalGenericAsset} />
+        </View>
+      );
+    }
+
+    return renderItemVisual(item);
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
@@ -427,7 +518,7 @@ export default function MyItems() {
 
         <TouchableOpacity
           style={styles.storeShortcutBtn}
-          onPress={() => navigation.navigate('Frame')}
+          onPress={() => navigation.navigate('Store')}
           activeOpacity={0.7}
         >
           <MaterialCommunityIcons name="shopping-outline" size={22} color="#7C3AED" />
@@ -524,23 +615,38 @@ export default function MyItems() {
         animationType="fade"
         onRequestClose={() => setPreviewModalItem(null)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setPreviewModalItem(null)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.modalContent}
+            onPress={(e) => e?.stopPropagation?.()}
+          >
             {previewModalItem && (
               <>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{previewModalItem.name}</Text>
+                  <View style={[styles.previewFormatTag, { backgroundColor: getFormatBadge(previewModalItem).bg }]}>
+                    <Text style={[styles.previewFormatTagText, { color: getFormatBadge(previewModalItem).color }]}>
+                      {getFormatBadge(previewModalItem).label}
+                    </Text>
+                  </View>
                   <TouchableOpacity
                     onPress={() => setPreviewModalItem(null)}
                     style={styles.modalCloseBtn}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
                     <Icon name="close" size={20} color="#64748B" />
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.modalVisualCenter}>
-                  {renderItemVisual(previewModalItem)}
+                  {renderModalShowcase(previewModalItem)}
                 </View>
+
+                <Text style={styles.modalTitle}>{previewModalItem.name}</Text>
 
                 <View style={styles.modalBadgeRow}>
                   <View style={styles.typeTag}>
@@ -556,27 +662,29 @@ export default function MyItems() {
                   {previewModalItem.description}
                 </Text>
 
-                {['Frame', 'Mic Wave'].includes(previewModalItem.type) && <TouchableOpacity
-                  activeOpacity={0.88}
-                  style={[
-                    styles.modalActionBtn,
-                    previewModalItem.inUse ? styles.modalActionBtnInUse : styles.modalActionBtnUse,
-                  ]}
-                  onPress={() => {
-                    handleToggleUse(previewModalItem);
-                    setPreviewModalItem((prev) =>
-                      prev ? { ...prev, inUse: !prev.inUse } : null
-                    );
-                  }}
-                >
-                  <Text style={styles.modalActionBtnText}>
-                    {previewModalItem.inUse ? 'Currently In Use' : 'Equip This Item'}
-                  </Text>
-                </TouchableOpacity>}
+                {['Frame', 'Mic Wave'].includes(previewModalItem.type) && (
+                  <TouchableOpacity
+                    activeOpacity={0.88}
+                    style={[
+                      styles.modalActionBtn,
+                      previewModalItem.inUse ? styles.modalActionBtnInUse : styles.modalActionBtnUse,
+                    ]}
+                    onPress={() => {
+                      handleToggleUse(previewModalItem);
+                      setPreviewModalItem((prev) =>
+                        prev ? { ...prev, inUse: !prev.inUse } : null
+                      );
+                    }}
+                  >
+                    <Text style={styles.modalActionBtnText}>
+                      {previewModalItem.inUse ? 'Currently Active on Profile' : 'Equip This Item'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </>
             )}
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -937,16 +1045,80 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   modalCloseBtn: {
-    padding: 4,
-  },
-  modalVisualCenter: {
-    width: 140,
-    height: 120,
-    borderRadius: 18,
-    backgroundColor: '#F8FAFC',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+  },
+  previewFormatTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  previewFormatTagText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  modalVisualCenter: {
+    width: 170,
+    height: 170,
+    borderRadius: 24,
+    backgroundColor: '#FAF5FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#EDE9FE',
+  },
+  modalFrameShowcase: {
+    width: 160,
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  modalAvatarImg: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#3B0764',
+  },
+  modalFrameAsset: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    width: 154,
+    height: 154,
+    zIndex: 10,
+  },
+  modalEntryShowcase: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 24,
+  },
+  modalEntryAsset: {
+    width: 140,
+    height: 110,
+  },
+  modalMicShowcase: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  modalGenericShowcase: {
+    width: 140,
+    height: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalGenericAsset: {
+    width: 130,
+    height: 130,
   },
   modalBadgeRow: {
     flexDirection: 'row',

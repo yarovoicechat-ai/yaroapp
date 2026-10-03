@@ -9,7 +9,7 @@ import {
 import { SvgUri } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const NativeSvgaPlayer = Platform.OS === 'android'
+export const NativeSvgaPlayer = Platform.OS === 'android'
   ? requireNativeComponent('SvgaPlayerView')
   : null;
 

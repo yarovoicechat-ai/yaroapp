@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   StatusBar,
   Share,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getTabScreenBottomPadding } from '../../utils/safeAreaUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -48,6 +48,12 @@ export default function MeScreen() {
   const { user, fetchUserProfile, logout, loading, equippedFrame } = useContext(AuthContext);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [systemConfig, setSystemConfig] = useState({ isFamilyEnabled: true, isCpEnabled: true });
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserProfile();
+    }, [fetchUserProfile])
+  );
 
   useEffect(() => {
     fetchUserProfile();
@@ -433,7 +439,7 @@ export default function MeScreen() {
             <View style={styles.avatarSection}>
               <AvatarWithFrame
                 user={user}
-                frame={equippedFrame || user?.equippedFrame || 'Rose frame'}
+                frame={user?.equippedFrameAsset || equippedFrame || user?.equippedFrame || 'Rose frame'}
                 size={78}
                 showOnlineDot={true}
                 isOnline={true}

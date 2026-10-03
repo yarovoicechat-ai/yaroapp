@@ -134,7 +134,7 @@ export default function ProfileScreen() {
           <View style={styles.avatarSection}>
             <AvatarWithFrame
               user={user}
-              frame={equippedFrame || user?.equippedFrame || 'Rose frame'}
+              frame={user?.equippedFrameAsset || equippedFrame || user?.equippedFrame || 'Rose frame'}
               size={94}
               showOnlineDot={true}
               isOnline={true}

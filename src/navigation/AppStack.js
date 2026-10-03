@@ -57,6 +57,7 @@ import SVIP from "../screens/user/SVIP";
 import MyItems from "../screens/user/MyItems";
 import Medal from "../screens/user/Medal";
 import UserProfile from "../screens/user/UserProfile";
+import Profile from "../screens/user/Profile";
 import Me from "../screens/user/Me";
 import FamilyScreen from "../screens/user/FamilyScreen";
 import CpSpaceScreen from "../screens/user/CpSpaceScreen";

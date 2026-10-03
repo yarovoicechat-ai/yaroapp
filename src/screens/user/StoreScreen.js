@@ -22,7 +22,7 @@ import AvatarWithFrame from '../../components/AvatarWithFrame';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
-import { SvgaPlayer } from '@dasimems/react-native-svga';
+import SvgaView from '../../components/SvgaView';
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - 48) / 2;
@@ -52,34 +52,30 @@ const normalizeStoreItem = (item) => ({
 });
 
 const StoreAsset = ({ item, style, resizeMode = 'contain' }) => {
-  const [svgaFailed, setSvgaFailed] = React.useState(false);
   const animationUrl = item?.animationUrl;
   const imageUrl = item?.imageUrl || item?.image;
-  const isSvga = animationUrl && /.svga(?:?|$)/i.test(animationUrl) && !svgaFailed;
+  const source = animationUrl || imageUrl;
+  if (!source) return null;
 
-  if (isSvga) {
-    return (
-      <View style={[style, { justifyContent: 'center', alignItems: 'center' }]}>
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
-            resizeMode={resizeMode}
-          />
-        ) : null}
-        <SvgaPlayer
-          source={animationUrl}
-          style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
-          loops={0}
-          onError={() => setSvgaFailed(true)}
-        />
-      </View>
-    );
-  }
+  return (
+    <SvgaView
+      source={source}
+      style={style}
+      resizeMode={resizeMode}
+      loops={0}
+      fallbackImage={imageUrl}
+    />
+  );
+};
 
-  const sourceUrl = imageUrl || animationUrl;
-  if (!sourceUrl) return null;
-  return <Image source={{ uri: sourceUrl }} style={style} resizeMode={resizeMode} />;
+const getFormatBadge = (item) => {
+  const anim = String(item?.animationUrl || '').toLowerCase();
+  const img = String(item?.imageUrl || item?.image || '').toLowerCase();
+  if (anim.includes('.svga')) return { label: '✨ SVGA Animation', color: '#8B5CF6', bg: '#F5F3FF' };
+  if (anim.includes('.gif') || img.includes('.gif')) return { label: '✨ Animated GIF', color: '#EC4899', bg: '#FDF2F8' };
+  if (anim.includes('.webp') || img.includes('.webp')) return { label: '✨ Animated WebP', color: '#06B6D4', bg: '#ECFEFF' };
+  if (img.includes('.png') || img.includes('.jpg') || img.includes('.jpeg')) return { label: '✨ HD Frame', color: '#10B981', bg: '#ECFDF5' };
+  return { label: '✨ Exclusive Item', color: '#F59E0B', bg: '#FFFBEB' };
 };
 
 // Store categories: Unique ID, Frames, Chat Bubble, Theme, Tassel, Entry, Mic Wave, Profile Card, Room Card, Profile Entry, VIP, King of Kings, Badge, Tag
@@ -556,13 +552,14 @@ export default function StoreScreen() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
-  const { user, fetchUserProfile } = useContext(AuthContext);
+  const { user, fetchUserProfile, setEquippedFrame } = useContext(AuthContext);
 
   const [catalog, setCatalog] = useState(STORE_CATALOG);
   const [activeCategory, setActiveCategory] = useState('Unique ID');
   const [selectedItem, setSelectedItem] = useState(STORE_CATALOG['Unique ID'][0]);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [selectedDurationDays, setSelectedDurationDays] = useState(30);
 
@@ -631,12 +628,14 @@ export default function StoreScreen() {
     if (!selectedItem) return;
     if (!/^[a-f0-9]{24}$/i.test(String(selectedItem._id || selectedItem.id || ''))) {
       setConfirmModalVisible(false);
+      setPreviewModalVisible(false);
       AlertService.show('Store unavailable', 'Connect to the internet and reopen the store to buy this item.', 'error');
       return;
     }
 
     if (currentDiamonds < selectedPrice) {
       setConfirmModalVisible(false);
+      setPreviewModalVisible(false);
       AlertService.show(
         'Insufficient Diamonds',
         `You have ${currentDiamonds.toLocaleString()} Diamonds, but this ${selectedDurationDays}-day option costs ${selectedPrice.toLocaleString()} Diamonds. Please recharge to continue.`,
@@ -656,12 +655,17 @@ export default function StoreScreen() {
         durationDays: selectedDurationDays,
       });
 
+      if (activeCategory === 'Frames' || selectedItem?.category === 'Frames') {
+        setEquippedFrame?.(selectedItem);
+      }
+
       await fetchUserProfile();
       setConfirmModalVisible(false);
+      setPreviewModalVisible(false);
 
       AlertService.show(
         'Purchase Successful 🎉',
-        `You purchased ${selectedItem.name} for ${selectedDurationDays} days. It is now available in your Inventory / Profile.`,
+        `You purchased ${selectedItem.name} for ${selectedDurationDays} days. It is now equipped and available in your Profile / My Items.`,
         'success',
         [
           { text: 'View in My Items', onPress: () => navigation.navigate('MyItems') },
@@ -871,19 +875,12 @@ export default function StoreScreen() {
         >
           <View style={styles.framePreviewRow}>
             <View style={styles.previewAvatarWrap}>
-              {hasUploadedFrame ? (
-                <View style={styles.uploadedFramePreview}>
-                  <Image source={getUserAvatar(user)} style={styles.uploadedFrameAvatar} />
-                  <StoreAsset item={item} style={styles.uploadedFrameAsset} />
-                </View>
-              ) : (
-                <AvatarWithFrame
-                  user={user}
-                  frame={item ? item.name : 'Rose frame'}
-                  size={66}
-                  showOnlineDot={false}
-                />
-              )}
+              <AvatarWithFrame
+                user={user}
+                frame={item || 'Rose frame'}
+                size={66}
+                showOnlineDot={false}
+              />
             </View>
 
             <View style={styles.previewTextCol}>
@@ -1028,7 +1025,13 @@ export default function StoreScreen() {
                 activeOpacity={0.88}
                 onPress={() => {
                   setSelectedItem(item);
-                  if (activeCategory === 'VIP' || activeCategory === 'King of Kings') setDetailModalVisible(true);
+                  const options = getPriceOptions(item);
+                  setSelectedDurationDays(options.find(option => option.days === 30)?.days || options[0]?.days || 30);
+                  if (activeCategory === 'VIP' || activeCategory === 'King of Kings') {
+                    setDetailModalVisible(true);
+                  } else {
+                    setPreviewModalVisible(true);
+                  }
                 }}
               >
                 {/* Visual Circle / Unique ID Big Badge */}
@@ -1053,19 +1056,12 @@ export default function StoreScreen() {
                   </View>
                 ) : activeCategory === 'Frames' ? (
                   <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor}12` }]}>
-                    {item.animationUrl || item.imageUrl ? (
-                      <View style={styles.gridUploadedFrame}>
-                        <Image source={getUserAvatar(user)} style={styles.gridUploadedAvatar} />
-                        <StoreAsset item={item} style={styles.gridUploadedAsset} />
-                      </View>
-                    ) : (
-                      <AvatarWithFrame
-                        user={user}
-                        frame={item.name}
-                        size={54}
-                        showOnlineDot={false}
-                      />
-                    )}
+                    <AvatarWithFrame
+                      user={user}
+                      frame={item}
+                      size={54}
+                      showOnlineDot={false}
+                    />
                   </View>
                 ) : item.animationUrl || item.imageUrl ? (
                   <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor}18` }]}>
@@ -1082,7 +1078,16 @@ export default function StoreScreen() {
 
                 <TouchableOpacity
                   style={styles.buyBtn}
-                  onPress={() => handleOpenPurchase(item)}
+                  onPress={() => {
+                    setSelectedItem(item);
+                    const options = getPriceOptions(item);
+                    setSelectedDurationDays(options.find(option => option.days === 30)?.days || options[0]?.days || 30);
+                    if (activeCategory === 'VIP' || activeCategory === 'King of Kings') {
+                      setDetailModalVisible(true);
+                    } else {
+                      setPreviewModalVisible(true);
+                    }
+                  }}
                   activeOpacity={0.8}
                 >
                   <Icon name="diamond" size={12} color="#06B6D4" style={{ marginRight: 4 }} />
@@ -1093,6 +1098,182 @@ export default function StoreScreen() {
           })}
         </View>
       </ScrollView>
+
+      {/* Frame & Item Interactive Preview Popup Modal */}
+      <Modal
+        visible={previewModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.previewModalDialog}>
+            {/* Modal Header */}
+            <View style={styles.previewModalHeader}>
+              <View style={[styles.previewFormatTag, { backgroundColor: getFormatBadge(selectedItem).bg }]}>
+                <Text style={[styles.previewFormatTagText, { color: getFormatBadge(selectedItem).color }]}>
+                  {getFormatBadge(selectedItem).label}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setPreviewModalVisible(false)}
+                style={styles.previewModalCloseBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Icon name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Central Animated Preview Box */}
+            <View style={styles.previewShowcaseBox}>
+              {activeCategory === 'Frames' ? (
+                <View style={styles.popupFrameWrap}>
+                  <AvatarWithFrame
+                    user={user}
+                    frame={selectedItem}
+                    size={110}
+                    showOnlineDot={false}
+                  />
+                </View>
+              ) : activeCategory === 'Entry' ? (
+                <LinearGradient
+                  colors={['#0F0C20', '#1E1435', '#2E1065']}
+                  style={styles.popupEntryBox}
+                >
+                  <StoreAsset item={selectedItem} style={styles.popupEntryAsset} />
+                </LinearGradient>
+              ) : activeCategory === 'Mic Wave' ? (
+                <View style={styles.popupMicBox}>
+                  <View style={[styles.popupMicRingOuter, { borderColor: `${selectedItem?.previewColor || '#F59E0B'}50` }]}>
+                    <View style={[styles.popupMicRingInner, { borderColor: `${selectedItem?.previewColor || '#F59E0B'}80` }]}>
+                      <Image source={getUserAvatar(user)} style={styles.popupMicAvatar} />
+                    </View>
+                  </View>
+                  <View style={[styles.popupMicIconBadge, { backgroundColor: selectedItem?.previewColor || '#F59E0B' }]}>
+                    <MaterialCommunityIcons name="microphone" size={16} color="#FFFFFF" />
+                  </View>
+                </View>
+              ) : activeCategory === 'Chat Bubble' ? (
+                <View style={styles.popupBubbleBox}>
+                  <Image source={getUserAvatar(user)} style={styles.popupBubbleAvatar} />
+                  <View style={[styles.popupBubbleMsg, { backgroundColor: selectedItem?.bgColor || '#4F46E5' }]}>
+                    <Text style={[styles.popupBubbleMsgText, { color: selectedItem?.textColor || '#FFFFFF' }]}>
+                      Hello from Yaro Voice Club! ✨
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.popupGenericBox}>
+                  <StoreAsset item={selectedItem} style={styles.popupGenericAsset} />
+                </View>
+              )}
+            </View>
+
+            {/* Item Title & Tag */}
+            <View style={styles.previewTitleRow}>
+              <Text style={styles.previewModalItemTitle} numberOfLines={1}>{selectedItem?.name}</Text>
+              {selectedItem?.tag ? (
+                <View style={styles.previewCategoryBadge}>
+                  <Text style={styles.previewCategoryBadgeText}>{selectedItem.tag}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Description */}
+            <Text style={styles.previewModalItemDesc} numberOfLines={2}>
+              {selectedItem?.desc || 'Exclusive store item for your profile and party voice rooms.'}
+            </Text>
+
+            {/* Duration Selector */}
+            <Text style={styles.previewDurationLabel}>SELECT DURATION</Text>
+            <View style={styles.durationOptionsRow}>
+              {selectedPriceOptions.map(option => {
+                const active = selectedDurationDays === option.days;
+                return (
+                  <TouchableOpacity
+                    key={option.days}
+                    style={[styles.durationOption, active && styles.durationOptionActive]}
+                    onPress={() => setSelectedDurationDays(option.days)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.durationDaysText, active && styles.durationDaysTextActive]}>
+                      {option.days} Days
+                    </Text>
+                    <View style={styles.durationDiamondRow}>
+                      <Icon name="diamond" size={11} color={active ? '#FFFFFF' : '#0891B2'} />
+                      <Text style={[styles.durationPriceText, active && styles.durationPriceTextActive]}>
+                        {option.diamonds.toLocaleString()}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Price & Balance Row */}
+            <View style={styles.previewBalanceRow}>
+              <View style={styles.previewPriceCol}>
+                <Text style={styles.previewPriceLabel}>Cost:</Text>
+                <View style={styles.previewPriceValueWrap}>
+                  <Icon name="diamond" size={14} color="#06B6D4" style={{ marginRight: 4 }} />
+                  <Text style={styles.previewPriceValueText}>
+                    {selectedPrice.toLocaleString()} Diamonds
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.previewBalanceCol}>
+                <Text style={styles.previewBalanceLabel}>My Balance:</Text>
+                <Text style={styles.previewBalanceValueText}>
+                  {currentDiamonds.toLocaleString()} 💎
+                </Text>
+              </View>
+            </View>
+
+            {/* Buy / Recharge Action Button */}
+            {currentDiamonds >= selectedPrice ? (
+              <TouchableOpacity
+                style={styles.previewActionBtn}
+                onPress={handleConfirmPurchase}
+                disabled={purchasing}
+                activeOpacity={0.88}
+              >
+                <LinearGradient
+                  colors={['#7C3AED', '#EC4899']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.previewActionGradient}
+                >
+                  <Icon name="bag-check" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.previewActionBtnText}>
+                    {purchasing ? 'Unlocking Item...' : `Unlock for ${selectedPrice.toLocaleString()} Diamonds`}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.previewActionBtn}
+                onPress={() => {
+                  setPreviewModalVisible(false);
+                  navigation.navigate('Recharge');
+                }}
+                activeOpacity={0.88}
+              >
+                <LinearGradient
+                  colors={['#F59E0B', '#EF4444']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.previewActionGradient}
+                >
+                  <Icon name="wallet" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.previewActionBtnText}>
+                    Recharge Diamonds (Need {(selectedPrice - currentDiamonds).toLocaleString()} more)
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* VIP and King of Kings included items */}
       <Modal visible={detailModalVisible} transparent animationType="fade" onRequestClose={() => setDetailModalVisible(false)}>
@@ -1947,5 +2128,254 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     zIndex: 10,
+  },
+  /* Frame & Item Interactive Preview Popup Styles */
+  previewModalDialog: {
+    width: '100%',
+    maxWidth: 350,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 26,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  previewModalHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  previewFormatTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  previewFormatTagText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  previewModalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewShowcaseBox: {
+    width: 170,
+    height: 170,
+    borderRadius: 24,
+    backgroundColor: '#FAF5FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 6,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#EDE9FE',
+  },
+  popupFrameWrap: {
+    width: 160,
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  popupAvatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#3B0764',
+  },
+  popupFrameAsset: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    width: 154,
+    height: 154,
+    zIndex: 10,
+  },
+  popupEntryBox: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 24,
+  },
+  popupEntryAsset: {
+    width: 140,
+    height: 110,
+  },
+  popupMicBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  popupMicRingOuter: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popupMicRingInner: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popupMicAvatar: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+  },
+  popupMicIconBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popupBubbleBox: {
+    padding: 10,
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  popupBubbleAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginBottom: 6,
+  },
+  popupBubbleMsg: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    maxWidth: '85%',
+  },
+  popupBubbleMsgText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  popupGenericBox: {
+    width: 140,
+    height: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popupGenericAsset: {
+    width: 130,
+    height: 130,
+  },
+  previewTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 4,
+    width: '100%',
+  },
+  previewModalItemTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  previewCategoryBadge: {
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  previewCategoryBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  previewModalItemDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 4,
+    paddingHorizontal: 10,
+    lineHeight: 16,
+  },
+  previewDurationLabel: {
+    alignSelf: 'flex-start',
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 0.8,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  previewBalanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 10,
+    paddingHorizontal: 4,
+  },
+  previewPriceCol: {
+    alignItems: 'flex-start',
+  },
+  previewPriceLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  previewPriceValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  previewPriceValueText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0891B2',
+  },
+  previewBalanceCol: {
+    alignItems: 'flex-end',
+  },
+  previewBalanceLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  previewBalanceValueText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  previewActionBtn: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 12,
+  },
+  previewActionGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  previewActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13.5,
+    fontWeight: '800',
   },
 });

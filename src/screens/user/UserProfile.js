@@ -224,7 +224,7 @@ export default function UserProfileScreen() {
           <View style={styles.avatarWrap}>
             <AvatarWithFrame
               user={targetUser}
-              frame={targetUser.equippedFrame}
+              frame={targetUser.equippedFrameAsset || targetUser.equippedFrame}
               size={90}
               showOnlineDot={true}
               isOnline={true}

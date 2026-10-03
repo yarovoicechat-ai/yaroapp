@@ -43,14 +43,6 @@ export const AuthProvider = ({ children }) => {
         }
       : null;
 
-    if (!frameAsset && frameName && frameName.toLowerCase() === 'new frame') {
-      frameAsset = {
-        name: 'New Frame',
-        imageUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051788786-1640-Yaro_Logo.png',
-        animationUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051846825-5141-ic_head_frame_vip9.svga',
-      };
-    }
-
     setEquippedFrameState(frameName);
     setUser(prev => prev ? { ...prev, equippedFrame: frameName, equippedFrameAsset: frameAsset } : prev);
     try {
@@ -103,29 +95,19 @@ const fetchUserProfile = useCallback(async () => {
         AsyncStorage.getItem('equippedMicWave'),
         AsyncStorage.getItem('equippedFrameAsset'),
       ]);
-      let activeFrameAsset = null;
-      try {
-        const parsed = savedFrameAsset ? JSON.parse(savedFrameAsset) : null;
-        if (parsed?.name === savedFrame && (!parsed.expiresAt || new Date(parsed.expiresAt).getTime() > Date.now())) {
-          activeFrameAsset = parsed;
-        }
-      } catch (_) {}
-      const effectiveFrame = savedFrameAsset && !activeFrameAsset ? 'default' : savedFrame;
-      if (savedFrameAsset && !activeFrameAsset) {
-        await AsyncStorage.removeItem('equippedFrameAsset');
-        await AsyncStorage.setItem('equippedFrame', 'default');
+      let activeFrameAsset = profile.equippedFrameAsset || null;
+      if (!activeFrameAsset && savedFrameAsset) {
+        try {
+          const parsed = JSON.parse(savedFrameAsset);
+          if (parsed?.name === savedFrame && (!parsed.expiresAt || new Date(parsed.expiresAt).getTime() > Date.now())) {
+            activeFrameAsset = parsed;
+          }
+        } catch (_) {}
       }
+
       const effectiveFrame = profile.equippedFrame && profile.equippedFrame !== 'Rose frame'
         ? profile.equippedFrame
         : (savedFrame || profile.equippedFrame || 'Rose frame');
-
-      if (!activeFrameAsset && effectiveFrame && effectiveFrame.toLowerCase() === 'new frame') {
-        activeFrameAsset = {
-          name: 'New Frame',
-          imageUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051788786-1640-Yaro_Logo.png',
-          animationUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051846825-5141-ic_head_frame_vip9.svga',
-        };
-      }
 
       const mergedProfile = {
         ...profile,

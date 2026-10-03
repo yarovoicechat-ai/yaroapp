@@ -18,9 +18,15 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
 
   override fun createViewInstance(reactContext: ThemedReactContext): SVGAImageView =
     SVGAImageView(reactContext).apply {
-      loops = 1
-      clearsAfterDetached = true
+      loops = 0
+      clearsAfterDetached = false
+      scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
     }
+
+  @ReactProp(name = "loops", defaultInt = 0)
+  fun setLoops(view: SVGAImageView, loops: Int) {
+    view.loops = loops
+  }
 
   @ReactProp(name = "source")
   fun setSource(view: SVGAImageView, source: String?) {
@@ -33,21 +39,30 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
 
     sources[view] = source
     try {
+      android.util.Log.d("SvgaPlayerViewManager", "Starting decodeFromURL: $source")
       SVGAParser.shareParser().decodeFromURL(
         URL(source),
         object : SVGAParser.ParseCompletion {
           override fun onComplete(videoItem: SVGAVideoEntity) {
-            if (sources[view] != source) return
-            view.setImageDrawable(SVGADrawable(videoItem))
-            view.startAnimation()
+            view.post {
+              if (sources[view] != source) return@post
+              val drawable = SVGADrawable(videoItem)
+              view.setImageDrawable(drawable)
+              view.startAnimation()
+              android.util.Log.d("SvgaPlayerViewManager", "SVGA animation started successfully: $source")
+            }
           }
 
           override fun onError() {
-            if (sources[view] == source) view.setImageDrawable(null)
+            android.util.Log.e("SvgaPlayerViewManager", "Error decoding SVGA from URL: $source")
+            if (sources[view] == source) {
+              view.post { view.setImageDrawable(null) }
+            }
           }
         },
       )
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+      android.util.Log.e("SvgaPlayerViewManager", "Exception loading SVGA: $source", e)
       view.setImageDrawable(null)
     }
   }

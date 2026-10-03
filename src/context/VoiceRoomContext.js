@@ -347,17 +347,23 @@ export const VoiceRoomProvider = ({ children }) => {
       ? {
           userId: currentUserId || '10000001',
           name: currentUser?.name || 'You (Host)',
-          avatar: currentUser?.avatar || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+          avatar: currentUser?.avatar || currentUser?.image || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+          image: currentUser?.image || currentUser?.avatar || roomData.coverImage || '',
           gender: currentUser?.gender || 'male',
           level: currentUser?.level || 1,
           isCurrentUser: true,
+          equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
+          equippedFrameAsset: currentUser?.equippedFrameAsset || null,
         }
       : {
           userId: roomData.hostId || '10000099',
           name: roomData.hostName || 'Host',
-          avatar: roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+          avatar: roomData.hostAvatar || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+          image: roomData.hostAvatar || roomData.coverImage || '',
           gender: 'female',
           level: 1,
+          equippedFrame: roomData.hostEquippedFrameAsset || roomData.hostEquippedFrame || null,
+          equippedFrameAsset: roomData.hostEquippedFrameAsset || null,
         };
 
     const initialSeats = buildInitialSeats(customSeats, hostObj);
@@ -691,6 +697,14 @@ export const VoiceRoomProvider = ({ children }) => {
             avatar: currentUser?.avatar || currentUser?.image || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
             gender: currentUser?.gender || 'male',
             level: currentUser?.level || 1,
+            equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
+            equippedFrameAsset: currentUser?.equippedFrameAsset || null,
+            equippedEntry: currentUser?.equippedEntryAsset || currentUser?.equippedEntry || null,
+            equippedEntryAsset: currentUser?.equippedEntryAsset || null,
+            equippedTassel: currentUser?.equippedTasselAsset || currentUser?.equippedTassel || null,
+            equippedTasselAsset: currentUser?.equippedTasselAsset || null,
+            equippedEntrance: currentUser?.equippedEntranceAsset || currentUser?.equippedEntrance || null,
+            equippedEntranceAsset: currentUser?.equippedEntranceAsset || null,
           },
           isHost: actuallyOwner,
           customSeats,
@@ -738,10 +752,13 @@ export const VoiceRoomProvider = ({ children }) => {
             user: {
               userId: currentUserId || '10000055',
               name: currentUser?.name || 'You',
-              avatar: currentUser?.avatar || 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
+              avatar: currentUser?.avatar || currentUser?.image || 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
+              image: currentUser?.image || currentUser?.avatar || '',
               gender: currentUser?.gender || 'male',
               level: currentUser?.level || 8,
               isCurrentUser: true,
+              equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
+              equippedFrameAsset: currentUser?.equippedFrameAsset || null,
             },
             isMuted: isMuted,
           };
@@ -780,6 +797,8 @@ export const VoiceRoomProvider = ({ children }) => {
           avatar: currentUser?.avatar || 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
           gender: currentUser?.gender || 'male',
           level: currentUser?.level || 8,
+          equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
+          equippedFrameAsset: currentUser?.equippedFrameAsset || null,
         },
       });
     }

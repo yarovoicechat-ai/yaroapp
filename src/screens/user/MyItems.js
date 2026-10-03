@@ -203,11 +203,11 @@ export default function MyItems() {
 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [items, setItems] = useState(() => {
-    const activeFrame = user?.equippedFrame || equippedFrame || 'Rose frame';
+    const activeFrame = user?.equippedFrame || equippedFrame || '';
     const activeWave = user?.equippedMicWave || equippedMicWave || 'Golden Pulse Wave';
     return INITIAL_ITEMS.slice(0, 2).map((it) => {
       if (it.type === 'Frame') {
-        return { ...it, inUse: it.name.toLowerCase() === activeFrame.toLowerCase() };
+        return { ...it, inUse: Boolean(activeFrame && it.name.toLowerCase() === activeFrame.toLowerCase()) };
       }
       if (it.type === 'Mic Wave') {
         return { ...it, inUse: it.name.toLowerCase() === activeWave.toLowerCase() };
@@ -266,12 +266,13 @@ export default function MyItems() {
         if (it.type === item.type) {
           if (it.id === item.id) {
             const newState = !it.inUse;
+            const equipName = newState ? it.name : '';
             if (newState) {
-              AlertService.show('Item Equipped', `${it.name} is now active on your profile!`, 'success');
+              AlertService.show('Item Equipped', `${it.name} is now active!`, 'success');
               if (item.type === 'Frame') {
-                setEquippedFrame?.(item);
+                setEquippedFrame?.(it);
               } else if (item.type === 'Mic Wave') {
-                setEquippedMicWave?.(item.name);
+                setEquippedMicWave?.(it.name);
               }
             } else {
               AlertService.show('Item Unequipped', `${it.name} has been removed.`, 'info');
@@ -281,6 +282,15 @@ export default function MyItems() {
                 setEquippedMicWave?.('');
               }
             }
+
+            // Sync with backend store equip API
+            apiUtil.post('/store/equip', {
+              name: equipName,
+              category: item.type,
+              imageUrl: newState ? (it.imageUrl || '') : '',
+              animationUrl: newState ? (it.animationUrl || '') : '',
+            }, { suppressGlobalError: true }).catch(() => undefined);
+
             return { ...it, inUse: newState };
           } else {
             return { ...it, inUse: false };

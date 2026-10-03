@@ -39,6 +39,7 @@ import RoomEntryEffectEngine from '../../components/room/RoomEntryEffectEngine';
 import VipFloatingEntryEngine from '../../components/room/VipFloatingEntryEngine';
 import ResponsiveChatBubble from '../../components/room/ResponsiveChatBubble';
 import VipMicWave from '../../components/room/VipMicWave';
+import AvatarWithFrame from '../../components/AvatarWithFrame';
 import {
   GiftButton,
   GiftPanel,
@@ -1203,9 +1204,13 @@ export default function VoiceRoomScreen() {
             end={{ x: 1, y: 0 }}
             style={styles.roomJoinBannerGradient}
           >
-            <Image
-              source={{ uri: activeJoinBanner.avatar || room.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
-              style={styles.joinAvatar}
+            <AvatarWithFrame
+              user={activeJoinBanner}
+              avatarSource={{ uri: activeJoinBanner.avatar || room.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
+              frame={activeJoinBanner.equippedFrameAsset || activeJoinBanner.equippedFrame || null}
+              size={36}
+              showOnlineDot={false}
+              style={{ marginRight: 8 }}
             />
             <View style={{ flex: 1, marginRight: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
@@ -1271,10 +1276,12 @@ export default function VoiceRoomScreen() {
                       intensity={1.1}
                       size={56}
                     >
-                      <View style={[styles.topFeaturedAvatarBox, isHostSeat ? styles.hostGoldBorder : styles.cpPinkBorder]}>
-                        <Image
-                          source={{ uri: seat.user.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
-                          style={styles.topFeaturedAvatarImg}
+                      <View style={styles.topFeaturedAvatarBox}>
+                        <AvatarWithFrame
+                          user={seat.user}
+                          frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame) : null)}
+                          size={50}
+                          showOnlineDot={false}
                         />
                         <View style={[styles.avatarCrestFrame, isHostSeat ? styles.hostCrest : styles.cpCrest]}>
                           <MaterialCommunityIcons
@@ -1362,9 +1369,11 @@ export default function VoiceRoomScreen() {
                         size={circleSize}
                       >
                         <View style={[styles.occupiedAvatarContainer, { width: circleSize, height: circleSize, borderRadius: circleSize / 2 }]}>
-                          <Image
-                            source={{ uri: seat.user.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
-                            style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, borderWidth: 1.2, borderColor: '#38BDF8' }}
+                          <AvatarWithFrame
+                            user={seat.user}
+                            frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame) : null)}
+                            size={avatarSize}
+                            showOnlineDot={false}
                           />
                           {seat.isMuted && (
                             <View style={styles.micMuteBadge}>
@@ -2865,16 +2874,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    backgroundColor: '#1E1B24',
+    backgroundColor: 'transparent',
   },
-  hostGoldBorder: {
-    borderWidth: 2,
-    borderColor: '#F59E0B',
-  },
-  cpPinkBorder: {
-    borderWidth: 2,
-    borderColor: '#EC4899',
-  },
+  hostGoldBorder: {},
+  cpPinkBorder: {},
   topFeaturedAvatarImg: {
     width: 50,
     height: 50,

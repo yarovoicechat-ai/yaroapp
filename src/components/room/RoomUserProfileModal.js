@@ -13,6 +13,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { AlertService } from '../../utils/AlertService';
+import AvatarWithFrame from '../AvatarWithFrame';
 
 const { width } = Dimensions.get('window');
 
@@ -132,7 +133,13 @@ export default function RoomUserProfileModal({
 
           {/* Floating Avatar Popping Out Above Card */}
           <View style={styles.avatarWrap}>
-            <Image source={{ uri: targetAvatar }} style={styles.userAvatarImg} />
+            <AvatarWithFrame
+              user={user}
+              avatarSource={{ uri: targetAvatar }}
+              frame={user?.equippedFrameAsset || user?.equippedFrame || null}
+              size={84}
+              showOnlineDot={false}
+            />
           </View>
 
           {/* User Name & Gender Icon */}
@@ -502,20 +509,14 @@ const styles = StyleSheet.create({
   },
   avatarWrap: {
     marginTop: -52,
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#F3F4F6',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    overflow: 'hidden',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
+    overflow: 'visible',
+    zIndex: 15,
   },
   userAvatarImg: {
     width: '100%',

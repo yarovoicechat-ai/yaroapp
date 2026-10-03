@@ -19,13 +19,13 @@ export const AuthProvider = ({ children }) => {
     gender: 'male',
     avatar: 'https://via.placeholder.com/150',
     mobile: '9876543210',
-    equippedFrame: 'Rose frame',
+    equippedFrame: null,
     equippedMicWave: 'Golden Pulse Wave',
   };
   const [user, setUser] = useState(defaultUser);
   const [role, setRole] = useState('user');
   const [hosts, setHosts] = useState([]);
-  const [equippedFrame, setEquippedFrameState] = useState('Rose frame');
+  const [equippedFrame, setEquippedFrameState] = useState(null);
   const [equippedMicWave, setEquippedMicWaveState] = useState('Golden Pulse Wave');
 
   const [loading, setLoading] = useState(true);
@@ -105,9 +105,9 @@ const fetchUserProfile = useCallback(async () => {
         } catch (_) {}
       }
 
-      const effectiveFrame = profile.equippedFrame && profile.equippedFrame !== 'Rose frame'
+      const effectiveFrame = profile.equippedFrame && profile.equippedFrame !== 'default' && profile.equippedFrame !== 'none'
         ? profile.equippedFrame
-        : (savedFrame || profile.equippedFrame || 'Rose frame');
+        : (savedFrame || profile.equippedFrame || null);
 
       const mergedProfile = {
         ...profile,
@@ -165,7 +165,7 @@ const fetchUserProfile = useCallback(async () => {
               AsyncStorage.getItem('equippedFrame'),
               AsyncStorage.getItem('equippedMicWave'),
             ]);
-            parsedUser.equippedFrame = parsedUser.equippedFrame || savedFrame || 'Rose frame';
+            parsedUser.equippedFrame = parsedUser.equippedFrame || savedFrame || null;
             parsedUser.equippedMicWave = parsedUser.equippedMicWave || savedMicWave || 'Golden Pulse Wave';
             setUser(parsedUser);
             if (savedFrame) setEquippedFrameState(savedFrame);

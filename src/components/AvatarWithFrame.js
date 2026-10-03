@@ -29,51 +29,41 @@ export default function AvatarWithFrame({
   style,
 }) {
   const avatar = avatarSource || getUserAvatar(user);
-  const activeFrame = frame || user?.equippedFrame;
+  const activeFrame = frame || user?.equippedFrameAsset || user?.equippedFrame;
   const frameName = (activeFrame?.name || activeFrame?.id || (typeof activeFrame === 'string' ? activeFrame : '')).toLowerCase();
-  const uploadedFrame = (typeof activeFrame === 'object' && activeFrame)
+  const uploadedFrame = (typeof activeFrame === 'object' && (activeFrame?.animationUrl || activeFrame?.imageUrl || activeFrame?.image))
     ? activeFrame
-    : (user?.equippedFrameAsset && (user?.equippedFrameAsset?.name || '').toLowerCase() === frameName)
+    : (user?.equippedFrameAsset && (user?.equippedFrameAsset?.animationUrl || user?.equippedFrameAsset?.imageUrl || user?.equippedFrameAsset?.image))
       ? user.equippedFrameAsset
-      : (user?.storeInventory?.find(i => (i.name || '').toLowerCase() === frameName))
-      || null;
+      : (typeof frame === 'object' && (frame?.animationUrl || frame?.imageUrl || frame?.image))
+        ? frame
+        : (user?.storeInventory?.find(i => (i.name || '').toLowerCase() === frameName && (i.animationUrl || i.imageUrl || i.image)))
+        || null;
 
-  const hasFrame = Boolean(activeFrame && frameName !== 'default' && frameName !== 'none');
+  const hasFrame = Boolean(
+    (uploadedFrame && (uploadedFrame.animationUrl || uploadedFrame.imageUrl || uploadedFrame.image)) ||
+    (activeFrame && frameName && frameName !== 'default' && frameName !== 'none' && frameName !== 'null')
+  );
 
-  // Ring dimensions proportional to avatar size
-  const ringPadding = Math.max(3, Math.round(size * 0.05));
-  const innerAvatarSize = size - ringPadding * 2;
-  const borderRadius = size / 2;
-
-  // Render specific luxury frame ornament overlays
+  // Render specific luxury frame ornament overlays (fallback when no asset file uploaded)
   const renderFrameDecorations = () => {
     if (!hasFrame || uploadedFrame?.animationUrl || uploadedFrame?.imageUrl || uploadedFrame?.image) return null;
 
-    // 1. ROSE FRAME (Pink Roses & Sparkle Accents)
+    // 1. ROSE FRAME
     if (frameName.includes('rose')) {
       return (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-          {/* Top-Right Blooming Flower */}
-          <View style={[styles.decorBadge, { top: -6, right: -4 }]}>
+          <View style={[styles.decorBadge, { top: -4, right: -2 }]}>
             <Text style={{ fontSize: Math.max(12, size * 0.22) }}>🌸</Text>
           </View>
-          {/* Bottom-Left Rose */}
-          <View style={[styles.decorBadge, { bottom: -4, left: -4 }]}>
+          <View style={[styles.decorBadge, { bottom: -2, left: -2 }]}>
             <Text style={{ fontSize: Math.max(12, size * 0.22) }}>🌹</Text>
-          </View>
-          {/* Top-Left Sparkle */}
-          <View style={[styles.decorBadge, { top: -2, left: -2 }]}>
-            <Text style={{ fontSize: Math.max(9, size * 0.16) }}>✨</Text>
-          </View>
-          {/* Bottom-Right Gem */}
-          <View style={[styles.decorBadge, { bottom: -2, right: -2 }]}>
-            <Text style={{ fontSize: Math.max(9, size * 0.16) }}>💎</Text>
           </View>
         </View>
       );
     }
 
-    // 2. WINGS FRAME (Gold Angel Wings / Galaxy Wings)
+    // 2. WINGS FRAME
     if (frameName.includes('wing')) {
       const isGold = frameName.includes('gold');
       const wingColor = isGold ? '#F59E0B' : '#A855F7';
@@ -81,7 +71,6 @@ export default function AvatarWithFrame({
 
       return (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-          {/* Left Wing */}
           <LinearGradient
             colors={wingGrad}
             start={{ x: 0, y: 0 }}
@@ -96,7 +85,6 @@ export default function AvatarWithFrame({
               },
             ]}
           />
-          {/* Right Wing */}
           <LinearGradient
             colors={wingGrad}
             start={{ x: 1, y: 0 }}
@@ -111,23 +99,16 @@ export default function AvatarWithFrame({
               },
             ]}
           />
-          {/* Top Halo / Star */}
-          <View style={[styles.decorBadge, { top: -8, alignSelf: 'center' }]}>
-            <MaterialCommunityIcons name="star-four-points" size={Math.max(14, size * 0.24)} color={wingColor} />
-          </View>
         </View>
       );
     }
 
-    // 3. CROWN FRAME (Golden Crown / Imperial Crown)
+    // 3. CROWN FRAME
     if (frameName.includes('crown')) {
       return (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
           <View style={[styles.decorBadge, { top: -Math.max(14, size * 0.22), alignSelf: 'center' }]}>
             <Text style={{ fontSize: Math.max(16, size * 0.28) }}>👑</Text>
-          </View>
-          <View style={[styles.decorBadge, { bottom: -2, alignSelf: 'center' }]}>
-            <MaterialCommunityIcons name="shield-star" size={Math.max(12, size * 0.18)} color="#F59E0B" />
           </View>
         </View>
       );
@@ -154,128 +135,40 @@ export default function AvatarWithFrame({
           <View style={[styles.decorBadge, { top: -6, alignSelf: 'center' }]}>
             <Text style={{ fontSize: Math.max(15, size * 0.25) }}>🔥</Text>
           </View>
-          <View style={[styles.decorBadge, { bottom: -2, right: -2 }]}>
-            <MaterialCommunityIcons name="fire" size={Math.max(13, size * 0.2)} color="#EF4444" />
-          </View>
         </View>
       );
     }
 
-    // 6. SAKURA BLOSSOM
-    if (frameName.includes('sakura') || frameName.includes('blossom')) {
-      return (
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-          <View style={[styles.decorBadge, { top: -5, right: -3 }]}>
-            <Text style={{ fontSize: Math.max(12, size * 0.2) }}>🌸</Text>
-          </View>
-          <View style={[styles.decorBadge, { bottom: -5, left: -3 }]}>
-            <Text style={{ fontSize: Math.max(12, size * 0.2) }}>🌺</Text>
-          </View>
-        </View>
-      );
-    }
-
-    // 7. CRYSTAL FRAME
-    if (frameName.includes('crystal')) {
-      return (
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-          <View style={[styles.decorBadge, { top: -4, alignSelf: 'center' }]}>
-            <MaterialCommunityIcons name="diamond-stone" size={Math.max(14, size * 0.22)} color="#A78BFA" />
-          </View>
-        </View>
-      );
-    }
-
-    // DEFAULT FRAME EMBLEM
-    return (
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        <View style={[styles.decorBadge, { top: -5, right: -3 }]}>
-          <Text style={{ fontSize: Math.max(10, size * 0.18) }}>✨</Text>
-        </View>
-      </View>
-    );
+    return null;
   };
 
-  // Get frame border colors
-  const getGradientColors = () => {
-    if (!hasFrame) {
-      return ['#FFFFFF', '#FFFFFF'];
-    }
-
-    if (frameName.includes('rose')) {
-      return ['#F43F5E', '#FDA4AF', '#E11D48', '#FB7185'];
-    }
-    if (frameName.includes('gold') || frameName.includes('crown')) {
-      return ['#F59E0B', '#FDE68A', '#D97706', '#FEF3C7'];
-    }
-    if (frameName.includes('wing') || frameName.includes('galaxy')) {
-      return ['#8B5CF6', '#C084FC', '#6366F1', '#E9D5FF'];
-    }
-    if (frameName.includes('neon') || frameName.includes('rockstar')) {
-      return ['#06B6D4', '#3B82F6', '#8B5CF6', '#67E8F9'];
-    }
-    if (frameName.includes('dragon')) {
-      return ['#EF4444', '#F97316', '#DC2626', '#FCD34D'];
-    }
-    if (frameName.includes('sakura')) {
-      return ['#EC4899', '#FBCFE8', '#DB2777', '#F472B6'];
-    }
-    if (frameName.includes('crystal')) {
-      return ['#8B5CF6', '#DDD6FE', '#7C3AED', '#A78BFA'];
-    }
-
-    // Fallback to activeFrame previewColor
-    if (activeFrame?.previewColor) {
-      return [activeFrame.previewColor, '#FFFFFF', activeFrame.previewColor];
-    }
-    return ['#7C3AED', '#A78BFA', '#6D28D9'];
-  };
+  const frameSize = Math.round(size * 1.25);
 
   return (
-    <View style={[{ width: size, height: size }, style]}>
-      {/* Outer Border / Luxury Frame Ring */}
-      <LinearGradient
-        colors={getGradientColors()}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
+      {/* Inner Avatar Image - Pure Borderless Circle */}
+      <Image
+        source={avatar}
         style={[
-          styles.outerRing,
+          styles.avatarImage,
           {
             width: size,
             height: size,
-            borderRadius: borderRadius,
-            padding: ringPadding,
-            shadowColor: hasFrame ? getGradientColors()[0] : '#000',
-            shadowOpacity: hasFrame ? 0.35 : 0.08,
-            shadowRadius: hasFrame ? 6 : 3,
-            elevation: hasFrame ? 6 : 2,
+            borderRadius: size / 2,
           },
         ]}
-      >
-        {/* Inner Avatar Image */}
-        <Image
-          source={avatar}
-          style={[
-            styles.avatarImage,
-            {
-              width: innerAvatarSize,
-              height: innerAvatarSize,
-              borderRadius: innerAvatarSize / 2,
-            },
-          ]}
-          resizeMode="cover"
-        />
-      </LinearGradient>
+        resizeMode="cover"
+      />
 
-      {/* Uploaded Animated or Static Frame Overlay */}
+      {/* Uploaded Animated SVGA or Static Frame Overlay */}
       {uploadedFrame && (uploadedFrame.animationUrl || uploadedFrame.imageUrl || uploadedFrame.image) ? (
         <View
           style={{
             position: 'absolute',
-            top: (size - size * 1.25) / 2,
-            left: (size - size * 1.25) / 2,
-            width: Math.round(size * 1.25),
-            height: Math.round(size * 1.25),
+            top: (size - frameSize) / 2,
+            left: (size - frameSize) / 2,
+            width: frameSize,
+            height: frameSize,
             zIndex: 10,
             justifyContent: 'center',
             alignItems: 'center',
@@ -285,21 +178,21 @@ export default function AvatarWithFrame({
           {uploadedFrame.animationUrl ? (
             <SvgaView
               source={uploadedFrame.animationUrl}
-              style={{ width: Math.round(size * 1.25), height: Math.round(size * 1.25) }}
+              style={{ width: frameSize, height: frameSize }}
               loops={0}
               fallbackImage={uploadedFrame.imageUrl || uploadedFrame.image}
             />
           ) : (
             <Image
               source={{ uri: uploadedFrame.imageUrl || uploadedFrame.image }}
-              style={{ width: Math.round(size * 1.25), height: Math.round(size * 1.25) }}
+              style={{ width: frameSize, height: frameSize }}
               resizeMode="contain"
             />
           )}
         </View>
       ) : null}
 
-      {/* Frame Decorative Ornaments (Flowers, Wings, Crowns) */}
+      {/* Frame Decorative Ornaments (Fallback) */}
       {renderFrameDecorations()}
 
       {/* Online Status Dot */}
@@ -308,12 +201,12 @@ export default function AvatarWithFrame({
           style={[
             styles.onlineDot,
             {
-              width: Math.max(12, Math.round(size * 0.16)),
-              height: Math.max(12, Math.round(size * 0.16)),
-              borderRadius: Math.max(6, Math.round(size * 0.08)),
+              width: Math.max(10, Math.round(size * 0.16)),
+              height: Math.max(10, Math.round(size * 0.16)),
+              borderRadius: Math.max(5, Math.round(size * 0.08)),
               backgroundColor: isOnline ? '#10B981' : '#94A3B8',
-              bottom: Math.max(0, Math.round(size * 0.04)),
-              right: Math.max(0, Math.round(size * 0.04)),
+              bottom: 0,
+              right: 0,
             },
           ]}
         />
@@ -323,16 +216,6 @@ export default function AvatarWithFrame({
 }
 
 const styles = StyleSheet.create({
-  uploadedFrame: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-  },
-  outerRing: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
   avatarImage: {
     backgroundColor: '#F1F5F9',
   },
@@ -351,7 +234,6 @@ const styles = StyleSheet.create({
     opacity: 0.95,
     zIndex: 5,
     transform: [{ rotate: '-18deg' }],
-    elevation: 4,
   },
   wingRightShape: {
     position: 'absolute',
@@ -362,7 +244,6 @@ const styles = StyleSheet.create({
     opacity: 0.95,
     zIndex: 5,
     transform: [{ rotate: '18deg' }],
-    elevation: 4,
   },
   onlineDot: {
     position: 'absolute',

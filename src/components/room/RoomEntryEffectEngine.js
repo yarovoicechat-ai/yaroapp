@@ -9,256 +9,218 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { SvgaPlayer } from '@dasimems/react-native-svga';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import SvgaView from '../SvgaView';
+import AvatarWithFrame from '../AvatarWithFrame';
 
 const { width, height } = Dimensions.get('window');
 
+/**
+ * Sequential Room Entry Orchestrator
+ *
+ * Requirements:
+ * 1. If user ID has equipped Entry effect and is using it:
+ *    - Step 1: Entry Effect Banner appears immediately (Pahle Entry).
+ *    - Step 2: Tassel Ornament appears (Fir Tassle).
+ *    - Step 3: Exactly 1 second after Tassel, Entrance Ride sweeps across the room (1 sec bad Entrance).
+ * 2. Borderless avatars with active frames across the banners.
+ */
 export default function RoomEntryEffectEngine({
   activeEntry,
   onComplete,
 }) {
   const [currentEntry, setCurrentEntry] = useState(null);
+  const [showTassel, setShowTassel] = useState(false);
+  const [showEntrance, setShowEntrance] = useState(false);
 
-  // Animation values
+  // Animation values - Stage 1: Entry Banner
   const bannerTranslateX = useRef(new Animated.Value(-width)).current;
   const bannerOpacity = useRef(new Animated.Value(0)).current;
   const avatarScale = useRef(new Animated.Value(0.3)).current;
   const avatarPulse = useRef(new Animated.Value(1)).current;
-  const particleTranslateY = useRef(new Animated.Value(40)).current;
-  const particleOpacity = useRef(new Animated.Value(0)).current;
-  const rideTranslateX = useRef(new Animated.Value(-width * 1.3)).current;
+
+  // Animation values - Stage 2: Tassel
+  const tasselTranslateY = useRef(new Animated.Value(-60)).current;
+  const tasselOpacity = useRef(new Animated.Value(0)).current;
+  const tasselSwing = useRef(new Animated.Value(0)).current;
+
+  // Animation values - Stage 3: Entrance (Ride / Supercar / SVGA)
+  const rideTranslateX = useRef(new Animated.Value(-width * 1.4)).current;
   const rideOpacity = useRef(new Animated.Value(0)).current;
 
-  // Track entry IDs to avoid replay
+  // Track entry IDs to avoid replay loops
   const playedIdsRef = useRef(new Set());
 
-  const playEntryAnimation = useCallback((entry) => {
-    if (!entry || playedIdsRef.current.has(entry.entryId)) return;
-    playedIdsRef.current.add(entry.entryId);
+  const playSequentialEntry = useCallback((entryData) => {
+    if (!entryData || playedIdsRef.current.has(entryData.entryId)) return;
+    playedIdsRef.current.add(entryData.entryId);
 
-    // Limit set size to avoid memory bloat
-    if (playedIdsRef.current.size > 100) {
+    if (playedIdsRef.current.size > 80) {
       const arr = Array.from(playedIdsRef.current);
-      playedIdsRef.current = new Set(arr.slice(arr.length - 50));
+      playedIdsRef.current = new Set(arr.slice(arr.length - 40));
     }
 
-    setCurrentEntry(entry);
+    const entryEffect = entryData.entry || entryData.effect || null;
+    const tasselEffect = entryData.tassel || null;
+    const entranceEffect = entryData.entrance || null;
 
-    const animType = (entry.effect?.animationType || 'BANNER').toUpperCase();
-    const duration = entry.effect?.duration || 3000;
+    setCurrentEntry(entryData);
+    setShowTassel(false);
+    setShowEntrance(false);
 
-    // Reset values
+    // Reset initial values
     bannerTranslateX.setValue(-width);
     bannerOpacity.setValue(0);
     avatarScale.setValue(0.3);
     avatarPulse.setValue(1);
-    particleTranslateY.setValue(40);
-    particleOpacity.setValue(0);
-    rideTranslateX.setValue(-width * 1.3);
+    tasselTranslateY.setValue(-60);
+    tasselOpacity.setValue(0);
+    tasselSwing.setValue(0);
+    rideTranslateX.setValue(-width * 1.4);
     rideOpacity.setValue(0);
 
-    const hasRide = Boolean(entry.effect?.animationUrl || entry.effect?.image || entry.effect?.imageUrl);
-    if (hasRide) {
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(rideOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.spring(rideTranslateX, { toValue: 0, friction: 6, tension: 40, useNativeDriver: true }),
-        ]),
-        Animated.delay(Math.max(1000, duration - 1500)),
-        Animated.parallel([
-          Animated.timing(rideTranslateX, { toValue: width * 1.3, duration: 450, useNativeDriver: true }),
-          Animated.timing(rideOpacity, { toValue: 0, duration: 450, useNativeDriver: true }),
-        ]),
-      ]).start();
-    }
+    // ==========================================
+    // STAGE 1 (PAHLE): ENTRY EFFECT (Immediate)
+    // ==========================================
+    Animated.parallel([
+      Animated.spring(bannerTranslateX, {
+        toValue: 0,
+        friction: 6,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bannerOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(avatarScale, {
+        toValue: 1.0,
+        friction: 4,
+        tension: 60,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-    if (animType === 'CENTER_AVATAR' || animType === 'VIP_ENTRANCE') {
-      // Scale up center avatar + glowing pulse + slide in banner
+    // Pulse avatar during entry
+    Animated.loop(
       Animated.sequence([
-        Animated.parallel([
-          Animated.spring(avatarScale, {
-            toValue: 1.1,
-            friction: 4,
-            tension: 60,
-            useNativeDriver: true,
-          }),
-          Animated.timing(bannerOpacity, {
-            toValue: 1,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-          Animated.spring(bannerTranslateX, {
-            toValue: 0,
-            friction: 6,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.spring(avatarScale, {
-          toValue: 1.0,
-          friction: 3,
+        Animated.timing(avatarPulse, { toValue: 1.06, duration: 550, useNativeDriver: true }),
+        Animated.timing(avatarPulse, { toValue: 1.0, duration: 550, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // ==========================================
+    // STAGE 2 (FIR): TASSEL EFFECT (After 1.6s)
+    // ==========================================
+    const tasselTimer = setTimeout(() => {
+      setShowTassel(true);
+
+      Animated.parallel([
+        Animated.spring(tasselTranslateY, {
+          toValue: 0,
+          friction: 5,
+          tension: 45,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tasselOpacity, {
+          toValue: 1,
+          duration: 350,
           useNativeDriver: true,
         }),
       ]).start();
 
-      // Continuous subtle pulse
+      // Gentle swaying pendulum motion for the tassel
       Animated.loop(
         Animated.sequence([
-          Animated.timing(avatarPulse, { toValue: 1.08, duration: 600, useNativeDriver: true }),
-          Animated.timing(avatarPulse, { toValue: 1.0, duration: 600, useNativeDriver: true }),
+          Animated.timing(tasselSwing, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.timing(tasselSwing, { toValue: -1, duration: 1200, useNativeDriver: true }),
+          Animated.timing(tasselSwing, { toValue: 0, duration: 600, useNativeDriver: true }),
         ])
       ).start();
-    } else {
-      // BANNER, PARTICLES, SPECIAL_EVENT
-      Animated.parallel([
-        Animated.spring(bannerTranslateX, {
-          toValue: 0,
-          friction: 6,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bannerOpacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(particleOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(particleTranslateY, {
-          toValue: -20,
-          duration: duration - 400,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
 
-    // Auto dismiss after duration
-    const timer = setTimeout(() => {
+      // =========================================================
+      // STAGE 3 (1 SEC BAD): ENTRANCE RIDE (Exactly 1s after Tassel)
+      // =========================================================
+      const entranceTimer = setTimeout(() => {
+        setShowEntrance(true);
+
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(rideOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+            Animated.spring(rideTranslateX, {
+              toValue: 0,
+              friction: 6,
+              tension: 38,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.delay(1600),
+          Animated.parallel([
+            Animated.timing(rideTranslateX, {
+              toValue: width * 1.4,
+              duration: 450,
+              useNativeDriver: true,
+            }),
+            Animated.timing(rideOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+          ]),
+        ]).start();
+      }, 1000); // Exactly 1 second delay after tassel
+
+      return () => clearTimeout(entranceTimer);
+    }, 1600);
+
+    // ==========================================
+    // CLEANUP & DISMISSAL (After full sequence)
+    // ==========================================
+    const totalDuration = 5600;
+    const dismissTimer = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(bannerTranslateX, {
-          toValue: width,
-          duration: 350,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bannerOpacity, {
-          toValue: 0,
-          duration: 350,
-          useNativeDriver: true,
-        }),
-        Animated.timing(avatarScale, {
-          toValue: 0.2,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rideOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
+        Animated.timing(bannerTranslateX, { toValue: width, duration: 350, useNativeDriver: true }),
+        Animated.timing(bannerOpacity, { toValue: 0, duration: 350, useNativeDriver: true }),
+        Animated.timing(tasselOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(rideOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
       ]).start(() => {
         setCurrentEntry(null);
-        onComplete && onComplete(entry.entryId);
+        setShowTassel(false);
+        setShowEntrance(false);
+        onComplete && onComplete(entryData.entryId);
       });
-    }, duration);
+    }, totalDuration);
 
-    return () => clearTimeout(timer);
-  }, [bannerTranslateX, bannerOpacity, avatarScale, avatarPulse, particleTranslateY, particleOpacity, rideTranslateX, rideOpacity, onComplete]);
+    return () => {
+      clearTimeout(tasselTimer);
+      clearTimeout(dismissTimer);
+    };
+  }, [bannerTranslateX, bannerOpacity, avatarScale, avatarPulse, tasselTranslateY, tasselOpacity, tasselSwing, rideTranslateX, rideOpacity, onComplete]);
 
   useEffect(() => {
-    if (activeEntry && activeEntry.effect) {
-      playEntryAnimation(activeEntry);
+    if (activeEntry && (activeEntry.hasEntry || activeEntry.entry || activeEntry.effect)) {
+      playSequentialEntry(activeEntry);
     }
-  }, [activeEntry, playEntryAnimation]);
+  }, [activeEntry, playSequentialEntry]);
 
-  if (!currentEntry || !currentEntry.effect) return null;
+  if (!currentEntry) return null;
 
-  const effect = currentEntry.effect;
+  const entry = currentEntry.entry || currentEntry.effect || {};
+  const tassel = currentEntry.tassel || {};
+  const entrance = currentEntry.entrance || {};
   const user = currentEntry.user || {};
-  const tagText = currentEntry.tagText || effect.tagText || 'VIP ENTRY';
-  const colors = effect.bannerColors && effect.bannerColors.length >= 2
-    ? effect.bannerColors
-    : ['#F59E0B', '#B45309'];
-  const animType = (effect.animationType || 'BANNER').toUpperCase();
+
+  const colors = entry.bannerColors && Array.isArray(entry.bannerColors) && entry.bannerColors.length >= 2
+    ? entry.bannerColors
+    : ['#7C3AED', '#4C1D95'];
+
+  const tagText = entry.tagText || currentEntry.tagText || '👑 VIP HAS ENTERED';
+
+  const tasselRotate = tasselSwing.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-12deg', '0deg', '12deg'],
+  });
 
   return (
     <View style={styles.overlayContainer} pointerEvents="none">
-      {/* 0. Flying Ride Animation / SVGA / Image (Supercar, Dragon, Spaceship, etc.) */}
-      {(effect.animationUrl || effect.image || effect.imageUrl) ? (
-        <Animated.View
-          style={[
-            styles.rideContainer,
-            {
-              transform: [{ translateX: rideTranslateX }],
-              opacity: rideOpacity,
-            },
-          ]}
-        >
-          {effect.animationUrl && /\.svga(?:\?|$)/i.test(effect.animationUrl) ? (
-            <SvgaPlayer source={effect.animationUrl} style={styles.svgaRide} loops={1} />
-          ) : (
-            <Image
-              source={{ uri: effect.animationUrl || effect.image || effect.imageUrl }}
-              style={styles.imageRide}
-              resizeMode="contain"
-            />
-          )}
-        </Animated.View>
-      ) : null}
-
-      {/* 1. Center Avatar Reveal for CENTER_AVATAR & VIP_ENTRANCE */}
-      {(animType === 'CENTER_AVATAR' || animType === 'VIP_ENTRANCE') && (
-        <Animated.View
-          style={[
-            styles.centerAvatarBox,
-            {
-              transform: [{ scale: Animated.multiply(avatarScale, avatarPulse) }],
-              opacity: bannerOpacity,
-            },
-          ]}
-        >
-          {/* Outer Glowing Ring */}
-          <LinearGradient
-            colors={colors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.avatarGlowRing}
-          >
-            <Image
-              source={{
-                uri: user.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-              }}
-              style={styles.centerAvatarImg}
-            />
-          </LinearGradient>
-
-          {/* Floating Crown/Icon on top */}
-          <View style={styles.centerAvatarBadge}>
-            <Text style={{ fontSize: 16 }}>{effect.icon || '👑'}</Text>
-          </View>
-        </Animated.View>
-      )}
-
-      {/* 2. Floating Star Particles for PARTICLES */}
-      {animType === 'PARTICLES' && (
-        <Animated.View
-          style={[
-            styles.particlesOverlay,
-            {
-              opacity: particleOpacity,
-              transform: [{ translateY: particleTranslateY }],
-            },
-          ]}
-        >
-          <Text style={[styles.particleStar, { left: width * 0.2, top: 40 }]}>✨</Text>
-          <Text style={[styles.particleStar, { left: width * 0.5, top: 20 }]}>⭐</Text>
-          <Text style={[styles.particleStar, { left: width * 0.8, top: 50 }]}>✨</Text>
-          <Text style={[styles.particleStar, { left: width * 0.35, top: 70 }]}>💎</Text>
-        </Animated.View>
-      )}
-
-      {/* 3. Sliding Banner (Shown for all types, positioned near top of room) */}
+      {/* 1. STAGE 1: ENTRY BANNER (Top) */}
       <Animated.View
         style={[
           styles.bannerWrapper,
@@ -274,24 +236,22 @@ export default function RoomEntryEffectEngine({
           end={{ x: 1, y: 0 }}
           style={styles.bannerGradient}
         >
-          {/* User Avatar with Mini Badge */}
-          <View style={styles.bannerAvatarBox}>
-            <Image
-              source={{
-                uri: user.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-              }}
-              style={styles.bannerAvatar}
+          {/* Avatar with Frame (Borderless Circle) */}
+          <View style={styles.avatarHolder}>
+            <AvatarWithFrame
+              user={user}
+              avatarSource={{ uri: user.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
+              frame={user.equippedFrameAsset || user.equippedFrame || null}
+              size={46}
+              showOnlineDot={false}
             />
-            <View style={styles.miniIconBadge}>
-              <Text style={{ fontSize: 9 }}>{effect.icon || '👑'}</Text>
-            </View>
           </View>
 
           {/* User Name & Entry Tag */}
           <View style={styles.bannerInfo}>
             <View style={styles.bannerTitleRow}>
               <Text style={styles.bannerUserName} numberOfLines={1}>
-                {user.name || 'User'}
+                {user.name || 'VIP User'}
               </Text>
               <View style={styles.levelTag}>
                 <Text style={styles.levelTagText}>Lv.{user.level || 1}</Text>
@@ -305,20 +265,104 @@ export default function RoomEntryEffectEngine({
             </View>
           </View>
 
-          {/* Right Effect Icon or Preview Thumbnail */}
-          <View style={styles.effectIconWrap}>
-            {effect.image || effect.imageUrl ? (
+          {/* Right Entry Icon or Thumbnail */}
+          <View style={styles.rightIconBox}>
+            {entry.image || entry.imageUrl ? (
               <Image
-                source={{ uri: effect.image || effect.imageUrl }}
-                style={styles.bannerEffectThumb}
+                source={{ uri: entry.image || entry.imageUrl }}
+                style={styles.entryThumb}
                 resizeMode="contain"
               />
             ) : (
-              <Text style={{ fontSize: 24 }}>{effect.icon || '⚡'}</Text>
+              <Text style={{ fontSize: 24 }}>{entry.icon || '👑'}</Text>
             )}
           </View>
         </LinearGradient>
       </Animated.View>
+
+      {/* 2. STAGE 2: TASSEL ORNAMENT (Fir Tassel) */}
+      {showTassel && (
+        <Animated.View
+          style={[
+            styles.tasselFloatingCard,
+            {
+              transform: [{ translateY: tasselTranslateY }, { rotate: tasselRotate }],
+              opacity: tasselOpacity,
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={['#1E293B', '#0F172A', '#020617']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tasselCardGradient}
+          >
+            {/* Dangling Silk Tassel */}
+            <View style={[styles.tasselPillBadge, { backgroundColor: tassel.previewColor || '#F59E0B' }]}>
+              <MaterialCommunityIcons name="ribbon" size={18} color="#FFFFFF" />
+            </View>
+
+            <View style={styles.tasselTextWrap}>
+              <Text style={styles.tasselNameText} numberOfLines={1}>
+                {tassel.name || 'Imperial Silk Tassel'}
+              </Text>
+              <Text style={styles.tasselSubText}>
+                🌸 {user.name || 'User'} activated {tassel.tag || 'Mic Tassel Ornament'}
+              </Text>
+            </View>
+
+            {tassel.animationUrl ? (
+              <View style={styles.tasselAssetBox}>
+                <SvgaView
+                  source={tassel.animationUrl}
+                  style={{ width: 34, height: 34 }}
+                  loops={0}
+                  fallbackImage={tassel.image}
+                />
+              </View>
+            ) : null}
+          </LinearGradient>
+        </Animated.View>
+      )}
+
+      {/* 3. STAGE 3: ENTRANCE RIDE (1 Sec Bad Entrance) */}
+      {showEntrance && (
+        <Animated.View
+          style={[
+            styles.rideContainer,
+            {
+              transform: [{ translateX: rideTranslateX }],
+              opacity: rideOpacity,
+            },
+          ]}
+        >
+          {entrance.animationUrl ? (
+            <SvgaView
+              source={entrance.animationUrl}
+              style={styles.rideAsset}
+              loops={1}
+              fallbackImage={entrance.image}
+            />
+          ) : (
+            <View style={styles.rideStaticCard}>
+              <Image
+                source={{ uri: entrance.image || 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=400' }}
+                style={styles.rideImage}
+                resizeMode="contain"
+              />
+              <LinearGradient
+                colors={['rgba(245, 158, 11, 0.9)', 'rgba(217, 119, 6, 0.9)']}
+                style={styles.rideBannerPill}
+              >
+                <MaterialIcons name="sports-motorsports" size={16} color="#FFFFFF" />
+                <Text style={styles.rideBannerText} numberOfLines={1}>
+                  {entrance.name || 'Luxury Supercar Entrance'}
+                </Text>
+              </LinearGradient>
+            </View>
+          )}
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -329,48 +373,29 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: height * 0.12,
+    paddingTop: height * 0.11,
   },
   bannerWrapper: {
     width: width - 24,
     borderRadius: 24,
-    overflow: 'hidden',
     shadowColor: '#F59E0B',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.45,
     shadowRadius: 10,
     elevation: 10,
+    marginBottom: 10,
   },
   bannerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 24,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.35)',
   },
-  bannerAvatarBox: {
-    position: 'relative',
+  avatarHolder: {
     marginRight: 10,
-  },
-  bannerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#1E293B',
-  },
-  miniIconBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#0F172A',
-    borderRadius: 8,
-    padding: 1.5,
-    borderWidth: 1,
-    borderColor: '#FACC15',
   },
   bannerInfo: {
     flex: 1,
@@ -414,69 +439,95 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
-  effectIconWrap: {
+  rightIconBox: {
     marginLeft: 8,
   },
-  centerAvatarBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  avatarGlowRing: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 14,
-    elevation: 12,
-  },
-  centerAvatarImg: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 2.5,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#0F172A',
-  },
-  centerAvatarBadge: {
-    position: 'absolute',
-    top: -10,
-    backgroundColor: '#1E293B',
-    borderRadius: 14,
-    padding: 3,
-    borderWidth: 1.5,
-    borderColor: '#FACC15',
-  },
-  particlesOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  particleStar: {
-    position: 'absolute',
-    fontSize: 20,
-  },
-  rideContainer: {
-    width: width * 0.85,
-    height: 180,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-    zIndex: 9998,
-  },
-  svgaRide: {
-    width: '100%',
-    height: '100%',
-  },
-  imageRide: {
-    width: '100%',
-    height: '100%',
-  },
-  bannerEffectThumb: {
+  entryThumb: {
     width: 36,
     height: 36,
     borderRadius: 8,
+  },
+  tasselFloatingCard: {
+    width: width - 36,
+    borderRadius: 18,
+    marginTop: 6,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
+    alignSelf: 'center',
+  },
+  tasselCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.5)',
+  },
+  tasselPillBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  tasselTextWrap: {
+    flex: 1,
+  },
+  tasselNameText: {
+    color: '#FDE047',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  tasselSubText: {
+    color: '#E2E8F0',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  tasselAssetBox: {
+    marginLeft: 6,
+  },
+  rideContainer: {
+    width: width * 0.9,
+    height: 190,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    zIndex: 9998,
+  },
+  rideAsset: {
+    width: '100%',
+    height: '100%',
+  },
+  rideStaticCard: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rideImage: {
+    width: width * 0.85,
+    height: 140,
+  },
+  rideBannerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginTop: -10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  rideBannerText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

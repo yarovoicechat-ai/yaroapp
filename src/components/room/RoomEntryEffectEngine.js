@@ -240,8 +240,7 @@ export default function RoomEntryEffectEngine({
           <View style={styles.avatarHolder}>
             <AvatarWithFrame
               user={user}
-              avatarSource={{ uri: user.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
-              frame={user.equippedFrameAsset || user.equippedFrame || null}
+              frame={user?.equippedFrameAsset || user?.equippedFrame || null}
               size={46}
               showOnlineDot={false}
             />

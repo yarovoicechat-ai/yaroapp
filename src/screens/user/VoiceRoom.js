@@ -799,22 +799,31 @@ export default function VoiceRoomScreen() {
       if (isCurrentUserSeat) {
         // Current user clicked their own seat -> show own Profile modal with "Profile" & "Leave the seat"
         setSelectedProfileUser({
+          ...user,
           ...seat.user,
           isCurrentUser: true,
           userId: user?.userId || user?._id || user?.id || seat.user.userId || seat.user.id || '10000001',
           name: user?.name || seat.user.name,
           avatar: user?.avatar || user?.image || seat.user.avatar,
+          image: user?.image || user?.avatar || seat.user.image || seat.user.avatar,
           followersCount: user?.followersCount !== undefined ? user.followersCount : (seat.user.followersCount || 1),
           level: user?.level || seat.user.level || 4,
           charm: user?.charm || seat.user.charm || 0,
           gender: user?.gender || seat.user.gender || 'male',
           isOwner: isRoomOwner || isContextOwnerMatch || seat.seatIndex === 0,
           isAdmin: isCurrentUserAdmin && !isRoomOwner,
+          equippedFrame: user?.equippedFrame || seat.user?.equippedFrame || null,
+          equippedFrameAsset: user?.equippedFrameAsset || seat.user?.equippedFrameAsset || null,
         });
         setProfileModalVisible(true);
       } else {
         // Clicked another user's seat -> show Profile modal
-        setSelectedProfileUser(seat.user);
+        setSelectedProfileUser({
+          ...seat.user,
+          gender: seat.user?.gender || 'male',
+          equippedFrame: seat.user?.equippedFrameAsset || seat.user?.equippedFrame || null,
+          equippedFrameAsset: seat.user?.equippedFrameAsset || seat.user?.equippedFrame || null,
+        });
         setGiftRecipient(seat.user.name);
         setProfileModalVisible(true);
       }
@@ -1206,7 +1215,6 @@ export default function VoiceRoomScreen() {
           >
             <AvatarWithFrame
               user={activeJoinBanner}
-              avatarSource={{ uri: activeJoinBanner.avatar || room.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
               frame={activeJoinBanner.equippedFrameAsset || activeJoinBanner.equippedFrame || null}
               size={36}
               showOnlineDot={false}
@@ -1982,6 +1990,7 @@ export default function VoiceRoomScreen() {
         user={selectedProfileUser}
         currentUserId={user?.userId || user?.id || user?._id}
         currentUserName={user?.name}
+        currentUserFrame={user?.equippedFrameAsset || user?.equippedFrame}
         onLeaveSeat={() => leaveSeat(user)}
         onOpenFullProfile={() => {
           setProfileModalVisible(false);
@@ -2711,8 +2720,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#1F1A17',
   },
   headerOnlineCountText: {
     color: '#FFF',

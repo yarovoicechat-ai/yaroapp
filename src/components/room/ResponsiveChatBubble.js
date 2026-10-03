@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Dimensions, Image, TouchableOpacity } from 'rea
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { getUserAvatar } from '../../utils/avatarUtil';
 
 const { width } = Dimensions.get('window');
 const MAX_BUBBLE_WIDTH = Math.floor(width * 0.78);
@@ -17,7 +18,8 @@ export default function ResponsiveChatBubble({
 }) {
   const text = message?.text || message?.content || '';
   const senderName = sender?.name || message?.user || message?.senderName || 'User';
-  const avatar = sender?.avatar || message?.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp';
+  const rawAvatar = sender?.avatar || message?.avatar || null;
+  const avatarSource = getUserAvatar({ avatar: rawAvatar, image: rawAvatar, gender: message?.gender || sender?.gender || 'female' });
   const isOwner = Boolean(message?.isOwner || message?.userRole === 'owner');
   const svipLevel = message?.svipLevel || (isSvip ? 1 : null);
   const vipLevel = message?.vipLevel || (isVip ? 1 : null);
@@ -37,10 +39,10 @@ export default function ResponsiveChatBubble({
         {/* Sender Avatar */}
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => onPressUser && onPressUser({ name: senderName, avatar })}
+          onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
           style={styles.giftAvatarWrapper}
         >
-          <Image source={{ uri: avatar }} style={styles.giftSenderAvatar} />
+          <Image source={avatarSource} style={styles.giftSenderAvatar} />
           <View style={styles.giftAvatarCrown}>
             <MaterialCommunityIcons name="crown" size={10} color="#F59E0B" />
           </View>
@@ -118,10 +120,10 @@ export default function ResponsiveChatBubble({
           <View style={styles.royalTopHeader}>
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => onPressUser && onPressUser({ name: senderName, avatar })}
+              onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
               style={styles.royalAvatarBorder}
             >
-              <Image source={{ uri: avatar }} style={styles.royalAvatarImg} />
+              <Image source={avatarSource} style={styles.royalAvatarImg} />
             </TouchableOpacity>
 
             <View style={styles.royalUserMetaCol}>
@@ -209,10 +211,10 @@ export default function ResponsiveChatBubble({
           <View style={styles.royalTopHeader}>
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => onPressUser && onPressUser({ name: senderName, avatar })}
+              onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
               style={styles.emeraldAvatarBorder}
             >
-              <Image source={{ uri: avatar }} style={styles.royalAvatarImg} />
+              <Image source={avatarSource} style={styles.royalAvatarImg} />
             </TouchableOpacity>
 
             <View style={styles.royalUserMetaCol}>
@@ -273,9 +275,9 @@ export default function ResponsiveChatBubble({
     <View style={styles.normalBubbleRow}>
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => onPressUser && onPressUser({ name: senderName, avatar })}
+        onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
       >
-        <Image source={{ uri: avatar }} style={styles.normalAvatar} />
+        <Image source={avatarSource} style={styles.normalAvatar} />
       </TouchableOpacity>
       <View style={styles.normalBubbleBox}>
         <View style={styles.normalSenderHeader}>
@@ -309,8 +311,6 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    borderWidth: 1.5,
-    borderColor: '#F59E0B',
   },
   giftAvatarCrown: {
     position: 'absolute',
@@ -410,16 +410,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   royalAvatarBorder: {
-    borderWidth: 1.8,
-    borderColor: '#FBBF24',
-    borderRadius: 18,
-    padding: 1,
+    borderRadius: 16,
   },
   emeraldAvatarBorder: {
-    borderWidth: 1.8,
-    borderColor: '#34D399',
-    borderRadius: 18,
-    padding: 1,
+    borderRadius: 16,
   },
   royalAvatarImg: {
     width: 32,
@@ -587,8 +581,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   normalBubbleBox: {
     backgroundColor: 'rgba(0, 0, 0, 0.48)',

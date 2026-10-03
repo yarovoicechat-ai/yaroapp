@@ -23,6 +23,7 @@ export default function RoomUserProfileModal({
   user,
   currentUserId,
   currentUserName,
+  currentUserFrame = null,
   onMention,
   onGift,
   onFollow,
@@ -135,8 +136,7 @@ export default function RoomUserProfileModal({
           <View style={styles.avatarWrap}>
             <AvatarWithFrame
               user={user}
-              avatarSource={{ uri: targetAvatar }}
-              frame={user?.equippedFrameAsset || user?.equippedFrame || null}
+              frame={user?.equippedFrameAsset || user?.equippedFrame || (isSelf ? currentUserFrame : null)}
               size={84}
               showOnlineDot={false}
             />

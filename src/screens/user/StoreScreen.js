@@ -171,6 +171,58 @@ const STORE_CATALOG = {
       desc: 'Supreme 4-digit diamond series ID with permanent crown border & anti-kick privilege.',
     },
   ],
+  Frames: [
+    {
+      id: '6ac148550edc3fe8b7f513fd',
+      _id: '6ac148550edc3fe8b7f513fd',
+      name: 'New Frame',
+      category: 'Frames',
+      price: 2500,
+      validity: '30 Days',
+      badgeText: 'NEW',
+      tag: 'NEW',
+      previewColor: '#06B6D4',
+      imageUrl: 'https://res.cloudinary.com/dtbvqszox/image/upload/v1740924900/yaro/frames/new_frame.png',
+      animationUrl: 'https://res.cloudinary.com/dtbvqszox/raw/upload/v1740924900/yaro/frames/new_frame.svga',
+      desc: 'Exclusive high-grade animated VIP avatar frame with shimmering cosmic particle glow.',
+    },
+    {
+      id: '6abeab7065e554a25ae27e29',
+      _id: '6abeab7065e554a25ae27e29',
+      name: 'Rose Sovereign Frame',
+      category: 'Frames',
+      price: 3500,
+      validity: '30 Days',
+      badgeText: 'HOT',
+      tag: 'HOT',
+      previewColor: '#EC4899',
+      desc: 'Blooming crimson roses with shimmering petals around your avatar.',
+    },
+    {
+      id: '6abeab7065e554a25ae27e2a',
+      _id: '6abeab7065e554a25ae27e2a',
+      name: 'Crown Imperial Frame',
+      category: 'Frames',
+      price: 4500,
+      validity: '30 Days',
+      badgeText: 'VIP',
+      tag: 'VIP',
+      previewColor: '#F59E0B',
+      desc: 'Majestic 24K pure gold emperor crown sitting on top of your avatar profile.',
+    },
+    {
+      id: '6abeab7065e554a25ae27e2b',
+      _id: '6abeab7065e554a25ae27e2b',
+      name: 'Cyber Neon Ring Frame',
+      category: 'Frames',
+      price: 3000,
+      validity: '30 Days',
+      badgeText: 'SALE',
+      tag: 'SALE',
+      previewColor: '#06B6D4',
+      desc: 'High-tech neon cyan laser circle ring pulsing with soundwaves.',
+    },
+  ],
   'Chat Bubble': [
     {
       id: 'bb-1',
@@ -514,7 +566,11 @@ export default function StoreScreen() {
               : (rawCat === 'Profile Entry' || rawCat === 'Profile Entries') ? 'Profile Entry'
               : rawCat;
             if (liveCatalog[cat]) {
-              liveCatalog[cat].push({ ...item, category: cat });
+              if (cat === 'Frames' && (String(item.name || '').toLowerCase().includes('new frame') || item.id === '6ac148550edc3fe8b7f513fd')) {
+                liveCatalog[cat].unshift({ ...item, category: cat });
+              } else {
+                liveCatalog[cat].push({ ...item, category: cat });
+              }
             }
           });
           setCatalog(liveCatalog);

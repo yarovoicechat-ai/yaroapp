@@ -78,6 +78,12 @@ export default function UserProfileScreen() {
       age: raw.age || '22',
       country: raw.country || 'India 🇮🇳',
       level: raw.level || 15,
+      wealthLevel: raw.wealthLevel || raw.level || 1,
+      charmLevel: raw.charmLevel || 1,
+      equippedBadge: raw.equippedBadge || null,
+      equippedVehicle: raw.equippedVehicle || null,
+      equippedProfileBorder: raw.equippedProfileBorder || null,
+      equippedCustomId: raw.equippedCustomId || null,
       isVerified: Boolean(raw.isVerified ?? true),
       bio: raw.bio || raw.about || 'Welcome to my world! Let’s talk, laugh & enjoy great voice parties 💖',
       followersCount: raw.followersCount || 1240,
@@ -240,9 +246,20 @@ export default function UserProfileScreen() {
             {targetUser.isVerified && (
               <MaterialIcons name="verified" size={20} color="#2563EB" style={{ marginLeft: 6 }} />
             )}
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelBadgeText}>Lv.{targetUser.level}</Text>
+            {/* Wealth Level */}
+            <View style={[styles.levelBadge, { backgroundColor: '#F59E0B' }]}>
+              <Text style={styles.levelBadgeText}>💎 Lv.{targetUser.wealthLevel || targetUser.level || 1}</Text>
             </View>
+            {/* Charm Level */}
+            <View style={[styles.levelBadge, { backgroundColor: '#EC4899', marginLeft: 4 }]}>
+              <Text style={styles.levelBadgeText}>🌸 Lv.{targetUser.charmLevel || 1}</Text>
+            </View>
+            {/* Equipped Medal / Badge */}
+            {Boolean(targetUser.equippedBadge) && (
+              <View style={[styles.levelBadge, { backgroundColor: '#7C3AED', marginLeft: 4 }]}>
+                <Text style={styles.levelBadgeText} numberOfLines={1}>🏅 {String(targetUser.equippedBadge)}</Text>
+              </View>
+            )}
           </View>
 
           {/* ID Row */}
@@ -260,7 +277,9 @@ export default function UserProfileScreen() {
             </View>
 
             <View style={styles.countryTag}>
-              <Text style={styles.countryTagText}>{targetUser.country}</Text>
+              <Text style={styles.countryTagText}>
+                {typeof targetUser.country === 'object' ? `${targetUser.country?.name || ''} ${targetUser.country?.flag || ''}`.trim() || 'India 🇮🇳' : (targetUser.country || 'India 🇮🇳')}
+              </Text>
             </View>
 
             {targetUser.isSvip && (
@@ -333,7 +352,9 @@ export default function UserProfileScreen() {
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailKey}>Country</Text>
-                <Text style={styles.detailVal}>{targetUser.country}</Text>
+                <Text style={styles.detailVal}>
+                  {typeof targetUser.country === 'object' ? `${targetUser.country?.name || ''} ${targetUser.country?.flag || ''}`.trim() || 'India 🇮🇳' : (targetUser.country || 'India 🇮🇳')}
+                </Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailKey}>Yaro ID</Text>

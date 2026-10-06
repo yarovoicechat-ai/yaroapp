@@ -222,7 +222,7 @@ export default function PartyScreen() {
           })}
         </View>
 
-        {/* Right Action Icons: Search & VIP Crown Badge */}
+        {/* Right Action Icons: Search, HD Trophy (Leaderboard), & VIP Crown Badge */}
         <View style={styles.rightIconsGroup}>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -230,6 +230,18 @@ export default function PartyScreen() {
             onPress={() => navigation.navigate('Search')}
           >
             <Icon name="search" size={20} color="#1E293B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.trophyIconBtn}
+            onPress={() => navigation.navigate('Ranking')}
+          >
+            <Image
+              source={require('../../assets/icons/trophy_hd.png')}
+              style={styles.trophyIconImg}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -398,7 +410,15 @@ export default function PartyScreen() {
 
         {/* Bottom Row: Flag on Left, Listener Count on Right */}
         <View style={styles.cardFooterRow}>
-          <Text style={styles.flagIconText}>{item.flag || item.country || 'World'}</Text>
+          <Text style={styles.flagIconText}>
+            {typeof item.flag === 'string'
+              ? item.flag
+              : (item.flag && typeof item.flag === 'object'
+                  ? item.flag.flag || item.flag.name || '🇮🇳'
+                  : (typeof item.country === 'object'
+                      ? item.country?.flag || item.country?.name || '🇮🇳'
+                      : (typeof item.country === 'string' && item.country ? item.country : '🇮🇳')))}
+          </Text>
 
           <View style={styles.listenersGroup}>
             <Text style={{ fontSize: 11, marginRight: 2 }}>🔥</Text>
@@ -864,6 +884,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  trophyIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1.5,
+    borderColor: '#FDE68A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2.5,
+  },
+  trophyIconImg: {
+    width: 25,
+    height: 25,
   },
   crownBadgeBtn: {
     alignItems: 'center',

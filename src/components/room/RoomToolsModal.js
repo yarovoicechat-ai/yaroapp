@@ -21,6 +21,8 @@ export default function RoomToolsModal({
   onClearChat,
   onOpenMusic,
   onOpenSeatSettings,
+  onOpenThemeModal,
+  onOpenSeatSkinModal,
   seatCount = 8,
   isHost,
   bottomSafePadding = 16,
@@ -194,6 +196,51 @@ export default function RoomToolsModal({
               <Text style={styles.toolLabel}>Clear Chat</Text>
             </TouchableOpacity>
           </View>
+
+          {/* OWNER TOOLS SECTION (Only Host / Room Owner) */}
+          {isHost && (
+            <View style={styles.ownerToolsSection}>
+              <View style={styles.ownerHeaderRow}>
+                <MaterialCommunityIcons name="shield-crown" size={16} color="#F59E0B" />
+                <Text style={styles.ownerSectionTitle}>OWNER TOOLS</Text>
+              </View>
+              <View style={styles.toolsRow}>
+                {/* 1. Theme */}
+                <TouchableOpacity
+                  style={styles.toolCol}
+                  onPress={() => {
+                    onClose();
+                    setTimeout(() => {
+                      onOpenThemeModal && onOpenThemeModal();
+                    }, 400);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.toolCircle, { borderColor: '#F59E0B' }]}>
+                    <MaterialCommunityIcons name="palette" size={22} color="#F59E0B" />
+                  </View>
+                  <Text style={styles.toolLabel}>Theme</Text>
+                </TouchableOpacity>
+
+                {/* 2. Seat Skin */}
+                <TouchableOpacity
+                  style={styles.toolCol}
+                  onPress={() => {
+                    onClose();
+                    setTimeout(() => {
+                      onOpenSeatSkinModal && onOpenSeatSkinModal();
+                    }, 400);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.toolCircle, { borderColor: '#10B981' }]}>
+                    <MaterialCommunityIcons name="chair-rolling" size={22} color="#10B981" />
+                  </View>
+                  <Text style={styles.toolLabel}>Seat Skin</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -297,5 +344,23 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  ownerToolsSection: {
+    marginTop: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  ownerHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  ownerSectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#F59E0B',
+    letterSpacing: 0.8,
   },
 });

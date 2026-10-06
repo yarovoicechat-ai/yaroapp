@@ -34,10 +34,10 @@ class MainActivity : ReactActivity() {
     window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
   }
 
-  override fun onNewIntent(intent: android.content.Intent?) {
+  override fun onNewIntent(intent: android.content.Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
-    if (intent?.getStringExtra("navigate_to") == "OnGoing") {
+    if (intent.getStringExtra("navigate_to") == "OnGoing") {
       try {
         val reactContext = reactInstanceManager.currentReactContext
         if (reactContext != null && reactContext.hasActiveReactInstance()) {

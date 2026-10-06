@@ -4,6 +4,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getUserAvatar } from '../utils/avatarUtil';
+import { normalizeCosmeticAsset, resolveFrameAsset } from '../utils/cosmeticResolver';
 import SvgaView from './SvgaView';
 
 /**
@@ -22,32 +23,57 @@ import SvgaView from './SvgaView';
 export default function AvatarWithFrame({
   user,
   avatarSource,
+  avatarUri,
   frame,
   size = 80,
   showOnlineDot = true,
   isOnline = true,
   style,
 }) {
-  const avatar = avatarSource || getUserAvatar(user);
-  const activeFrame = frame || user?.equippedFrameAsset || user?.equippedFrame;
-  const frameName = (activeFrame?.name || activeFrame?.id || (typeof activeFrame === 'string' ? activeFrame : '')).toLowerCase();
-  const uploadedFrame = (typeof activeFrame === 'object' && (activeFrame?.animationUrl || activeFrame?.imageUrl || activeFrame?.image))
-    ? activeFrame
-    : (user?.equippedFrameAsset && (user?.equippedFrameAsset?.animationUrl || user?.equippedFrameAsset?.imageUrl || user?.equippedFrameAsset?.image))
-      ? user.equippedFrameAsset
-      : (typeof frame === 'object' && (frame?.animationUrl || frame?.imageUrl || frame?.image))
-        ? frame
-        : (user?.storeInventory?.find(i => (i.name || '').toLowerCase() === frameName && (i.animationUrl || i.imageUrl || i.image)))
-        || null;
+  const resolvedFrame = resolveFrameAsset(user, frame);
+  const frameName = String(resolvedFrame?.name || resolvedFrame?.id || '').toLowerCase();
+  const inventoryFrame = normalizeCosmeticAsset(
+    user?.storeInventory?.find(
+      (item) =>
+        String(item?.name || '').toLowerCase() === frameName &&
+        (item?.animationUrl || item?.imageUrl || item?.image || item?.catalogItem),
+    ),
+  );
+  const uploadedFrame =
+    resolvedFrame?.animationUrl || resolvedFrame?.imageUrl
+      ? resolvedFrame
+      : inventoryFrame?.animationUrl || inventoryFrame?.imageUrl
+        ? inventoryFrame
+        : null;
+
+  // Resolve user avatar strictly - never let the frame image or SVGA become the user's avatar
+  const frameAssetUrl = uploadedFrame?.imageUrl || null;
+  const explicitAvatar =
+    avatarSource ||
+    (typeof avatarUri === 'string' && avatarUri
+      ? { uri: avatarUri }
+      : avatarUri);
+  let avatar = explicitAvatar || getUserAvatar(user);
+  if (
+    avatar &&
+    typeof avatar === 'object' &&
+    avatar.uri &&
+    (
+      (frameAssetUrl && avatar.uri === frameAssetUrl) ||
+      avatar.uri.toLowerCase().endsWith('.svga')
+    )
+  ) {
+    avatar = getUserAvatar(null, user?.gender);
+  }
 
   const hasFrame = Boolean(
-    (uploadedFrame && (uploadedFrame.animationUrl || uploadedFrame.imageUrl || uploadedFrame.image)) ||
-    (activeFrame && frameName && frameName !== 'default' && frameName !== 'none' && frameName !== 'null')
+    (uploadedFrame && (uploadedFrame.animationUrl || uploadedFrame.imageUrl)) ||
+    (resolvedFrame && frameName && frameName !== 'default' && frameName !== 'none' && frameName !== 'null')
   );
 
   // Render specific luxury frame ornament overlays (fallback when no asset file uploaded)
   const renderFrameDecorations = () => {
-    if (!hasFrame || uploadedFrame?.animationUrl || uploadedFrame?.imageUrl || uploadedFrame?.image) return null;
+    if (!hasFrame || uploadedFrame?.animationUrl || uploadedFrame?.imageUrl) return null;
 
     // 1. ROSE FRAME
     if (frameName.includes('rose')) {
@@ -139,7 +165,22 @@ export default function AvatarWithFrame({
       );
     }
 
-    return null;
+    // Unknown named frames still need a visible room representation. The
+    // uploaded asset will take over automatically as soon as its URL arrives.
+    return (
+      <View
+        style={[
+          styles.genericFrameRing,
+          {
+            width: size + 8,
+            height: size + 8,
+            borderRadius: (size + 8) / 2,
+            borderColor: resolvedFrame?.previewColor || resolvedFrame?.borderColor || '#FBBF24',
+          },
+        ]}
+        pointerEvents="none"
+      />
+    );
   };
 
   const frameSize = Math.round(size * 1.25);
@@ -161,7 +202,7 @@ export default function AvatarWithFrame({
       />
 
       {/* Uploaded Animated SVGA or Static Frame Overlay */}
-      {uploadedFrame && (uploadedFrame.animationUrl || uploadedFrame.imageUrl || uploadedFrame.image) ? (
+      {uploadedFrame && (uploadedFrame.animationUrl || uploadedFrame.imageUrl) ? (
         <View
           style={{
             position: 'absolute',
@@ -175,20 +216,21 @@ export default function AvatarWithFrame({
           }}
           pointerEvents="none"
         >
+          {uploadedFrame.imageUrl ? (
+            <Image
+              source={{ uri: uploadedFrame.imageUrl }}
+              style={StyleSheet.absoluteFillObject}
+              resizeMode="contain"
+            />
+          ) : null}
           {uploadedFrame.animationUrl ? (
             <SvgaView
               source={uploadedFrame.animationUrl}
-              style={{ width: frameSize, height: frameSize }}
+              style={StyleSheet.absoluteFillObject}
               loops={0}
-              fallbackImage={uploadedFrame.imageUrl || uploadedFrame.image}
+              fallbackImage={uploadedFrame.imageUrl}
             />
-          ) : (
-            <Image
-              source={{ uri: uploadedFrame.imageUrl || uploadedFrame.image }}
-              style={{ width: frameSize, height: frameSize }}
-              resizeMode="contain"
-            />
-          )}
+          ) : null}
         </View>
       ) : null}
 
@@ -224,6 +266,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  genericFrameRing: {
+    position: 'absolute',
+    borderWidth: 2.5,
+    backgroundColor: 'transparent',
+    zIndex: 8,
   },
   wingLeftShape: {
     position: 'absolute',

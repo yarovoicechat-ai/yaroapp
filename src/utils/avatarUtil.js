@@ -82,13 +82,39 @@ export const getUserAvatar = (userOrImage, fallbackGender = null) => {
     if (userOrImage.uri && typeof userOrImage.uri === 'string') {
       customUrl = userOrImage.uri;
     } else {
-      customUrl =
-        userOrImage.image ||
-        userOrImage.avatar ||
-        userOrImage.profilePic ||
-        userOrImage.photo ||
-        userOrImage.imageUrl ||
-        userOrImage.profileImage;
+      // If userOrImage is a StoreItem or inventory item (not a user account), do not use item asset as avatar
+      const isStoreItem = Boolean(
+        userOrImage.category ||
+        userOrImage.coverType ||
+        userOrImage.priceOptions ||
+        (userOrImage.price !== undefined && userOrImage.validity !== undefined)
+      );
+
+      if (!isStoreItem) {
+        // Collect frame URLs to prevent frame image from replacing user avatar
+        const frameUrl =
+          userOrImage.equippedFrameAsset?.imageUrl ||
+          userOrImage.equippedFrameAsset?.image ||
+          userOrImage.equippedFrameAsset?.animationUrl ||
+          null;
+
+        const candidate =
+          userOrImage.avatar ||
+          userOrImage.profilePic ||
+          userOrImage.photo ||
+          userOrImage.profileImage ||
+          userOrImage.image;
+
+        // Candidate must not be the frame asset URL or an SVGA animation
+        if (
+          candidate &&
+          typeof candidate === 'string' &&
+          candidate !== frameUrl &&
+          !candidate.toLowerCase().endsWith('.svga')
+        ) {
+          customUrl = candidate;
+        }
+      }
     }
 
     if (!gender) {
@@ -99,7 +125,10 @@ export const getUserAvatar = (userOrImage, fallbackGender = null) => {
         userOrImage.hostGender;
     }
   } else if (typeof userOrImage === 'string') {
-    customUrl = userOrImage;
+    // If a raw string is passed, make sure it is not an SVGA frame
+    if (!userOrImage.toLowerCase().endsWith('.svga')) {
+      customUrl = userOrImage;
+    }
   }
 
   // Handle nested object inside image prop (e.g. user.image = { uri: '...' })

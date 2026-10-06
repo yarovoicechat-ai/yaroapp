@@ -9,40 +9,11 @@ import {
   ScrollView,
 } from 'react-native';
 
-const SAMPLE_ONLINE_USERS = [
-  {
-    id: 'u1',
-    name: 'SuperAdmin',
-    role: 'admin',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120',
-    gender: 'male',
-    level: 26,
-    points: '26.8k',
-  },
-  {
-    id: 'u2',
-    name: 'YaroVIP',
-    role: 'user',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120',
-    gender: 'male',
-    level: 12,
-    points: '4.2k',
-  },
-  {
-    id: 'u3',
-    name: 'StarGirl',
-    role: 'user',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120',
-    gender: 'female',
-    level: 18,
-    points: '11.0k',
-  },
-];
-
 export default function RoomOnlineUsersModal({
   visible,
   onClose,
   onSelectUser,
+  users = [],
   bottomSafePadding = 16,
 }) {
   if (!visible) return null;
@@ -67,9 +38,12 @@ export default function RoomOnlineUsersModal({
           <Text style={styles.sheetTitle}>Online Members</Text>
 
           <ScrollView style={styles.userList} showsVerticalScrollIndicator={false}>
-            {SAMPLE_ONLINE_USERS.map((u) => (
+            {users.length === 0 && (
+              <Text style={styles.emptyText}>Abhi koi live room member available nahi hai.</Text>
+            )}
+            {users.map((u) => (
               <TouchableOpacity
-                key={u.id}
+                key={String(u.id || u._id || u.userId)}
                 style={styles.userRow}
                 onPress={() => {
                   onClose();
@@ -77,7 +51,10 @@ export default function RoomOnlineUsersModal({
                 }}
                 activeOpacity={0.75}
               >
-                <Image source={{ uri: u.avatar }} style={styles.userAvatar} />
+                <Image
+                  source={{ uri: u.image || u.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
+                  style={styles.userAvatar}
+                />
 
                 <View style={styles.userInfoCol}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -196,5 +173,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#A78BFA',
+  },
+  emptyText: {
+    color: '#94A3B8',
+    textAlign: 'center',
+    paddingVertical: 36,
   },
 });

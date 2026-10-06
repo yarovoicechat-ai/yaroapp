@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   PermissionsAndroid,
   NativeModules,
+  Alert,
+  Linking,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -67,6 +69,73 @@ const PRESET_SONGS = [
   },
 ];
 
+const isLikelyRecording = (title = '', path = '') => {
+  const t = (title || '').toLowerCase();
+  const p = (path || '').toLowerCase();
+  const combined = `${t} ${p}`;
+
+  const excluded = [
+    '/recording',
+    '/recordings',
+    '/record/',
+    '/records/',
+    '/sound_recorder',
+    '/soundrecorder',
+    '/voice recorder',
+    '/voicerecorder',
+    '/voice_recorder',
+    '/callrecordings',
+    '/call recordings',
+    '/call_recordings',
+    '/call_rec',
+    '/callrec',
+    '/call/',
+    '/calls/',
+    '/standard recordings',
+    '/whatsapp',
+    '/telegram',
+    '/voicenotes',
+    '/voice notes',
+    '/voice_notes',
+    '/ringtones',
+    '/ringtone',
+    '/notifications',
+    '/notification',
+    '/alarms',
+    '/alarm',
+    'standard recording',
+    'voice recording',
+    'audio recording',
+    'call recording',
+    'sound recording',
+    'voice note',
+    'voicenote',
+    'voice memo',
+    'voicememo',
+  ];
+
+  for (const kw of excluded) {
+    if (combined.includes(kw)) return true;
+  }
+
+  const prefixes = [
+    'rec_', 'rec-', 'rec ', 'recording',
+    'call_', 'call-', 'call ',
+    'voice_', 'voice-', 'voice ',
+    'aud-', 'ptt-', 'snd_',
+    'phone-ringtone', 'facebook_ringtone'
+  ];
+  for (const pre of prefixes) {
+    if (t.startsWith(pre)) return true;
+  }
+
+  if (p.endsWith('.amr') || p.endsWith('.3gp') || p.endsWith('.opus') || p.endsWith('.awb')) {
+    return true;
+  }
+
+  return false;
+};
+
 export default function RoomMusicModal({
   visible,
   onClose,
@@ -97,38 +166,64 @@ export default function RoomMusicModal({
     setLoadingDeviceSongs(true);
     try {
       if (Platform.OS === 'android') {
-        const perm = Platform.Version >= 33
+        const isApi33OrHigher = Number(Platform.Version) >= 33;
+        const perm = isApi33OrHigher
           ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_AUDIO
           : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
 
         let hasPerm = await PermissionsAndroid.check(perm);
         if (!hasPerm) {
           const res = await PermissionsAndroid.request(perm, {
-            title: 'Storage Permission',
+            title: 'Storage / Audio Permission',
             message: 'App needs permission to list music from your phone storage.',
             buttonPositive: 'Allow',
+            buttonNegative: 'Deny',
           });
           hasPerm = res === PermissionsAndroid.RESULTS.GRANTED;
         }
 
-        if (hasPerm && LocalMusicModule && LocalMusicModule.getAudioFiles) {
+        if (!hasPerm) {
+          Alert.alert(
+            'Music Permission Required',
+            'Phone se music scan karne ke liye audio/storage permission zaroori hai. Settings me ja kar permission allow karein.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ]
+          );
+          setLoadingDeviceSongs(false);
+          isScanningRef.current = false;
+          return;
+        }
+
+        if (LocalMusicModule && LocalMusicModule.getAudioFiles) {
           const files = await LocalMusicModule.getAudioFiles();
-          if (Array.isArray(files) && files.length > 0) {
-            const formatted = files.map((f) => ({
-              id: f.id || 'dev-' + Math.random().toString(36).substr(2, 6),
-              title: f.title || 'Audio Track',
-              artist: f.artist || 'Phone Storage',
-              duration: f.duration || 'Local',
-              uri: f.uri || f.path || f.contentUri,
-              icon: 'cellphone-sound',
-              isLocal: true,
-            }));
+          if (Array.isArray(files)) {
+            const formatted = files
+              .filter((f) => !isLikelyRecording(f.title, f.path || f.uri || f.contentUri))
+              .map((f) => ({
+                id: f.id || 'dev-' + Math.random().toString(36).substr(2, 6),
+                title: f.title || 'Audio Track',
+                artist: f.artist || 'Phone Storage',
+                duration: f.duration || 'Local',
+                uri: f.uri || f.contentUri || f.path,
+                contentUri: f.contentUri || f.uri,
+                path: f.path || '',
+                icon: 'cellphone-sound',
+                isLocal: true,
+              }));
             setDeviceSongs(formatted);
           }
+        } else {
+          console.warn('LocalMusicModule native bridge not detected');
         }
       }
     } catch (err) {
       console.warn('Device music scan error:', err);
+      Alert.alert(
+        'Scan Error',
+        'Device music scan me issue aaya: ' + (err?.message || 'Storage error')
+      );
     } finally {
       setLoadingDeviceSongs(false);
       isScanningRef.current = false;
@@ -158,7 +253,7 @@ export default function RoomMusicModal({
   const handleSelectSong = (song) => {
     if (!song) return;
     if (onPlayTrack) {
-      onPlayTrack(song.uri, song.title);
+      onPlayTrack(song.uri, song.title, song.path || song.contentUri);
     }
   };
 

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
 import {
   View,
   Text,
@@ -60,36 +60,29 @@ import RoomWealthModal from '../../components/room/RoomWealthModal';
 import RoomOnlineUsersModal from '../../components/room/RoomOnlineUsersModal';
 import RoomMusicModal from '../../components/room/RoomMusicModal';
 import SeatLayoutModal from '../../components/room/SeatLayoutModal';
+import RoomThemeModal from '../../components/room/RoomThemeModal';
+import RoomSeatSkinModal from '../../components/room/RoomSeatSkinModal';
+import {
+  resolveEntryAssets,
+  resolveRoomTheme,
+  resolveSeatSkin,
+  DEFAULT_ROOM_BG,
+  DEFAULT_ROOM_THEME,
+} from '../../utils/cosmeticResolver';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-const SAMPLE_GIFTS = [
-  { id: 'g1', name: 'Soda water', icon: '🍹', cost: 100, isWeekly: true, days: '6d', category: 'Gift' },
-  { id: 'g2', name: 'Travel time', icon: '🚌', cost: 3000, isWeekly: true, days: '6d', category: 'Gift' },
-  { id: 'g3', name: 'Happy Bubbles', icon: '🤡', cost: 10000, isWeekly: true, days: '6d', category: 'Gift' },
-  { id: 'g4', name: 'Joy Carnival', icon: '🎡', cost: 30000, isWeekly: true, days: '6d', category: 'Gift' },
-  { id: 'g5', name: 'Awesome', icon: '👍', cost: 50, isWeekly: false, category: 'Gift' },
-  { id: 'g6', name: 'Lipstick', icon: '💄', cost: 50, isWeekly: false, category: 'Gift' },
-  { id: 'g7', name: 'Gold brick', icon: '🧈', cost: 50, isWeekly: false, category: 'Gift' },
-  { id: 'g8', name: 'Lucky Bag', icon: '🧧', cost: 100, isWeekly: false, category: 'Gift' },
-  { id: 'g9', name: 'Perfume', icon: '🧴', cost: 500, isWeekly: false, category: 'Gift' },
-  { id: 'g10', name: 'Rose Bouquet', icon: '🌹', cost: 200, isWeekly: false, category: 'Gift' },
-  { id: 'g11', name: 'Teddy Bear', icon: '🧸', cost: 1200, isWeekly: false, category: 'Gift' },
-  { id: 'g12', name: 'Love Balloon', icon: '🎈', cost: 800, isWeekly: false, category: 'Gift' },
-  { id: 'g13', name: 'Sports Car', icon: '🏎️', cost: 50000, isWeekly: true, days: '6d', category: 'Vip' },
-  { id: 'g14', name: 'Diamond Ring', icon: '💍', cost: 20000, isWeekly: false, category: 'Vip' },
-  { id: 'g15', name: 'Magic Castle', icon: '🏰', cost: 100000, isWeekly: true, days: '6d', category: 'Vip' },
-  { id: 'g16', name: 'Super Yacht', icon: '🛥️', cost: 75000, isWeekly: false, category: 'Celebrity' },
-  { id: 'g17', name: 'Royal Crown', icon: '👑', cost: 15000, isWeekly: false, category: 'Celebrity' },
-  { id: 'g18', name: 'Champagne', icon: '🍾', cost: 2500, isWeekly: false, category: 'Lucky' },
-];
-
-const ROOM_THEMES = [
-  { id: 'luxury', name: 'Dark Luxury', colors: ['#0F172A', '#1E1B4B', '#090D16'] },
-  { id: 'cyberpunk', name: 'Cyberpunk Neon', colors: ['#1A0B2E', '#3B0764', '#0F172A'] },
-  { id: 'sunset', name: 'Sunset Romance', colors: ['#4C0519', '#831843', '#0F172A'] },
-  { id: 'emerald', name: 'Deep Emerald', colors: ['#022C22', '#064E3B', '#0F172A'] },
-];
+const hasPlayableGiftVisual = (payload) => {
+  const gift = payload?.gift || {};
+  const animationType = String(payload?.animationType || gift.animationType || 'NORMAL').toUpperCase();
+  return Boolean(
+    gift.animationUrl ||
+      gift.mediaUrl ||
+      payload?.animationUrl ||
+      (['SPECIAL', 'CENTER_STAGE', 'FULL_SCREEN', 'VIP', 'LUXURY'].includes(animationType) &&
+        (gift.image || gift.giftImage || gift.previewUrl)),
+  );
+};
 
 function DanmakuItem({ bullet, onComplete }) {
   const animX = useRef(new Animated.Value(width + 10)).current;
@@ -180,7 +173,6 @@ export default function VoiceRoomScreen() {
     lockAllSeats,
     unlockAllSeats,
     broadcastChatMessage,
-    broadcastGift,
     broadcastReaction,
     joinedNotification,
     activeEntryEffect,
@@ -199,16 +191,30 @@ export default function VoiceRoomScreen() {
     stopMusicMixing,
     setMusicVolume,
     setMicVolume,
+    currentRoomTheme,
+    currentSeatSkin,
+    updateRoomTheme,
+    updateRoomSeatSkin,
   } = useVoiceRoom();
 
+  const handleEntryEffectComplete = useCallback(() => {
+    setActiveEntryEffect?.(null);
+  }, [setActiveEntryEffect]);
+
+  const handleVipEntryComplete = useCallback(() => {
+    setActiveVipEntry?.(null);
+  }, [setActiveVipEntry]);
+
   const [activeJoinBanner, setActiveJoinBanner] = useState(null);
-  const joinBannerAnim = useRef(new Animated.Value(-60)).current;
+  const joinBannerAnim = useRef(new Animated.Value(-width)).current;
   const joinBannerOpacity = useRef(new Animated.Value(0)).current;
 
-  // Modals for Tools, Music, Seat Layout
+  // Modals for Tools, Music, Seat Layout, Themes & Seat Skins (Owner Tools)
   const [toolsModalVisible, setToolsModalVisible] = useState(false);
   const [musicModalVisible, setMusicModalVisible] = useState(false);
   const [seatLayoutModalVisible, setSeatLayoutModalVisible] = useState(false);
+  const [themeModalVisible, setThemeModalVisible] = useState(false);
+  const [seatSkinModalVisible, setSeatSkinModalVisible] = useState(false);
 
   // Image 2 Announcement & Notice States
   const [roomAnnouncement, setRoomAnnouncement] = useState("Welcome to my room, let's chat together!");
@@ -255,9 +261,15 @@ export default function VoiceRoomScreen() {
   };
 
   useEffect(() => {
-    if (joinedNotification?.name) {
+    const isSelf = Boolean(
+      user?.userId &&
+      (String(joinedNotification?.userId) === String(user.userId) ||
+       String(joinedNotification?.id) === String(user.userId) ||
+       String(joinedNotification?._id) === String(user.userId))
+    );
+    if (joinedNotification?.name && !isSelf) {
       setActiveJoinBanner(joinedNotification);
-      joinBannerAnim.setValue(-50);
+      joinBannerAnim.setValue(-width);
       joinBannerOpacity.setValue(0);
 
       Animated.parallel([
@@ -277,7 +289,7 @@ export default function VoiceRoomScreen() {
       const timer = setTimeout(() => {
         Animated.parallel([
           Animated.timing(joinBannerAnim, {
-            toValue: -50,
+            toValue: -width,
             duration: 300,
             useNativeDriver: true,
           }),
@@ -293,7 +305,7 @@ export default function VoiceRoomScreen() {
 
       return () => clearTimeout(timer);
     }
-  }, [joinedNotification]);
+  }, [joinedNotification, user?.userId]);
 
   const incomingRoomId = route.params?.roomId || route.params?.id || route.params?.room?.id;
   const isSelfHostFromDeepLink = Boolean(incomingRoomId && user?.userId && String(incomingRoomId) === String(user.userId));
@@ -309,6 +321,9 @@ export default function VoiceRoomScreen() {
     hostId: incomingRoomId,
     isSelfHost: isSelfHostFromDeepLink,
   };
+
+  const activeTheme = resolveRoomTheme(room, currentRoomTheme);
+  const activeSeatSkin = resolveSeatSkin(room, currentSeatSkin);
 
   const hasLeftRef = useRef(false);
 
@@ -431,16 +446,6 @@ export default function VoiceRoomScreen() {
     }
   }, [route.params?.room, route.params?.roomId, route.params?.id, activeRoom?.id]);
 
-  // Android hardware back handler: trigger Keep vs Leave dialog
-  useEffect(() => {
-    const onBackPress = () => {
-      setExitModalVisible(true);
-      return true;
-    };
-    const backSub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => backSub.remove();
-  }, []);
-
   // Strict ownership check: prevent visitor from getting host/admin controls
   const currentUserId = user?.userId ? String(user.userId) : (user?._id ? String(user._id) : null);
   const roomHostId = (room?.hostId || room?.hostUserId || room?.creatorId)
@@ -457,7 +462,6 @@ export default function VoiceRoomScreen() {
   );
 
   // Balance & Chat
-  const [coinsBalance, setCoinsBalance] = useState(user?.coins || 15400);
   const [inputText, setInputText] = useState('');
   const chatListRef = useRef(null);
   const textInputRef = useRef(null);
@@ -487,9 +491,6 @@ export default function VoiceRoomScreen() {
   const handleRemoveBullet = (bulletId) => {
     setBulletMessages((prev) => prev.filter((b) => b.id !== bulletId));
   };
-
-  // Selected Theme
-  const [currentTheme, setCurrentTheme] = useState(ROOM_THEMES[0]);
 
   // Floating reactions
   const [reactions, setReactions] = useState([]);
@@ -560,20 +561,56 @@ export default function VoiceRoomScreen() {
       const receiverNames = Array.isArray(data.receivers)
         ? data.receivers.map((r) => r.name).join(', ')
         : 'Host';
-      setChatMessages((prev) => [
+      const txId = data.transactionId || ('gift-local-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4));
+      setChatMessages((prev) => {
+        if (prev.some((m) => m.id === txId || (data.transactionId && m.transactionId === data.transactionId))) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            id: txId,
+            transactionId: data.transactionId || txId,
+            type: 'gift',
+            user: user?.name || 'You',
+            avatar: user?.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+            gift: giftName,
+            giftName: giftName,
+            giftIcon: data.gift?.icon || '',
+            giftImage: data.gift?.image || data.gift?.iconUrl || data.gift?.thumbnail || null,
+            to: receiverNames,
+            count: data.quantity || 1,
+            combo: data.comboCount || 1,
+            isSvip: true,
+            svipLevel: 1,
+            timestamp: Date.now(),
+          },
+        ];
+      });
+
+      const primaryReceiver = data.receivers?.[0] || null;
+      setRoomGiftNotifications((prev) => [
         ...prev,
         {
-          id: 'gift-' + Date.now(),
-          type: 'gift',
-          user: user?.name || 'You',
-          gift: `${data.gift?.icon || '🎁'} ${giftName} x${data.quantity || 1}`,
-          to: receiverNames,
+          id: `notif_${txId}`,
+          senderName: user?.name || 'You',
+          senderAvatar: user?.image || user?.avatar,
+          giftName,
+          giftIcon: data.gift?.icon || '',
+          giftImage:
+            data.gift?.image ||
+            data.gift?.giftImage ||
+            data.gift?.previewUrl ||
+            '',
+          quantity: data.quantity || 1,
+          receiverText: receiverNames,
+          receiverAvatar: primaryReceiver?.avatar || primaryReceiver?.image || '',
+          receivers: data.receivers || [],
           timestamp: Date.now(),
         },
-      ]);
+      ].slice(-5));
 
-      // Trigger visual gift animation locally for sender
-      enqueueGiftAnimation({
+      const localAnimation = {
         id: 'anim-' + Date.now(),
         gift: data.gift,
         sender: { id: user?.userId || 'you', name: user?.name || 'You', avatar: user?.avatar },
@@ -581,7 +618,11 @@ export default function VoiceRoomScreen() {
         quantity: data.quantity || 1,
         comboCount: data.comboCount || 1,
         animationType: data.gift?.animationType || 'PARTICLE',
-      });
+        duration: data.gift?.duration,
+      };
+      if (hasPlayableGiftVisual(localAnimation)) {
+        enqueueGiftAnimation(localAnimation);
+      }
     },
   });
 
@@ -590,6 +631,11 @@ export default function VoiceRoomScreen() {
     currentUserId: user?.userId || user?._id || user?.id,
     onGiftReceived: (payload) => {
       if (payload.sender && payload.gift) {
+        const myId = user?.userId || user?._id || user?.id;
+        const senderId = payload.sender.userId || payload.sender.id || payload.sender._id;
+        if (myId && senderId && String(myId) === String(senderId)) {
+          return; // Already added locally by sender
+        }
         const receiverText = Array.isArray(payload.receivers) && payload.receivers.length > 0
           ? payload.receivers.map((r) => r.name || 'Recipient').join(', ')
           : payload.receiver?.name || 'Everyone';
@@ -605,8 +651,16 @@ export default function VoiceRoomScreen() {
               transactionId: payload.transactionId,
               type: 'gift',
               user: payload.sender.name || 'User',
-              gift: `${payload.gift.icon || '🎁'} ${payload.gift.name || 'Gift'} x${payload.quantity || 1}`,
+              avatar: payload.sender.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+              gift: payload.gift.name || 'Gift',
+              giftName: payload.gift.name || 'Gift',
+              giftIcon: payload.gift.icon || '',
+              giftImage: payload.gift.image || payload.gift.iconUrl || payload.gift.thumbnail || null,
               to: receiverText,
+              count: payload.quantity || 1,
+              combo: payload.comboCount || payload.combo || 1,
+              isSvip: true,
+              svipLevel: 1,
               timestamp: Date.now(),
             },
           ];
@@ -614,36 +668,68 @@ export default function VoiceRoomScreen() {
       }
     },
     onGiftAnimation: (animPayload) => {
-      enqueueGiftAnimation(animPayload);
+      if (hasPlayableGiftVisual(animPayload)) {
+        enqueueGiftAnimation(animPayload);
+      }
     },
     onRoomNotification: (notif) => {
-      setRoomGiftNotifications((prev) => [...prev, notif]);
+      setRoomGiftNotifications((prev) => [...prev, notif].slice(-5));
     },
     onEntryEffect: (entryPayload) => {
-      if (entryPayload && entryPayload.effect) {
+      const entryAssets = resolveEntryAssets(entryPayload);
+      if (entryPayload && (entryAssets.entry || entryAssets.entrance)) {
         setActiveEntryEffect(entryPayload);
-        const effectName = entryPayload.effect.name || 'Entry Effect';
+        const effectName = entryAssets.entry?.name || entryAssets.entrance?.name || 'Entry Effect';
         const userName = entryPayload.user?.name || 'User';
-        setChatMessages((prev) => [
-          ...prev,
-          {
-            id: 'entry-' + (entryPayload.entryId || Date.now()),
-            type: 'system',
-            text: `👑 ${userName} entered with ${effectName}!`,
-            tagText: entryPayload.tagText,
-            timestamp: Date.now(),
-          },
-        ]);
+        const entryId = entryPayload.entryId || entryPayload.id || `entry-${Date.now()}`;
+        setChatMessages((prev) => {
+          if (prev.some((m) => m.id === `entry-${entryId}` || m.entryId === entryId)) {
+            return prev;
+          }
+          return [
+            ...prev,
+            {
+              id: `entry-${entryId}`,
+              entryId: entryId,
+              type: 'system',
+              text: `👑 ${userName} entered with ${effectName}!`,
+              tagText: entryPayload.tagText,
+              timestamp: Date.now(),
+            },
+          ];
+        });
       }
     },
   });
 
+  useEffect(() => {
+    const entryAssets = resolveEntryAssets(activeEntryEffect);
+    if (activeEntryEffect && (entryAssets.entry || entryAssets.entrance)) {
+      const effectName = entryAssets.entry?.name || entryAssets.entrance?.name || 'Entry Effect';
+      const userName = activeEntryEffect.user?.name || 'User';
+      const entryId = activeEntryEffect.entryId || activeEntryEffect.id || `entry-${Date.now()}`;
+      setChatMessages((prev) => {
+        if (prev.some((m) => m.id === `entry-${entryId}` || m.entryId === entryId)) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            id: `entry-${entryId}`,
+            entryId: entryId,
+            type: 'system',
+            text: `👑 ${userName} entered with ${effectName}!`,
+            tagText: activeEntryEffect.tagText,
+            timestamp: Date.now(),
+          },
+        ];
+      });
+    }
+  }, [activeEntryEffect]);
+
   const [giftPanelVisible, setGiftPanelVisible] = useState(false);
   const giftModalVisible = giftPanelVisible;
   const setGiftModalVisible = setGiftPanelVisible;
-  const [selectedGift, setSelectedGift] = useState(SAMPLE_GIFTS[0]);
-  const [giftRecipient, setGiftRecipient] = useState(room.hostName || 'Host');
-  const [giftBanner, setGiftBanner] = useState(null);
 
   const [exitModalVisible, setExitModalVisible] = useState(false);
 
@@ -655,6 +741,7 @@ export default function VoiceRoomScreen() {
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
   }, []);
+
   const [roomMenuModalVisible, setRoomMenuModalVisible] = useState(false);
   const [emojiModalVisible, setEmojiModalVisible] = useState(false);
   const [messageModalVisible, setMessageModalVisible] = useState(false);
@@ -824,7 +911,6 @@ export default function VoiceRoomScreen() {
           equippedFrame: seat.user?.equippedFrameAsset || seat.user?.equippedFrame || null,
           equippedFrameAsset: seat.user?.equippedFrameAsset || seat.user?.equippedFrame || null,
         });
-        setGiftRecipient(seat.user.name);
         setProfileModalVisible(true);
       }
     } else if (seat.isLocked) {
@@ -872,6 +958,14 @@ export default function VoiceRoomScreen() {
       type: 'user',
       user: user?.name || 'You',
       userId: user?.userId || '10000055',
+      senderId: user?.userId || '10000055',
+      senderName: user?.name || 'You',
+      avatar: user?.avatar || user?.image,
+      equippedFrame: user?.equippedFrameAsset || user?.equippedFrame || null,
+      equippedFrameAsset: user?.equippedFrameAsset || null,
+      chatBubble: user?.equippedChatBubbleAsset || user?.equippedChatBubble || null,
+      chatBubbleId: user?.equippedChatBubble || null,
+      level: user?.level || 4,
       text: trimmed,
       isBullet: isBulletMode,
     };
@@ -912,65 +1006,6 @@ export default function VoiceRoomScreen() {
       ...prev,
       { id: 'sfx-' + Date.now(), type: 'system', text: `🔊 ${user?.name || 'Room'} played ${soundName} ${soundEmoji}!` },
     ]);
-  };
-
-  // Handle sending gift
-  const handleSendGift = () => {
-    if (!selectedGift) return;
-
-    if (coinsBalance < selectedGift.cost) {
-      AlertService.show('Insufficient Diamonds', `You need ${selectedGift.cost} diamonds for ${selectedGift.name}. Please recharge your wallet.`, 'error');
-      return;
-    }
-
-    setCoinsBalance(prev => prev - selectedGift.cost);
-
-    const bannerText = `🎁 ${user?.name || 'You'} sent ${selectedGift.icon || '💖'} ${selectedGift.name} to ${giftRecipient}!`;
-    setGiftBanner(bannerText);
-
-    // Image 1 Top Flying Gift Banner
-    triggerFlyingGiftBanner({
-      senderName: user?.name || 'You',
-      senderAvatar: user?.avatar,
-      giftName: selectedGift.name,
-      giftIcon: selectedGift.icon || '💖',
-      combo: 1,
-    });
-
-    const giftMsg = {
-      id: 'g-' + Date.now(),
-      type: 'gift',
-      user: user?.name || 'You',
-      avatar: user?.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-      gift: selectedGift.name,
-      giftIcon: selectedGift.icon || '💖',
-      giftImage: selectedGift.image,
-      to: giftRecipient,
-      count: 1,
-      combo: 1,
-      isSvip: true,
-      svipLevel: 1,
-    };
-    setChatMessages(prev => [...prev, giftMsg]);
-
-    broadcastGift({
-      senderId: user?.userId,
-      senderName: user?.name || 'You',
-      senderAvatar: user?.avatar,
-      giftId: selectedGift.id,
-      giftName: selectedGift.name,
-      giftIcon: selectedGift.icon || '💖',
-      giftImage: selectedGift.image,
-      receiverName: giftRecipient,
-      combo: 1,
-      count: 1,
-    });
-
-    setGiftModalVisible(false);
-
-    setTimeout(() => {
-      setGiftBanner(null);
-    }, 3500);
   };
 
   // Handle exit choices (Keep vs Leave)
@@ -1031,15 +1066,40 @@ export default function VoiceRoomScreen() {
 
   return (
     <ImageBackground
-      source={{ uri: currentRoomCover || room.coverImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1080' }}
-      style={styles.screenContainer}
+      source={
+        (() => {
+          const hasCustomTheme = activeTheme && activeTheme.id && activeTheme.id !== 'default';
+          const themeImg = activeTheme?.coverImage;
+          if (hasCustomTheme) {
+            if (themeImg) {
+              if (typeof themeImg === 'number') return themeImg;
+              if (typeof themeImg === 'string' && themeImg.trim().length > 0) return { uri: themeImg };
+              if (typeof themeImg === 'object' && themeImg.uri) return themeImg;
+            }
+            // Custom theme with only color gradient
+            return undefined;
+          }
+          // Default room background (twilight purple beach "Yaro" wallpaper)
+          return DEFAULT_ROOM_BG;
+        })()
+      }
+      style={[
+        styles.screenContainer,
+        { backgroundColor: activeTheme?.bgColors?.[0] || '#1E0A3C' },
+      ]}
       resizeMode="cover"
     >
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      {/* Dark Ambient Overlay */}
+      {/* Ambient Gradient Overlay tuned for wallpaper clarity while preserving seat & chat readability */}
       <LinearGradient
-        colors={['rgba(8, 16, 26, 0.72)', 'rgba(6, 12, 22, 0.82)', 'rgba(4, 8, 16, 0.92)']}
+        colors={
+          !activeTheme || activeTheme.id === 'default' || activeTheme?.coverImage
+            ? ['rgba(15, 7, 32, 0.30)', 'rgba(10, 4, 22, 0.12)', 'rgba(8, 2, 18, 0.65)']
+            : (activeTheme?.bgColors && activeTheme.bgColors.length > 1
+                ? activeTheme.bgColors
+                : ['rgba(8, 16, 26, 0.72)', 'rgba(6, 12, 22, 0.82)', 'rgba(4, 8, 16, 0.92)'])
+        }
         style={StyleSheet.absoluteFillObject}
       />
 
@@ -1202,13 +1262,13 @@ export default function VoiceRoomScreen() {
           style={[
             styles.roomJoinBanner,
             {
-              transform: [{ translateY: joinBannerAnim }],
+              transform: [{ translateX: joinBannerAnim }],
               opacity: joinBannerOpacity,
             },
           ]}
         >
           <LinearGradient
-            colors={['rgba(124, 58, 237, 0.95)', 'rgba(79, 70, 229, 0.95)', 'rgba(219, 39, 119, 0.95)']}
+            colors={['rgba(76,29,149,0.96)', 'rgba(180,83,9,0.96)', 'rgba(245,158,11,0.94)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.roomJoinBannerGradient}
@@ -1216,36 +1276,23 @@ export default function VoiceRoomScreen() {
             <AvatarWithFrame
               user={activeJoinBanner}
               frame={activeJoinBanner.equippedFrameAsset || activeJoinBanner.equippedFrame || null}
-              size={36}
+              size={30}
               showOnlineDot={false}
-              style={{ marginRight: 8 }}
+              style={{ marginRight: 7 }}
             />
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <Text style={styles.joinUserName} numberOfLines={1}>{activeJoinBanner.name || 'User'}</Text>
-                <View style={styles.joinLevelBadge}>
-                  <Text style={styles.joinLevelText}>Lv.{activeJoinBanner.level || 1}</Text>
-                </View>
+            <View style={styles.joinCopyRow}>
+              <Text style={styles.joinUserName} numberOfLines={1}>{activeJoinBanner.name || 'User'}</Text>
+              <Text style={styles.joinSubText}> has joined</Text>
+              <View style={styles.joinLevelBadge}>
+                <Text style={styles.joinLevelText}>💎 Lv.{activeJoinBanner.wealthLevel || activeJoinBanner.level || 1}</Text>
               </View>
-              <Text style={styles.joinSubText}>joined the voice room! 🎉</Text>
             </View>
-            <Text style={{ fontSize: 18 }}>✨</Text>
+            <Text style={styles.joinSparkle}>✨</Text>
           </LinearGradient>
         </Animated.View>
       )}
 
       {/* Gift Celebration Banner */}
-      {giftBanner && (
-        <LinearGradient
-          colors={['#F59E0B', '#EF4444', '#EC4899']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.giftCelebrationBanner}
-        >
-          <Text style={styles.giftCelebrationText}>{giftBanner}</Text>
-        </LinearGradient>
-      )}
-
       {/* Voice Seats Grid: Top 2 Featured Seats (Host & Co-Host) + Responsive Bottom Grid */}
       <View style={styles.seatsAreaContainer}>
         {/* 1. TOP ROW: 2 FEATURED SEATS (Centered: Host 👑 & Co-Host 💖) */}
@@ -1373,10 +1420,19 @@ export default function VoiceRoomScreen() {
                     <View style={styles.occupiedSeatWrapper}>
                       <VipMicWave
                         state={seat.isMuted ? 'MUTED' : (seat.isSpeaking ? 'SPEAKING' : 'IDLE')}
-                        waveColors={['#38BDF8', '#0284C7']}
+                        waveColors={activeSeatSkin?.ringColors || ['#38BDF8', '#0284C7']}
                         size={circleSize}
                       >
-                        <View style={[styles.occupiedAvatarContainer, { width: circleSize, height: circleSize, borderRadius: circleSize / 2 }]}>
+                        <View style={[
+                          styles.occupiedAvatarContainer,
+                          {
+                            width: circleSize,
+                            height: circleSize,
+                            borderRadius: circleSize / 2,
+                            borderWidth: 1.5,
+                            borderColor: activeSeatSkin?.borderColor || 'rgba(255, 255, 255, 0.3)',
+                          },
+                        ]}>
                           <AvatarWithFrame
                             user={seat.user}
                             frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame) : null)}
@@ -1400,8 +1456,37 @@ export default function VoiceRoomScreen() {
                     </View>
                   ) : (
                     <View style={styles.emptySeatWrapper}>
-                      <View style={[styles.emptySeatCircle, { width: circleSize, height: circleSize, borderRadius: circleSize / 2 }]}>
-                        <MaterialCommunityIcons name="sofa-outline" size={isCompactLayout ? 17 : 20} color="rgba(255, 255, 255, 0.55)" />
+                      <View style={[
+                        styles.emptySeatCircle,
+                        {
+                          width: circleSize,
+                          height: circleSize,
+                          borderRadius: circleSize / 2,
+                          borderColor: activeSeatSkin?.borderColor || 'rgba(255, 255, 255, 0.4)',
+                          backgroundColor: activeSeatSkin?.bgColor || 'rgba(255, 255, 255, 0.08)',
+                          borderWidth: 1.5,
+                          overflow: 'hidden',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        },
+                      ]}>
+                        {activeSeatSkin?.imageUrl ? (
+                          <Image
+                            source={typeof activeSeatSkin.imageUrl === 'string' ? { uri: activeSeatSkin.imageUrl } : activeSeatSkin.imageUrl}
+                            style={{
+                              width: circleSize,
+                              height: circleSize,
+                              borderRadius: circleSize / 2,
+                            }}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <MaterialCommunityIcons
+                            name={activeSeatSkin?.icon || 'sofa-outline'}
+                            size={isCompactLayout ? 17 : 20}
+                            color={activeSeatSkin?.previewColor || 'rgba(255, 255, 255, 0.55)'}
+                          />
+                        )}
                       </View>
                       <Text style={[styles.seatNumText, isCompactLayout && { fontSize: 8.5 }]}>{seatNum}</Text>
                       <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
@@ -1492,33 +1577,6 @@ export default function VoiceRoomScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 3. Come on mic and chat together~ Banner (Image 1 & 2) */}
-      <TouchableOpacity
-        style={styles.comeOnMicBanner}
-        activeOpacity={0.85}
-        onPress={() => {
-          const emptySeat = seats.find((s) => (isRoomOwner ? true : s.seatIndex > 0) && !s.user && !s.isLocked);
-          if (emptySeat) {
-            handleSeatPress(emptySeat);
-          } else {
-            AlertService.show('Seats Full', 'All seats are currently occupied.', 'info');
-          }
-        }}
-      >
-        <LinearGradient
-          colors={['#A855F7', '#C084FC']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.comeOnMicGradient}
-        >
-          <Text style={styles.comeOnMicText}>Come on mic and chat together~</Text>
-          <View style={styles.comeOnMicIconWrapper}>
-            <MaterialCommunityIcons name="microphone-variant" size={18} color="#FEF08A" />
-            <Text style={{ fontSize: 13, marginLeft: 3 }}>🎁</Text>
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-
       {/* Floating Reaction Emojis Overlay */}
       <View style={styles.floatingReactionsContainer} pointerEvents="none">
         {reactions.map((r) => (
@@ -1544,6 +1602,46 @@ export default function VoiceRoomScreen() {
                 </View>
               );
             }
+            if (item.type === 'welcome') {
+              return (
+                <View style={{ marginBottom: 4 }}>
+                  <ResponsiveChatBubble
+                    message={item}
+                    sender={{ name: item.roomHostName, avatar: item.avatar }}
+                    onPressUser={(u) => {
+                      setSelectedProfileUser(u);
+                      setProfileModalVisible(true);
+                    }}
+                  />
+                  {/* Come on mic and chat together~ Banner (Directly below welcome card) */}
+                  <TouchableOpacity
+                    style={styles.comeOnMicBanner}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      const emptySeat = seats.find((s) => (isRoomOwner ? true : s.seatIndex > 0) && !s.user && !s.isLocked);
+                      if (emptySeat) {
+                        handleSeatPress(emptySeat);
+                      } else {
+                        AlertService.show('Seats Full', 'All seats are currently occupied.', 'info');
+                      }
+                    }}
+                  >
+                    <LinearGradient
+                      colors={['#A855F7', '#C084FC']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.comeOnMicGradient}
+                    >
+                      <Text style={styles.comeOnMicText}>Come on mic and chat together~</Text>
+                      <View style={styles.comeOnMicIconWrapper}>
+                        <MaterialCommunityIcons name="microphone-variant" size={17} color="#FEF08A" />
+                        <Text style={{ fontSize: 12, marginLeft: 2 }}>🎁</Text>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              );
+            }
             return (
               <ResponsiveChatBubble
                 message={item}
@@ -1553,7 +1651,6 @@ export default function VoiceRoomScreen() {
                 bubbleConfig={item.bubbleConfig}
                 onPressUser={(u) => {
                   setSelectedProfileUser(u);
-                  setGiftRecipient(u.name);
                   setProfileModalVisible(true);
                 }}
               />
@@ -1561,12 +1658,21 @@ export default function VoiceRoomScreen() {
           }}
         />
 
-        {/* Floating Widgets on Right Side (Lucky Fruit, Treasure, Quick Chat) */}
-        <View style={styles.rightFloatingWidgetsCol} pointerEvents="box-none">
-          {/* 1. Lucky Fruit / Slot Game */}
+        {/* Floating Widgets on Right Side (Lucky, Bag, Solid Green Message Button) */}
+        <View
+          style={[
+            styles.rightFloatingWidgetsCol,
+            {
+              right: Math.max(10, insets.right + 8),
+              bottom: Math.max(95, bottomSafePadding + 72),
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          {/* 1. Lucky Widget */}
           <TouchableOpacity
             style={styles.luckyFruitWidget}
-            onPress={() => AlertService.show('Lucky Fruit', 'Spin and win huge diamond jackpots!', 'info')}
+            onPress={() => AlertService.show('Lucky Market', 'Spin and win huge diamond jackpots!', 'info')}
             activeOpacity={0.85}
           >
             <LinearGradient
@@ -1583,25 +1689,22 @@ export default function VoiceRoomScreen() {
             </View>
           </TouchableOpacity>
 
-          {/* 2. Treasure Chest / Rewards Bag */}
+          {/* 2. Rewards Bag Widget */}
           <TouchableOpacity
             style={styles.treasureChestWidget}
-            onPress={() => AlertService.show('Treasure Chest', 'Daily room treasure rewards!', 'info')}
+            onPress={() => AlertService.show('Reward Bag', 'Daily room treasure & lucky bag rewards!', 'info')}
             activeOpacity={0.85}
           >
-            <Text style={{ fontSize: 22 }}>💰</Text>
-            <View style={styles.treasureBar}>
-              <View style={styles.treasureBarFill} />
-            </View>
+            <Text style={{ fontSize: 24 }}>💰</Text>
           </TouchableOpacity>
 
-          {/* 3. Floating Quick Chat Trigger */}
+          {/* 3. Floating Quick Chat Trigger (Solid Green Circle with White Chat Icon) */}
           <TouchableOpacity
             style={styles.floatingChatBubbleBtn}
             onPress={() => setIsChatBarExpanded((prev) => !prev)}
             activeOpacity={0.85}
           >
-            <MaterialCommunityIcons name="message-text" size={19} color="#22C55E" />
+            <MaterialCommunityIcons name="chat" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -1873,8 +1976,28 @@ export default function VoiceRoomScreen() {
         onClearChat={clearChat}
         onOpenMusic={() => setMusicModalVisible(true)}
         onOpenSeatSettings={() => setSeatLayoutModalVisible(true)}
+        onOpenThemeModal={() => setThemeModalVisible(true)}
+        onOpenSeatSkinModal={() => setSeatSkinModalVisible(true)}
         seatCount={seatCount}
         isHost={isRoomOwner}
+        bottomSafePadding={bottomSafePadding}
+      />
+
+      {/* MODAL: ROOM THEME (OWNER TOOLS) */}
+      <RoomThemeModal
+        visible={themeModalVisible}
+        onClose={() => setThemeModalVisible(false)}
+        currentTheme={activeTheme}
+        onSelectTheme={updateRoomTheme}
+        bottomSafePadding={bottomSafePadding}
+      />
+
+      {/* MODAL: ROOM SEAT SKIN (OWNER TOOLS) */}
+      <RoomSeatSkinModal
+        visible={seatSkinModalVisible}
+        onClose={() => setSeatSkinModalVisible(false)}
+        currentSeatSkin={activeSeatSkin}
+        onSelectSeatSkin={updateRoomSeatSkin}
         bottomSafePadding={bottomSafePadding}
       />
 
@@ -2040,6 +2163,7 @@ export default function VoiceRoomScreen() {
           setProfileModalVisible(true);
         }}
         bottomSafePadding={bottomSafePadding}
+        users={onlineUsers}
       />
 
       {/* MODAL: ROOM ONLINE USERS LIST */}
@@ -2051,6 +2175,7 @@ export default function VoiceRoomScreen() {
           setProfileModalVisible(true);
         }}
         bottomSafePadding={bottomSafePadding}
+        users={onlineUsers}
       />
 
 
@@ -2099,28 +2224,17 @@ export default function VoiceRoomScreen() {
         </View>
       </Modal>
 
-      {/* MODAL 5: NEW ENTERPRISE GIFT PANEL */}
-      <GiftPanel
-        visible={giftPanelVisible}
-        onClose={() => setGiftPanelVisible(false)}
-        room={room}
-        seats={seats}
-        diamondBalance={diamondBalance}
-        onTopUp={() => navigation.navigate('Recharge')}
-        giftHook={giftHook}
-        bottomSafePadding={bottomSafePadding}
-      />
 
       {/* ROOM ENTRY EFFECT ANIMATION ENGINE */}
       <RoomEntryEffectEngine
         activeEntry={activeEntryEffect}
-        onComplete={() => setActiveEntryEffect && setActiveEntryEffect(null)}
+        onComplete={handleEntryEffectComplete}
       />
 
       {/* VIP FLOATING ENTRY ENGINE */}
       <VipFloatingEntryEngine
         vipEntryEvent={activeVipEntry}
-        onComplete={() => setActiveVipEntry && setActiveVipEntry(null)}
+        onComplete={handleVipEntryComplete}
       />
 
       {/* ENTERPRISE GIFT ANIMATION ENGINE (CENTER -> RECIPIENT AVATAR FLIGHT -> BURST) */}
@@ -2779,23 +2893,24 @@ const styles = StyleSheet.create({
   },
   roomJoinBanner: {
     position: 'absolute',
-    top: 70,
-    left: 16,
-    right: 16,
-    zIndex: 9999,
-    elevation: 20,
-    shadowColor: '#7C3AED',
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
+    top: Math.round(height * 0.43),
+    left: 9,
+    width: Math.min(width * 0.78, 330),
+    zIndex: 10800,
+    elevation: 22,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 7,
   },
   roomJoinBannerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 19,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(254, 240, 138, 0.7)',
   },
   joinAvatar: {
     width: 38,
@@ -2807,16 +2922,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#6366F1',
   },
   joinUserName: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    maxWidth: width * 0.29,
+    color: '#FEF3C7',
+    fontSize: 11.5,
     fontWeight: '900',
-    flexShrink: 1,
+  },
+  joinCopyRow: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   joinLevelBadge: {
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 6,
+    backgroundColor: 'rgba(76,29,149,0.9)',
+    paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 8,
+    marginLeft: 6,
+    borderWidth: 0.7,
+    borderColor: 'rgba(255,255,255,0.55)',
   },
   joinLevelText: {
     color: '#FFFFFF',
@@ -2824,10 +2948,13 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   joinSubText: {
-    color: '#EDE9FE',
+    color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '600',
-    marginTop: 1,
+    fontWeight: '800',
+  },
+  joinSparkle: {
+    fontSize: 15,
+    marginHorizontal: 3,
   },
   giftCelebrationBanner: {
     marginHorizontal: 16,
@@ -3061,11 +3188,11 @@ const styles = StyleSheet.create({
   },
   chatAreaContainer: {
     flex: 1,
-    paddingLeft: 12,
-    paddingRight: 78,
+    paddingLeft: 10,
+    paddingRight: 60,
     marginTop: 4,
     marginBottom: 4,
-    maxWidth: width - 74,
+    width: '100%',
   },
   chatFlatList: {
     flex: 1,
@@ -3116,15 +3243,6 @@ const styles = StyleSheet.create({
   headerOnlineTouchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  rightFloatingWidgetsCol: {
-    position: 'absolute',
-    right: 2,
-    bottom: 132,
-    alignItems: 'flex-end',
-    gap: 8,
-    zIndex: 20,
-    elevation: 8,
   },
   firstRechargeWidget: {
     alignItems: 'center',
@@ -5047,10 +5165,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
   },
 
-  // Come on mic and chat together Banner
+  // Come on mic and chat together Banner (Compact, matches announcement & welcome width)
   comeOnMicBanner: {
-    marginHorizontal: 10,
-    marginTop: 5,
+    maxWidth: width * 0.78,
+    alignSelf: 'flex-start',
+    marginTop: 4,
     marginBottom: 4,
     borderRadius: 8,
     overflow: 'hidden',
@@ -5064,12 +5183,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 7,
   },
   comeOnMicText: {
     color: '#FFF',
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.2,
   },
@@ -5078,10 +5197,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Floating Widgets on Right
+  // Floating Widgets on Right Side (Lucky, Bag, Solid Green Message Button)
+  rightFloatingWidgetsCol: {
+    position: 'absolute',
+    right: 10,
+    bottom: 95,
+    alignItems: 'center',
+    gap: 10,
+    zIndex: 40,
+    elevation: 10,
+  },
   luckyFruitWidget: {
     alignItems: 'center',
-    marginBottom: 8,
   },
   luckyFruitBox: {
     width: 44,
@@ -5110,30 +5237,26 @@ const styles = StyleSheet.create({
   },
   treasureChestWidget: {
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  treasureBar: {
-    width: 32,
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 2,
-    marginTop: 2,
-    overflow: 'hidden',
-  },
-  treasureBarFill: {
-    width: '65%',
-    height: '100%',
-    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
   },
   floatingChatBubbleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#22C55E',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 6,
   },
 
   // Announcement Edit Modal
@@ -5208,4 +5331,3 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
-

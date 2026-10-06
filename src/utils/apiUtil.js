@@ -106,6 +106,15 @@ const publicPaths = [
 ];
 
 apiUtil.interceptors.request.use(async (req) => {
+  // Handle FormData in React Native: remove hardcoded 'application/json' Content-Type
+  // so the native layer automatically sets 'multipart/form-data; boundary=...'
+  if (req.data && (typeof req.data.append === 'function' || (typeof FormData !== 'undefined' && req.data instanceof FormData))) {
+    if (req.headers) {
+      delete req.headers['Content-Type'];
+      delete req.headers['content-type'];
+    }
+  }
+
   // Skip attaching token for public APIs
   if (publicPaths.some((path) => req.url.includes(path))) {
     console.log("Public API Request:", req.url);

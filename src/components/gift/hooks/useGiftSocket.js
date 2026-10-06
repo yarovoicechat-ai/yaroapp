@@ -16,6 +16,7 @@ export function useGiftSocket({
   const isAppActiveRef = useRef(true);
   const seenTransactionsRef = useRef(new Set());
   const seenAnimationsRef = useRef(new Set());
+  const seenEntriesRef = useRef(new Set());
 
   // Keep callback refs up to date without triggering effect recreation
   const onGiftAnimationRef = useRef(onGiftAnimation);
@@ -54,17 +55,25 @@ export function useGiftSocket({
   }, [roomId]);
 
   useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
+    let attachedSocket = null;
+    let pollInterval = null;
+    let isDisposed = false;
 
-    if (roomId) {
-      socket.emit('voice_room:subscribe_gifts', { roomId });
-    }
+    const attach = (socket) => {
+      if (isDisposed || !socket || attachedSocket) return;
+      attachedSocket = socket;
+
+      if (roomId) {
+        socket.emit('voice_room:subscribe_gifts', { roomId });
+      }
 
     const isSelfUser = (sender) => {
       if (!currentUserId || !sender) return false;
-      const sId = String(sender.userId || sender.id || sender._id || '');
-      return sId && sId === String(currentUserId);
+      const myId = String(currentUserId).trim();
+      const sUserId = sender.userId ? String(sender.userId).trim() : '';
+      const sId = sender.id ? String(sender.id).trim() : '';
+      const s_id = sender._id ? String(sender._id).trim() : '';
+      return (sUserId && sUserId === myId) || (sId && sId === myId) || (s_id && s_id === myId);
     };
 
     const handleGiftAnimation = (payload) => {
@@ -108,15 +117,24 @@ export function useGiftSocket({
           Array.isArray(payload.receivers) && payload.receivers.length > 0
             ? payload.receivers.map((r) => r.name || 'Recipient').join(', ')
             : payload.receiver?.name || 'Everyone';
+        const primaryReceiver = payload.receivers?.[0] || payload.receiver || null;
 
         onRoomNotificationRef.current({
           id: `notif_${txId || Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
           senderName: payload.sender.name || 'User',
-          senderAvatar: payload.sender.avatar,
+          senderAvatar: payload.sender.avatar || payload.sender.image,
           giftName: payload.gift.name,
           giftIcon: payload.gift.icon,
+          giftImage:
+            payload.gift.image ||
+            payload.gift.giftImage ||
+            payload.gift.previewUrl ||
+            payload.giftImage ||
+            '',
           quantity: payload.quantity || 1,
           receiverText,
+          receiverAvatar: primaryReceiver?.avatar || primaryReceiver?.image || '',
+          receivers: payload.receivers || (primaryReceiver ? [primaryReceiver] : []),
           timestamp: Date.now(),
         });
       }
@@ -133,53 +151,59 @@ export function useGiftSocket({
 
     const handleEntryEffect = (payload) => {
       if (!payload || !isAppActiveRef.current) return;
+      const entryId = payload.entryId || payload.id || (payload.user?.userId ? `${payload.user.userId}_${payload.timestamp || ''}` : null);
+      if (entryId) {
+        if (seenEntriesRef.current.has(entryId)) return;
+        seenEntriesRef.current.add(entryId);
+        if (seenEntriesRef.current.size > 100) {
+          const first = seenEntriesRef.current.values().next().value;
+          seenEntriesRef.current.delete(first);
+        }
+      }
       onEntryEffectRef.current && onEntryEffectRef.current(payload);
     };
 
-    const handleVoiceRoomUserJoined = (data) => {
-      if (!data || !data.user || !isAppActiveRef.current) return;
-      if (onEntryEffectRef.current) {
-        onEntryEffectRef.current({
-          entryId: `entry_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-          roomId,
-          user: data.user,
-          effect: {
-            id: 'default_party_entry',
-            name: 'Room Welcome',
-            animationType: 'BANNER',
-            tagText: 'MEMBER',
-            bannerColors: ['#6366F1', '#8B5CF6'],
-            duration: 2500,
-            icon: '✨',
-          },
-          tagText: 'MEMBER',
-          timestamp: Date.now(),
-        });
-      }
+      const handleConnect = () => {
+        if (roomId) {
+          socket.emit('voice_room:subscribe_gifts', { roomId });
+        }
+      };
+
+      socket.on('gift:animation', handleGiftAnimation);
+      socket.on('gift:received', handleGiftReceived);
+      socket.on('gift:sent', handleGiftSent);
+      socket.on('entry:effect', handleEntryEffect);
+      socket.on('room:entry', handleEntryEffect);
+      socket.on('connect', handleConnect);
     };
 
-    const handleConnect = () => {
-      if (roomId) {
-        socket.emit('voice_room:subscribe_gifts', { roomId });
-      }
-    };
-
-    socket.on('gift:animation', handleGiftAnimation);
-    socket.on('gift:received', handleGiftReceived);
-    socket.on('gift:sent', handleGiftSent);
-    socket.on('entry:effect', handleEntryEffect);
-    socket.on('room:entry', handleEntryEffect);
-    socket.on('voice_room:user_joined', handleVoiceRoomUserJoined);
-    socket.on('connect', handleConnect);
+    const initialSock = getSocket();
+    if (initialSock) {
+      attach(initialSock);
+    } else {
+      let attempts = 0;
+      pollInterval = setInterval(() => {
+        attempts += 1;
+        const s = getSocket();
+        if (s) {
+          clearInterval(pollInterval);
+          attach(s);
+        } else if (attempts > 30) {
+          clearInterval(pollInterval);
+        }
+      }, 500);
+    }
 
     return () => {
-      socket.off('gift:animation', handleGiftAnimation);
-      socket.off('gift:received', handleGiftReceived);
-      socket.off('gift:sent', handleGiftSent);
-      socket.off('entry:effect', handleEntryEffect);
-      socket.off('room:entry', handleEntryEffect);
-      socket.off('voice_room:user_joined', handleVoiceRoomUserJoined);
-      socket.off('connect', handleConnect);
+      isDisposed = true;
+      if (pollInterval) clearInterval(pollInterval);
+      if (attachedSocket) {
+        attachedSocket.off('gift:animation');
+        attachedSocket.off('gift:received');
+        attachedSocket.off('gift:sent');
+        attachedSocket.off('entry:effect');
+        attachedSocket.off('room:entry');
+      }
     };
   }, [roomId, currentUserId, callId]);
 }

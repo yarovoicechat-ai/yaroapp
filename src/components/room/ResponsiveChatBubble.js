@@ -4,6 +4,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { getUserAvatar } from '../../utils/avatarUtil';
+import AvatarWithFrame from '../AvatarWithFrame';
 
 const { width } = Dimensions.get('window');
 const MAX_BUBBLE_WIDTH = Math.floor(width * 0.78);
@@ -27,12 +28,117 @@ export default function ResponsiveChatBubble({
   const charmLevel = message?.charmLevel || 33;
   const clubName = message?.clubName || 'SMCLUB';
 
+  const equippedFrame =
+    message?.equippedFrameAsset ||
+    message?.equippedFrame ||
+    sender?.equippedFrameAsset ||
+    sender?.equippedFrame ||
+    null;
+
+  const activeBubble =
+    bubbleConfig ||
+    message?.chatBubbleAsset ||
+    message?.chatBubble ||
+    message?.bubble ||
+    sender?.equippedChatBubbleAsset ||
+    sender?.equippedChatBubble ||
+    null;
+
+  const bubbleName = (
+    typeof activeBubble === 'string'
+      ? activeBubble
+      : (activeBubble?.name || activeBubble?.id || '')
+  ).toLowerCase();
+
+  const getCustomBubble = () => {
+    if (!activeBubble || typeof activeBubble !== 'object') return null;
+    const metadata = activeBubble.metadata || {};
+    const rawColors =
+      activeBubble.bgColors ||
+      activeBubble.backgroundColors ||
+      metadata.bgColors ||
+      metadata.backgroundColors ||
+      activeBubble.bubbleBg ||
+      metadata.bubbleBg;
+    const colors = Array.isArray(rawColors)
+      ? rawColors
+      : rawColors
+        ? [rawColors, rawColors]
+        : ['#1E293B', '#334155'];
+    return {
+      colors,
+      borderColor:
+        activeBubble.borderColor ||
+        metadata.borderColor ||
+        activeBubble.bubbleBorder ||
+        metadata.bubbleBorder ||
+        activeBubble.previewColor ||
+        '#64748B',
+      textColor:
+        activeBubble.textColor ||
+        metadata.textColor ||
+        activeBubble.bubbleText ||
+        metadata.bubbleText ||
+        '#F8FAFC',
+      badge: activeBubble.badge || metadata.badge || activeBubble.tag || metadata.tag || 'ITEM',
+    };
+  };
+
+  const customBubble = getCustomBubble();
+
+  // Self gets a welcome card; other users get one joined card.
+  if (message?.type === 'welcome') {
+    const targetUserName = message.targetUserName || 'Friend';
+    const hostName = message.roomHostName || 'Customer Service';
+    const avatar = message.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp';
+    const frame = message.equippedFrame || null;
+    const isSelfWelcome = message.variant === 'self';
+
+    return (
+      <View style={styles.welcomeCardContainer}>
+        <View style={styles.welcomeAvatarWrap}>
+          <AvatarWithFrame
+            user={{ avatar }}
+            frame={frame}
+            size={36}
+            showOnlineDot={false}
+          />
+        </View>
+        <View style={styles.welcomeRightCol}>
+          <View style={styles.welcomeHeaderRow}>
+            {message.isOwner && (
+              <LinearGradient
+                colors={['#EF4444', '#DC2626']}
+                style={styles.ownerPillTag}
+              >
+                <Text style={styles.ownerPillText}>Owner</Text>
+              </LinearGradient>
+            )}
+            <Text style={styles.welcomeHostTitle} numberOfLines={1}>
+              {isSelfWelcome ? hostName : targetUserName}
+            </Text>
+          </View>
+          <Text style={styles.welcomeMessageText}>
+            {isSelfWelcome ? (
+              <>
+                <Text style={styles.welcomeTargetUser}>@{targetUserName} </Text>
+                Thanks for coming. You are most welcome!
+              </>
+            ) : (
+              <Text style={styles.welcomeTargetUser}>{targetUserName} has joined the room</Text>
+            )}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   // 1. Gift Received Message (Image 1 Model)
   if (message?.type === 'gift') {
-    const giftName = message?.gift || message?.giftName || 'Heart';
+    const giftName = message?.giftName || message?.gift || 'Gift';
     const giftCount = message?.count || message?.quantity || message?.combo || 1;
     const receiverName = message?.to || message?.receiverName || 'Host';
-    const giftIcon = message?.giftIcon || message?.icon || '💖';
+    const giftIcon = message?.giftIcon || message?.icon || (message?.giftImage ? '' : '🎁');
 
     return (
       <View style={styles.giftMessageContainer}>
@@ -106,7 +212,7 @@ export default function ResponsiveChatBubble({
   }
 
   // 2. VIP 1 / Owner Royal Red-Gold Ornate Bubble (Bubble 1 in Image 1)
-  if (isOwner || (svipLevel && svipLevel === 1)) {
+  if (!customBubble && (isOwner || (svipLevel && svipLevel === 1))) {
     return (
       <View style={styles.luxuryBubbleContainer}>
         {/* Double Gold Ornate Frame */}
@@ -198,7 +304,7 @@ export default function ResponsiveChatBubble({
   }
 
   // 3. SVIP 3 Emerald Green & Gold Luxury Bubble (Bubble 2 in Image 1)
-  if (svipLevel && svipLevel >= 2) {
+  if (!customBubble && svipLevel && svipLevel >= 2) {
     return (
       <View style={styles.luxuryBubbleContainer}>
         <LinearGradient
@@ -270,6 +376,62 @@ export default function ResponsiveChatBubble({
     );
   }
 
+  // 3.5 Custom Store Equipped Chat Bubble
+  if (customBubble) {
+    return (
+      <View style={styles.luxuryBubbleContainer}>
+        <LinearGradient
+          colors={customBubble.colors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.customEquippedBubble, { borderColor: customBubble.borderColor }]}
+        >
+          {/* Header Row */}
+          <View style={styles.customBubbleHeader}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
+              style={styles.customAvatarWrapper}
+            >
+              <AvatarWithFrame
+                user={{ avatar: rawAvatar, name: senderName }}
+                frame={equippedFrame}
+                size={34}
+                showOnlineDot={false}
+              />
+            </TouchableOpacity>
+
+            <View style={styles.customUserMetaCol}>
+              <View style={styles.customNameRow}>
+                <Text style={[styles.customSenderName, { color: customBubble.borderColor }]} numberOfLines={1}>
+                  {senderName}
+                </Text>
+                <View style={[styles.customBadgePill, { backgroundColor: customBubble.borderColor }]}>
+                  <Text style={styles.customBadgeText}>{customBubble.badge}</Text>
+                </View>
+              </View>
+              <View style={styles.badgesRow}>
+                <View style={styles.levelBadgeGreen}>
+                  <Text style={styles.levelBadgeIcon}>⭐</Text>
+                  <Text style={styles.levelBadgeText}>Lv.{userLevel || 1}</Text>
+                </View>
+                <View style={styles.levelBadgeBlue}>
+                  <Text style={styles.levelBadgeIcon}>🌸</Text>
+                  <Text style={styles.levelBadgeText}>Lv.{charmLevel || 1}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Message Text */}
+          <Text style={[styles.customBubbleText, { color: customBubble.textColor }]}>
+            {text}
+          </Text>
+        </LinearGradient>
+      </View>
+    );
+  }
+
   // 4. Regular User Chat Bubble
   return (
     <View style={styles.normalBubbleRow}>
@@ -277,7 +439,12 @@ export default function ResponsiveChatBubble({
         activeOpacity={0.8}
         onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
       >
-        <Image source={avatarSource} style={styles.normalAvatar} />
+        <AvatarWithFrame
+          user={{ avatar: rawAvatar, name: senderName }}
+          frame={equippedFrame}
+          size={36}
+          showOnlineDot={false}
+        />
       </TouchableOpacity>
       <View style={styles.normalBubbleBox}>
         <View style={styles.normalSenderHeader}>
@@ -618,6 +785,117 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: '#FFFFFF',
     fontWeight: '500',
+    lineHeight: 17,
+  },
+  // Welcome Message Card (Matching Reference Screenshot)
+  welcomeCardContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(9, 32, 42, 0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(20, 75, 90, 0.65)',
+    borderRadius: 10,
+    padding: 8,
+    marginVertical: 4,
+    maxWidth: MAX_BUBBLE_WIDTH,
+    gap: 8,
+  },
+  welcomeAvatarWrap: {
+    marginTop: 2,
+  },
+  welcomeRightCol: {
+    flex: 1,
+  },
+  welcomeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 3,
+  },
+  welcomeHostTitle: {
+    color: '#CBD5E1',
+    fontSize: 11,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  welcomeBadgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 2,
+  },
+  welcomeClubTag: {
+    backgroundColor: '#3B0764',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    borderWidth: 0.8,
+    borderColor: '#7E22CE',
+  },
+  welcomeClubText: {
+    color: '#E9D5FF',
+    fontSize: 8.5,
+    fontWeight: '800',
+  },
+  welcomeCrestsRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 3,
+  },
+  welcomeMessageText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  welcomeTargetUser: {
+    color: '#F59E0B',
+    fontWeight: '800',
+  },
+  // Custom Store Equipped Bubble
+  customEquippedBubble: {
+    borderRadius: 16,
+    borderTopLeftRadius: 4,
+    padding: 10,
+    borderWidth: 1.5,
+    maxWidth: MAX_BUBBLE_WIDTH + 20,
+    marginVertical: 4,
+  },
+  customBubbleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  customAvatarWrapper: {
+    marginTop: 2,
+  },
+  customUserMetaCol: {
+    flex: 1,
+  },
+  customNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  customSenderName: {
+    fontSize: 12,
+    fontWeight: '800',
+    flexShrink: 1,
+  },
+  customBadgePill: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  customBadgeText: {
+    color: '#000',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  customBubbleText: {
+    fontSize: 12.5,
+    fontWeight: '600',
     lineHeight: 17,
   },
 });

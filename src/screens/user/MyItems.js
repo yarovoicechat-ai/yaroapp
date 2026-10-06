@@ -7,7 +7,6 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  FlatList,
   Modal,
   StatusBar,
 } from 'react-native';
@@ -54,251 +53,177 @@ const getFormatBadge = (item) => {
   return { label: '✨ Exclusive Item', color: '#F59E0B', bg: '#FFFBEB' };
 };
 
-const CATEGORIES = ['All', 'Frame', 'Mic Wave', 'Entry', 'Badge', 'Tag', 'Theme', 'Unique ID', 'VIP', 'King of Kings', 'Chat Bubble', 'Tassel'];
-
-const INITIAL_ITEMS = [
-  {
-    id: 'item-1',
-    name: 'Rose frame',
-    type: 'Frame',
-    validity: 'Permanent',
-    inUse: true,
-    coverType: 'avatar_frame',
-    badgeText: 'HOT',
-    previewColor: '#F43F5E',
-    description: 'A romantic floral frame with blooming pink roses and glowing sparkle petals.',
-  },
-  {
-    id: 'item-mic-1',
-    name: 'Golden Pulse Wave',
-    type: 'Mic Wave',
-    validity: 'Permanent',
-    inUse: true,
-    coverType: 'mic_wave',
-    badgeText: 'HOT',
-    previewColor: '#F59E0B',
-    waveColors: ['#F59E0B', '#FBBF24', '#D97706'],
-    description: 'Golden radiance audio pulse rings expanding dynamically around your mic seat in party rooms.',
-  },
-  {
-    id: 'item-mic-2',
-    name: 'Cyber Neon Wave',
-    type: 'Mic Wave',
-    validity: '30 Days',
-    inUse: false,
-    coverType: 'mic_wave',
-    badgeText: 'VIP',
-    previewColor: '#06B6D4',
-    waveColors: ['#06B6D4', '#3B82F6', '#8B5CF6'],
-    description: 'High-tech cyan and ultraviolet laser frequency soundwaves pulsating in sync with your voice.',
-  },
-  {
-    id: 'item-mic-3',
-    name: 'Love Aura Wave',
-    type: 'Mic Wave',
-    validity: '30 Days',
-    inUse: false,
-    coverType: 'mic_wave',
-    badgeText: 'SWEET',
-    previewColor: '#EC4899',
-    waveColors: ['#EC4899', '#F43F5E', '#FB7185'],
-    description: 'Charming pastel pink heart soundwave rings creating romantic ambiance when speaking.',
-  },
-  {
-    id: 'item-mic-4',
-    name: 'Inferno Flame Wave',
-    type: 'Mic Wave',
-    validity: 'Permanent',
-    inUse: false,
-    coverType: 'mic_wave',
-    badgeText: 'SVIP',
-    previewColor: '#EF4444',
-    waveColors: ['#EF4444', '#F97316', '#DC2626'],
-    description: 'Explosive molten crimson shockwaves that ignite the room whenever you take the mic.',
-  },
-  {
-    id: 'item-2',
-    name: 'Star Entry',
-    type: 'Entry',
-    validity: '7 Days',
-    inUse: false,
-    coverType: 'portal_entry',
-    badgeText: 'VIP',
-    previewColor: '#A855F7',
-    description: 'Radiant neon cosmic portal that lights up the entire room upon your arrival.',
-  },
-  {
-    id: 'item-3',
-    name: 'VIP Badge',
-    type: 'Badge',
-    validity: 'Permanent',
-    inUse: true,
-    coverType: 'vip_badge',
-    badgeText: 'EXCLUSIVE',
-    previewColor: '#F59E0B',
-    description: 'Golden royal 3D crown badge displayed prominently next to your name.',
-  },
-  {
-    id: 'item-4',
-    name: 'Love Tag',
-    type: 'Tag',
-    validity: '30 Days',
-    inUse: false,
-    coverType: 'love_tag',
-    badgeText: 'SWEET',
-    previewColor: '#EC4899',
-    description: 'A glowing pink heart verified tag showing your warmth and charisma.',
-  },
-  {
-    id: 'item-5',
-    name: 'Profile Card',
-    type: 'Theme',
-    validity: '30 Days',
-    inUse: false,
-    coverType: 'profile_card',
-    badgeText: 'RARE',
-    previewColor: '#6366F1',
-    description: 'Futuristic holographic glassmorphism profile background with dynamic shimmer.',
-  },
-  {
-    id: 'item-6',
-    name: 'Neon Theme',
-    type: 'Theme',
-    validity: 'Permanent',
-    inUse: false,
-    coverType: 'neon_theme',
-    badgeText: 'NEW',
-    previewColor: '#06B6D4',
-    description: 'Dark cyber neon party room ambiance with pulsing equalizer audio effects.',
-  },
-  {
-    id: 'item-7',
-    name: 'Dragon Entry',
-    type: 'Entry',
-    validity: '15 Days',
-    inUse: false,
-    coverType: 'portal_entry',
-    badgeText: 'SVIP',
-    previewColor: '#E11D48',
-    description: 'A mythical flaming golden dragon sweeps across the room declaring your arrival.',
-  },
-  {
-    id: 'item-8',
-    name: 'Gold Angel Wings',
-    type: 'Frame',
-    validity: 'Permanent',
-    inUse: false,
-    coverType: 'avatar_frame',
-    badgeText: 'MYTHIC',
-    previewColor: '#D97706',
-    description: 'Glorious animated golden angel wings embracing your profile avatar.',
-  },
-];
+const CATEGORIES = ['All', 'Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'Tag', 'Theme', 'Seat Skin', 'Unique ID', 'Profile Border', 'VIP', 'King of Kings', 'Chat Bubble', 'Tassel'];
+const EQUIPPABLE_TYPES = ['Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'VIP', 'Chat Bubble', 'Tassel', 'Theme', 'Profile Border', 'Unique ID'];
 
 export default function MyItems() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const navigation = useNavigation();
-  const { user, equippedFrame, setEquippedFrame, equippedMicWave, setEquippedMicWave } = useContext(AuthContext);
+  const { user, equipCosmetic } = useContext(AuthContext);
 
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [items, setItems] = useState(() => {
-    const activeFrame = user?.equippedFrame || equippedFrame || '';
-    const activeWave = user?.equippedMicWave || equippedMicWave || 'Golden Pulse Wave';
-    return INITIAL_ITEMS.slice(0, 2).map((it) => {
-      if (it.type === 'Frame') {
-        return { ...it, inUse: Boolean(activeFrame && it.name.toLowerCase() === activeFrame.toLowerCase()) };
-      }
-      if (it.type === 'Mic Wave') {
-        return { ...it, inUse: it.name.toLowerCase() === activeWave.toLowerCase() };
-      }
-      return it;
-    });
-  });
+  const [items, setItems] = useState([]);
   const [previewModalItem, setPreviewModalItem] = useState(null);
 
-  useFocusEffect(useCallback(() => {
-    let active = true;
-    apiUtil.get('/store/inventory', { suppressGlobalError: true })
-      .then(response => {
-        if (!active) return;
-        const owned = response?.data?.data?.items || [];
-        const mapped = owned.map(entry => {
-          const isFrame = entry.category === 'Frames' || entry.category === 'Frame';
-          const isEntry = entry.category === 'Entry' || entry.category === 'Entry Effects' || entry.category === 'Entry Effect';
-          const isMicWave = entry.category === 'Mic Wave';
-          return {
-            id: String(entry._id),
-            name: entry.name,
-            type: isFrame ? 'Frame' : isEntry ? 'Entry' : entry.category,
-            validity: entry.expiresAt ? `Until ${new Date(entry.expiresAt).toLocaleDateString()}` : 'Permanent',
-            inUse: isFrame
-              ? entry.name === equippedFrame
-              : isMicWave && entry.name === equippedMicWave,
-            coverType: isFrame ? 'avatar_frame' : isEntry ? 'portal_entry' : isMicWave ? 'mic_wave' : '',
-            previewColor: '#8B5CF6',
-            badgeText: entry.source === 'level' ? 'LEVEL' : 'OWNED',
-            description: entry.source === 'level' ? 'Unlocked by your level.' : 'Purchased from Yaro Store.',
-            imageUrl: entry.imageUrl,
-            animationUrl: entry.animationUrl,
-            expiresAt: entry.expiresAt,
-          };
+  const getEquippedName = useCallback(
+    (type) => {
+      if (type === 'Frame') return user?.equippedFrame;
+      if (type === 'Entry') return user?.equippedEntry;
+      if (type === 'Mic Wave') return user?.equippedMicWave;
+      if (type === 'Chat Bubble') return user?.equippedChatBubble;
+      if (type === 'Tassel') return user?.equippedTassel;
+      if (type === 'Entrance') return user?.equippedEntrance;
+      if (type === 'Vehicle') return user?.equippedVehicle;
+      if (type === 'Profile Border') return user?.equippedProfileBorder;
+      if (type === 'Unique ID' || type === 'Custom ID') return user?.equippedCustomId;
+      if (type === 'Theme') return user?.equippedRoomTheme;
+      if (type === 'VIP') return user?.equippedVipId;
+      if (type === 'Badge') return user?.equippedBadge;
+      return null;
+    },
+    [user],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      apiUtil
+        .get('/store/inventory', { suppressGlobalError: true })
+        .then((response) => {
+          if (!active) return;
+          const owned = response?.data?.data?.items || [];
+          const mapped = owned.map((entry) => {
+            const rawCatalog = entry.catalogItem;
+            const catalog =
+              rawCatalog && typeof rawCatalog === 'object' ? rawCatalog : {};
+            const category = catalog.category || entry.category || '';
+            const normalized = String(category).toLowerCase();
+            const type =
+              normalized === 'frames' || normalized === 'frame'
+                ? 'Frame'
+                : normalized.startsWith('entry')
+                  ? 'Entry'
+                  : normalized.startsWith('mic wave')
+                    ? 'Mic Wave'
+                    : normalized.startsWith('chat bubble')
+                      ? 'Chat Bubble'
+                      : normalized.startsWith('tassel')
+                        ? 'Tassel'
+                        : ['entrance', 'ride', 'profile entry'].includes(normalized)
+                          ? 'Entrance'
+                          : ['vehicle'].includes(normalized)
+                            ? 'Vehicle'
+                            : ['profile border', 'border'].includes(normalized)
+                              ? 'Profile Border'
+                              : ['custom id', 'unique id'].includes(normalized)
+                                ? 'Unique ID'
+                                : normalized === 'badge'
+                                  ? 'Badge'
+                                  : category;
+            const metadata = catalog.metadata || entry.metadata || {};
+            const itemId = String(catalog._id || catalog.id || entry.itemId || entry._id);
+            const name = catalog.name || entry.name || 'Item';
+            const equippedName = getEquippedName(type);
+            const isIdEquipped =
+              (type === 'VIP' || type === 'Theme') &&
+              String(equippedName || '') === itemId;
+            return {
+              ...catalog,
+              ...entry,
+              id: itemId,
+              itemId,
+              name,
+              category,
+              type,
+              validity: entry.expiresAt
+                ? `Until ${new Date(entry.expiresAt).toLocaleDateString()}`
+                : catalog.validity || 'Permanent',
+              inUse:
+                isIdEquipped ||
+                Boolean(
+                  equippedName &&
+                    String(name).toLowerCase() === String(equippedName).toLowerCase(),
+                ),
+              coverType:
+                type === 'Frame'
+                  ? 'avatar_frame'
+                  : type === 'Entry'
+                    ? 'portal_entry'
+                    : type === 'Mic Wave'
+                      ? 'mic_wave'
+                      : type === 'Chat Bubble'
+                        ? 'chat_bubble'
+                        : '',
+              previewColor: catalog.previewColor || metadata.previewColor || '#8B5CF6',
+              bgColors: catalog.bgColors || metadata.bgColors || [],
+              borderColor: metadata.borderColor || '',
+              textColor: metadata.textColor || '',
+              badgeText: catalog.badgeText || (entry.source === 'level' ? 'LEVEL' : 'OWNED'),
+              description:
+                catalog.desc ||
+                metadata.description ||
+                (entry.source === 'level'
+                  ? 'Unlocked by your level.'
+                  : 'Purchased from Yaro Store.'),
+              imageUrl: catalog.imageUrl || entry.imageUrl || '',
+              animationUrl: catalog.animationUrl || entry.animationUrl || '',
+              metadata,
+            };
+          });
+          setItems(mapped);
+        })
+        .catch((error) => {
+          if (active) {
+            setItems([]);
+            AlertService.show(
+              'Inventory',
+              error?.response?.data?.message || 'Items load nahi ho sake.',
+              'warning',
+            );
+          }
         });
-        const defaults = INITIAL_ITEMS.slice(0, 2).map(item => ({
-          ...item,
-          inUse: item.type === 'Frame' ? item.name === equippedFrame : item.name === equippedMicWave,
-        }));
-        setItems([...defaults, ...mapped]);
-      })
-      .catch(() => undefined);
-    return () => { active = false; };
-  }, [equippedFrame, equippedMicWave]));
+      return () => {
+        active = false;
+      };
+    }, [getEquippedName]),
+  );
 
   const filteredItems = items.filter((item) => {
     if (selectedCategory === 'All') return true;
     return item.type.toLowerCase() === selectedCategory.toLowerCase();
   });
 
-  const handleToggleUse = (item) => {
-    setItems((prevItems) =>
-      prevItems.map((it) => {
-        // If equipping within the same type, unequip other item of same type
-        if (it.type === item.type) {
-          if (it.id === item.id) {
-            const newState = !it.inUse;
-            const equipName = newState ? it.name : '';
-            if (newState) {
-              AlertService.show('Item Equipped', `${it.name} is now active!`, 'success');
-              if (item.type === 'Frame') {
-                setEquippedFrame?.(it);
-              } else if (item.type === 'Mic Wave') {
-                setEquippedMicWave?.(it.name);
-              }
-            } else {
-              AlertService.show('Item Unequipped', `${it.name} has been removed.`, 'info');
-              if (item.type === 'Frame') {
-                setEquippedFrame?.('default');
-              } else if (item.type === 'Mic Wave') {
-                setEquippedMicWave?.('');
-              }
-            }
-
-            // Sync with backend store equip API
-            apiUtil.post('/store/equip', {
-              name: equipName,
-              category: item.type,
-              imageUrl: newState ? (it.imageUrl || '') : '',
-              animationUrl: newState ? (it.animationUrl || '') : '',
-            }, { suppressGlobalError: true }).catch(() => undefined);
-
-            return { ...it, inUse: newState };
-          } else {
-            return { ...it, inUse: false };
-          }
-        }
-        return it;
-      })
-    );
+  const handleToggleUse = async (item) => {
+    const shouldEquip = !item.inUse;
+    try {
+      await equipCosmetic(item, item.category || item.type, shouldEquip);
+      setItems((previous) =>
+        previous.map((candidate) => {
+          if (candidate.type !== item.type) return candidate;
+          return {
+            ...candidate,
+            inUse: shouldEquip && candidate.id === item.id,
+          };
+        }),
+      );
+      setPreviewModalItem((previous) =>
+        previous?.id === item.id ? { ...previous, inUse: shouldEquip } : previous,
+      );
+      AlertService.show(
+        shouldEquip ? 'Item Equipped' : 'Item Unequipped',
+        shouldEquip
+          ? `${item.name} is now active.`
+          : `${item.name} has been removed.`,
+        shouldEquip ? 'success' : 'info',
+      );
+    } catch (error) {
+      AlertService.show(
+        'Item Update Failed',
+        error?.response?.data?.message || error?.message || 'Please try again.',
+        'error',
+      );
+    }
   };
 
   const renderItemVisual = (item) => {
@@ -433,6 +358,27 @@ export default function MyItems() {
       );
     }
 
+    if (item.type === 'Chat Bubble' || item.type === 'Chat Bubbles' || item.coverType === 'chat_bubble') {
+      const bgColors =
+        (Array.isArray(item.bgColors) && item.bgColors.length >= 2
+          ? item.bgColors
+          : item.metadata?.bgColors) || ['#1E293B', '#334155'];
+      const borderColor =
+        item.borderColor || item.metadata?.borderColor || item.previewColor || '#64748B';
+      const textColor = item.textColor || item.metadata?.textColor || '#E2E8F0';
+      return (
+        <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', padding: 6 }}>
+          <LinearGradient
+            colors={bgColors}
+            style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1.5, borderColor: borderColor, maxWidth: '95%', alignItems: 'center' }}
+          >
+            <Text style={{ color: borderColor, fontSize: 10, fontWeight: '800' }} numberOfLines={1}>{item.name}</Text>
+            <Text style={{ color: textColor, fontSize: 9, marginTop: 2 }}>Chat bubble preview</Text>
+          </LinearGradient>
+        </View>
+      );
+    }
+
     // Default: neon theme
     return (
       <LinearGradient
@@ -496,6 +442,27 @@ export default function MyItems() {
           <View style={[styles.popupMicIconBadge, { backgroundColor: u }]}>
             <MaterialCommunityIcons name="microphone" size={16} color="#FFFFFF" />
           </View>
+        </View>
+      );
+    }
+
+    if (item?.type === 'Chat Bubble' || item?.type === 'Chat Bubbles' || item?.coverType === 'chat_bubble') {
+      const bgColors =
+        (Array.isArray(item.bgColors) && item.bgColors.length >= 2
+          ? item.bgColors
+          : item.metadata?.bgColors) || ['#1E293B', '#334155'];
+      const borderColor =
+        item.borderColor || item.metadata?.borderColor || item.previewColor || '#64748B';
+      const textColor = item.textColor || item.metadata?.textColor || '#FFFFFF';
+      return (
+        <View style={{ width: '100%', height: 120, alignItems: 'center', justifyContent: 'center' }}>
+          <LinearGradient
+            colors={bgColors}
+            style={{ paddingHorizontal: 20, paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: borderColor, minWidth: 200, alignItems: 'center' }}
+          >
+            <Text style={{ color: borderColor, fontSize: 13, fontWeight: '800' }}>💬 {item.name}</Text>
+            <Text style={{ color: textColor, fontSize: 12, marginTop: 6 }}>Voice room chat bubble preview</Text>
+          </LinearGradient>
         </View>
       );
     }
@@ -597,7 +564,7 @@ export default function MyItems() {
                 </Text>
 
                 {/* Use / In Use Button */}
-                {['Frame', 'Mic Wave'].includes(item.type) ? (
+                {EQUIPPABLE_TYPES.includes(item.type) ? (
                   <TouchableOpacity
                     activeOpacity={0.85}
                     onPress={() => handleToggleUse(item)}
@@ -672,19 +639,14 @@ export default function MyItems() {
                   {previewModalItem.description}
                 </Text>
 
-                {['Frame', 'Mic Wave'].includes(previewModalItem.type) && (
+                {EQUIPPABLE_TYPES.includes(previewModalItem.type) && (
                   <TouchableOpacity
                     activeOpacity={0.88}
                     style={[
                       styles.modalActionBtn,
                       previewModalItem.inUse ? styles.modalActionBtnInUse : styles.modalActionBtnUse,
                     ]}
-                    onPress={() => {
-                      handleToggleUse(previewModalItem);
-                      setPreviewModalItem((prev) =>
-                        prev ? { ...prev, inUse: !prev.inUse } : null
-                      );
-                    }}
+                    onPress={() => handleToggleUse(previewModalItem)}
                   >
                     <Text style={styles.modalActionBtnText}>
                       {previewModalItem.inUse ? 'Currently Active on Profile' : 'Equip This Item'}

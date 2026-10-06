@@ -1,11 +1,13 @@
 import React from 'react';
-import { Platform, View, StyleSheet, Image } from 'react-native';
-import { NativeSvgaPlayer as NativeSvga } from './GiftMedia';
+import { View, StyleSheet, Image } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
+import GiftMedia, { NativeSvgaPlayer as NativeSvga } from './GiftMedia';
 
 /**
  * Universal SVGA / Animated Asset Viewer for YaroApp
  * Plays .svga files using hardware-accelerated SvgaPlayerView on Android,
  * or displays images/gifs if not SVGA.
+ * Automatically manages lifecycle with useIsFocused so animations never freeze or disappear.
  */
 export default function SvgaView({
   source,
@@ -15,7 +17,17 @@ export default function SvgaView({
   fallbackImage,
 }) {
   const [failed, setFailed] = React.useState(false);
+  let isFocused = true;
+  try {
+    isFocused = useIsFocused();
+  } catch (_) {
+    isFocused = true;
+  }
   const src = String(source || '').trim();
+
+  React.useEffect(() => {
+    setFailed(false);
+  }, [src]);
 
   if (!src || failed) {
     if (fallbackImage) {
@@ -28,20 +40,38 @@ export default function SvgaView({
 
   if (isSvga && NativeSvga) {
     return (
-      <NativeSvga
-        source={src}
-        loops={loops}
-        style={style}
-      />
+      <View style={style}>
+        {fallbackImage ? (
+          <Image
+            source={{ uri: fallbackImage }}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode={resizeMode}
+          />
+        ) : null}
+        {isFocused ? (
+          <NativeSvga
+            key={`${src}_${isFocused}`}
+            source={src}
+            loops={loops}
+            style={StyleSheet.absoluteFillObject}
+          />
+        ) : fallbackImage ? (
+          <Image
+            source={{ uri: fallbackImage }}
+            style={[StyleSheet.absoluteFillObject, style]}
+            resizeMode={resizeMode}
+          />
+        ) : null}
+      </View>
     );
   }
 
   return (
-    <Image
-      source={{ uri: src }}
+    <GiftMedia
+      source={src}
       style={style}
       resizeMode={resizeMode}
-      onError={() => setFailed(true)}
+      fallbackSource={fallbackImage ? { uri: fallbackImage } : undefined}
     />
   );
 }

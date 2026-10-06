@@ -460,10 +460,22 @@ export default function MeScreen() {
                     style={{ marginLeft: 6 }}
                   />
                 )}
-                {/* Level badge */}
-                <View style={styles.levelBadgeMini}>
-                  <Text style={styles.levelBadgeMiniText}>Lv.{user?.level || 6}</Text>
-                </View>
+                {/* Wealth Level */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Level', { initialTab: 'wealth' })}
+                  style={[styles.levelBadgeMini, { backgroundColor: '#F59E0B' }]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.levelBadgeMiniText}>💎 Lv.{user?.wealthLevel || user?.level || 1}</Text>
+                </TouchableOpacity>
+                {/* Charm Level */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Level', { initialTab: 'charm' })}
+                  style={[styles.levelBadgeMini, { backgroundColor: '#EC4899' }]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.levelBadgeMiniText}>🌸 Lv.{user?.charmLevel || 1}</Text>
+                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
@@ -492,10 +504,10 @@ export default function MeScreen() {
                   </Text>
                 </View>
 
-                {user?.country && (
+                {Boolean(user?.country) && (
                   <View style={styles.countryTag}>
                     <Text style={styles.countryTagText}>
-                      🌍 {user?.country}
+                      🌍 {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() || 'India 🇮🇳' : user?.country}
                     </Text>
                   </View>
                 )}

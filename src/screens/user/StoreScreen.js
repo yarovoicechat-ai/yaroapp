@@ -40,6 +40,10 @@ const getPriceOptions = (item) => {
   return STORE_DURATIONS.map(days => ({ days, diamonds: Math.max(0, Math.round(price * ratios[days])) }));
 };
 
+const isFreeStoreItem = (item) =>
+  Boolean(item?.isFree || item?.metadata?.isFree) ||
+  getPriceOptions(item).every(option => Number(option.diamonds || 0) === 0);
+
 const normalizeStoreItem = (item) => ({
   ...item,
   ...(item?.metadata || {}),
@@ -79,484 +83,21 @@ const getFormatBadge = (item) => {
 };
 
 // Store categories: Unique ID, Frames, Chat Bubble, Theme, Tassel, Entry, Mic Wave, Profile Card, Room Card, Profile Entry, VIP, King of Kings, Badge, Tag
-const STORE_CATEGORIES = ['Unique ID', 'Frames', 'Chat Bubble', 'Theme', 'Tassel', 'Entry', 'Mic Wave', 'Profile Card', 'Room Card', 'Profile Entry', 'VIP', 'King of Kings', 'Badge', 'Tag'];
+const STORE_CATEGORIES = ['Unique ID', 'Frames', 'Chat Bubble', 'Theme', 'Seat Skin', 'Tassel', 'Entry', 'Mic Wave', 'Profile Card', 'Room Card', 'Profile Entry', 'VIP', 'King of Kings', 'Badge', 'Tag'];
 
-const STORE_CATALOG = {
-  'Unique ID': [
-    {
-      id: 'uid-1',
-      name: '88888 (Fortune Gold)',
-      number: '88888',
-      digits: '5-Digit',
-      price: 50000,
-      validity: 'Permanent',
-      previewColor: '#F59E0B',
-      bgColors: ['#78350F', '#B45309', '#D97706'],
-      icon: 'numeric-8-circle',
-      tag: 'Royal Gold',
-      desc: 'Exclusive 5-digit lucky fortune ID with golden profile shine and room entrance highlight.',
-    },
-    {
-      id: 'uid-2',
-      name: '99999 (Crown Emperor)',
-      number: '99999',
-      digits: '5-Digit',
-      price: 60000,
-      validity: 'Permanent',
-      previewColor: '#8B5CF6',
-      bgColors: ['#3B0764', '#581C87', '#7C3AED'],
-      icon: 'numeric-9-circle',
-      tag: 'Imperial',
-      desc: 'Supreme 5-digit Emperor ID with purple royal aura and permanent verified profile mark.',
-    },
-    {
-      id: 'uid-3',
-      name: '77777 (Jackpot Lucky)',
-      number: '77777',
-      digits: '5-Digit',
-      price: 45000,
-      validity: 'Permanent',
-      previewColor: '#10B981',
-      bgColors: ['#064E3B', '#065F46', '#059669'],
-      icon: 'numeric-7-circle',
-      tag: 'Lucky 7',
-      desc: 'Lucky 77777 sequence with clover highlight and lucky emerald room greeting.',
-    },
-    {
-      id: 'uid-4',
-      name: '1314520 (Forever Romance)',
-      number: '1314520',
-      digits: '7-Digit',
-      price: 35000,
-      validity: 'Permanent',
-      previewColor: '#EC4899',
-      bgColors: ['#831843', '#9D174D', '#DB2777'],
-      icon: 'heart-circle',
-      tag: 'Romance',
-      desc: 'Special romance sequence meaning "Love You For A Lifetime" with floating hearts badge.',
-    },
-    {
-      id: 'uid-5',
-      name: '666666 (Smooth Victory)',
-      number: '666666',
-      digits: '6-Digit',
-      price: 30000,
-      validity: 'Permanent',
-      previewColor: '#06B6D4',
-      bgColors: ['#164E63', '#155E75', '#0891B2'],
-      icon: 'numeric-6-circle',
-      tag: 'Grand Hex',
-      desc: 'Six-digit repeating victory ID with laser cyan banner and custom badge tag.',
-    },
-    {
-      id: 'uid-6',
-      name: '100000 (Century Milestone)',
-      number: '100000',
-      digits: '6-Digit',
-      price: 40000,
-      validity: 'Permanent',
-      previewColor: '#64748B',
-      bgColors: ['#1E293B', '#334155', '#475569'],
-      icon: 'star-circle',
-      tag: 'Century',
-      desc: 'Clean 100,000 Century luxury milestone ID with silver titanium sheen.',
-    },
-    {
-      id: 'uid-7',
-      name: '8888 (Ultra Sovereign 4-Digit)',
-      number: '8888',
-      digits: '4-Digit',
-      price: 150000,
-      validity: 'Permanent',
-      previewColor: '#F59E0B',
-      bgColors: ['#451A03', '#78350F', '#B45309'],
-      icon: 'crown',
-      tag: 'Ultra Rare',
-      desc: 'Ultra exclusive 4-digit Sovereign ID with global marquee room entrance broadcast.',
-    },
-    {
-      id: 'uid-8',
-      name: '9999 (Diamond Monarch 4-Digit)',
-      number: '9999',
-      digits: '4-Digit',
-      price: 180000,
-      validity: 'Permanent',
-      previewColor: '#0284C7',
-      bgColors: ['#082F49', '#0C4A6E', '#0284C7'],
-      icon: 'diamond-stone',
-      tag: 'Prestige',
-      desc: 'Supreme 4-digit diamond series ID with permanent crown border & anti-kick privilege.',
-    },
-  ],
-  Frames: [
-    {
-      id: '6ac148550edc3fe8b7f513fd',
-      _id: '6ac148550edc3fe8b7f513fd',
-      name: 'New Frame',
-      category: 'Frames',
-      price: 2500,
-      validity: '30 Days',
-      badgeText: 'NEW',
-      tag: 'NEW',
-      previewColor: '#06B6D4',
-      imageUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051788786-1640-Yaro_Logo.png',
-      animationUrl: 'https://api.yaroapp.in/uploads/gifts/gift-1791051846825-5141-ic_head_frame_vip9.svga',
-      desc: 'Exclusive high-grade animated VIP avatar frame with shimmering cosmic particle glow.',
-    },
-    {
-      id: '6abeab7065e554a25ae27e29',
-      _id: '6abeab7065e554a25ae27e29',
-      name: 'Rose Sovereign Frame',
-      category: 'Frames',
-      price: 3500,
-      validity: '30 Days',
-      badgeText: 'HOT',
-      tag: 'HOT',
-      previewColor: '#EC4899',
-      desc: 'Blooming crimson roses with shimmering petals around your avatar.',
-    },
-    {
-      id: '6abeab7065e554a25ae27e2a',
-      _id: '6abeab7065e554a25ae27e2a',
-      name: 'Crown Imperial Frame',
-      category: 'Frames',
-      price: 4500,
-      validity: '30 Days',
-      badgeText: 'VIP',
-      tag: 'VIP',
-      previewColor: '#F59E0B',
-      desc: 'Majestic 24K pure gold emperor crown sitting on top of your avatar profile.',
-    },
-    {
-      id: '6abeab7065e554a25ae27e2b',
-      _id: '6abeab7065e554a25ae27e2b',
-      name: 'Cyber Neon Ring Frame',
-      category: 'Frames',
-      price: 3000,
-      validity: '30 Days',
-      badgeText: 'SALE',
-      tag: 'SALE',
-      previewColor: '#06B6D4',
-      desc: 'High-tech neon cyan laser circle ring pulsing with soundwaves.',
-    },
-  ],
-  'Chat Bubble': [
-    {
-      id: 'bb-1',
-      name: 'Golden Glow Bubble',
-      price: 350,
-      validity: '30 Days',
-      previewColor: '#F59E0B',
-      bubbleBg: '#FEF3C7',
-      bubbleBorder: '#F59E0B',
-      bubbleText: '#92400E',
-      icon: 'chat-processing',
-      tag: 'Gold Shimmer',
-      desc: 'All your chat and party messages appear in an opulent golden gradient speech bubble.',
-    },
-    {
-      id: 'bb-2',
-      name: 'Cyber Neon Bubble',
-      price: 400,
-      validity: '30 Days',
-      previewColor: '#06B6D4',
-      bubbleBg: '#083344',
-      bubbleBorder: '#06B6D4',
-      bubbleText: '#E0F2FE',
-      icon: 'message-text',
-      tag: 'Cyberpunk',
-      desc: 'Electric cyan & neon violet glowing speech box with high-tech laser border.',
-    },
-    {
-      id: 'bb-3',
-      name: 'Pink Sakura Blossom',
-      price: 300,
-      validity: '30 Days',
-      previewColor: '#EC4899',
-      bubbleBg: '#FDF2F8',
-      bubbleBorder: '#F472B6',
-      bubbleText: '#9D174D',
-      icon: 'flower',
-      tag: 'Romantic',
-      desc: 'Romantic pastel pink floral bubble with drifting cherry blossom petal accents.',
-    },
-    {
-      id: 'bb-4',
-      name: 'Purple Crystal Box',
-      price: 450,
-      validity: '30 Days',
-      previewColor: '#8B5CF6',
-      bubbleBg: '#2E1065',
-      bubbleBorder: '#A78BFA',
-      bubbleText: '#EDE9FE',
-      icon: 'cube-outline',
-      tag: 'Royal Gem',
-      desc: 'Deep royal amethyst crystal bubble with gem light refraction along text lines.',
-    },
-    {
-      id: 'bb-5',
-      name: 'Flame Inferno Bubble',
-      price: 500,
-      validity: '30 Days',
-      previewColor: '#EF4444',
-      bubbleBg: '#450A0A',
-      bubbleBorder: '#EF4444',
-      bubbleText: '#FEE2E2',
-      icon: 'fire',
-      tag: 'Hot Inferno',
-      desc: 'Blazing animated flame border bubble with red magma accents on your text.',
-    },
-    {
-      id: 'bb-6',
-      name: 'Midnight Galaxy Bubble',
-      price: 420,
-      validity: '30 Days',
-      previewColor: '#4338CA',
-      bubbleBg: '#1E1B4B',
-      bubbleBorder: '#6366F1',
-      bubbleText: '#E0E7FF',
-      icon: 'planet',
-      tag: 'Deep Cosmos',
-      desc: 'Deep space cosmic nebula with twinkling starlight message background.',
-    },
-  ],
-  Theme: [
-    {
-      id: 'th-1',
-      name: 'Cyberpunk Neon City',
-      price: 1500,
-      validity: '30 Days',
-      previewColor: '#06B6D4',
-      bgColors: ['#030712', '#0F172A', '#1E1B4B'],
-      icon: 'city-variant',
-      tag: 'Futuristic',
-      desc: 'Glowing futuristic high-tech skyscraper skyline wallpaper for voice rooms & profile.',
-    },
-    {
-      id: 'th-2',
-      name: 'Imperial Golden Palace',
-      price: 2200,
-      validity: '30 Days',
-      previewColor: '#F59E0B',
-      bgColors: ['#451A03', '#78350F', '#B45309'],
-      icon: 'castle',
-      tag: 'Royal Palace',
-      desc: 'Royal palace grand hall with magnificent golden pillars, chandeliers and velvet carpets.',
-    },
-    {
-      id: 'th-3',
-      name: 'Sakura Blossom Spring',
-      price: 1200,
-      validity: '30 Days',
-      previewColor: '#EC4899',
-      bgColors: ['#500724', '#831843', '#BE185D'],
-      icon: 'image-filter-hdr',
-      tag: 'Spring Love',
-      desc: 'Enchanting Japanese spring garden with soft cherry blossoms drifting across the screen.',
-    },
-    {
-      id: 'th-4',
-      name: 'Deep Space Galaxy',
-      price: 1800,
-      validity: '30 Days',
-      previewColor: '#8B5CF6',
-      bgColors: ['#0F172A', '#1E1B4B', '#4C1D95'],
-      icon: 'orbit',
-      tag: 'Infinite Space',
-      desc: 'Infinite starry cosmos, swirling purple nebula clouds and glowing planets in background.',
-    },
-    {
-      id: 'th-5',
-      name: 'Ocean Sunset Beach',
-      price: 1100,
-      validity: '30 Days',
-      previewColor: '#F97316',
-      bgColors: ['#1E1B4B', '#7C2D12', '#C2410C'],
-      icon: 'beach',
-      tag: 'Tropical Sun',
-      desc: 'Golden tropical sunset over tranquil turquoise ocean waves and palm silhouettes.',
-    },
-    {
-      id: 'th-6',
-      name: 'Velvet VIP Casino',
-      price: 2500,
-      validity: '30 Days',
-      previewColor: '#E11D48',
-      bgColors: ['#18181B', '#3F3F46', '#881337'],
-      icon: 'cards-playing-outline',
-      tag: 'Casino Royale',
-      desc: 'Ultra luxury dark velvet lounge with champagne, poker chips, and neon club lighting.',
-    },
-  ],
-  Tassel: [
-    {
-      id: 'ts-1',
-      name: 'Imperial Gold Silk Tassel',
-      price: 600,
-      validity: '30 Days',
-      previewColor: '#F59E0B',
-      icon: 'ribbon',
-      tag: 'Silk Gold',
-      desc: 'Traditional royal golden silk tassel hanging gracefully beside your room mic seat.',
-    },
-    {
-      id: 'ts-2',
-      name: 'Ruby Crystal Lotus Tassel',
-      price: 750,
-      validity: '30 Days',
-      previewColor: '#E11D48',
-      icon: 'diamond',
-      tag: 'Cut Ruby',
-      desc: 'Deep crimson cut crystal lotus pendant with fine dangling silk cords on your seat.',
-    },
-    {
-      id: 'ts-3',
-      name: 'Emerald Jade Phoenix Tassel',
-      price: 900,
-      validity: '30 Days',
-      previewColor: '#10B981',
-      icon: 'shield-star',
-      tag: 'Jade Wealth',
-      desc: 'Carved auspicious jade medallion with flowing emerald green cords bringing fortune.',
-    },
-    {
-      id: 'ts-4',
-      name: 'Cyberpunk Neon LED Tassel',
-      price: 650,
-      validity: '30 Days',
-      previewColor: '#06B6D4',
-      icon: 'lightning-bolt',
-      tag: 'Neon Pulse',
-      desc: 'Electric cyan and neon magenta glowing fiber-optic tassel ribbons that pulse with music.',
-    },
-    {
-      id: 'ts-5',
-      name: 'Diamond Chandelier Tassel',
-      price: 1200,
-      validity: '30 Days',
-      previewColor: '#38BDF8',
-      icon: 'shimmer',
-      tag: 'Chandelier',
-      desc: 'Brilliant sparkling diamond droplets that shimmer in the mic seat when you speak.',
-    },
-    {
-      id: 'ts-6',
-      name: 'Sacred Silver Bell Tassel',
-      price: 500,
-      validity: '30 Days',
-      previewColor: '#94A3B8',
-      icon: 'bell-ring-outline',
-      tag: 'Silver Chime',
-      desc: 'Delicate engraved silver bells and pure white silk tassels with gentle ringing effect.',
-    },
-  ],
-  'Mic Wave': [
-    {
-      id: 'mw-1',
-      name: 'Golden Pulse Wave',
-      price: 600,
-      validity: '30 Days',
-      previewColor: '#F59E0B',
-      waveColors: ['#F59E0B', '#FBBF24', '#D97706'],
-      icon: 'waveform',
-      tag: 'Gold Pulse',
-      desc: 'Radiant golden ripples expanding outward dynamically around your mic seat in party rooms.',
-    },
-    {
-      id: 'mw-2',
-      name: 'Cyber Neon Wave',
-      price: 750,
-      validity: '30 Days',
-      previewColor: '#06B6D4',
-      waveColors: ['#06B6D4', '#3B82F6', '#8B5CF6'],
-      icon: 'sine-wave',
-      tag: 'Cyber Neon',
-      desc: 'High-tech cyan & ultraviolet laser frequency soundwaves pulsating in sync with your voice.',
-    },
-    {
-      id: 'mw-3',
-      name: 'Love Aura Wave',
-      price: 500,
-      validity: '30 Days',
-      previewColor: '#EC4899',
-      waveColors: ['#EC4899', '#F43F5E', '#FB7185'],
-      icon: 'heart-pulse',
-      tag: 'Sweet Aura',
-      desc: 'Charming pastel pink heart soundwave rings creating romantic ambiance when speaking.',
-    },
-    {
-      id: 'mw-4',
-      name: 'Inferno Flame Wave',
-      price: 900,
-      validity: '30 Days',
-      previewColor: '#EF4444',
-      waveColors: ['#EF4444', '#F97316', '#DC2626'],
-      icon: 'fire',
-      tag: 'Blaze Wave',
-      desc: 'Explosive molten crimson shockwaves that ignite the room whenever you take the mic.',
-    },
-    {
-      id: 'mw-5',
-      name: 'Amethyst Stardust Wave',
-      price: 800,
-      validity: '30 Days',
-      previewColor: '#A855F7',
-      waveColors: ['#A855F7', '#C084FC', '#7E22CE'],
-      icon: 'star-shooting',
-      tag: 'Stardust',
-      desc: 'Mystical purple astral stardust particles and concentric cosmic rings around your avatar.',
-    },
-    {
-      id: 'mw-6',
-      name: 'Emerald Aurora Wave',
-      price: 850,
-      validity: '30 Days',
-      previewColor: '#10B981',
-      waveColors: ['#10B981', '#34D399', '#059669'],
-      icon: 'weather-windy',
-      tag: 'Aurora',
-      desc: 'Luminous northern lights wave flowing smoothly in soothing emerald and mint ripples.',
-    },
-  ],
-  Frames: [
-    { id: 'f-1', name: 'Golden Royal Crown', price: 500, validity: '30 Days', previewColor: '#F59E0B', icon: 'crown', tag: 'Royal', desc: 'Shimmering pure gold crown with animated sparkles around avatar.' },
-    { id: 'f-2', name: 'Rose Blossom Frame', price: 300, validity: 'Permanent', previewColor: '#F43F5E', icon: 'flower', tag: 'Floral', desc: 'Romantic blooming pink rose petals continuously framing your profile.' },
-    { id: 'f-3', name: 'Cyber Neon Ring', price: 450, validity: '30 Days', previewColor: '#06B6D4', icon: 'radioactive', tag: 'High-Tech', desc: 'Glowing turquoise and neon violet cyberpunk ring with revolving laser dots.' },
-    { id: 'f-4', name: 'Divine Angel Wings', price: 800, validity: 'Permanent', previewColor: '#EAB308', icon: 'wing', tag: 'Celestial', desc: 'Divine fluttering angel wings framing your profile photo in rooms.' },
-    { id: 'f-5', name: 'Dragon Emperor Frame', price: 1500, validity: '30 Days', previewColor: '#EF4444', icon: 'fire', tag: 'Legendary', desc: 'Fierce golden-red dragon coiled around your profile emitting flaming aura.' },
-    { id: 'f-6', name: 'Celestial Cosmos Frame', price: 2000, validity: '30 Days', previewColor: '#8B5CF6', icon: 'orbit', tag: 'Mythic', desc: 'Revolving planetary rings with sparkling purple stardust and aurora.' },
-  ],
-  Entry: [
-    { id: 'e-1', name: 'Sports Car Entry', price: 1200, validity: '30 Days', previewColor: '#EC4899', icon: 'car-sports', tag: 'Supercar', desc: 'A 3D sports car sweeps across the room upon your arrival with engine roars.' },
-    { id: 'e-2', name: 'Golden Dragon Flight', price: 2500, validity: '30 Days', previewColor: '#E11D48', icon: 'fire', tag: 'Mythic', desc: 'A mythical flaming golden dragon sweeps through the room announcing your presence.' },
-    { id: 'e-3', name: 'Galaxy Space Portal', price: 900, validity: '15 Days', previewColor: '#8B5CF6', icon: 'planet', tag: 'Cosmic', desc: 'Cosmic space portal with swirling stars on room entry and sound effect.' },
-    { id: 'e-4', name: 'Cyber Battleship Entry', price: 3500, validity: '30 Days', previewColor: '#06B6D4', icon: 'rocket-launch', tag: 'Supreme', desc: 'Giant futuristic mothership warp-in with laser light show and banners.' },
-    { id: 'e-5', name: 'Pegasus Celestial Carriage', price: 4000, validity: '30 Days', previewColor: '#F59E0B', icon: 'horse', tag: 'Imperial', desc: 'Winged pegasus drawing a golden royal carriage with fireworks explosion.' },
-  ],
-  VIP: [
-    { id: 'v-1', name: 'SVIP 1-Month Pass', price: 2999, validity: '30 Days', previewColor: '#7C3AED', icon: 'crown', tag: 'Noble VIP', desc: 'Unlock all basic privileges, entry badges, free mic decoration, and 100 bonus XP.' },
-    { id: 'v-2', name: 'SVIP 3-Month Pass', price: 7999, validity: '90 Days', previewColor: '#BE185D', icon: 'shield-crown', tag: 'King SVIP', desc: 'Unlock premium anti-kick protection, exclusive supercar entry, frames, and 400 XP.' },
-  ],
-  Badge: [
-    { id: 'bd-1', name: 'Legendary Master Badge', price: 1500, validity: '30 Days', previewColor: '#F59E0B', icon: 'shield-star', tag: 'Master', desc: 'Golden master badge displayed prominently on your profile.' },
-    { id: 'bd-2', name: 'Diamond Heart Donor', price: 2000, validity: '30 Days', previewColor: '#EC4899', icon: 'heart-flash', tag: 'Top Donor', desc: 'Exclusive shining diamond heart badge celebrating generous patrons.' },
-  ],
-  Tag: [
-    { id: 'tg-1', name: 'Imperial Majesty Tag', price: 800, validity: '30 Days', previewColor: '#F59E0B', icon: 'tag', tag: 'Imperial', desc: 'Glowing imperial name tag shown in voice chat user lists.' },
-    { id: 'tg-2', name: 'Cyber Hero Tag', price: 600, validity: '30 Days', previewColor: '#06B6D4', icon: 'label-variant', tag: 'Cyber Hero', desc: 'Neon cyan laser title tag alongside your nickname.' },
-  ],
-};
+const createEmptyCatalog = () =>
+  STORE_CATEGORIES.reduce((result, category) => ({ ...result, [category]: [] }), {});
 
 export default function StoreScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
-  const { user, fetchUserProfile, setEquippedFrame } = useContext(AuthContext);
+  const { user, fetchUserProfile } = useContext(AuthContext);
 
-  const [catalog, setCatalog] = useState(STORE_CATALOG);
+  const [catalog, setCatalog] = useState(createEmptyCatalog);
   const [activeCategory, setActiveCategory] = useState('Unique ID');
-  const [selectedItem, setSelectedItem] = useState(STORE_CATALOG['Unique ID'][0]);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
@@ -570,25 +111,29 @@ export default function StoreScreen() {
         const response = await apiUtil.get('/store/items', { params: { activeOnly: true } });
         const payload = response?.data?.data || response?.data || {};
         if (isMounted && Array.isArray(payload.items)) {
-          const liveCatalog = STORE_CATEGORIES.reduce((result, category) => ({ ...result, [category]: [] }), {});
+          const liveCatalog = createEmptyCatalog();
           payload.items.map(normalizeStoreItem).forEach((item) => {
             const rawCat = String(item.category || '').trim();
             const cat = (rawCat === 'Frame' || rawCat === 'Frames') ? 'Frames'
               : (rawCat === 'Entry' || rawCat === 'Entry Effect' || rawCat === 'Entry Effects' || rawCat === 'Entrance') ? 'Entry'
               : (rawCat === 'Chat Bubble' || rawCat === 'Chat Bubbles') ? 'Chat Bubble'
               : (rawCat === 'Theme' || rawCat === 'Themes') ? 'Theme'
+              : (rawCat === 'Seat Skin' || rawCat === 'Seat Skins') ? 'Seat Skin'
               : (rawCat === 'Tassel' || rawCat === 'Tassels') ? 'Tassel'
               : (rawCat === 'Mic Wave' || rawCat === 'Mic Waves') ? 'Mic Wave'
               : (rawCat === 'Profile Card' || rawCat === 'Profile Cards') ? 'Profile Card'
               : (rawCat === 'Room Card' || rawCat === 'Room Cards') ? 'Room Card'
               : (rawCat === 'Profile Entry' || rawCat === 'Profile Entries') ? 'Profile Entry'
               : rawCat;
+            if (cat === 'Theme') {
+              const location = String(item.themeLocation || item.metadata?.themeLocation || 'STORE')
+                .trim()
+                .toUpperCase()
+                .replace(/[ -]+/g, '_');
+              if (location === 'ROOM_TOOL') return;
+            }
             if (liveCatalog[cat]) {
-              if (cat === 'Frames' && (String(item.name || '').toLowerCase().includes('new frame') || item.id === '6ac148550edc3fe8b7f513fd')) {
-                liveCatalog[cat].unshift({ ...item, category: cat });
-              } else {
-                liveCatalog[cat].push({ ...item, category: cat });
-              }
+              liveCatalog[cat].push({ ...item, category: cat });
             }
           });
           setCatalog(liveCatalog);
@@ -600,8 +145,16 @@ export default function StoreScreen() {
           );
           setActiveCategory(previous => liveCatalog[previous]?.length ? previous : (firstItem?.category || previous));
         }
-      } catch (e) {
-        // Silently preserve local catalog on offline/network errors
+      } catch (error) {
+        if (isMounted) {
+          setCatalog(createEmptyCatalog());
+          setSelectedItem(null);
+          AlertService.show(
+            'Store',
+            error?.response?.data?.message || 'Store catalog load nahi ho saka.',
+            'warning',
+          );
+        }
       }
     };
     fetchCatalog();
@@ -611,7 +164,7 @@ export default function StoreScreen() {
   }, []));
 
   const currentDiamonds = Number(user?.diamonds || 0);
-  const items = catalog[activeCategory] || STORE_CATALOG[activeCategory] || [];
+  const items = catalog[activeCategory] || [];
   const selectedPriceOptions = getPriceOptions(selectedItem);
   const selectedPrice = selectedPriceOptions.find(option => option.days === selectedDurationDays)?.diamonds
     ?? selectedPriceOptions[0]?.diamonds
@@ -655,17 +208,15 @@ export default function StoreScreen() {
         durationDays: selectedDurationDays,
       });
 
-      if (activeCategory === 'Frames' || selectedItem?.category === 'Frames') {
-        setEquippedFrame?.(selectedItem);
-      }
-
       await fetchUserProfile();
       setConfirmModalVisible(false);
       setPreviewModalVisible(false);
 
       AlertService.show(
         'Purchase Successful 🎉',
-        `You purchased ${selectedItem.name} for ${selectedDurationDays} days. It is now equipped and available in your Profile / My Items.`,
+        isFreeStoreItem(selectedItem)
+          ? `${selectedItem.name} is now unlocked and available in your Profile / My Items.`
+          : `You purchased ${selectedItem.name} for ${selectedDurationDays} days. It is now equipped and available in your Profile / My Items.`,
         'success',
         [
           { text: 'View in My Items', onPress: () => navigation.navigate('MyItems') },
@@ -784,6 +335,51 @@ export default function StoreScreen() {
               </View>
             </View>
             <Text style={styles.themeDescText}>{item?.desc}</Text>
+          </View>
+        </LinearGradient>
+      );
+    }
+
+    // 3.1 SEAT SKIN PREVIEW
+    if (activeCategory === 'Seat Skin') {
+      const skinBg = item?.previewColor || '#F59E0B';
+      const imgSrc = item?.imageUrl || item?.image;
+      return (
+        <LinearGradient
+          colors={item?.bgColors || ['#0F172A', '#1E1B4B', '#312E81']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.previewCard}
+        >
+          <View style={styles.tasselPreviewRow}>
+            {/* 3D Seat Throne Display */}
+            <View style={styles.micSeatSimBox}>
+              <View style={[styles.micSeatCircle, { borderColor: skinBg, width: 68, height: 68, borderRadius: 34, overflow: 'hidden', borderWidth: 2 }]}>
+                {imgSrc ? (
+                  <Image
+                    source={typeof imgSrc === 'string' ? { uri: imgSrc } : imgSrc}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <MaterialCommunityIcons name={item?.icon || 'chair-rolling'} size={32} color={skinBg} />
+                )}
+              </View>
+              <View style={[styles.tasselDangle, { backgroundColor: skinBg }]}>
+                <MaterialCommunityIcons name="crown" size={14} color="#FFFFFF" />
+              </View>
+            </View>
+
+            <View style={styles.tasselTextCol}>
+              <Text style={styles.tasselTitle}>{item?.name || 'Luxury Seat Skin'}</Text>
+              <View style={styles.micWaveTagRow}>
+                <Text style={styles.tasselTagBadge}>{item?.tag || 'HD Room Seat'}</Text>
+                <View style={[styles.themeBadgeActive, { backgroundColor: `${skinBg}30`, borderColor: skinBg, borderWidth: 1 }]}>
+                  <Text style={[styles.themeBadgeActiveText, { color: skinBg }]}>Room Tools Ready</Text>
+                </View>
+              </View>
+              <Text style={styles.tasselDesc}>{item?.desc || 'Exclusive HD royal seat skin for your voice club rooms.'}</Text>
+            </View>
           </View>
         </LinearGradient>
       );
@@ -1063,6 +659,18 @@ export default function StoreScreen() {
                       showOnlineDot={false}
                     />
                   </View>
+                ) : activeCategory === 'Seat Skin' ? (
+                  <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor || '#F59E0B'}18`, overflow: 'hidden', borderWidth: 1.5, borderColor: item.borderColor || `${item.previewColor || '#F59E0B'}60` }]}>
+                    {item.imageUrl || item.image ? (
+                      <Image
+                        source={typeof (item.imageUrl || item.image) === 'string' ? { uri: item.imageUrl || item.image } : (item.imageUrl || item.image)}
+                        style={{ width: 58, height: 58, borderRadius: 29 }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <MaterialCommunityIcons name={item.icon || 'chair-rolling'} size={32} color={item.previewColor || '#F59E0B'} />
+                    )}
+                  </View>
                 ) : item.animationUrl || item.imageUrl ? (
                   <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor}18` }]}>
                     <StoreAsset item={item} style={styles.gridItemAsset} />
@@ -1090,8 +698,12 @@ export default function StoreScreen() {
                   }}
                   activeOpacity={0.8}
                 >
-                  <Icon name="diamond" size={12} color="#06B6D4" style={{ marginRight: 4 }} />
-                  <Text style={styles.buyBtnText}>From {Math.min(...getPriceOptions(item).map(option => option.diamonds)).toLocaleString()}</Text>
+                  {!isFreeStoreItem(item) && <Icon name="diamond" size={12} color="#06B6D4" style={{ marginRight: 4 }} />}
+                  <Text style={styles.buyBtnText}>
+                    {isFreeStoreItem(item)
+                      ? 'FREE'
+                      : `From ${Math.min(...getPriceOptions(item).map(option => option.diamonds)).toLocaleString()}`}
+                  </Text>
                 </TouchableOpacity>
               </TouchableOpacity>
             );
@@ -1217,7 +829,7 @@ export default function StoreScreen() {
                 <View style={styles.previewPriceValueWrap}>
                   <Icon name="diamond" size={14} color="#06B6D4" style={{ marginRight: 4 }} />
                   <Text style={styles.previewPriceValueText}>
-                    {selectedPrice.toLocaleString()} Diamonds
+                    {selectedPrice === 0 ? 'FREE' : `${selectedPrice.toLocaleString()} Diamonds`}
                   </Text>
                 </View>
               </View>
@@ -1245,7 +857,7 @@ export default function StoreScreen() {
                 >
                   <Icon name="bag-check" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
                   <Text style={styles.previewActionBtnText}>
-                    {purchasing ? 'Unlocking Item...' : `Unlock for ${selectedPrice.toLocaleString()} Diamonds`}
+                    {purchasing ? 'Unlocking Item...' : selectedPrice === 0 ? 'Unlock Free' : `Unlock for ${selectedPrice.toLocaleString()} Diamonds`}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -1302,7 +914,7 @@ export default function StoreScreen() {
               setDetailModalVisible(false);
               handleOpenPurchase(selectedItem);
             }}>
-              <Text style={styles.modalConfirmText}>Choose Duration & Buy</Text>
+              <Text style={styles.modalConfirmText}>{isFreeStoreItem(selectedItem) ? 'Unlock Free' : 'Choose Duration & Buy'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1354,7 +966,9 @@ export default function StoreScreen() {
               <Text style={styles.modalPriceLabel}>Cost:</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Icon name="diamond" size={16} color="#06B6D4" style={{ marginRight: 4 }} />
-                <Text style={styles.modalPriceValue}>{selectedPrice.toLocaleString()} Diamonds</Text>
+                <Text style={styles.modalPriceValue}>
+                  {selectedPrice === 0 ? 'FREE' : `${selectedPrice.toLocaleString()} Diamonds`}
+                </Text>
               </View>
             </View>
 

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useRef } from 'react';
 import { navigationRef } from '../utils/navigationRef';
 import { AlertService } from '../utils/AlertService';
 import { getSocket, initSocket } from '../sockets';
+import { apiUtil } from '../utils/apiUtil';
 import { requestMicrophonePermission } from '../utils/permissions';
 import {
   createAgoraRtcEngine,
@@ -31,6 +32,8 @@ export const VoiceRoomProvider = ({ children }) => {
   const [chatMessages, setChatMessages] = useState([]);
   const [activeEntryEffect, setActiveEntryEffect] = useState(null);
   const [activeVipEntry, setActiveVipEntry] = useState(null);
+  const [currentRoomTheme, setCurrentRoomTheme] = useState(null);
+  const [currentSeatSkin, setCurrentSeatSkin] = useState(null);
 
   // Agora State & Diagnostics
   const [agoraStatus, setAgoraStatus] = useState('disconnected'); // 'connecting' | 'connected' | 'error'
@@ -48,6 +51,9 @@ export const VoiceRoomProvider = ({ children }) => {
   const currentUserRef = useRef(null);
   const agoraEngineRef = useRef(null);
   const isAgoraConnectingRef = useRef(false);
+  const reconnectHandlerRef = useRef(null);
+  const seenJoinEventsRef = useRef(new Set());
+  const entryFallbackTimersRef = useRef(new Map());
 
   // Sync ref with current seat
   currentSeatIndexRef.current = currentSeatIndex;
@@ -170,7 +176,7 @@ export const VoiceRoomProvider = ({ children }) => {
   };
 
   // Music Mixing Controls
-  const startMusicMixing = (audioUri, trackName) => {
+  const startMusicMixing = (audioUri, trackName, fallbackUri = null) => {
     if (!audioUri) return;
     if (agoraEngineRef.current) {
       try {
@@ -182,6 +188,18 @@ export const VoiceRoomProvider = ({ children }) => {
         console.warn('🎵 [VoiceRoom] Started audio mixing for track:', trackName);
       } catch (err) {
         console.warn('⚠️ Start audio mixing error:', err?.message);
+        if (fallbackUri && fallbackUri !== audioUri) {
+          try {
+            console.warn('🎵 [VoiceRoom] Retrying audio mixing with fallback URI:', fallbackUri);
+            agoraEngineRef.current.startAudioMixing(fallbackUri, false, 1);
+            agoraEngineRef.current.adjustAudioMixingPublishVolume(musicVolume);
+            agoraEngineRef.current.adjustAudioMixingVolume(musicVolume);
+            setIsMusicPlaying(true);
+            setCurrentTrack(trackName || 'Audio Track');
+          } catch (retryErr) {
+            console.warn('⚠️ Audio mixing fallback also failed:', retryErr?.message);
+          }
+        }
       }
     }
   };
@@ -280,13 +298,23 @@ export const VoiceRoomProvider = ({ children }) => {
     sock.off('voice_room:user_joined');
     sock.off('voice_room:user_left');
     sock.off('voice_room:chat_message');
-    sock.off('voice_room:gift_received');
     sock.off('voice_room:reaction_received');
     sock.off('voice_room:error');
-    sock.off('entry:effect');
-    sock.off('room:entry');
+    sock.off('voice_room:theme_updated');
+    sock.off('voice_room:seat_skin_updated');
+    sock.off('voice_room:moved_to_audience');
+    sock.off('voice_room:user_kicked');
+    sock.off('voice_room:force_leave');
     sock.off('room:vip-entry');
     sock.off('vip:entry');
+    sock.off('entry:effect');
+    sock.off('room:entry');
+    if (reconnectHandlerRef.current) {
+      sock.off('connect', reconnectHandlerRef.current);
+      reconnectHandlerRef.current = null;
+    }
+    entryFallbackTimersRef.current.forEach((timer) => clearTimeout(timer));
+    entryFallbackTimersRef.current.clear();
   };
 
   // Generate empty seats
@@ -321,6 +349,9 @@ export const VoiceRoomProvider = ({ children }) => {
     setIsMinimized(false);
     setOnlineUsers([]);
     setOnlineCount(1);
+    seenJoinEventsRef.current.clear();
+    entryFallbackTimersRef.current.forEach((timer) => clearTimeout(timer));
+    entryFallbackTimersRef.current.clear();
 
     const roomId = String(roomData.id || roomData.roomId || ('room-' + Date.now()));
     activeRoomIdRef.current = roomId;
@@ -383,57 +414,18 @@ export const VoiceRoomProvider = ({ children }) => {
       {
         id: 'sys-rule-1',
         type: 'system',
-        text: '🛡️ Room Guidelines: Be respectful and chat in friendly manner.',
+        text: '🛡️ Room Guidelines: Please respect each other and chat in friendly manner. Abuse, sexual and violent contents are not allowed. All violators will be banned.',
       },
       {
-        id: 'sys-welcome-2',
-        type: 'system',
-        text: `✨ ${currentUser?.name || (actuallyOwner ? 'Host' : 'Guest')} entered the room! Welcome~ 🎉`,
-      },
-      {
-        id: 'm-owner-1',
-        type: 'chat',
-        isOwner: true,
-        isSvip: true,
-        svipLevel: 1,
-        level: 44,
-        charmLevel: 33,
-        clubName: 'SMCLUB',
-        user: 'AYSHA',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
-        text: '@Ansh Hey... Will you be my friend ?😊',
-      },
-      {
-        id: 'm-svip-2',
-        type: 'chat',
-        isSvip: true,
-        svipLevel: 3,
-        level: 22,
-        charmLevel: 15,
-        user: 'Majd',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-        text: 'hi',
-      },
-      {
-        id: 'm-gift-3',
-        type: 'gift',
-        user: 'Rocky',
-        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100',
-        to: 'Diya',
-        gift: 'Glowing Heart',
-        giftIcon: '💖',
-        count: 1,
-        combo: 1,
-        isSvip: true,
-        svipLevel: 1,
-      },
-      {
-        id: 'm-norm-4',
-        type: 'user',
-        user: 'Aarti',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-        text: 'Welcome everyone to the voice party! 🎶',
-        level: 8,
+        id: 'welcome-self-' + Date.now(),
+        type: 'welcome',
+        variant: 'self',
+        targetUserName: currentUser?.name || (actuallyOwner ? 'Host' : 'Guest'),
+        isOwner: actuallyOwner,
+        roomHostName: actuallyOwner ? (currentUser?.name || 'Customer Service') : (roomData.hostName || 'Customer Service'),
+        avatar: currentUser?.image || currentUser?.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+        equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
+        timestamp: Date.now(),
       },
     ]);
 
@@ -482,6 +474,12 @@ export const VoiceRoomProvider = ({ children }) => {
           if (data?.onlineCount !== undefined) {
             setOnlineCount(data.onlineCount);
           }
+          if (data && Object.prototype.hasOwnProperty.call(data, 'themeId')) {
+            setCurrentRoomTheme(data.themeAsset || data.themeId || null);
+          }
+          if (data?.seatSkinAsset || data?.seatSkinId) {
+            setCurrentSeatSkin(data.seatSkinAsset || data.seatSkinId);
+          }
         });
 
         // 2. Real-Time Seat Change (Any user took or vacated a seat)
@@ -518,6 +516,22 @@ export const VoiceRoomProvider = ({ children }) => {
           }
         });
 
+        // 4.1 Real-time Room Theme Updated (All users update instantly)
+        sock.on('voice_room:theme_updated', (data) => {
+          console.log('📡 [VoiceRoom] Room theme updated:', data?.themeId);
+          if (data && Object.prototype.hasOwnProperty.call(data, 'themeId')) {
+            setCurrentRoomTheme(data.themeAsset || data.themeId || null);
+          }
+        });
+
+        // 4.2 Real-time Seat Skin Updated (All seats update instantly)
+        sock.on('voice_room:seat_skin_updated', (data) => {
+          console.log('📡 [VoiceRoom] Room seat skin updated:', data?.seatSkinId);
+          if (data && Object.prototype.hasOwnProperty.call(data, 'seatSkinId')) {
+            setCurrentSeatSkin(data.seatSkinAsset || data.seatSkinId || null);
+          }
+        });
+
         // 5. User Joined Room
         sock.on('voice_room:user_joined', (data) => {
           console.log('📡 [VoiceRoom] User joined room:', data?.user?.name);
@@ -528,18 +542,71 @@ export const VoiceRoomProvider = ({ children }) => {
               data.user,
             ]);
           }
-          if (data?.user?.name) {
+          const isSelf = Boolean(
+            currentUserId &&
+            (String(data?.user?.userId) === String(currentUserId) ||
+             String(data?.user?.id) === String(currentUserId) ||
+             String(data?.user?._id) === String(currentUserId))
+          );
+          const joinedUser = data?.user || {};
+          const fallbackEntry =
+            joinedUser.equippedEntryAsset ||
+            joinedUser.equippedEntryEffect ||
+            joinedUser.equippedEntry ||
+            null;
+          const fallbackEntrance =
+            joinedUser.equippedEntranceAsset || joinedUser.equippedEntrance || null;
+          if (fallbackEntry || fallbackEntrance) {
+            const entryUserKey = String(
+              joinedUser.userId || joinedUser.id || joinedUser._id || joinedUser.name || 'user',
+            );
+            const previousTimer = entryFallbackTimersRef.current.get(entryUserKey);
+            if (previousTimer) clearTimeout(previousTimer);
+            const fallbackTimer = setTimeout(() => {
+              entryFallbackTimersRef.current.delete(entryUserKey);
+              setActiveEntryEffect({
+                entryId: `entry-fallback:${data.eventId || entryUserKey}:${Date.now()}`,
+                roomId,
+                userId: entryUserKey,
+                user: joinedUser,
+                hasEntry: true,
+                entry: fallbackEntry,
+                effect: fallbackEntry,
+                entrance: fallbackEntrance,
+                tassel:
+                  joinedUser.equippedTasselAsset || joinedUser.equippedTassel || null,
+                tagText: fallbackEntry?.tagText || fallbackEntry?.tag || 'HAS ENTERED',
+                timestamp: Date.now(),
+              });
+            }, 1500);
+            entryFallbackTimersRef.current.set(entryUserKey, fallbackTimer);
+          }
+          if (!isSelf && data?.user?.name) {
+            const joinEventId =
+              data.eventId ||
+              `join:${data.user.userId || data.user.id || data.user.name}`;
+            if (seenJoinEventsRef.current.has(joinEventId)) return;
+            seenJoinEventsRef.current.add(joinEventId);
+            if (seenJoinEventsRef.current.size > 200) {
+              const first = seenJoinEventsRef.current.values().next().value;
+              seenJoinEventsRef.current.delete(first);
+            }
             setJoinedNotification({
               ...data.user,
-              id: 'join-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+              id: joinEventId,
               timestamp: Date.now(),
             });
             setChatMessages((prev) => [
               ...prev,
               {
-                id: 'sys-join-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-                type: 'system',
-                text: `✨ ${data.user.name} joined the room!`,
+                id: `welcome-${joinEventId}`,
+                type: 'welcome',
+                variant: 'joined',
+                targetUserName: data.user.name,
+                isOwner: false,
+                roomHostName: actuallyOwner ? (currentUser?.name || 'Customer Service') : (roomData.hostName || 'Customer Service'),
+                avatar: data.user.image || data.user.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+                equippedFrame: data.user.equippedFrameAsset || data.user.equippedFrame || null,
                 timestamp: Date.now(),
               },
             ]);
@@ -603,6 +670,10 @@ export const VoiceRoomProvider = ({ children }) => {
         // 7. Chat Message Broadcast
         sock.on('voice_room:chat_message', (msg) => {
           if (msg) {
+            // Ignore redundant text-based gift messages if any
+            if (msg.type === 'gift' && !msg.giftImage && !msg.transactionId) {
+              return;
+            }
             setChatMessages((prev) => {
               if (prev.some((m) => m.id === msg.id)) return prev;
               return [...prev, msg];
@@ -610,51 +681,18 @@ export const VoiceRoomProvider = ({ children }) => {
           }
         });
 
-        // 7.1 Real-Time Gift Broadcast received from any user in room
-        sock.on('voice_room:gift_received', (data) => {
-          if (data?.gift) {
-            const g = data.gift;
-            const senderId = g.senderId || data.senderId || data.sender?.userId;
-            const currentMyId = currentUserRef.current?.userId || currentUserRef.current?._id || currentUserRef.current?.id;
-            if (senderId && currentMyId && String(senderId) === String(currentMyId)) {
-              return; // Already added locally by sender
-            }
-
-            const giftMsgId = data.transactionId || ('g-sock-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4));
-            setChatMessages((prev) => {
-              if (prev.some((m) => m.id === giftMsgId || (data.transactionId && m.transactionId === data.transactionId))) {
-                return prev;
-              }
-              const giftMsg = {
-                id: giftMsgId,
-                transactionId: data.transactionId,
-                type: 'gift',
-                user: g.senderName || data.sender?.name || 'User',
-                avatar: g.senderAvatar || data.sender?.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-                to: g.receiverName || data.receiver?.name || 'Host',
-                gift: g.giftName || 'Gift',
-                giftIcon: g.giftIcon || '💖',
-                giftImage: g.giftImage,
-                count: g.combo || g.count || 1,
-                combo: g.combo || g.count || 1,
-                isSvip: true,
-                svipLevel: 1,
-              };
-              return [...prev, giftMsg];
-            });
-          }
-        });
-
         // 8. Reconnect recovery: re-emit voice_room:join if connection was interrupted
-        sock.on('connect', () => {
+        const reconnectHandler = () => {
           if (activeRoomIdRef.current) {
             console.log('📡 [VoiceRoom] Socket reconnected, re-joining room channel:', activeRoomIdRef.current);
             sock.emit('voice_room:join', {
               roomId: activeRoomIdRef.current,
               user: {
+                id: currentUser?._id || currentUser?.id || '',
                 userId: currentUserId || '10000001',
                 name: currentUser?.name || (actuallyOwner ? 'Host' : 'Guest'),
-                avatar: currentUser?.avatar || currentUser?.image || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+                image: currentUser?.image || currentUser?.avatar || roomData.coverImage || '',
+                avatar: currentUser?.image || currentUser?.avatar || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
                 gender: currentUser?.gender || 'male',
                 level: currentUser?.level || 1,
               },
@@ -663,7 +701,9 @@ export const VoiceRoomProvider = ({ children }) => {
               roomTitle: roomData.title,
             });
           }
-        });
+        };
+        reconnectHandlerRef.current = reconnectHandler;
+        sock.on('connect', reconnectHandler);
 
         // 9. Error notifications
         sock.on('voice_room:error', (err) => {
@@ -672,17 +712,29 @@ export const VoiceRoomProvider = ({ children }) => {
           }
         });
 
-        // 10. Room Entry Effects & VIP Entrance
-        sock.on('entry:effect', (data) => {
-          console.log('📡 [VoiceRoom] entry:effect received:', data?.effect?.name);
+        // 10. Room Entry & VIP Entry effects
+        const acceptEntryEffect = (data, eventName) => {
+          const entryUserKey = String(
+            data?.user?.userId || data?.userId || data?.user?.id || data?.user?._id || '',
+          );
+          if (entryUserKey) {
+            const fallbackTimer = entryFallbackTimersRef.current.get(entryUserKey);
+            if (fallbackTimer) clearTimeout(fallbackTimer);
+            entryFallbackTimersRef.current.delete(entryUserKey);
+          }
+          console.warn(`📡 [VoiceRoom] ${eventName} received in Context:`, data?.entryId, data?.user?.name);
           setActiveEntryEffect(data);
+        };
+        sock.on('entry:effect', (data) => {
+          acceptEntryEffect(data, 'entry:effect');
         });
         sock.on('room:entry', (data) => {
-          setActiveEntryEffect(data);
+          acceptEntryEffect(data, 'room:entry');
         });
         sock.on('room:vip-entry', (data) => {
           console.log('📡 [VoiceRoom] room:vip-entry received:', data?.vipId, data?.user?.name);
-          setActiveVipEntry(data);
+          // Modern VIP/KOK arrivals are already rendered by the full-screen entry engine.
+          if (!data?.effect && !data?.entry) setActiveVipEntry(data);
         });
         sock.on('vip:entry', (data) => {
           setActiveVipEntry(data);
@@ -692,9 +744,11 @@ export const VoiceRoomProvider = ({ children }) => {
         sock.emit('voice_room:join', {
           roomId,
           user: {
+            id: currentUser?._id || currentUser?.id || '',
             userId: currentUserId || '10000001',
             name: currentUser?.name || (actuallyOwner ? 'Host' : 'Guest'),
-            avatar: currentUser?.avatar || currentUser?.image || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+            image: currentUser?.image || currentUser?.avatar || roomData.coverImage || '',
+            avatar: currentUser?.image || currentUser?.avatar || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
             gender: currentUser?.gender || 'male',
             level: currentUser?.level || 1,
             equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
@@ -792,9 +846,11 @@ export const VoiceRoomProvider = ({ children }) => {
         roomId,
         seatIndex: newSeatIndex,
         user: {
+          id: currentUser?._id || currentUser?.id || '',
           userId: currentUserId || '10000055',
           name: currentUser?.name || 'You',
-          avatar: currentUser?.avatar || 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
+          image: currentUser?.image || currentUser?.avatar || '',
+          avatar: currentUser?.image || currentUser?.avatar || 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
           gender: currentUser?.gender || 'male',
           level: currentUser?.level || 8,
           equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
@@ -955,9 +1011,10 @@ export const VoiceRoomProvider = ({ children }) => {
 
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
     const sock = socketRef.current || getSocket();
+    const resolvedCurrentUser = currentUser || currentUserRef.current;
     const userPayload = {
-      userId: currentUser?.userId || currentUser?._id || currentUserId || 'guest',
-      name: currentUser?.name || 'User',
+      userId: resolvedCurrentUser?.userId || resolvedCurrentUser?._id || resolvedCurrentUser?.id || 'guest',
+      name: resolvedCurrentUser?.name || 'User',
     };
 
     if (sock && roomId) {
@@ -1025,20 +1082,43 @@ export const VoiceRoomProvider = ({ children }) => {
   };
 
   // Send real-time chat message via socket
-  const broadcastChatMessage = (msg) => {
+  const broadcastChatMessage = (msg, extraBubble = null) => {
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
     const sock = socketRef.current || getSocket();
     if (sock && roomId && msg) {
-      sock.emit('voice_room:send_chat', { roomId, message: msg });
+      const enrichedMsg = {
+        ...msg,
+        chatBubble: extraBubble || msg.chatBubble || currentUserRef.current?.equippedChatBubbleAsset || currentUserRef.current?.equippedChatBubble || null,
+        chatBubbleId: msg.chatBubbleId || currentUserRef.current?.equippedChatBubble || null,
+      };
+      sock.emit('voice_room:send_chat', { roomId, message: enrichedMsg });
     }
   };
 
-  // Send real-time gift via socket
-  const broadcastGift = (giftData) => {
+  // Update Room Theme (Owner Only - updates real time for all users)
+  const updateRoomTheme = (theme) => {
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
     const sock = socketRef.current || getSocket();
-    if (sock && roomId && giftData) {
-      sock.emit('voice_room:send_gift', { roomId, gift: giftData });
+    if (sock && roomId && theme) {
+      sock.emit('voice_room:update_theme', {
+        roomId,
+        themeId: theme.itemId || theme.id || theme._id,
+      });
+    }
+  };
+
+  // Update Room Seat Skin (Owner Only - updates real time for all seats)
+  const updateRoomSeatSkin = (seatSkin) => {
+    const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
+    const sock = socketRef.current || getSocket();
+    if (sock && roomId && seatSkin) {
+      const skinId = seatSkin.itemId || seatSkin.id || seatSkin._id;
+      setCurrentSeatSkin(seatSkin);
+      sock.emit('voice_room:update_seat_skin', {
+        roomId,
+        seatSkinId: skinId,
+        seatSkinAsset: seatSkin,
+      });
     }
   };
 
@@ -1220,7 +1300,6 @@ export const VoiceRoomProvider = ({ children }) => {
         lockAllSeats,
         unlockAllSeats,
         broadcastChatMessage,
-        broadcastGift,
         broadcastReaction,
         agoraStatus,
         agoraErrorMessage,
@@ -1235,6 +1314,10 @@ export const VoiceRoomProvider = ({ children }) => {
         setMusicVolume,
         setMicVolume,
         setRoomSeatCount,
+        currentRoomTheme,
+        currentSeatSkin,
+        updateRoomTheme,
+        updateRoomSeatSkin,
       }}
     >
       {children}

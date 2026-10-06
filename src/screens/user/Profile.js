@@ -155,18 +155,44 @@ export default function ProfileScreen() {
                   style={{ marginLeft: 6 }}
                 />
               )}
-              <View style={styles.levelBadge}>
-                <Text style={styles.levelBadgeText}>Lv.{user?.level || 6}</Text>
-              </View>
+              {/* Wealth Level */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Level', { initialTab: 'wealth' })}
+                style={[styles.levelBadge, { backgroundColor: '#F59E0B' }]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.levelBadgeText}>💎 Lv.{user?.wealthLevel || user?.level || 1}</Text>
+              </TouchableOpacity>
+              {/* Charm Level */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Level', { initialTab: 'charm' })}
+                style={[styles.levelBadge, { backgroundColor: '#EC4899', marginLeft: 4 }]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.levelBadgeText}>🌸 Lv.{user?.charmLevel || 1}</Text>
+              </TouchableOpacity>
+              {/* Equipped Medal / Badge */}
+              {Boolean(user?.equippedBadge) && (
+                <View style={[styles.levelBadge, { backgroundColor: '#7C3AED', marginLeft: 4 }]}>
+                  <Text style={styles.levelBadgeText} numberOfLines={1}>🏅 {String(user.equippedBadge)}</Text>
+                </View>
+              )}
             </View>
 
-            {/* ID Row with Copy Button */}
+            {/* ID Row with Copy Button & Custom ID styling */}
             <TouchableOpacity
               style={styles.idRow}
               onPress={handleCopyId}
               activeOpacity={0.7}
             >
-              <Text style={styles.userIdText}>ID: {user?.userId || user?._id?.slice(-8) || '---'}</Text>
+              <Text style={styles.userIdText}>
+                ID: {user?.userId || user?._id?.slice(-8) || '---'}
+              </Text>
+              {Boolean(user?.equippedCustomId) && (
+                <View style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, marginLeft: 6, borderWidth: 0.8, borderColor: '#F59E0B' }}>
+                  <Text style={{ color: '#D97706', fontSize: 10, fontWeight: '800' }}>⭐ {String(user.equippedCustomId)}</Text>
+                </View>
+              )}
               <Ionicons
                 name="copy-outline"
                 size={14}
@@ -185,7 +211,7 @@ export default function ProfileScreen() {
 
               <View style={styles.countryTag}>
                 <Text style={styles.countryTagText}>
-                  🌍 {user?.country || 'India 🇮🇳'}
+                  🌍 {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() || 'India 🇮🇳' : (user?.country || 'India 🇮🇳')}
                 </Text>
               </View>
 
@@ -304,7 +330,9 @@ export default function ProfileScreen() {
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailKey}>Region / Country</Text>
-                <Text style={styles.detailVal}>{user?.country || 'India 🇮🇳'}</Text>
+                <Text style={styles.detailVal}>
+                  {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() || 'India 🇮🇳' : (user?.country || 'India 🇮🇳')}
+                </Text>
               </View>
 
               <View style={styles.detailRow}>
@@ -457,7 +485,7 @@ export default function ProfileScreen() {
                     <Text style={{ fontSize: 28 }}>🌸</Text>
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.decorItemName}>{equippedFrame || user?.equippedFrame || 'Rose frame'}</Text>
+                    <Text style={styles.decorItemName}>{equippedFrame || user?.equippedFrame || 'Default'}</Text>
                     <Text style={styles.decorItemType}>Avatar Frame • Equipped</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color="#94A3B8" />

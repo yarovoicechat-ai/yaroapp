@@ -29,7 +29,7 @@ export const pickAvatarCamera = async (cameraType = 'front') => {
     maxWidth: 1200,
     maxHeight: 1200,
     saveToPhotos: false,
-    includeBase64: false,
+    includeBase64: true,
   });
 
   if (result.didCancel) return null;
@@ -48,6 +48,7 @@ export const pickAvatarCamera = async (cameraType = 'front') => {
     width: asset.width,
     height: asset.height,
     fileSize: asset.fileSize,
+    base64: asset.base64 || null,
   };
 };
 
@@ -60,7 +61,7 @@ export const pickAvatarGallery = async () => {
     quality: 0.85,
     maxWidth: 1200,
     maxHeight: 1200,
-    includeBase64: false,
+    includeBase64: true,
   });
 
   if (result.didCancel) return null;
@@ -79,5 +80,6 @@ export const pickAvatarGallery = async () => {
     width: asset.width,
     height: asset.height,
     fileSize: asset.fileSize,
+    base64: asset.base64 || null,
   };
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { AlertService } from '../../utils/AlertService';
 import AvatarWithFrame from '../AvatarWithFrame';
+import { AuthContext } from '../../context/AuthProvider';
 
 const { width } = Dimensions.get('window');
 
@@ -45,6 +46,7 @@ export default function RoomUserProfileModal({
   mutedUsers = [],
   bottomSafePadding = 16,
 }) {
+  const { user: authUser, equippedFrame } = useContext(AuthContext) || {};
   if (!user && !visible) return null;
 
   const targetName = user?.name || user?.username || 'Yaro User';
@@ -135,8 +137,12 @@ export default function RoomUserProfileModal({
           {/* Floating Avatar Popping Out Above Card */}
           <View style={styles.avatarWrap}>
             <AvatarWithFrame
-              user={user}
-              frame={user?.equippedFrameAsset || user?.equippedFrame || (isSelf ? currentUserFrame : null)}
+              user={isSelf ? (authUser || user) : user}
+              frame={
+                (isSelf
+                  ? (authUser?.equippedFrameAsset || authUser?.equippedFrame || equippedFrame || currentUserFrame)
+                  : (user?.equippedFrameAsset || user?.equippedFrame)) || null
+              }
               size={84}
               showOnlineDot={false}
             />

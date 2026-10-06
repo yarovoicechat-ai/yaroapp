@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { AlertService } from '../../utils/AlertService';
 import { pickAvatarCamera, pickAvatarGallery } from '../../utils/avatarMedia';
 import { uploadToCloudinary } from '../../utils/cloudinaryUtil';
+import AvatarWithFrame from '../../components/AvatarWithFrame';
 
 const { width } = Dimensions.get('window');
 
@@ -32,7 +33,7 @@ const EditProfile = () => {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 36);
-  const { user, fetchUserProfile } = useContext(AuthContext);
+  const { user, setUser, fetchUserProfile, equippedFrame } = useContext(AuthContext);
   const navigation = useNavigation();
   const { t } = useTranslation();
 
@@ -53,7 +54,7 @@ const EditProfile = () => {
       setUserId(user.userId?.toString() || '');
       setBio(user.bio || '');
       setSelectedLanguages(user.language || []);
-      setSelectedAvatar(user.image || '');
+      setSelectedAvatar(user.image || user.avatar || user.profilePic || '');
       fetchAvatars(user.gender || 'male');
       if (user.role === 'host') {
         fetchDefaultBios();
@@ -98,50 +99,93 @@ const EditProfile = () => {
 
   const processPhotoUpload = async source => {
     try {
-      let captured = null;
-      if (source === 'camera') {
-        captured = await pickAvatarCamera('front');
-      } else {
-        captured = await pickAvatarGallery();
-      }
-
+      const captured =
+        source === 'camera'
+          ? await pickAvatarCamera('front')
+          : await pickAvatarGallery();
       if (!captured) return;
 
       AlertService.show('Uploading', 'Uploading avatar...', 'info');
-      const uploadedUrl = await uploadToCloudinary(captured, 'avatar');
+      let response;
 
-      // Update avatar state immediately for instant feedback
+      // Tier 1: Cloudinary upload
+      try {
+        const cloudUrl = await uploadToCloudinary(captured, 'avatar');
+        response = await apiUtil.post('/avatar-request', {
+          requestedAvatar: cloudUrl,
+        });
+      } catch (cloudError) {
+        console.warn(
+          'Cloudinary unavailable, trying direct multipart avatar upload:',
+          cloudError?.message,
+        );
+
+        // Tier 2: Direct multipart upload to backend
+        try {
+          const extension = String(captured.name || captured.uri || '').split('.').pop()?.toLowerCase() || 'jpg';
+          const mimeType =
+            captured.type ||
+            (extension === 'png'
+              ? 'image/png'
+              : extension === 'webp'
+                ? 'image/webp'
+                : 'image/jpeg');
+          const formData = new FormData();
+          formData.append('avatar', {
+            uri: captured.uri,
+            type: mimeType,
+            name: captured.name || `avatar_${Date.now()}.${extension}`,
+          });
+          response = await apiUtil.post('/avatar-request', formData);
+        } catch (multipartError) {
+          console.warn(
+            'Multipart upload failed, trying Base64 JSON fallback:',
+            multipartError?.message,
+          );
+
+          // Tier 3: Direct Base64 JSON data URI
+          if (captured.base64) {
+            const mimeType = captured.type || 'image/jpeg';
+            response = await apiUtil.post('/avatar-request', {
+              requestedAvatar: `data:${mimeType};base64,${captured.base64}`,
+            });
+          } else {
+            throw multipartError;
+          }
+        }
+      }
+
+      const payload = response?.data?.data;
+      const uploadedUrl =
+        payload?.avatarUrl ||
+        payload?.image ||
+        payload?.profilePic ||
+        response?.data?.avatarUrl;
+      if (!response?.data?.success || !uploadedUrl) {
+        throw new Error(response?.data?.message || 'Avatar upload failed.');
+      }
+
       setSelectedAvatar(uploadedUrl);
-
-      // Submit avatar update (zero verification required)
-      const res = await apiUtil.post('/avatar-request', {
-        requestedAvatar: uploadedUrl,
+      setUser((previous) => ({
+        ...(previous || {}),
+        image: uploadedUrl,
         avatar: uploadedUrl,
         profilePic: uploadedUrl,
-        image: uploadedUrl,
-      });
-
-      const targetId = userId || user?._id || user?.userId;
-      if (targetId) {
-        await apiUtil.patch(`/user/${targetId}`, {
-          image: uploadedUrl,
-          profilePic: uploadedUrl,
-        }).catch(() => {});
-      }
-
-      if (res.data?.success) {
-        await fetchUserProfile();
+      }));
+      await fetchUserProfile();
+      setPhotoPickerVisible(false);
+      AlertService.show(
+        'Avatar Updated',
+        'Aapka avatar successfully update ho gaya hai!',
+        'success',
+      );
+    } catch (error) {
+      if (!String(error?.message || '').toLowerCase().includes('cancelled')) {
         AlertService.show(
-          'Avatar Updated',
-          'Aapka avatar successfully update ho gaya hai!',
-          'success'
+          'Error',
+          error?.response?.data?.message || error?.message || 'Avatar upload failed',
+          'error',
         );
-      } else {
-        AlertService.show('Upload Failed', res.data?.message || 'Failed to update avatar', 'error');
-      }
-    } catch (err) {
-      if (err.message && !err.message.includes('cancelled')) {
-        AlertService.show('Error', err.message || 'Avatar upload failed', 'error');
       }
     }
   };
@@ -168,12 +212,16 @@ const EditProfile = () => {
     setSaving(true);
     try {
       const targetId = userId || user?._id || user?.userId;
-      const res = await apiUtil.patch(`/user/${targetId}`, {
+      const updatePayload = {
         name: trimmedName.slice(0, 20),
         bio,
         language: selectedLanguages,
-        image: selectedAvatar,
-      });
+      };
+      if (selectedAvatar && selectedAvatar.trim() !== '') {
+        updatePayload.image = selectedAvatar;
+      }
+
+      const res = await apiUtil.patch(`/user/${targetId}`, updatePayload);
 
       if (res.data.success) {
         await fetchUserProfile();
@@ -246,20 +294,15 @@ const EditProfile = () => {
             style={styles.avatarCardGradient}
           >
             <View style={styles.avatarGlowContainer}>
-              <LinearGradient
-                colors={['#8B5CF6', '#EC4899', '#06B6D4']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.avatarGradientRing}
-              >
-                <View style={styles.avatarInnerWrapper}>
-                  <Image
-                    source={{ uri: selectedAvatar || 'https://via.placeholder.com/120' }}
-                    style={styles.avatarImage}
-                    resizeMode="cover"
-                  />
-                </View>
-              </LinearGradient>
+              <View style={styles.avatarInnerWrapper}>
+                <AvatarWithFrame
+                  user={user}
+                  avatarUri={selectedAvatar || user?.avatar || user?.image}
+                  frame={user?.equippedFrameAsset || equippedFrame || null}
+                  size={105}
+                  showOnlineDot={false}
+                />
+              </View>
 
               {/* Camera Trigger Badge */}
               <TouchableOpacity
@@ -719,11 +762,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   avatarInnerWrapper: {
-    width: 115,
-    height: 115,
-    borderRadius: 57.5,
-    backgroundColor: '#F1F5F9',
-    overflow: 'hidden',
+    width: 120,
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarImage: {
     width: '100%',

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SvgUri } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Video from 'react-native-video';
 
 export const NativeSvgaPlayer = Platform.OS === 'android'
   ? requireNativeComponent('SvgaPlayerView')
@@ -19,6 +20,7 @@ const inferType = (uri, explicitType) => {
   if (cleanUri.endsWith('.svg')) return 'svg';
   if (cleanUri.endsWith('.gif')) return 'gif';
   if (cleanUri.endsWith('.webp')) return 'webp';
+  if (/\.(?:mp4|m4v|mov)$/.test(cleanUri)) return 'video';
   if (explicitType) return String(explicitType).toLowerCase();
   return 'image';
 };
@@ -29,6 +31,8 @@ const GiftMedia = ({
   style,
   resizeMode = 'contain',
   fallbackSource,
+  repeat = true,
+  muted = true,
 }) => {
   const [failed, setFailed] = useState(false);
   const type = useMemo(() => inferType(source, mediaType), [source, mediaType]);
@@ -57,6 +61,23 @@ const GiftMedia = ({
         uri={source}
         width={width}
         height={height}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  if (type === 'video' || type === 'mp4') {
+    return (
+      <Video
+        source={{ uri: source }}
+        style={style}
+        resizeMode={resizeMode}
+        repeat={repeat}
+        muted={muted}
+        paused={false}
+        playInBackground={false}
+        playWhenInactive={false}
+        ignoreSilentSwitch="ignore"
         onError={() => setFailed(true)}
       />
     );

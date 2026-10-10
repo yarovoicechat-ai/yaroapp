@@ -185,21 +185,58 @@ export default function AvatarWithFrame({
 
   const frameSize = Math.round(size * 1.25);
 
+  const getFrameColor = () => {
+    if (frameName.includes('rose') || frameName.includes('sakura') || frameName.includes('pink')) return '#EC4899';
+    if (frameName.includes('wing') || frameName.includes('gold') || frameName.includes('crown') || frameName.includes('king') || frameName.includes('royal')) return '#F59E0B';
+    if (frameName.includes('neon') || frameName.includes('cyber') || frameName.includes('rockstar')) return '#06B6D4';
+    if (frameName.includes('dragon') || frameName.includes('ruby') || frameName.includes('fire')) return '#EF4444';
+    if (frameName.includes('crystal') || frameName.includes('purple')) return '#A855F7';
+    return resolvedFrame?.previewColor || resolvedFrame?.borderColor || '#F59E0B';
+  };
+
   return (
     <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
       {/* Inner Avatar Image - Pure Borderless Circle */}
-      <Image
-        source={avatar}
+      <View
         style={[
-          styles.avatarImage,
+          styles.avatarCircleMask,
           {
             width: size,
             height: size,
             borderRadius: size / 2,
           },
         ]}
-        resizeMode="cover"
-      />
+      >
+        <Image
+          source={avatar}
+          style={[
+            styles.avatarImage,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+            },
+          ]}
+          resizeMode="cover"
+        />
+      </View>
+
+      {/* Luxury Circular Frame Border (Always present when user has an active frame) */}
+      {hasFrame && (
+        <View
+          style={[
+            styles.circularFrameRing,
+            {
+              width: size + 4,
+              height: size + 4,
+              borderRadius: (size + 4) / 2,
+              borderColor: getFrameColor(),
+              borderWidth: Math.max(2.5, Math.round(size * 0.05)),
+            },
+          ]}
+          pointerEvents="none"
+        />
+      )}
 
       {/* Uploaded Animated SVGA or Static Frame Overlay */}
       {uploadedFrame && (uploadedFrame.animationUrl || uploadedFrame.imageUrl) ? (
@@ -216,19 +253,18 @@ export default function AvatarWithFrame({
           }}
           pointerEvents="none"
         >
-          {uploadedFrame.imageUrl ? (
-            <Image
-              source={{ uri: uploadedFrame.imageUrl }}
-              style={StyleSheet.absoluteFillObject}
-              resizeMode="contain"
-            />
-          ) : null}
           {uploadedFrame.animationUrl ? (
             <SvgaView
               source={uploadedFrame.animationUrl}
               style={StyleSheet.absoluteFillObject}
               loops={0}
               fallbackImage={uploadedFrame.imageUrl}
+            />
+          ) : uploadedFrame.imageUrl ? (
+            <Image
+              source={{ uri: uploadedFrame.imageUrl }}
+              style={StyleSheet.absoluteFillObject}
+              resizeMode="contain"
             />
           ) : null}
         </View>
@@ -258,6 +294,22 @@ export default function AvatarWithFrame({
 }
 
 const styles = StyleSheet.create({
+  avatarCircleMask: {
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circularFrameRing: {
+    position: 'absolute',
+    backgroundColor: 'transparent',
+    zIndex: 9,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 4,
+  },
   avatarImage: {
     backgroundColor: '#F1F5F9',
   },

@@ -78,26 +78,19 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     });
     setShowAsset(false);
     setShowTassel(false);
-    bannerX.setValue(-48);
-    bannerOpacity.setValue(0);
+    bannerX.setValue(width + 20);
+    bannerOpacity.setValue(1);
     assetX.setValue(isAnimatedAsset ? 0 : 40);
     assetScale.setValue(isAnimatedAsset ? 1 : 0.7);
     assetOpacity.setValue(0);
     tasselY.setValue(-24);
     tasselOpacity.setValue(0);
 
-    Animated.parallel([
-      Animated.timing(bannerX, {
-        toValue: 0,
-        duration: 550,
-        useNativeDriver: true,
-      }),
-      Animated.timing(bannerOpacity, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    Animated.timing(bannerX, {
+      toValue: -width - 250,
+      duration: 5500,
+      useNativeDriver: true,
+    }).start();
 
     const assetTimer = hasVisualAsset
       ? setTimeout(() => {
@@ -311,23 +304,23 @@ const styles = StyleSheet.create({
   },
   banner: {
     position: 'absolute',
-    top: height * 0.08,
-    width: width - 24,
-    borderRadius: 24,
+    top: 310,
+    left: 0,
+    borderRadius: 22,
     overflow: 'hidden',
     zIndex: 10000,
     elevation: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.6,
-    shadowRadius: 10,
+    shadowRadius: 8,
   },
   bannerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 22,
     borderWidth: 1.2,
     borderColor: 'rgba(255,255,255,0.45)',
   },

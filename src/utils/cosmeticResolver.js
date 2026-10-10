@@ -100,7 +100,10 @@ export const resolveFrameAsset = (user, explicitFrame = null) =>
       user?.equippedProfileFrame ||
       user?.frameAsset ||
       user?.equippedFrame ||
+      user?.equippedAvatarFrame ||
+      user?.profileFrame ||
       user?.frame ||
+      user?.frameId ||
       null,
   );
 
@@ -341,7 +344,7 @@ const normalizeTheme = (value) => {
     coverImage:
       asset.coverImage !== undefined
         ? asset.coverImage
-        : (asset.imageUrl || asset.backgroundImage || metadata.coverImage || (isDefault ? DEFAULT_ROOM_BG : null)),
+        : (asset.imageUrl || asset.animationUrl || asset.backgroundImage || metadata.coverImage || (isDefault ? DEFAULT_ROOM_BG : null)),
     bgColors:
       asset.bgColors || asset.backgroundColors || metadata.bgColors || DEFAULT_ROOM_THEME.bgColors,
     previewColor:

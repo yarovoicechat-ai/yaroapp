@@ -17,7 +17,10 @@ export default function ReceiverSelector({
   isMultiSelectMode = false,
 }) {
   const isSelected = (id) => {
-    return selectedReceivers.some((r) => String(r.id) === String(id) || String(r.userId) === String(id));
+    if (!id || id === 'all') return false;
+    return selectedReceivers.some(
+      (r) => !r.isAll && r.id !== 'all' && (String(r.id) === String(id) || String(r.userId) === String(id))
+    );
   };
 
   const isAllSelected = selectedReceivers.some((r) => r.isAll || r.id === 'all');
@@ -79,9 +82,9 @@ export default function ReceiverSelector({
           </Text>
         </TouchableOpacity>
 
-        {/* Seated Speakers */}
+        {/* Seated Speakers (excluding host duplicate) */}
         {seats
-          .filter((s) => s.user)
+          .filter((s) => s.user && s.seatIndex !== 0 && String(s.user.userId || s.user.id || s.user._id) !== String(hostUser.id))
           .map((s, idx) => {
             const receiverObj = {
               id: s.user.id || s.user._id || s.user.userId,

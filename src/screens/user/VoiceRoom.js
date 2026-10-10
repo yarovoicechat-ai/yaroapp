@@ -269,41 +269,25 @@ export default function VoiceRoomScreen() {
     );
     if (joinedNotification?.name && !isSelf) {
       setActiveJoinBanner(joinedNotification);
-      joinBannerAnim.setValue(-width);
-      joinBannerOpacity.setValue(0);
+      joinBannerAnim.setValue(width + 20);
+      joinBannerOpacity.setValue(1);
 
-      Animated.parallel([
-        Animated.spring(joinBannerAnim, {
-          toValue: 0,
-          friction: 6,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.timing(joinBannerOpacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // Bullet message entrance: fly smoothly across from RIGHT to LEFT, then disappear
+      const bulletAnim = Animated.timing(joinBannerAnim, {
+        toValue: -width - 250,
+        duration: 5500,
+        useNativeDriver: true,
+      });
 
-      const timer = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(joinBannerAnim, {
-            toValue: -width,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(joinBannerOpacity, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
+      bulletAnim.start(({ finished }) => {
+        if (finished) {
           setActiveJoinBanner(null);
-        });
-      }, 3500);
+        }
+      });
 
-      return () => clearTimeout(timer);
+      return () => {
+        bulletAnim.stop();
+      };
     }
   }, [joinedNotification, user?.userId]);
 
@@ -1429,7 +1413,7 @@ export default function VoiceRoomScreen() {
                             width: circleSize,
                             height: circleSize,
                             borderRadius: circleSize / 2,
-                            borderWidth: 1.5,
+                            borderWidth: (seat.user?.equippedFrameAsset || seat.user?.equippedFrame) ? 0 : 1.5,
                             borderColor: activeSeatSkin?.borderColor || 'rgba(255, 255, 255, 0.3)',
                           },
                         ]}>
@@ -2893,9 +2877,8 @@ const styles = StyleSheet.create({
   },
   roomJoinBanner: {
     position: 'absolute',
-    top: Math.round(height * 0.43),
-    left: 9,
-    width: Math.min(width * 0.78, 330),
+    top: 260,
+    left: 0,
     zIndex: 10800,
     elevation: 22,
     shadowColor: '#F59E0B',
@@ -2906,11 +2889,11 @@ const styles = StyleSheet.create({
   roomJoinBannerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: 'rgba(254, 240, 138, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 5.5,
+    borderRadius: 22,
+    borderWidth: 1.2,
+    borderColor: 'rgba(254, 240, 138, 0.85)',
   },
   joinAvatar: {
     width: 38,

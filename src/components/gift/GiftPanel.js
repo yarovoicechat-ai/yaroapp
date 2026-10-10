@@ -137,33 +137,51 @@ export default function GiftPanel({
     return () => backHandler.remove();
   }, [visible, onClose, panY]);
 
-  // Default receiver setup: if none selected, select Host by default
+  // Single recipient safety: On open, reset multi-select mode to FALSE so multi-gift is never auto-selected
   useEffect(() => {
-    if (visible && selectedReceivers.length === 0) {
-      const defaultHost = {
-        id: room.hostId || room.ownerId || 'host',
-        userId: room.hostId || room.ownerId || 'host',
-        name: room.hostName || 'Host',
-        avatar: room.hostAvatar || room.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-        seatNumber: '1',
-      };
-      setSelectedReceivers([defaultHost]);
+    if (visible) {
+      if (typeof setIsMultiSelectMode === 'function') {
+        setIsMultiSelectMode(false);
+      }
+      // If multiple receivers or 'all' were previously selected, collapse to just 1 single receiver
+      const nonAll = selectedReceivers.filter((r) => r && !r.isAll && r.id !== 'all');
+      if (selectedReceivers.length > 1 || selectedReceivers.some((r) => r && (r.isAll || r.id === 'all'))) {
+        if (nonAll.length > 0) {
+          setSelectedReceivers([nonAll[0]]);
+        } else {
+          const defaultHost = {
+            id: room.hostId || room.ownerId || 'host',
+            userId: room.hostId || room.ownerId || 'host',
+            name: room.hostName || 'Host',
+            avatar: room.hostAvatar || room.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+            seatNumber: '1',
+          };
+          setSelectedReceivers([defaultHost]);
+        }
+      } else if (selectedReceivers.length === 0) {
+        const defaultHost = {
+          id: room.hostId || room.ownerId || 'host',
+          userId: room.hostId || room.ownerId || 'host',
+          name: room.hostName || 'Host',
+          avatar: room.hostAvatar || room.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+          seatNumber: '1',
+        };
+        setSelectedReceivers([defaultHost]);
+      }
     }
-  }, [visible, room, selectedReceivers.length, setSelectedReceivers]);
+  }, [visible, room?.hostId, room?.ownerId, room?.hostName, room?.hostAvatar, room?.coverImage]);
 
   const handleSelectReceiver = useCallback(
     (receiver) => {
-      if (receiver.isAll || receiver.id === 'all') {
+      if (!receiver) return;
+
+      if (!isMultiSelectMode || receiver.isAll || receiver.id === 'all') {
+        // Single selection only
         setSelectedReceivers([receiver]);
         return;
       }
 
-      if (!isMultiSelectMode) {
-        setSelectedReceivers([receiver]);
-        return;
-      }
-
-      // Multi-select toggle
+      // Explicit Multi-select toggle only if multi-select mode was intentionally enabled
       setSelectedReceivers((prev) => {
         const exists = prev.some((r) => String(r.id) === String(receiver.id));
         if (exists) {

@@ -23,6 +23,8 @@ export default function RoomToolsModal({
   onOpenSeatSettings,
   onOpenThemeModal,
   onOpenSeatSkinModal,
+  showSeatCharm = false,
+  onToggleSeatCharm,
   seatCount = 8,
   isHost,
   bottomSafePadding = 16,
@@ -194,6 +196,35 @@ export default function RoomToolsModal({
                 <MaterialCommunityIcons name="broom" size={22} color="#8B5CF6" />
               </View>
               <Text style={styles.toolLabel}>Clear Chat</Text>
+            </TouchableOpacity>
+
+            {/* Seat Charm / Fool (🌸) Toggle */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onToggleSeatCharm && onToggleSeatCharm();
+              }}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.toolCircle,
+                  showSeatCharm
+                    ? { borderColor: '#EC4899', backgroundColor: 'rgba(236, 72, 153, 0.22)' }
+                    : { borderColor: 'rgba(255, 255, 255, 0.12)' },
+                ]}
+              >
+                <Text style={{ fontSize: 21 }}>🌸</Text>
+              </View>
+              <Text
+                style={[
+                  styles.toolLabel,
+                  showSeatCharm && { color: '#EC4899', fontWeight: '700' },
+                ]}
+                numberOfLines={1}
+              >
+                {showSeatCharm ? 'Charm ON' : 'Charm OFF'}
+              </Text>
             </TouchableOpacity>
           </View>
 

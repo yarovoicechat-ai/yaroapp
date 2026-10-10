@@ -34,6 +34,7 @@ export const VoiceRoomProvider = ({ children }) => {
   const [activeVipEntry, setActiveVipEntry] = useState(null);
   const [currentRoomTheme, setCurrentRoomTheme] = useState(null);
   const [currentSeatSkin, setCurrentSeatSkin] = useState(null);
+  const [showSeatCharm, setShowSeatCharm] = useState(false);
 
   // Agora State & Diagnostics
   const [agoraStatus, setAgoraStatus] = useState('disconnected'); // 'connecting' | 'connected' | 'error'
@@ -302,6 +303,7 @@ export const VoiceRoomProvider = ({ children }) => {
     sock.off('voice_room:error');
     sock.off('voice_room:theme_updated');
     sock.off('voice_room:seat_skin_updated');
+    sock.off('voice_room:seat_charm_updated');
     sock.off('voice_room:moved_to_audience');
     sock.off('voice_room:user_kicked');
     sock.off('voice_room:force_leave');
@@ -480,6 +482,11 @@ export const VoiceRoomProvider = ({ children }) => {
           if (data?.seatSkinAsset || data?.seatSkinId) {
             setCurrentSeatSkin(data.seatSkinAsset || data.seatSkinId);
           }
+          if (data && typeof data.showSeatCharm === 'boolean') {
+            setShowSeatCharm(data.showSeatCharm);
+          } else {
+            setShowSeatCharm(false);
+          }
         });
 
         // 2. Real-Time Seat Change (Any user took or vacated a seat)
@@ -529,6 +536,14 @@ export const VoiceRoomProvider = ({ children }) => {
           console.log('📡 [VoiceRoom] Room seat skin updated:', data?.seatSkinId);
           if (data && Object.prototype.hasOwnProperty.call(data, 'seatSkinId')) {
             setCurrentSeatSkin(data.seatSkinAsset || data.seatSkinId || null);
+          }
+        });
+
+        // 4.3 Real-time Seat Charm (Flower 🌸) Updated
+        sock.on('voice_room:seat_charm_updated', (data) => {
+          console.log('📡 [VoiceRoom] Room seat charm updated:', data?.showSeatCharm);
+          if (data && typeof data.showSeatCharm === 'boolean') {
+            setShowSeatCharm(data.showSeatCharm);
           }
         });
 
@@ -1122,6 +1137,20 @@ export const VoiceRoomProvider = ({ children }) => {
     }
   };
 
+  // Update Room Seat Charm / Flower 🌸 Visibility (Tool toggle - updates real time)
+  const updateSeatCharm = (visible) => {
+    const nextVal = Boolean(visible);
+    setShowSeatCharm(nextVal);
+    const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
+    const sock = socketRef.current || getSocket();
+    if (sock && roomId) {
+      sock.emit('voice_room:update_seat_charm', {
+        roomId,
+        showSeatCharm: nextVal,
+      });
+    }
+  };
+
   // Send real-time reaction via socket
   const broadcastReaction = (emoji, userName) => {
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
@@ -1318,6 +1347,9 @@ export const VoiceRoomProvider = ({ children }) => {
         currentSeatSkin,
         updateRoomTheme,
         updateRoomSeatSkin,
+        showSeatCharm,
+        setShowSeatCharm,
+        updateSeatCharm,
       }}
     >
       {children}

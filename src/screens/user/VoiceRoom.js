@@ -195,6 +195,8 @@ export default function VoiceRoomScreen() {
     currentSeatSkin,
     updateRoomTheme,
     updateRoomSeatSkin,
+    showSeatCharm,
+    updateSeatCharm,
   } = useVoiceRoom();
 
   const handleEntryEffectComplete = useCallback(() => {
@@ -1339,10 +1341,12 @@ export default function VoiceRoomScreen() {
                     <Text style={styles.topSeatUserName} numberOfLines={1}>
                       {seat.user.name}
                     </Text>
-                    <View style={styles.charmPill}>
-                      <Text style={styles.charmFlower}>🌸</Text>
-                      <Text style={styles.charmVal}>{seat.charm || 0}</Text>
-                    </View>
+                    {showSeatCharm && (
+                      <View style={styles.charmPill}>
+                        <Text style={styles.charmFlower}>🌸</Text>
+                        <Text style={styles.charmVal}>{seat.charm || 0}</Text>
+                      </View>
+                    )}
                   </View>
                 ) : (
                   <View style={styles.emptySeatWrapper}>
@@ -1356,10 +1360,12 @@ export default function VoiceRoomScreen() {
                     <Text style={[styles.topSeatLabel, isHostSeat ? styles.hostLabelColor : styles.cpLabelColor]}>
                       {isHostSeat ? 'Host 👑' : 'Co-Host 💖'}
                     </Text>
-                    <View style={styles.charmPill}>
-                      <Text style={styles.charmFlower}>🌸</Text>
-                      <Text style={styles.charmVal}>0</Text>
-                    </View>
+                    {showSeatCharm && (
+                      <View style={styles.charmPill}>
+                        <Text style={styles.charmFlower}>🌸</Text>
+                        <Text style={styles.charmVal}>0</Text>
+                      </View>
+                    )}
                   </View>
                 )}
               </TouchableOpacity>
@@ -1433,10 +1439,12 @@ export default function VoiceRoomScreen() {
                       <Text style={[styles.seatUserName, isCompactLayout && { fontSize: 8.5, maxWidth: 54 }]} numberOfLines={1}>
                         {seat.user.name}
                       </Text>
-                      <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
-                        <Text style={styles.charmFlower}>🌸</Text>
-                        <Text style={[styles.charmVal, isCompactLayout && { fontSize: 8 }]}>{seat.charm || 0}</Text>
-                      </View>
+                      {showSeatCharm && (
+                        <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
+                          <Text style={styles.charmFlower}>🌸</Text>
+                          <Text style={[styles.charmVal, isCompactLayout && { fontSize: 8 }]}>{seat.charm || 0}</Text>
+                        </View>
+                      )}
                     </View>
                   ) : (
                     <View style={styles.emptySeatWrapper}>
@@ -1473,10 +1481,12 @@ export default function VoiceRoomScreen() {
                         )}
                       </View>
                       <Text style={[styles.seatNumText, isCompactLayout && { fontSize: 8.5 }]}>{seatNum}</Text>
-                      <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
-                        <Text style={styles.charmFlower}>🌸</Text>
-                        <Text style={[styles.charmVal, isCompactLayout && { fontSize: 8 }]}>0</Text>
-                      </View>
+                      {showSeatCharm && (
+                        <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
+                          <Text style={styles.charmFlower}>🌸</Text>
+                          <Text style={[styles.charmVal, isCompactLayout && { fontSize: 8 }]}>0</Text>
+                        </View>
+                      )}
                     </View>
                   )}
                 </TouchableOpacity>
@@ -1962,6 +1972,15 @@ export default function VoiceRoomScreen() {
         onOpenSeatSettings={() => setSeatLayoutModalVisible(true)}
         onOpenThemeModal={() => setThemeModalVisible(true)}
         onOpenSeatSkinModal={() => setSeatSkinModalVisible(true)}
+        showSeatCharm={showSeatCharm}
+        onToggleSeatCharm={() => {
+          updateSeatCharm(!showSeatCharm);
+          AlertService.show(
+            !showSeatCharm ? 'Seat Charm On 🌸' : 'Seat Charm Off',
+            !showSeatCharm ? 'Seat charm flower points enabled.' : 'Seat charm flower points hidden.',
+            'info'
+          );
+        }}
         seatCount={seatCount}
         isHost={isRoomOwner}
         bottomSafePadding={bottomSafePadding}

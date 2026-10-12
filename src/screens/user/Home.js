@@ -33,7 +33,7 @@ import OnboardingModal from '../../components/OnboardingModal';
 import { CALL_DIAMONDS_PER_MINUTE, hasCallStartIdentity } from '../../utils/callValidation';
 import { normalizeLanguages } from '../../utils/hostPresentation';
 import { getUserAvatar } from '../../utils/avatarUtil';
-import { DUMMY_BANNERS, DUMMY_HOSTS } from '../../constants/dummyData';
+import { DUMMY_HOSTS } from '../../constants/dummyData';
 import { AlertService } from '../../utils/AlertService';
 import EmptyStateView from '../../components/EmptyStateView';
 import { HostCardSkeleton } from '../../components/SkeletonLoader';
@@ -53,7 +53,8 @@ const CallAppUI = () => {
   const flatListRef = useRef(null);
   const bannerFetchSeqRef = useRef(0);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
-  const [banners, setBanners] = useState(DUMMY_BANNERS);
+  const [banners, setBanners] = useState([]);
+  const bannerCardWidth = width - 32;
 
   const [loading, setLoading] = useState(false);
   const [matching, setMatching] = useState(false);
@@ -95,8 +96,8 @@ const CallAppUI = () => {
       // rest of the app may use a LAN server, but banners must still come from
       // the same source as the live management panel.
       const endpoints = __DEV__
-        ? [LIVE_BANNERS_URL, '/public/banners']
-        : ['/public/banners'];
+        ? [`${LIVE_BANNERS_URL}?placement=home`, '/public/banners?placement=home']
+        : ['/public/banners?placement=home'];
       let response = null;
       let lastError = null;
 
@@ -124,6 +125,7 @@ const CallAppUI = () => {
 
       const remoteBanners = items
         .filter(item => {
+          if (item?.placement && item.placement !== 'home') return false;
           if (item?.isActive === false) return false;
           if (item?.startDate && new Date(item.startDate).getTime() > endOfToday.getTime()) return false;
           if (item?.endDate && new Date(item.endDate).getTime() < startOfToday.getTime()) return false;
@@ -149,6 +151,8 @@ const CallAppUI = () => {
 
       if (remoteBanners.length) {
         setBanners(remoteBanners);
+        setCurrentBannerIndex(0);
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
         try {
           const cacheable = remoteBanners.map(b => ({
             ...b,
@@ -162,12 +166,11 @@ const CallAppUI = () => {
           console.log('Failed to cache banners in AsyncStorage:', cacheErr?.message || cacheErr);
         }
       } else {
-        try {
-          const cached = JSON.parse(await AsyncStorage.getItem('homeBannersCache') || '[]');
-          if (cached.length) setBanners(cached);
-        } catch (cacheErr) {
-          console.log('Failed to read homeBannersCache:', cacheErr?.message || cacheErr);
-        }
+        // A successful empty response means the panel has no active banners.
+        // Clear old cache so deleted/disabled banners disappear without an app update.
+        setBanners([]);
+        setCurrentBannerIndex(0);
+        await AsyncStorage.removeItem('homeBannersCache').catch(() => {});
       }
     } catch (error) {
       console.log('Failed to fetch home banners:', error.response?.data || error.message);
@@ -179,6 +182,30 @@ const CallAppUI = () => {
       }
     }
   }, []);
+
+  const handleBannerPress = useCallback(async (banner) => {
+    const targetType = String(banner?.targetType || '').toLowerCase();
+    const externalUrl = banner?.linkUrl || banner?.link;
+    if (targetType === 'external' && externalUrl) {
+      try {
+        await Linking.openURL(externalUrl);
+      } catch (error) {
+        console.log('Could not open banner link:', error?.message || error);
+      }
+      return;
+    }
+
+    const targetScreen = targetType === 'internal'
+      ? banner?.targetScreen
+      : (banner?.link || banner?.targetScreen);
+    if (targetScreen) {
+      try {
+        navigation.navigate(targetScreen);
+      } catch (error) {
+        console.log('Could not open banner screen:', error?.message || error);
+      }
+    }
+  }, [navigation]);
 
   const fetchHostsApi = useCallback(async () => {
     try {
@@ -398,13 +425,31 @@ const CallAppUI = () => {
   }, [user, selectedTab, filterLanguage, setHosts, fetchUnreadNotifications, fetchHostsApi]);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+    let bannerRefreshInterval = null;
+    const startBannerRefresh = () => {
+      if (bannerRefreshInterval) clearInterval(bannerRefreshInterval);
+      bannerRefreshInterval = setInterval(fetchBanners, 60_000);
+    };
+    const stopBannerRefresh = () => {
+      if (bannerRefreshInterval) {
+        clearInterval(bannerRefreshInterval);
+        bannerRefreshInterval = null;
+      }
+    };
+    const unsubscribeFocus = navigation.addListener('focus', () => {
       fetchUserProfileRef.current();
       fetchBanners();
       fetchUnreadNotifications();
       fetchHostsApi();
+      startBannerRefresh();
     });
-    return unsubscribe;
+    const unsubscribeBlur = navigation.addListener('blur', stopBannerRefresh);
+    if (navigation.isFocused?.()) startBannerRefresh();
+    return () => {
+      stopBannerRefresh();
+      unsubscribeFocus();
+      unsubscribeBlur();
+    };
   }, [navigation, fetchBanners, fetchUnreadNotifications, fetchHostsApi]);
 
   useEffect(() => {
@@ -494,6 +539,11 @@ const CallAppUI = () => {
   }, [currentBannerIndex]);
 
   useEffect(() => {
+    setCurrentBannerIndex(0);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [banners]);
+
+  useEffect(() => {
     if (banners.length <= 1) return;
     const interval = setInterval(() => {
       let nextIndex = bannerIndexRef.current + 1;
@@ -508,7 +558,7 @@ const CallAppUI = () => {
         }
         setCurrentBannerIndex(nextIndex);
       }
-    }, 3000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [banners.length]);
 
@@ -579,6 +629,75 @@ const CallAppUI = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C5CE7" />
         }
       >
+        {banners.length > 0 && (
+          <View style={styles.adminBannerCarouselContainer}>
+            <FlatList
+              ref={flatListRef}
+              data={banners}
+              horizontal
+              pagingEnabled={false}
+              snapToInterval={bannerCardWidth}
+              decelerationRate="fast"
+              disableIntervalMomentum
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => String(item.id || item._id)}
+              getItemLayout={(_, index) => ({
+                length: bannerCardWidth,
+                offset: bannerCardWidth * index,
+                index,
+              })}
+              onMomentumScrollEnd={(event) => {
+                const nextIndex = Math.round(event.nativeEvent.contentOffset.x / bannerCardWidth);
+                const boundedIndex = Math.max(0, Math.min(nextIndex, banners.length - 1));
+                bannerIndexRef.current = boundedIndex;
+                setCurrentBannerIndex(boundedIndex);
+              }}
+              renderItem={({ item }) => {
+                const imageUri = item.image || item.imageUrl;
+                return (
+                  <TouchableOpacity
+                    style={[styles.adminBannerCard, { width: bannerCardWidth }]}
+                    activeOpacity={0.9}
+                    onPress={() => handleBannerPress(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.title || 'Promotion banner'}
+                  >
+                    {imageUri ? (
+                      <Image source={{ uri: imageUri }} style={styles.adminBannerImage} resizeMode="cover" />
+                    ) : null}
+                    <LinearGradient
+                      colors={['transparent', 'rgba(15, 10, 34, 0.08)', 'rgba(15, 10, 34, 0.82)']}
+                      locations={[0, 0.42, 1]}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    {item.title ? (
+                      <View style={styles.adminBannerTextWrap}>
+                        <Text style={styles.adminBannerTitle} numberOfLines={2}>{item.title}</Text>
+                      </View>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+            {banners.length > 1 && (
+              <View style={styles.adminBannerDotsRow}>
+                {banners.map((banner, index) => (
+                  <TouchableOpacity
+                    key={String(banner.id || banner._id || index)}
+                    style={[styles.adminBannerDot, currentBannerIndex === index && styles.adminBannerDotActive]}
+                    onPress={() => {
+                      flatListRef.current?.scrollToIndex({ index, animated: true });
+                      setCurrentBannerIndex(index);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Show banner ${index + 1}`}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Hero Promo Banner matching reference design */}
         <View style={styles.heroPromoContainer}>
           <LinearGradient
@@ -971,6 +1090,53 @@ const styles = StyleSheet.create({
   },
 
   // 2. Hero Promo Banner Card
+  adminBannerCarouselContainer: {
+    marginTop: 8,
+    marginBottom: 2,
+    marginHorizontal: 16,
+  },
+  adminBannerCard: {
+    height: 146,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: '#4C1D95',
+  },
+  adminBannerImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  adminBannerTextWrap: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 14,
+  },
+  adminBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '900',
+    textShadowColor: 'rgba(0, 0, 0, 0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  adminBannerDotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 8,
+  },
+  adminBannerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#C4B5FD',
+  },
+  adminBannerDotActive: {
+    width: 18,
+    backgroundColor: '#6C5CE7',
+  },
   heroPromoContainer: {
     paddingHorizontal: 16,
     marginVertical: 10,

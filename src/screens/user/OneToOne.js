@@ -26,6 +26,7 @@ import { normalizeLanguages } from '../../utils/hostPresentation';
 import EmptyStateView from '../../components/EmptyStateView';
 import { HostCardSkeleton } from '../../components/SkeletonLoader';
 import { DUMMY_HOSTS } from '../../constants/dummyData';
+import AdminBannerCarousel from '../../components/AdminBannerCarousel';
 
 const diamondIcon = require('../../assets/icons/diamond.png');
 const CARD_WIDTH = (Dimensions.get('window').width - 40) / 2;
@@ -242,6 +243,8 @@ export default function OneToOne() {
             </View>
           </LinearGradient>
         )}
+
+        <AdminBannerCarousel placement="oneToOne" />
 
         <View style={styles.filters}>
           {FILTERS.map(([label, icon]) => {

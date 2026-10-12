@@ -3021,7 +3021,7 @@ export default function VoiceRoomScreen() {
               placeholder="Enter room announcement..."
               placeholderTextColor="#94A3B8"
               multiline
-              maxLength={150}
+              maxLength={120}
             />
             <View style={styles.announcementModalButtonsRow}>
               <TouchableOpacity

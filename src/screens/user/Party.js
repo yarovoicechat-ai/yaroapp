@@ -30,6 +30,7 @@ import { getUserAvatar } from '../../utils/avatarUtil';
 import { requestCameraAndCapture, requestGalleryAndSelect } from '../../utils/verificationMedia';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { countries } from '../../constants/countries';
+import AdminBannerCarousel from '../../components/AdminBannerCarousel';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 44) / 2;
@@ -497,7 +498,8 @@ export default function PartyScreen() {
           </View>
         )}
 
-        {/* 3. Promo Banner after 4 rooms */}
+        {/* 3. Panel-managed banner after the first four rooms */}
+        <AdminBannerCarousel placement="party" />
         {renderPromoBanner()}
 
         {/* 4. Remaining Rooms Grid (after banner) */}

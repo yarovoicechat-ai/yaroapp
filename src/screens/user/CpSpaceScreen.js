@@ -20,31 +20,7 @@ import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
 import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
-
-const DEFAULT_CP_LIST = [
-  {
-    _id: 'cp_1',
-    user1Name: 'Romeo',
-    user1Avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop',
-    user2Name: 'Juliet',
-    user2Avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop',
-    intimacyScore: 125000,
-    cpLevel: 9,
-    ringName: 'Eternal Diamond Ring 💍',
-    anniversaryDate: '2026-05-20',
-  },
-  {
-    _id: 'cp_2',
-    user1Name: 'Prince Ali',
-    user1Avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop',
-    user2Name: 'Princess Jasmine',
-    user2Avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop',
-    intimacyScore: 84000,
-    cpLevel: 7,
-    ringName: 'Star Sapphire Ring 💎',
-    anniversaryDate: '2026-07-14',
-  },
-];
+import { getUserAvatar } from '../../utils/avatarUtil';
 
 export default function CpSpaceScreen() {
   const navigation = useNavigation();
@@ -52,14 +28,13 @@ export default function CpSpaceScreen() {
   const { user } = useContext(AuthContext);
 
   const [activeTab, setActiveTab] = useState('space'); // 'space' | 'leaderboard'
-  const [couples, setCouples] = useState(DEFAULT_CP_LIST);
+  const [couples, setCouples] = useState([]);
   const [myCp, setMyCp] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Confess / Bind Modal
   const [bindModalVisible, setBindModalVisible] = useState(false);
   const [targetId, setTargetId] = useState('');
-  const [ringType, setRingType] = useState('Rose Gold Band 🌹');
   const [binding, setBinding] = useState(false);
 
   const fetchCpData = async () => {
@@ -70,13 +45,12 @@ export default function CpSpaceScreen() {
         apiUtil.get('/couple/my', { suppressGlobalError: true }).catch(() => null),
       ]);
 
-      if (listRes?.data?.data && Array.isArray(listRes.data.data)) {
-        setCouples(listRes.data.data);
-      }
-      if (myRes?.data?.data) {
-        setMyCp(myRes.data.data);
-      }
+      const listPayload = listRes?.data?.data;
+      setCouples(Array.isArray(listPayload) ? listPayload : []);
+      setMyCp(myRes?.data?.data || null);
     } catch (_) {
+      setCouples([]);
+      setMyCp(null);
     } finally {
       setLoading(false);
     }
@@ -95,7 +69,6 @@ export default function CpSpaceScreen() {
     try {
       await apiUtil.post('/couple/confess', {
         partnerNumericId: targetId.trim(),
-        ringName: ringType,
       });
       setBindModalVisible(false);
       setTargetId('');
@@ -159,24 +132,24 @@ export default function CpSpaceScreen() {
             {myCp ? (
               <View style={styles.myCpCard}>
                 <View style={styles.ringBadge}>
-                  <Text style={styles.ringBadgeText}>{myCp.ringName || '💍 Eternal Diamond Ring'}</Text>
+                  <Text style={styles.ringBadgeText}>{myCp.ringName || 'No ring equipped'}</Text>
                 </View>
 
                 {/* Partners Row */}
                 <View style={styles.partnersRow}>
                   <View style={styles.partnerCol}>
-                    <Image source={{ uri: myCp.user1Avatar }} style={styles.cpAvatar} />
+                    <Image source={getUserAvatar({ avatar: myCp.user1Avatar, gender: myCp.user1Gender })} style={styles.cpAvatar} />
                     <Text style={styles.cpName}>{myCp.user1Name}</Text>
                   </View>
 
                   <View style={styles.heartConnector}>
                     <MaterialCommunityIcons name="heart-pulse" size={36} color="#F43F5E" />
-                    <Text style={styles.intimacyText}>{myCp.intimacyScore?.toLocaleString()} 💖</Text>
-                    <Text style={styles.cpLvlPill}>Lv.{myCp.cpLevel || 1}</Text>
+                    <Text style={styles.intimacyText}>{Number(myCp.intimacyScore ?? 0).toLocaleString()} 💖</Text>
+                    <Text style={styles.cpLvlPill}>Lv.{myCp.cpLevel ?? '—'}</Text>
                   </View>
 
                   <View style={styles.partnerCol}>
-                    <Image source={{ uri: myCp.user2Avatar }} style={styles.cpAvatar} />
+                    <Image source={getUserAvatar({ avatar: myCp.user2Avatar, gender: myCp.user2Gender })} style={styles.cpAvatar} />
                     <Text style={styles.cpName}>{myCp.user2Name}</Text>
                   </View>
                 </View>
@@ -184,7 +157,7 @@ export default function CpSpaceScreen() {
                 <View style={styles.anniversaryBanner}>
                   <Icon name="calendar-outline" size={15} color="#F43F5E" />
                   <Text style={styles.anniversaryText}>
-                    Anniversary: {myCp.anniversaryDate || '2026-05-20'}
+                    Anniversary: {myCp.anniversaryDate || 'Unavailable'}
                   </Text>
                 </View>
               </View>
@@ -237,33 +210,38 @@ export default function CpSpaceScreen() {
 
         {activeTab === 'leaderboard' && (
           <View>
-            {couples.map((cp, idx) => (
+            {couples.length === 0 ? (
+              <View style={styles.emptyCpContainer}>
+                <Text style={styles.emptyTitle}>No couple leaderboard data</Text>
+                <Text style={styles.emptySub}>The server has not returned any couple rankings.</Text>
+              </View>
+            ) : couples.map((cp, idx) => (
               <View key={cp._id || idx} style={styles.rankCard}>
                 <View style={styles.rankPill}>
                   <Text style={styles.rankPillText}>#{idx + 1}</Text>
                 </View>
 
                 <View style={styles.coupleAvatarsRow}>
-                  <Image source={{ uri: cp.user1Avatar }} style={styles.tinyAvatar} />
+                  <Image source={getUserAvatar({ avatar: cp.user1Avatar, gender: cp.user1Gender })} style={styles.tinyAvatar} />
                   <MaterialCommunityIcons
                     name="heart"
                     size={16}
                     color="#F43F5E"
                     style={{ marginHorizontal: 2 }}
                   />
-                  <Image source={{ uri: cp.user2Avatar }} style={styles.tinyAvatar} />
+                  <Image source={getUserAvatar({ avatar: cp.user2Avatar, gender: cp.user2Gender })} style={styles.tinyAvatar} />
                 </View>
 
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.coupleNames} numberOfLines={1}>
                     {cp.user1Name} & {cp.user2Name}
                   </Text>
-                  <Text style={styles.coupleRing}>{cp.ringName || '💍 Diamond CP'}</Text>
+                  <Text style={styles.coupleRing}>{cp.ringName || 'No ring equipped'}</Text>
                 </View>
 
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={styles.coupleScore}>{(cp.intimacyScore || 0).toLocaleString()} 💖</Text>
-                  <Text style={styles.coupleLevelPill}>Lv.{cp.cpLevel || 1}</Text>
+                  <Text style={styles.coupleLevelPill}>Lv.{cp.cpLevel ?? '—'}</Text>
                 </View>
               </View>
             ))}
@@ -292,26 +270,6 @@ export default function CpSpaceScreen() {
               value={targetId}
               onChangeText={setTargetId}
             />
-
-            <Text style={{ color: '#E2E8F0', fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>
-              Select Ring
-            </Text>
-
-            <View style={{ gap: 8, marginBottom: 16 }}>
-              {['Rose Gold Band 🌹', 'Star Sapphire Ring 💎', 'Eternal Diamond Ring 💍'].map(r => (
-                <TouchableOpacity
-                  key={r}
-                  onPress={() => setRingType(r)}
-                  style={[
-                    styles.ringOption,
-                    ringType === r && { borderColor: '#F43F5E', backgroundColor: 'rgba(244,63,94,0.15)' },
-                  ]}
-                >
-                  <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>{r}</Text>
-                  {ringType === r && <Icon name="checkmark" size={16} color="#F43F5E" />}
-                </TouchableOpacity>
-              ))}
-            </View>
 
             <View style={styles.modalBtnsRow}>
               <TouchableOpacity

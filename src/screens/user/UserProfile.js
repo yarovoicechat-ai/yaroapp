@@ -48,7 +48,7 @@ export default function UserProfileScreen() {
   useEffect(() => {
     const fetchUserById = async () => {
       const uid = route.params?.userId || route.params?.id;
-      if (uid && (!route.params?.user?.name && !route.params?.host?.name)) {
+      if (uid) {
         try {
           const res = await apiUtil.get(`/user/profile/${uid}`);
           if (res.data?.success && (res.data?.user || res.data?.data)) {
@@ -64,33 +64,33 @@ export default function UserProfileScreen() {
 
   const targetUser = useMemo(() => {
     const raw = fetchedUser || route.params?.user || route.params?.host || {};
-    const fallbackId = route.params?.userId || route.params?.id || '10000001';
+    const fallbackId = route.params?.userId || route.params?.id || '';
     return {
       _id: raw._id || raw.id || raw.userId || fallbackId,
       userId: raw.userId || raw.id || fallbackId,
-      name: raw.name || raw.hostName || (fallbackId ? `User #${fallbackId}` : 'Voice Host'),
-      avatar: raw.avatar || raw.coverImage || raw.image || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+      name: raw.name || raw.hostName || 'User',
+      avatar: raw.avatar || raw.coverImage || raw.image || null,
       image: raw.image || raw.avatar || raw.coverImage,
       equippedFrame: raw.equippedFrame || raw.frame || null,
       equippedFrameAsset: raw.equippedFrameAsset || null,
-      equippedMicWave: raw.equippedMicWave || 'Cyber Neon Wave',
-      gender: raw.gender || 'female',
-      age: raw.age || '22',
-      country: raw.country || 'India 🇮🇳',
-      level: raw.level || 15,
-      wealthLevel: raw.wealthLevel || raw.level || 1,
-      charmLevel: raw.charmLevel || 1,
+      equippedMicWave: raw.equippedMicWave || null,
+      gender: raw.gender || null,
+      age: raw.age ?? null,
+      country: raw.country || '',
+      level: raw.level ?? null,
+      wealthLevel: raw.wealthLevel ?? raw.level ?? null,
+      charmLevel: raw.charmLevel ?? null,
       equippedBadge: raw.equippedBadge || null,
       equippedVehicle: raw.equippedVehicle || null,
       equippedProfileBorder: raw.equippedProfileBorder || null,
       equippedCustomId: raw.equippedCustomId || null,
-      isVerified: Boolean(raw.isVerified ?? true),
-      bio: raw.bio || raw.about || 'Welcome to my world! Let’s talk, laugh & enjoy great voice parties 💖',
-      followersCount: raw.followersCount || 1240,
-      followingCount: raw.followingCount || 86,
-      visitorsCount: raw.visitorsCount || 540,
-      languages: Array.isArray(raw.language) ? raw.language : ['Hindi', 'English'],
-      isSvip: Boolean(raw.isSvip ?? true),
+      isVerified: Boolean(raw.isVerified),
+      bio: raw.bio || raw.about || '',
+      followersCount: Number(raw.followersCount ?? 0),
+      followingCount: Number(raw.followingCount ?? 0),
+      visitorsCount: Number(raw.visitorsCount ?? 0),
+      languages: Array.isArray(raw.language) ? raw.language : [],
+      isSvip: Boolean(raw.isSvip),
     };
   }, [route.params, fetchedUser]);
 
@@ -248,11 +248,11 @@ export default function UserProfileScreen() {
             )}
             {/* Wealth Level */}
             <View style={[styles.levelBadge, { backgroundColor: '#F59E0B' }]}>
-              <Text style={styles.levelBadgeText}>💎 Lv.{targetUser.wealthLevel || targetUser.level || 1}</Text>
+              <Text style={styles.levelBadgeText}>💎 Lv.{targetUser.wealthLevel ?? targetUser.level ?? '—'}</Text>
             </View>
             {/* Charm Level */}
             <View style={[styles.levelBadge, { backgroundColor: '#EC4899', marginLeft: 4 }]}>
-              <Text style={styles.levelBadgeText}>🌸 Lv.{targetUser.charmLevel || 1}</Text>
+              <Text style={styles.levelBadgeText}>🌸 Lv.{targetUser.charmLevel ?? '—'}</Text>
             </View>
             {/* Equipped Medal / Badge */}
             {Boolean(targetUser.equippedBadge) && (
@@ -264,7 +264,7 @@ export default function UserProfileScreen() {
 
           {/* ID Row */}
           <TouchableOpacity style={styles.idRow} onPress={handleCopyId} activeOpacity={0.7}>
-            <Text style={styles.idText}>ID: {targetUser.userId}</Text>
+            <Text style={styles.idText}>YARO ID: {targetUser.userId}</Text>
             <Ionicons name="copy-outline" size={13} color="#64748B" style={{ marginLeft: 5 }} />
           </TouchableOpacity>
 
@@ -272,13 +272,13 @@ export default function UserProfileScreen() {
           <View style={styles.tagsRow}>
             <View style={styles.genderTag}>
               <Text style={styles.genderTagText}>
-                {targetUser.gender === 'female' ? '♀' : '♂'} {targetUser.age}
+                {targetUser.gender ? (targetUser.gender === 'female' ? '♀' : '♂') : ''} {targetUser.age ?? ''}
               </Text>
             </View>
 
             <View style={styles.countryTag}>
               <Text style={styles.countryTagText}>
-                {typeof targetUser.country === 'object' ? `${targetUser.country?.name || ''} ${targetUser.country?.flag || ''}`.trim() || 'India 🇮🇳' : (targetUser.country || 'India 🇮🇳')}
+              {typeof targetUser.country === 'object' ? `${targetUser.country?.name || ''} ${targetUser.country?.flag || ''}`.trim() : (targetUser.country || '')}
               </Text>
             </View>
 
@@ -343,17 +343,17 @@ export default function UserProfileScreen() {
               <View style={styles.detailRow}>
                 <Text style={styles.detailKey}>Gender & Age</Text>
                 <Text style={styles.detailVal}>
-                  {targetUser.gender === 'female' ? 'Female' : 'Male'}, {targetUser.age} yrs
+                  {targetUser.gender || 'Gender unavailable'}{targetUser.age != null ? `, ${targetUser.age} yrs` : ''}
                 </Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailKey}>Languages</Text>
-                <Text style={styles.detailVal}>{targetUser.languages.join(', ')}</Text>
+                <Text style={styles.detailVal}>{targetUser.languages.join(', ') || 'No languages listed'}</Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailKey}>Country</Text>
                 <Text style={styles.detailVal}>
-                  {typeof targetUser.country === 'object' ? `${targetUser.country?.name || ''} ${targetUser.country?.flag || ''}`.trim() || 'India 🇮🇳' : (targetUser.country || 'India 🇮🇳')}
+                  {typeof targetUser.country === 'object' ? `${targetUser.country?.name || ''} ${targetUser.country?.flag || ''}`.trim() : (targetUser.country || 'Country unavailable')}
                 </Text>
               </View>
               <View style={styles.detailRow}>
@@ -397,7 +397,7 @@ export default function UserProfileScreen() {
                 <LinearGradient colors={['#EDE9FE', '#DDD6FE']} style={styles.honorBadgeCircle}>
                   <Text style={{ fontSize: 22 }}>⭐</Text>
                 </LinearGradient>
-                <Text style={styles.honorBadgeName}>Lv.{targetUser.level} Star</Text>
+                <Text style={styles.honorBadgeName}>{targetUser.level != null ? `Lv.${targetUser.level}` : 'Honor level unavailable'}</Text>
                 <Text style={styles.honorBadgeSub}>Elite Rank</Text>
               </View>
 

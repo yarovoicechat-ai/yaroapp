@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useRef, useMemo } from 'react';
+import React, { useContext, useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -24,12 +24,22 @@ import { AuthContext } from '../../context/AuthProvider';
 import { getSocket } from '../../sockets';
 import { AlertService } from '../../utils/AlertService';
 import GiftMedia from '../../components/GiftMedia';
+import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
 
 const { width } = Dimensions.get('window');
 const SCREEN_WIDTH = width;
+const getEntityIds = (entity) => {
+  if (entity == null) return [];
+  if (typeof entity !== 'object') return [String(entity)];
+  return [entity._id, entity.id, entity.userId].filter(Boolean).map(String);
+};
+
+const getMessageKey = (message) => message?.transactionId
+  ? `gift:${message.transactionId}`
+  : String(message?._id || message?.id || '');
 
 const Massage = ({ route }) => {
   const navigation = useNavigation();
@@ -54,22 +64,28 @@ const Massage = ({ route }) => {
   const [activeGift, setActiveGift] = useState(null);
   const [inputBarHeight, setInputBarHeight] = useState(76);
   const giftTimerRef = useRef(null);
+  const activeGiftVisual = resolveGiftVisual(activeGift?.gift || activeGift || {});
 
-  const categories = ['All', 'Popular', 'Special', 'Luxury'];
+  const categories = useMemo(() => {
+    const catalogCategories = gifts
+      .map((gift) => typeof gift.category === 'string' ? gift.category.trim() : gift.category?.name?.trim())
+      .filter(Boolean);
+    return ['All', ...Array.from(new Set(catalogCategories))];
+  }, [gifts]);
   const comboQuantities = [1, 10, 99, 520];
 
   const fetchGifts = async () => {
     setLoadingGifts(true);
     try {
-      const res = await apiUtil.get('/gift/all');
+      const res = await apiUtil.get('/gifts');
       if (res.data?.success && Array.isArray(res.data.data)) {
         setGifts(res.data.data);
-        if (res.data.data.length > 0) {
-          setSelectedGift(res.data.data[0]);
-        }
+      } else {
+        setGifts([]);
       }
     } catch (err) {
       console.log('Error fetching gifts in ChatScreen:', err.message);
+      setGifts([]);
     } finally {
       setLoadingGifts(false);
     }
@@ -82,12 +98,35 @@ const Massage = ({ route }) => {
   const getFilteredGifts = () => {
     if (!activeTab || activeTab.toLowerCase() === 'all') return gifts;
     return gifts.filter((gift) => {
-      const cat = gift.category || 'Popular';
+      const cat = typeof gift.category === 'string' ? gift.category : gift.category?.name || '';
       return cat.toLowerCase() === activeTab.toLowerCase();
     });
   };
 
   const receiverImage = getUserAvatar(otherUser);
+
+  const appendGiftMessage = useCallback((giftPayload, fallbackGift = null) => {
+    const transactionId = giftPayload?.transactionId || giftPayload?.id;
+    if (!transactionId) return;
+    const giftDetails = giftPayload?.gift || fallbackGift || giftPayload;
+    const sender = giftPayload?.sender || {};
+    const senderId = sender.id || sender._id || sender.userId || giftPayload?.senderId || '';
+    const message = {
+      _id: `gift-${transactionId}`,
+      transactionId: String(transactionId),
+      type: 'gift',
+      sender: String(senderId),
+      senderName: sender.name || (String(senderId) === String(user?._id || user?.id || user?.userId) ? user?.name : otherUser?.name),
+      gift: giftDetails,
+      giftName: giftDetails?.name || 'Gift',
+      quantity: Number(giftPayload?.quantity || giftPayload?.count || 1),
+      updatedAt: giftPayload?.createdAt || giftPayload?.sentAt || new Date().toISOString(),
+    };
+    setMessages((previous) => {
+      if (previous.some((item) => String(item.transactionId || item._id) === String(transactionId))) return previous;
+      return [...previous, message];
+    });
+  }, [otherUser?.name, user?._id, user?.id, user?.name, user?.userId]);
 
   const formatLastSeen = lastMessageTime
     ? new Date(lastMessageTime).toLocaleTimeString([], {
@@ -98,14 +137,81 @@ const Massage = ({ route }) => {
 
   useEffect(() => {
     const fetchMessages = async () => {
-      try {
-        const res = await apiUtil.get(`/chat/messages?conversationId=${conversationId}`);
-        const msgs = res.data?.data?.messages || [];
-        console.log('Fetched messages:', msgs);
-        setMessages(msgs);
-      } catch (err) {
-        console.error('Error fetching messages:', err.message);
+      const [messagesResult, sentGiftsResult, receivedGiftsResult] = await Promise.allSettled([
+        apiUtil.get(`/chat/messages?conversationId=${conversationId}`),
+        apiUtil.get('/gifts/sent', { params: { limit: 100 } }),
+        apiUtil.get('/gifts/received', { params: { limit: 100 } }),
+      ]);
+
+      const messages = messagesResult.status === 'fulfilled'
+        ? messagesResult.value.data?.data?.messages || []
+        : [];
+      if (messagesResult.status === 'rejected') {
+        console.error('Error fetching messages:', messagesResult.reason?.message);
       }
+
+      const sentTransactions = sentGiftsResult.status === 'fulfilled'
+        ? sentGiftsResult.value.data?.data?.transactions || []
+        : [];
+      const receivedTransactions = receivedGiftsResult.status === 'fulfilled'
+        ? receivedGiftsResult.value.data?.data?.transactions || []
+        : [];
+      const currentIds = new Set(getEntityIds(user));
+      const otherIds = new Set(getEntityIds(otherUser));
+      const giftMessages = [];
+
+      const appendHistoryGift = (transaction, direction) => {
+        if (!transaction || transaction.roomId || transaction.callId) return;
+        const counterpart = direction === 'sent'
+          ? transaction.receiverId || transaction.receiver
+          : transaction.senderId || transaction.sender;
+        const counterpartIds = getEntityIds(counterpart);
+        const receiverIds = Array.isArray(transaction.receiverIds)
+          ? transaction.receiverIds.flatMap(getEntityIds)
+          : [];
+        const matchesConversation = direction === 'sent'
+          ? counterpartIds.some((id) => otherIds.has(id)) || receiverIds.some((id) => otherIds.has(id))
+          : counterpartIds.some((id) => otherIds.has(id));
+        if (!matchesConversation) return;
+
+        const transactionId = transaction.transactionId || transaction._id || transaction.id;
+        if (!transactionId) return;
+        const sender = direction === 'sent' ? user : (transaction.senderId || transaction.sender || {});
+        const receiver = direction === 'sent' ? counterpart : user;
+        const senderIds = direction === 'sent' ? [...currentIds] : getEntityIds(sender);
+        const gift = transaction.giftId || transaction.gift || {};
+        giftMessages.push({
+          _id: `gift-${transactionId}`,
+          transactionId: String(transactionId),
+          type: 'gift',
+          sender: senderIds[0] || '',
+          senderName: sender?.name || (direction === 'sent' ? user?.name : otherUser?.name),
+          receiverId: getEntityIds(receiver)[0] || '',
+          receiverName: receiver?.name || (direction === 'sent' ? otherUser?.name : user?.name),
+          gift,
+          giftName: gift.name || transaction.meta?.giftName || 'Gift',
+          quantity: Number(transaction.quantity) || 1,
+          createdAt: transaction.createdAt || transaction.updatedAt,
+          updatedAt: transaction.createdAt || transaction.updatedAt,
+        });
+      };
+
+      sentTransactions.forEach((transaction) => appendHistoryGift(transaction, 'sent'));
+      receivedTransactions.forEach((transaction) => appendHistoryGift(transaction, 'received'));
+
+      console.log('Fetched chat messages and conversation gift history:', messages.length, giftMessages.length);
+      setMessages((previous) => {
+        const merged = new Map();
+        [...messages, ...giftMessages, ...previous].forEach((message) => {
+          const key = getMessageKey(message);
+          if (key) merged.set(key, message);
+        });
+        return [...merged.values()].sort((a, b) => {
+          const aTime = new Date(a.updatedAt || a.createdAt || a.timestamp || 0).getTime();
+          const bTime = new Date(b.updatedAt || b.createdAt || b.timestamp || 0).getTime();
+          return aTime - bTime;
+        });
+      });
     };
     fetchMessages();
 
@@ -144,19 +250,39 @@ const Massage = ({ route }) => {
     });
 
     const handleGiftReceived = (gift) => {
-      const targetUserId = otherUser?._id || otherUser?.id || otherUser?.userId;
-      if (
-        (String(gift.senderId) === String(user?._id || user?.id) && String(gift.receiverId) === String(targetUserId)) ||
-        (String(gift.receiverId) === String(user?._id || user?.id) && String(gift.senderId) === String(targetUserId))
-      ) {
-        console.log('🎁 Live giftReceived event in ChatScreen:', gift);
-        setActiveGift(gift);
-        if (giftTimerRef.current) clearTimeout(giftTimerRef.current);
-        giftTimerRef.current = setTimeout(() => setActiveGift(null), 3000);
-      }
+      if (!gift) return;
+      const currentUserIds = [user?._id, user?.userId, user?.id].filter(Boolean).map(String);
+      const otherUserIds = [otherUser?._id, otherUser?.userId, otherUser?.id].filter(Boolean).map(String);
+      const sender = gift.sender || {};
+      const receiver = gift.receiver || {};
+      const senderIds = [gift.senderId, sender.id, sender._id, sender.userId].filter(Boolean).map(String);
+      const receiverIds = [
+        gift.receiverId,
+        receiver.id,
+        receiver._id,
+        receiver.userId,
+        ...(Array.isArray(gift.receivers) ? gift.receivers.flatMap((item) => [item.id, item._id, item.userId]) : []),
+      ].filter(Boolean).map(String);
+      const isThisConversation =
+        (senderIds.some((id) => currentUserIds.includes(id)) && receiverIds.some((id) => otherUserIds.includes(id))) ||
+        (senderIds.some((id) => otherUserIds.includes(id)) && receiverIds.some((id) => currentUserIds.includes(id)));
+      if (!isThisConversation) return;
+
+      const giftDetails = gift.gift || gift;
+      setActiveGift({
+        ...giftDetails,
+        gift: giftDetails,
+        count: gift.quantity || gift.count || 1,
+        senderId: sender.id || sender.userId || gift.senderId,
+        receiverId: receiver.id || receiver.userId || gift.receiverId,
+      });
+      appendGiftMessage(gift, giftDetails);
+      if (giftTimerRef.current) clearTimeout(giftTimerRef.current);
+      giftTimerRef.current = setTimeout(() => setActiveGift(null), 3000);
     };
 
     socket.on('giftReceived', handleGiftReceived);
+    socket.on('gift:received', handleGiftReceived);
 
     return () => {
       console.log('Cleaning up socket listeners');
@@ -164,9 +290,10 @@ const Massage = ({ route }) => {
       socket.off('newMessageNotification');
       socket.off('messagesSeen');
       socket.off('giftReceived', handleGiftReceived);
+      socket.off('gift:received', handleGiftReceived);
       socket.emit('exitChat', { conversationId });
     };
-  }, [conversationId, user, otherUser]);
+  }, [appendGiftMessage, conversationId, user, otherUser]);
 
   useEffect(() => {
     if (scrollViewRef.current) {
@@ -322,8 +449,8 @@ const Massage = ({ route }) => {
       return;
     }
 
-    const cost = Number(giftItem.cost || 0) * qty;
-    const userBalance = Number((user?.diamonds || 0) + (user?.coins || 0));
+    const cost = Number(giftItem.price ?? giftItem.cost ?? giftItem.priceDiamonds ?? 0) * qty;
+    const userBalance = Number(user?.diamonds || 0);
     if (userBalance < cost) {
       AlertService.show(
         'Insufficient Diamonds',
@@ -339,31 +466,36 @@ const Massage = ({ route }) => {
 
     setSendingGift(true);
     try {
-      // Send gift via /gift/send ONLY (independent from chat messages)
-      const giftRes = await apiUtil.post('/gift/send', {
+      const giftRes = await apiUtil.post('/gifts/send', {
+        requestId: `gift_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
         giftId: giftItem._id,
+        quantity: qty,
+        comboCount: 1,
+        currency: 'DIAMONDS',
+        receiverIds: [targetUserId],
         receiverId: targetUserId,
-        receiver: targetUserId,
-        recipientId: targetUserId,
-        count: qty,
       });
 
       if (giftRes.data?.success) {
         if (fetchUserProfile) fetchUserProfile();
         setShowGiftModal(false);
 
-        // Immediately trigger Gift Animation Popup on screen
-        const payload = giftRes.data?.data || {};
-        setActiveGift({
-          name: giftItem.name,
-          icon: giftItem.icon,
-          animationUrl: giftItem.animationUrl,
-          mediaType: giftItem.mediaType,
-          count: qty,
-          senderId: user?._id || user?.id,
-          receiverId: targetUserId,
+        const result = giftRes.data?.data?.data || giftRes.data?.data || {};
+        const payload = result?.data || result;
+        appendGiftMessage({
           ...payload,
+          sender: payload.sender || { id: user?._id || user?.userId || user?.id, name: user?.name },
+        }, payload.gift || giftItem);
+        setActiveGift({
+          ...giftItem,
+          ...(payload.gift || {}),
+          gift: payload.gift || giftItem,
+          count: payload.quantity || qty,
+          senderId: payload.sender?.id || payload.sender?.userId || user?._id || user?.id,
+          receiverId: payload.receiver?.id || payload.receiver?.userId || targetUserId,
         });
+        setSelectedGift(null);
+        setSelectedQuantity(1);
         if (giftTimerRef.current) clearTimeout(giftTimerRef.current);
         giftTimerRef.current = setTimeout(() => {
           setActiveGift(null);
@@ -518,10 +650,36 @@ const Massage = ({ route }) => {
           {messages.map((msg, index) => {
             if (!msg) return null;
             const isSent = msg.sender === user._id;
-            const msgTime = new Date(msg.updatedAt).toLocaleTimeString([], {
+            const msgTime = msg.updatedAt ? new Date(msg.updatedAt).toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
-            });
+            }) : '';
+
+            if (msg.type === 'gift') {
+              const giftDetails = msg.gift || msg;
+              const giftVisual = resolveGiftVisual(giftDetails);
+              const sentByCurrentUser = String(msg.sender) === String(user?._id || user?.id || user?.userId);
+              return (
+                <View
+                  key={msg._id || msg.transactionId || index}
+                  style={[styles.messageRow, sentByCurrentUser ? styles.messageRowRight : styles.messageRowLeft]}
+                >
+                  <View style={styles.giftMessageBubble}>
+                    {giftVisual.giftImage ? (
+                      <Image source={{ uri: giftVisual.giftImage }} style={styles.giftMessageIcon} resizeMode="contain" />
+                    ) : giftVisual.giftIcon ? (
+                      <Text style={styles.giftMessageEmoji}>{giftVisual.giftIcon}</Text>
+                    ) : (
+                      <Icon name="card-giftcard" size={24} color="#F59E0B" />
+                    )}
+                    <Text style={styles.giftMessageText}>
+                      {sentByCurrentUser ? 'You sent' : `${msg.senderName || otherUser?.name || 'User'} sent`} {msg.quantity || 1}x {msg.giftName || giftDetails.name || 'Gift'}
+                    </Text>
+                    {!!msgTime && <Text style={styles.giftMessageTime}>{msgTime}</Text>}
+                  </View>
+                </View>
+              );
+            }
 
             return (
               <View
@@ -572,18 +730,25 @@ const Massage = ({ route }) => {
         {/* Animated Gift Popup Overlay on Chat Screen */}
         {activeGift && (
           <View style={styles.activeGiftOverlay} pointerEvents="none">
-            <GiftMedia
-              source={activeGift.animationUrl || activeGift.icon}
-              mediaType={activeGift.mediaType || 'image'}
-              style={{ width: 200, height: 200 }}
-              resizeMode="contain"
-              fallbackSource={require('../../assets/avtar.webp')}
-            />
+            {activeGift.animationUrl ? (
+              <GiftMedia
+                source={activeGift.animationUrl}
+                mediaType={activeGift.mediaType}
+                style={{ width: 200, height: 200 }}
+                resizeMode="contain"
+              />
+            ) : activeGiftVisual.giftImage ? (
+              <Image source={{ uri: activeGiftVisual.giftImage }} style={{ width: 200, height: 200 }} resizeMode="contain" />
+            ) : activeGiftVisual.giftIcon ? (
+              <Text style={{ fontSize: 110, textAlign: 'center' }}>{activeGiftVisual.giftIcon}</Text>
+            ) : (
+              <Icon name="card-giftcard" size={110} color="#FBBF24" />
+            )}
             <View style={styles.activeGiftTextBadge}>
               <Text style={styles.activeGiftText}>
                 {String(activeGift.senderId) === String(user?._id || user?.id)
-                  ? `You sent ${activeGift.count || 1}x ${activeGift.name}! 🎁`
-                  : `${otherUser?.name || 'User'} sent ${activeGift.count || 1}x ${activeGift.name}! 🎁`}
+                  ? `You sent ${activeGift.count || 1}x ${activeGift.name}!`
+                  : `${otherUser?.name || 'User'} sent ${activeGift.count || 1}x ${activeGift.name}!`}
               </Text>
             </View>
           </View>
@@ -595,7 +760,15 @@ const Massage = ({ route }) => {
           onLayout={({ nativeEvent }) => setInputBarHeight(nativeEvent.layout.height)}
         >
           <View style={styles.inputBoxWrapper}>
-            <TouchableOpacity style={styles.giftIconBtn} onPress={() => setShowGiftModal(true)}>
+            <TouchableOpacity
+              style={styles.giftIconBtn}
+              onPress={() => {
+                setSelectedGift(null);
+                setSelectedQuantity(1);
+                setActiveTab('All');
+                setShowGiftModal(true);
+              }}
+            >
               <Icon name="card-giftcard" size={22} color="#fbbf24" />
             </TouchableOpacity>
 
@@ -722,6 +895,7 @@ const Massage = ({ route }) => {
                 ) : (
                   getFilteredGifts().map(g => {
                     const isSelected = selectedGift?._id === g._id;
+                    const giftVisual = resolveGiftVisual(g);
                     return (
                       <TouchableOpacity
                         key={g._id}
@@ -734,13 +908,18 @@ const Massage = ({ route }) => {
                           colors={isSelected ? ['rgba(3, 220, 254, 0.35)', 'rgba(251, 191, 36, 0.2)'] : ['rgba(251, 191, 36, 0.12)', 'rgba(3, 220, 254, 0.05)']}
                           style={styles.giftGridCardGradient}
                         >
-                          <GiftMedia
-                            source={g.icon}
-                            mediaType={g.mediaType}
-                            style={styles.giftIconMedia}
-                            resizeMode="contain"
-                            fallbackSource={require('../../assets/avtar.webp')}
-                          />
+                          {g.animationUrl || giftVisual.giftImage ? (
+                            <GiftMedia
+                              source={g.animationUrl || giftVisual.giftImage}
+                              mediaType={g.mediaType}
+                              style={styles.giftIconMedia}
+                              resizeMode="contain"
+                            />
+                          ) : giftVisual.giftIcon ? (
+                            <Text style={{ fontSize: 30, marginBottom: 4 }}>{giftVisual.giftIcon}</Text>
+                          ) : (
+                            <Icon name="card-giftcard" size={30} color="#FBBF24" style={{ marginBottom: 4 }} />
+                          )}
                           <Text style={styles.giftCardName} numberOfLines={1}>{g.name}</Text>
                           <View style={styles.giftCostTag}>
                             <Image source={require('../../assets/icons/diamond.png')} style={{ width: 10, height: 10, marginRight: 2 }} resizeMode="contain" />
@@ -785,7 +964,7 @@ const Massage = ({ route }) => {
                       style={styles.sendGiftGradient}
                     >
                       <Text style={styles.sendGiftBtnText}>
-                        Send ({selectedGift.cost * selectedQuantity} 💎)
+                        Send ({Number(selectedGift.price ?? selectedGift.cost ?? selectedGift.priceDiamonds ?? 0) * selectedQuantity} diamonds)
                       </Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -1140,6 +1319,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
   },
+  giftMessageBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: SCREEN_WIDTH * 0.82,
+    minHeight: 52,
+    borderRadius: 16,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  giftMessageIcon: { width: 34, height: 34 },
+  giftMessageEmoji: { fontSize: 26 },
+  giftMessageText: { color: '#78350F', fontSize: 12, fontWeight: '700', flexShrink: 1 },
+  giftMessageTime: { color: '#A16207', fontSize: 10, alignSelf: 'flex-end' },
   messageText: {
     color: '#0F172A',
     fontSize: 15,

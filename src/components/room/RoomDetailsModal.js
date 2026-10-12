@@ -27,14 +27,11 @@ export default function RoomDetailsModal({
 
   if (!room && !visible) return null;
 
-  const roomTitle = room?.title || room?.roomName || 'Yaro Voice Club';
-  const roomId = room?.id || room?.roomId || '10001';
-  const roomCover =
-    room?.coverImage ||
-    'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300';
-  const roomTopic = room?.tag || room?.category || 'Party';
-  const roomAbout = room?.about || room?.description || 'Welcome to Yaro Voice Club! Chat, listen and make great friends!';
-  const memberCount = members.length > 0 ? members.length : 12;
+  const roomTitle = room?.title || room?.roomName || 'Voice Room';
+  const roomId = room?.id || room?.roomId || '—';
+  const roomCover = room?.coverImage || room?.avatar || '';
+  const roomTopic = room?.tag || room?.category || '';
+  const roomAbout = room?.about || room?.description || 'No room description.';
 
   return (
     <Modal
@@ -54,13 +51,19 @@ export default function RoomDetailsModal({
           <View style={styles.sheetHandle} />
 
           <View style={styles.headerRow}>
-            <Image source={{ uri: roomCover }} style={styles.roomCover} />
+            {roomCover ? (
+              <Image source={{ uri: roomCover }} style={styles.roomCover} />
+            ) : (
+              <View style={[styles.roomCover, styles.roomCoverPlaceholder]}>
+                <MaterialCommunityIcons name="account-group" size={24} color="#C4B5FD" />
+              </View>
+            )}
             <View style={styles.headerInfo}>
               <Text style={styles.roomTitleText} numberOfLines={1}>{roomTitle}</Text>
               <Text style={styles.roomIdText}>ID: {roomId}</Text>
-              <View style={styles.tagPill}>
+              {!!roomTopic && <View style={styles.tagPill}>
                 <Text style={styles.tagText}>{roomTopic}</Text>
-              </View>
+              </View>}
             </View>
           </View>
 
@@ -142,6 +145,11 @@ const styles = StyleSheet.create({
     marginRight: 14,
     borderWidth: 2,
     borderColor: '#7C3AED',
+  },
+  roomCoverPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#312E81',
   },
   headerInfo: {
     flex: 1,

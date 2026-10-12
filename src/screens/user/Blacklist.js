@@ -114,7 +114,7 @@ const Blacklist = ({ navigation }) => {
                     <Icon name="account-circle" size={40} color="#6366F1" />
                     <View style={{ marginLeft: 15 }}>
                       <Text style={styles.userName}>{user.name || 'Unknown'}</Text>
-                      <Text style={styles.userId}>ID: {user.userId || 'N/A'}</Text>
+                      <Text style={styles.userId}>YARO ID: {user.userId || 'N/A'}</Text>
                     </View>
                   </View>
                   <TouchableOpacity

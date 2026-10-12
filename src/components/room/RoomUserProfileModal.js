@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Modal,
   Dimensions,
 } from 'react-native';
@@ -49,16 +48,9 @@ export default function RoomUserProfileModal({
   const { user: authUser, equippedFrame } = useContext(AuthContext) || {};
   if (!user && !visible) return null;
 
-  const targetName = user?.name || user?.username || 'Yaro User';
-  const targetId = user?.userId || user?.id || user?._id || '10000001';
-  const targetAvatar =
-    user?.avatar ||
-    user?.image ||
-    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200';
-  const targetGender = (user?.gender || 'male').toLowerCase();
-  const targetLevel = user?.level || 0;
-  const charmLevel = user?.charm || 0;
-  const followersCount = user?.followersCount !== undefined ? user?.followersCount : 0;
+  const targetName = user?.name || user?.username || 'User';
+  const targetGender = user?.gender?.toLowerCase();
+  const followersCount = user?.followersCount ?? user?.followers ?? null;
 
   const targetUserId = String(user?.userId || user?.id || user?._id || '');
   const isTargetOwner = Boolean(
@@ -153,22 +145,22 @@ export default function RoomUserProfileModal({
             <Text style={styles.userName} numberOfLines={1}>{targetName}</Text>
             {targetGender === 'female' ? (
               <MaterialCommunityIcons name="gender-female" size={18} color="#EC4899" style={{ marginLeft: 4 }} />
-            ) : (
+            ) : targetGender === 'male' ? (
               <MaterialCommunityIcons name="gender-male" size={18} color="#0EA5E9" style={{ marginLeft: 4 }} />
-            )}
+            ) : null}
           </View>
 
           {/* Badges Row: Level + Charm + Owner/Admin Pill */}
           <View style={styles.badgesRow}>
             {/* Level Badge */}
-            <View style={styles.darkBadge}>
-              <Text style={styles.darkBadgeText}>▲ Lv.{targetLevel}</Text>
-            </View>
+            {user?.level != null && <View style={styles.darkBadge}>
+              <Text style={styles.darkBadgeText}>Lv.{user.level}</Text>
+            </View>}
 
             {/* Charm/Wealth Badge */}
-            <View style={styles.greyBadge}>
-              <Text style={styles.greyBadgeText}>★ Lv.{charmLevel}</Text>
-            </View>
+            {user?.charm != null && <View style={styles.greyBadge}>
+              <Text style={styles.greyBadgeText}>Charm Lv.{user.charm}</Text>
+            </View>}
 
             {/* Room Owner Tag (Coral / Orange) */}
             {isTargetOwner && (
@@ -187,12 +179,12 @@ export default function RoomUserProfileModal({
 
           {/* ID & Followers Info Row */}
           <View style={styles.infoRow}>
-            <Text style={styles.idText}>Maza Id:{targetId}</Text>
+            <Text style={styles.idText}>YARO ID: {targetUserId || '—'}</Text>
             <View style={styles.followersRow}>
               <View style={styles.followerBadge}>
                 <MaterialCommunityIcons name="account-group" size={13} color="#FFFFFF" />
               </View>
-              <Text style={styles.followersText}>{followersCount} Followers</Text>
+              <Text style={styles.followersText}>{followersCount == null ? 'Followers unavailable' : `${followersCount} Followers`}</Text>
             </View>
           </View>
 

@@ -127,7 +127,7 @@ export default function FollowersScreen() {
               )}
             </View>
             <Text style={styles.subText} numberOfLines={1}>
-              ID: {item.userId || item.id || 'N/A'} • {item.gender || 'User'}
+              YARO ID: {item.userId || item.id || 'N/A'} • {item.gender || 'User'}
             </Text>
           </View>
         </TouchableOpacity>

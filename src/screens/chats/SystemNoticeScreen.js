@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,15 @@ import {
   StatusBar,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
+import { AuthContext } from '../../context/AuthProvider';
+import { apiUtil } from '../../utils/apiUtil';
 
 
 const coinIcon = require('../../assets/coin.webp');
@@ -25,88 +28,68 @@ const SYSTEM_FILTER_TABS = [
   { id: 'system', label: 'System', icon: 'shield-checkmark-outline' },
 ];
 
-const DUMMY_SYSTEM_NOTICES = [
-  {
-    id: 's1',
-    title: 'Account Verified',
-    badge: 'New',
-    subtitle: 'Your account has been successfully verified. Enjoy all features now!',
-    time: '2m ago',
-    icon: 'shield-checkmark',
-    iconColor: '#8B5CF6',
-    iconBg: '#F3E8FF',
-  },
-  {
-    id: 's2',
-    title: 'Welcome Bonus',
-    badge: 'New',
-    subtitle: 'You’ve received 120 coins as a welcome bonus. Start connecting now!',
-    time: '10m ago',
-    icon: 'amber-coin',
-    iconColor: '#D97706',
-    iconBg: '#FEF3C7',
-  },
-  {
-    id: 's3',
-    title: 'Security Alert',
-    badge: 'New',
-    subtitle: 'A new login was detected from a new device. If this wasn’t you, please secure your account.',
-    time: '1h ago',
-    icon: 'shield-outline',
-    iconColor: '#EF4444',
-    iconBg: '#FEE2E2',
-  },
-  {
-    id: 's4',
-    title: 'Maintenance Update',
-    badge: null,
-    subtitle: 'We’ll be performing scheduled maintenance on May 10, 2025 from 02:00–04:00 (UTC).',
-    time: 'May 9, 2025',
-    icon: 'megaphone-outline',
-    iconColor: '#A855F7',
-    iconBg: '#F3E8FF',
-  },
-  {
-    id: 's5',
-    title: 'Level Up',
-    badge: 'New',
-    subtitle: 'Congratulations! You’ve reached Level 3. Unlock more features and meet more friends!',
-    time: 'May 8, 2025',
-    icon: 'stats-chart-outline',
-    iconColor: '#10B981',
-    iconBg: '#D1FAE5',
-  },
-  {
-    id: 's6',
-    title: 'Withdrawal Successful',
-    badge: null,
-    subtitle: 'Your withdrawal of $50.00 has been processed successfully.',
-    time: 'May 7, 2025',
-    icon: 'wallet-outline',
-    iconColor: '#10B981',
-    iconBg: '#D1FAE5',
-  },
-  {
-    id: 's7',
-    title: 'Terms Updated',
-    badge: null,
-    subtitle: 'Our Terms of Service have been updated. Please take a moment to review the changes.',
-    time: 'May 5, 2025',
-    icon: 'document-text-outline',
-    iconColor: '#3B82F6',
-    iconBg: '#DBEAFE',
-  },
-];
-
 export default function SystemNoticeScreen() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 42);
   const navigation = useNavigation();
+  const { user } = useContext(AuthContext);
   const [activeFilter, setActiveFilter] = useState('system');
+  const [notices, setNotices] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchNotices = async () => {
+      try {
+        setLoading(true);
+        const response = await apiUtil.get('/notifications', { params: { limit: 100 } });
+        const payload = response.data?.data || {};
+        const list = Array.isArray(payload.notifications) ? payload.notifications : [];
+        if (isMounted) {
+          setUnreadCount(Number(payload.unreadCount) || 0);
+          setNotices(list.map((notice) => ({
+            ...notice,
+            id: String(notice._id || notice.id),
+            title: notice.title || 'Notification',
+            subtitle: notice.message || notice.content || '',
+            badge: notice.isRead ? null : 'New',
+            time: notice.createdAt ? new Date(notice.createdAt).toLocaleString() : '',
+            icon: notice.type === 'transaction' ? 'gift-outline' : 'notifications-outline',
+            iconColor: notice.type === 'transaction' ? '#D97706' : '#6C5CE7',
+            iconBg: notice.type === 'transaction' ? '#FEF3C7' : '#F3E8FF',
+          })));
+        }
+      } catch (error) {
+        if (isMounted) {
+          setNotices([]);
+          setUnreadCount(0);
+        }
+        console.log('Failed to fetch notifications:', error?.message || error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchNotices();
+    return () => { isMounted = false; };
+  }, []);
 
   const renderSystemItem = ({ item }) => (
-    <TouchableOpacity activeOpacity={0.8} style={styles.cardWrapper}>
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={styles.cardWrapper}
+      onPress={async () => {
+        if (item.isRead) return;
+        try {
+          await apiUtil.patch(`/notifications/${item.id}/read`);
+          setNotices((current) => current.map((notice) => notice.id === item.id ? { ...notice, isRead: true, badge: null } : notice));
+          setUnreadCount((current) => Math.max(0, current - 1));
+        } catch (error) {
+          console.log('Could not mark notification read:', error?.message || error);
+        }
+      }}
+    >
       <View style={[styles.specialIconBox, { backgroundColor: item.iconBg }]}>
         {item.icon === 'amber-coin' ? (
           <Image source={coinIcon} style={{ width: 24, height: 24 }} />
@@ -164,7 +147,7 @@ export default function SystemNoticeScreen() {
             activeOpacity={0.8}
           >
             <Image source={coinIcon} style={styles.coinIconImg} resizeMode="contain" />
-            <Text style={styles.coinValText}>120</Text>
+            <Text style={styles.coinValText}>{Number(user?.coins || 0).toLocaleString()}</Text>
             <View style={styles.plusIconBadgeCircle}>
               <Icon name="add" size={10} color="#FFFFFF" />
             </View>
@@ -172,7 +155,7 @@ export default function SystemNoticeScreen() {
 
           <TouchableOpacity style={styles.bellButtonCircle} activeOpacity={0.8}>
             <Icon name="notifications-outline" size={19} color="#1E293B" />
-            <View style={styles.redBadgeDotSmall} />
+            {unreadCount > 0 ? <View style={styles.redBadgeDotSmall} /> : null}
           </TouchableOpacity>
         </View>
       </View>
@@ -237,9 +220,17 @@ export default function SystemNoticeScreen() {
 
       {/* System List */}
       <FlatList
-        data={DUMMY_SYSTEM_NOTICES}
+        data={notices}
         renderItem={renderSystemItem}
         keyExtractor={item => item.id}
+        ListEmptyComponent={loading ? (
+          <ActivityIndicator size="small" color="#6C5CE7" style={{ marginTop: 40 }} />
+        ) : (
+          <View style={[styles.listContainer, { alignItems: 'center' }]}>
+            <Icon name="notifications-outline" size={42} color="#94A3B8" />
+            <Text style={styles.userNameText}>No notifications yet</Text>
+          </View>
+        )}
         contentContainerStyle={[
           styles.listContainer,
           { paddingBottom: bottomPadding },

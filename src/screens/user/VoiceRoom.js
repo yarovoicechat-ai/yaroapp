@@ -32,7 +32,7 @@ import { useVoiceRoom } from '../../context/VoiceRoomContext';
 import { AlertService } from '../../utils/AlertService';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { apiUtil } from '../../utils/apiUtil';
-import { uploadToCloudinary } from '../../utils/cloudinaryUtil';
+import { getUserAvatar } from '../../utils/avatarUtil';
 import { requestCameraAndCapture, requestGalleryAndSelect } from '../../utils/verificationMedia';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RoomUserProfileModal from '../../components/room/RoomUserProfileModal';
@@ -55,6 +55,7 @@ import {
   useGiftBalance,
   receiverPositionRegistry,
 } from '../../components/gift';
+import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import RoomToolsModal from '../../components/room/RoomToolsModal';
 import RoomExitModal from '../../components/room/RoomExitModal';
 import RoomEmojiModal from '../../components/room/RoomEmojiModal';
@@ -78,15 +79,41 @@ import {
 
 const { width, height } = Dimensions.get('window');
 
+const registerGiftAvatarPosition = (ref, receiverIds) => {
+  if (!ref || typeof ref.measureInWindow !== 'function') return;
+  requestAnimationFrame(() => {
+    ref.measureInWindow((x, y, avatarWidth, avatarHeight) => {
+      if (!avatarWidth || !avatarHeight) return;
+      receiverIds.filter(Boolean).forEach((receiverId) => {
+        receiverPositionRegistry.register(receiverId, {
+          x,
+          y,
+          width: avatarWidth,
+          height: avatarHeight,
+        });
+      });
+    });
+  });
+};
+
 const hasPlayableGiftVisual = (payload) => {
-  const gift = payload?.gift || {};
-  const animationType = String(payload?.animationType || gift.animationType || 'NORMAL').toUpperCase();
+  const nestedGift = payload?.gift && typeof payload.gift === 'object' ? payload.gift : {};
+  const gift = {
+    ...nestedGift,
+    animationUrl: nestedGift.animationUrl || payload?.animationUrl || payload?.giftAnimationUrl,
+    mediaUrl: nestedGift.mediaUrl || payload?.mediaUrl,
+    image: nestedGift.image || payload?.giftImage || payload?.image,
+    giftImage: nestedGift.giftImage || payload?.giftImage,
+    icon: nestedGift.icon || payload?.giftIcon || payload?.icon,
+    name: nestedGift.name || payload?.giftName || payload?.name,
+  };
+  const giftVisual = resolveGiftVisual(gift);
   return Boolean(
     gift.animationUrl ||
       gift.mediaUrl ||
       payload?.animationUrl ||
-      (['SPECIAL', 'CENTER_STAGE', 'FULL_SCREEN', 'VIP', 'LUXURY'].includes(animationType) &&
-        (gift.image || gift.giftImage || gift.previewUrl)),
+      giftVisual.giftImage ||
+      giftVisual.giftIcon,
   );
 };
 
@@ -123,10 +150,13 @@ function DanmakuItem({ bullet, onComplete }) {
         end={{ x: 1, y: 0 }}
         style={styles.flyingBulletGradient}
       >
-        <Image
-          source={{ uri: bullet.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
-          style={styles.flyingBulletAvatar}
-        />
+        {bullet.avatar ? (
+          <Image source={{ uri: bullet.avatar }} style={styles.flyingBulletAvatar} />
+        ) : (
+          <View style={[styles.flyingBulletAvatar, styles.flyingBulletAvatarFallback]}>
+            <Icon name="person" size={14} color="#E2E8F0" />
+          </View>
+        )}
         <Text style={styles.flyingBulletUser}>{bullet.user}:</Text>
         <Text style={styles.flyingBulletText} numberOfLines={1}>{bullet.text}</Text>
         <Text style={{ fontSize: 13, marginLeft: 4 }}>🚀</Text>
@@ -503,7 +533,7 @@ export default function VoiceRoomScreen() {
   }, [route.params?.room, route.params?.roomId, route.params?.id, activeRoom?.id]);
 
   // Strict ownership check: prevent visitor from getting host/admin controls
-  const currentUserId = user?.userId ? String(user.userId) : (user?._id ? String(user._id) : null);
+  const currentUserId = user?.userId ? String(user.userId) : (user?._id || user?.id ? String(user._id || user.id) : null);
   const roomHostId = (room?.hostId || room?.hostUserId || room?.creatorId)
     ? String(room.hostId || room.hostUserId || room.creatorId)
     : null;
@@ -529,12 +559,19 @@ export default function VoiceRoomScreen() {
   const [isChatBarExpanded, setIsChatBarExpanded] = useState(false);
   const isUserOnSeat = currentSeatIndex !== null && currentSeatIndex !== undefined && currentSeatIndex !== -1;
 
+  useEffect(() => {
+    if (!isChatBarExpanded) return undefined;
+    const focusTimer = setTimeout(() => textInputRef.current?.focus(), 120);
+    return () => clearTimeout(focusTimer);
+  }, [isChatBarExpanded]);
+
   // Bullet Message (Danmaku "udte udte jaye")
   const [isBulletMode, setIsBulletMode] = useState(false);
   const [bulletMessages, setBulletMessages] = useState([]);
   const bulletTrackRef = useRef(0);
+  const handledBulletMessageIdsRef = useRef(new Set());
 
-  const triggerBulletMessage = (bulletData) => {
+  const triggerBulletMessage = useCallback((bulletData) => {
     const track = bulletTrackRef.current % 4;
     bulletTrackRef.current += 1;
     const newBullet = {
@@ -542,11 +579,29 @@ export default function VoiceRoomScreen() {
       track,
     };
     setBulletMessages((prev) => [...prev, newBullet]);
-  };
+  }, []);
 
   const handleRemoveBullet = (bulletId) => {
     setBulletMessages((prev) => prev.filter((b) => b.id !== bulletId));
   };
+
+  useEffect(() => {
+    const ownUserId = String(user?.userId || user?._id || user?.id || '');
+    chatMessages.forEach((message) => {
+      if (!message?.id || handledBulletMessageIdsRef.current.has(String(message.id))) return;
+      handledBulletMessageIdsRef.current.add(String(message.id));
+      if (!message.isBullet) return;
+
+      const senderId = String(message.senderId || message.userId || '');
+      if (ownUserId && senderId === ownUserId) return;
+      triggerBulletMessage({
+        id: `bullet-${message.id}`,
+        text: message.text || message.content || '',
+        user: message.senderName || message.user || 'User',
+        avatar: message.avatar || message.sender?.avatar,
+      });
+    });
+  }, [chatMessages, triggerBulletMessage, user?.userId, user?._id, user?.id]);
 
   // Floating reactions
   const [reactions, setReactions] = useState([]);
@@ -572,40 +627,6 @@ export default function VoiceRoomScreen() {
     const coHostLayout = { x: width * 0.5 + 61 - 24, y: topSafeInset + 115, width: 56, height: 56 };
     receiverPositionRegistry.register('cohost', coHostLayout);
 
-    if (Array.isArray(seats)) {
-      const cfg = getSeatConfig(seatCount);
-      const bPerRow = cfg.seatsPerRow;
-      const isCompact = cfg.isCompact;
-
-      seats.forEach((seat, idx) => {
-        if (!seat) return;
-        let layout;
-        if (seat.seatIndex === 0) {
-          layout = hostLayout;
-        } else if (seat.seatIndex === 1) {
-          layout = coHostLayout;
-        } else {
-          const bottomIdx = seat.seatIndex - 2;
-          const rowIdx = Math.floor(bottomIdx / bPerRow);
-          const colIdx = bottomIdx % bPerRow;
-          const colW = isCompact ? (width - 16) / 5 : (width - 24) / 4;
-          const startX = isCompact ? 8 : 12;
-          const seatX = startX + colIdx * colW + (colW - 50) / 2;
-          const seatY = topSafeInset + 115 + 78 + rowIdx * 80;
-          layout = { x: seatX, y: seatY, width: 50, height: 50 };
-        }
-
-        if (layout) {
-          receiverPositionRegistry.register(`seat-${seat.seatIndex}`, layout);
-          if (seat.user) {
-            if (seat.user.userId) receiverPositionRegistry.register(seat.user.userId, layout);
-            if (seat.user.id) receiverPositionRegistry.register(seat.user.id, layout);
-            if (seat.user._id) receiverPositionRegistry.register(seat.user._id, layout);
-            if (seat.user.name) receiverPositionRegistry.register(seat.user.name, layout);
-          }
-        }
-      });
-    }
   }, [room?.hostId, room?.ownerId, room?.hostName, seats, seatCount, topSafeInset]);
 
   const giftHook = useGift({
@@ -614,6 +635,7 @@ export default function VoiceRoomScreen() {
     deductLocalBalance,
     onGiftSentSuccess: (data) => {
       const giftName = data.gift?.name || 'Gift';
+      const giftVisual = resolveGiftVisual(data.gift);
       const receiverNames = Array.isArray(data.receivers)
         ? data.receivers.map((r) => r.name).join(', ')
         : 'Host';
@@ -629,16 +651,16 @@ export default function VoiceRoomScreen() {
             transactionId: data.transactionId || txId,
             type: 'gift',
             user: user?.name || 'You',
-            avatar: user?.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+            avatar: user?.avatar || user?.image || null,
             gift: giftName,
             giftName: giftName,
-            giftIcon: data.gift?.icon || '',
-            giftImage: data.gift?.image || data.gift?.iconUrl || data.gift?.thumbnail || null,
+            giftIcon: giftVisual.giftIcon,
+            giftImage: giftVisual.giftImage || null,
             to: receiverNames,
             count: data.quantity || 1,
             combo: data.comboCount || 1,
-            isSvip: true,
-            svipLevel: 1,
+            isSvip: Number(data.sender?.svipLevel || user?.svipLevel || 0) > 0,
+            svipLevel: data.sender?.svipLevel || user?.svipLevel || null,
             timestamp: Date.now(),
           },
         ];
@@ -652,12 +674,8 @@ export default function VoiceRoomScreen() {
           senderName: user?.name || 'You',
           senderAvatar: user?.image || user?.avatar,
           giftName,
-          giftIcon: data.gift?.icon || '',
-          giftImage:
-            data.gift?.image ||
-            data.gift?.giftImage ||
-            data.gift?.previewUrl ||
-            '',
+          giftIcon: giftVisual.giftIcon,
+          giftImage: giftVisual.giftImage,
           quantity: data.quantity || 1,
           receiverText: receiverNames,
           receiverAvatar: primaryReceiver?.avatar || primaryReceiver?.image || '',
@@ -695,6 +713,11 @@ export default function VoiceRoomScreen() {
         const receiverText = Array.isArray(payload.receivers) && payload.receivers.length > 0
           ? payload.receivers.map((r) => r.name || 'Recipient').join(', ')
           : payload.receiver?.name || 'Everyone';
+        const giftVisual = resolveGiftVisual({
+          ...payload.gift,
+          giftImage: payload.gift.image || payload.gift.giftImage || payload.giftImage,
+          giftIcon: payload.gift.icon || payload.giftIcon,
+        });
         const msgId = 'gift-sock-' + (payload.transactionId || Date.now());
         setChatMessages((prev) => {
           if (prev.some((m) => m.id === msgId || (payload.transactionId && m.transactionId === payload.transactionId))) {
@@ -707,16 +730,16 @@ export default function VoiceRoomScreen() {
               transactionId: payload.transactionId,
               type: 'gift',
               user: payload.sender.name || 'User',
-              avatar: payload.sender.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+              avatar: payload.sender.avatar || payload.sender.image || null,
               gift: payload.gift.name || 'Gift',
               giftName: payload.gift.name || 'Gift',
-              giftIcon: payload.gift.icon || '',
-              giftImage: payload.gift.image || payload.gift.iconUrl || payload.gift.thumbnail || null,
+              giftIcon: giftVisual.giftIcon,
+              giftImage: giftVisual.giftImage || null,
               to: receiverText,
               count: payload.quantity || 1,
               combo: payload.comboCount || payload.combo || 1,
-              isSvip: true,
-              svipLevel: 1,
+              isSvip: Number(payload.sender.svipLevel || payload.sender.svip || 0) > 0,
+              svipLevel: payload.sender.svipLevel || payload.sender.svip || null,
               timestamp: Date.now(),
             },
           ];
@@ -807,6 +830,12 @@ export default function VoiceRoomScreen() {
   const [selfSeatModalVisible, setSelfSeatModalVisible] = useState(false);
   const [wealthModalVisible, setWealthModalVisible] = useState(false);
   const [onlineUsersModalVisible, setOnlineUsersModalVisible] = useState(false);
+  const topRoomContributors = [...(Array.isArray(onlineUsers) ? onlineUsers : [])]
+    .sort((a, b) =>
+      Number(b.wealthPoints || b.points || b.diamonds || 0) -
+      Number(a.wealthPoints || a.points || a.diamonds || 0),
+    )
+    .slice(0, 3);
 
   // Room Details and Settings Modals
   const [currentRoomTitle, setCurrentRoomTitle] = useState(room.title);
@@ -934,7 +963,17 @@ export default function VoiceRoomScreen() {
       let coverImageToSave = editRoomCover;
       if (pendingRoomCoverUpload) {
         AlertService.show('Uploading', 'Room DP upload ho raha hai...', 'info');
-        coverImageToSave = await uploadToCloudinary(pendingRoomCoverUpload, 'host');
+        const uploadData = new FormData();
+        uploadData.append('file', {
+          uri: pendingRoomCoverUpload.uri,
+          type: pendingRoomCoverUpload.type || 'image/jpeg',
+          name: pendingRoomCoverUpload.name || `room-cover-${Date.now()}.jpg`,
+        });
+        const uploadResponse = await apiUtil.post('/upload/room-cover', uploadData);
+        if (!uploadResponse.data?.success || !uploadResponse.data?.data?.url) {
+          throw new Error(uploadResponse.data?.message || 'Room DP upload nahi ho saka.');
+        }
+        coverImageToSave = uploadResponse.data.data.url;
       } else if (/^(file|content):\/\//i.test(String(coverImageToSave || ''))) {
         AlertService.show('Room DP Required', 'Room DP ko dobara select karein, phir save karein.', 'error');
         return;
@@ -1045,14 +1084,14 @@ export default function VoiceRoomScreen() {
           ...user,
           ...seat.user,
           isCurrentUser: true,
-          userId: user?.userId || user?._id || user?.id || seat.user.userId || seat.user.id || '10000001',
+          userId: user?.userId || user?._id || user?.id || seat.user.userId || seat.user.id,
           name: user?.name || seat.user.name,
           avatar: user?.avatar || user?.image || seat.user.avatar,
           image: user?.image || user?.avatar || seat.user.image || seat.user.avatar,
-          followersCount: user?.followersCount !== undefined ? user.followersCount : (seat.user.followersCount || 1),
-          level: user?.level || seat.user.level || 4,
+          followersCount: user?.followersCount ?? seat.user.followersCount,
+          level: user?.level ?? seat.user.level,
           charm: user?.charm || seat.user.charm || 0,
-          gender: user?.gender || seat.user.gender || 'male',
+          gender: user?.gender || seat.user.gender,
           isOwner: isRoomOwner || isContextOwnerMatch || seat.seatIndex === 0,
           isAdmin: isCurrentUserAdmin && !isRoomOwner,
           equippedFrame: user?.equippedFrame || seat.user?.equippedFrame || null,
@@ -1063,7 +1102,7 @@ export default function VoiceRoomScreen() {
         // Clicked another user's seat -> show Profile modal
         setSelectedProfileUser({
           ...seat.user,
-          gender: seat.user?.gender || 'male',
+          gender: seat.user?.gender,
           equippedFrame: seat.user?.equippedFrameAsset || seat.user?.equippedFrame || null,
           equippedFrameAsset: seat.user?.equippedFrameAsset || seat.user?.equippedFrame || null,
         });
@@ -1113,19 +1152,20 @@ export default function VoiceRoomScreen() {
       id: 'm-' + Date.now(),
       type: 'user',
       user: user?.name || 'You',
-      userId: user?.userId || '10000055',
-      senderId: user?.userId || '10000055',
+      userId: user?.userId || user?._id || user?.id,
+      senderId: user?.userId || user?._id || user?.id,
       senderName: user?.name || 'You',
       avatar: user?.avatar || user?.image,
       equippedFrame: user?.equippedFrameAsset || user?.equippedFrame || null,
       equippedFrameAsset: user?.equippedFrameAsset || null,
       chatBubble: user?.equippedChatBubbleAsset || user?.equippedChatBubble || null,
       chatBubbleId: user?.equippedChatBubble || null,
-      level: user?.level || 4,
+      level: user?.level,
       text: trimmed,
       isBullet: isBulletMode,
     };
 
+    if (isBulletMode) handledBulletMessageIdsRef.current.add(String(newMsg.id));
     setChatMessages(prev => [...prev, newMsg]);
     setInputText('');
     broadcastChatMessage(newMsg);
@@ -1349,33 +1389,19 @@ export default function VoiceRoomScreen() {
             activeOpacity={0.8}
           >
             <View style={styles.topContribAvatarsRow}>
-              <View style={[styles.contribAvatarWrap, { zIndex: 3 }]}>
-                <Image
-                  source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100' }}
-                  style={styles.smallContribAvatar}
-                />
-                <View style={[styles.contribRankBadge, { backgroundColor: '#F59E0B' }]}>
-                  <Text style={styles.contribRankText}>1</Text>
+              {topRoomContributors.length > 0 ? topRoomContributors.map((member, index) => (
+                <View
+                  key={String(member.id || member._id || member.userId || index)}
+                  style={[styles.contribAvatarWrap, { marginLeft: index ? -6 : 0, zIndex: 3 - index }]}
+                >
+                  <Image source={getUserAvatar(member)} style={styles.smallContribAvatar} />
+                  <View style={[styles.contribRankBadge, { backgroundColor: ['#F59E0B', '#94A3B8', '#B45309'][index] }]}>
+                    <Text style={styles.contribRankText}>{index + 1}</Text>
+                  </View>
                 </View>
-              </View>
-              <View style={[styles.contribAvatarWrap, { marginLeft: -6, zIndex: 2 }]}>
-                <Image
-                  source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' }}
-                  style={styles.smallContribAvatar}
-                />
-                <View style={[styles.contribRankBadge, { backgroundColor: '#94A3B8' }]}>
-                  <Text style={styles.contribRankText}>2</Text>
-                </View>
-              </View>
-              <View style={[styles.contribAvatarWrap, { marginLeft: -6, zIndex: 1 }]}>
-                <Image
-                  source={{ uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' }}
-                  style={styles.smallContribAvatar}
-                />
-                <View style={[styles.contribRankBadge, { backgroundColor: '#B45309' }]}>
-                  <Text style={styles.contribRankText}>3</Text>
-                </View>
-              </View>
+              )) : (
+                <MaterialCommunityIcons name="account-group-outline" size={24} color="rgba(255,255,255,0.8)" />
+              )}
             </View>
             <MaterialCommunityIcons name="chevron-right" size={15} color="rgba(255, 255, 255, 0.7)" />
           </TouchableOpacity>
@@ -1457,7 +1483,7 @@ export default function VoiceRoomScreen() {
               <Text style={styles.joinUserName} numberOfLines={1}>{activeJoinBanner.name || 'User'}</Text>
               <Text style={styles.joinSubText}>has joined</Text>
               <View style={styles.joinLevelBadge}>
-                <Text style={styles.joinLevelText}>💎 Lv.{activeJoinBanner.wealthLevel || activeJoinBanner.level || 1}</Text>
+                <Text style={styles.joinLevelText}>💎 Lv.{activeJoinBanner.wealthLevel ?? activeJoinBanner.level ?? '—'}</Text>
               </View>
             </View>
           </LinearGradient>
@@ -1510,20 +1536,6 @@ export default function VoiceRoomScreen() {
               <TouchableOpacity
                 key={`top-seat-${seat.seatIndex}`}
                 style={styles.topFeaturedSeatItem}
-                onLayout={(e) => {
-                  const layout = e.nativeEvent.layout;
-                  if (seat.user) {
-                    const uid = seat.user.id || seat.user._id || seat.user.userId;
-                    if (uid) {
-                      receiverPositionRegistry.register(uid, {
-                        x: layout.x,
-                        y: layout.y + 160,
-                        width: layout.width,
-                        height: layout.height,
-                      });
-                    }
-                  }
-                }}
                 onPress={() => {
                   handleSeatPress(seat);
                 }}
@@ -1537,7 +1549,20 @@ export default function VoiceRoomScreen() {
                       intensity={1.1}
                       size={56}
                     >
-                      <View style={styles.topFeaturedAvatarBox}>
+                      <View
+                        ref={(ref) => registerGiftAvatarPosition(ref, [
+                          seat.user.userId,
+                          seat.user.id,
+                          seat.user._id,
+                          seat.user.name,
+                          seat.seatIndex === 0 ? 'host' : null,
+                          seat.seatIndex === 1 ? 'cohost' : null,
+                          seat.seatIndex === 0 ? room?.hostId : null,
+                          seat.seatIndex === 0 ? room?.ownerId : null,
+                          seat.seatIndex === 0 ? room?.hostName : null,
+                        ])}
+                        style={styles.topFeaturedAvatarBox}
+                      >
                         <AvatarWithFrame
                           user={seat.user}
                           frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame) : null)}
@@ -1615,20 +1640,6 @@ export default function VoiceRoomScreen() {
                 <TouchableOpacity
                   key={`seat-${seat.seatIndex}`}
                   style={[styles.seatItem, { width: seatWidth }]}
-                  onLayout={(e) => {
-                    const layout = e.nativeEvent.layout;
-                    if (seat.user) {
-                      const uid = seat.user.id || seat.user._id || seat.user.userId;
-                      if (uid) {
-                        receiverPositionRegistry.register(uid, {
-                          x: layout.x,
-                          y: layout.y + 220,
-                          width: layout.width,
-                          height: layout.height,
-                        });
-                      }
-                    }
-                  }}
                   onPress={() => {
                     handleSeatPress(seat);
                   }}
@@ -1641,7 +1652,14 @@ export default function VoiceRoomScreen() {
                         waveColors={activeSeatSkin?.ringColors || ['#38BDF8', '#0284C7']}
                         size={circleSize}
                       >
-                        <View style={[
+                        <View
+                          ref={(ref) => registerGiftAvatarPosition(ref, [
+                            seat.user.userId,
+                            seat.user.id,
+                            seat.user._id,
+                            seat.user.name,
+                          ])}
+                          style={[
                           styles.occupiedAvatarContainer,
                           {
                             width: circleSize,
@@ -1650,7 +1668,8 @@ export default function VoiceRoomScreen() {
                             borderWidth: 0,
                             borderColor: 'transparent',
                           },
-                        ]}>
+                        ]}
+                        >
                           <AvatarWithFrame
                             user={seat.user}
                             frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame) : null)}
@@ -1910,7 +1929,11 @@ export default function VoiceRoomScreen() {
               colors={['#EC4899', '#8B5CF6']}
               style={styles.luckyFruitBox}
             >
-              <Text style={{ fontSize: 16 }}>🎰</Text>
+            <MaterialCommunityIcons
+              name="rocket-launch-outline"
+              size={16}
+              color={isBulletMode ? '#FFFFFF' : '#7C3AED'}
+            />
               <Text style={styles.luckyFruitLabel}>LUCKY</Text>
             </LinearGradient>
             <View style={styles.luckyDotsRow}>
@@ -1942,7 +1965,7 @@ export default function VoiceRoomScreen() {
 
       {/* Bottom Room Control Bar */}
       <View
-        pointerEvents={isKeyboardVisible && isUserOnSeat && isChatBarExpanded ? 'none' : 'auto'}
+        pointerEvents={isChatBarExpanded ? 'none' : 'auto'}
         style={[
           styles.bottomControlBar,
           isKeyboardVisible && {
@@ -1954,7 +1977,7 @@ export default function VoiceRoomScreen() {
             elevation: 12,
           },
           { paddingBottom: insets.bottom > 0 ? insets.bottom : 6 },
-          isKeyboardVisible && isUserOnSeat && isChatBarExpanded && { opacity: 0 },
+          isChatBarExpanded && { opacity: 0 },
         ]}
       >
         {!isUserOnSeat ? (
@@ -1979,37 +2002,14 @@ export default function VoiceRoomScreen() {
               />
             </TouchableOpacity>
 
-            {/* 2. Chat Input Pill: "Say hi..." */}
-            <View style={styles.chatInputWrapper}>
-              <TouchableOpacity
-                style={[styles.bulletToggleBtn, isBulletMode && styles.bulletToggleBtnActive]}
-                onPress={() => {
-                  const next = !isBulletMode;
-                  setIsBulletMode(next);
-                  AlertService.show('Bullet Chat', next ? 'Bullet Mode ON 🚀' : 'Standard Chat Mode', next ? 'success' : 'info');
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 16 }}>🚀</Text>
-                {isBulletMode && <View style={styles.bulletActiveDot} />}
-              </TouchableOpacity>
-
-              <TextInput
-                ref={textInputRef}
-                style={styles.chatTextInput}
-                placeholder={isBulletMode ? 'Bullet 🚀' : 'Say hi...'}
-                placeholderTextColor="rgba(255, 255, 255, 0.55)"
-                value={inputText}
-                onChangeText={setInputText}
-                onSubmitEditing={handleSendMessage}
-                returnKeyType="send"
-              />
-              {inputText.length > 0 && (
-                <TouchableOpacity onPress={handleSendMessage} style={styles.sendMsgBtn}>
-                  <Icon name="send" size={16} color="#7C3AED" />
-                </TouchableOpacity>
-              )}
-            </View>
+            {/* Open the shared room chat composer. */}
+            <TouchableOpacity
+              style={styles.controlCircleBtn}
+              onPress={() => setIsChatBarExpanded(true)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="chat-processing-outline" size={22} color="#FFF" />
+            </TouchableOpacity>
 
             {/* 3. Lucky Bag */}
             <TouchableOpacity
@@ -2136,12 +2136,12 @@ export default function VoiceRoomScreen() {
         )}
       </View>
 
-      {/* Floating Expanded Chat Input Bar when in On-Seat Mode */}
-      {isUserOnSeat && isChatBarExpanded && (
+      {/* Single chat composer, positioned directly above the keyboard. */}
+      {isChatBarExpanded && (
         <View style={[
           styles.floatingChatInputBar,
           {
-            bottom: keyboardLift + (insets.bottom > 0 ? insets.bottom : 6) + 56,
+            bottom: isKeyboardVisible ? keyboardLift + 4 : bottomSafePadding + 8,
           },
         ]}>
           <TouchableOpacity
@@ -2158,28 +2158,22 @@ export default function VoiceRoomScreen() {
           <TextInput
             ref={textInputRef}
             style={styles.chatTextInput}
-            placeholder={isBulletMode ? 'Bullet 🚀' : 'Say hi...'}
-            placeholderTextColor="rgba(255, 255, 255, 0.55)"
+            placeholder={isBulletMode ? 'Bullet message...' : 'Type a message...'}
+            placeholderTextColor="#94A3B8"
             value={inputText}
             onChangeText={setInputText}
-            onSubmitEditing={() => {
-              handleSendMessage();
-              setIsChatBarExpanded(false);
-            }}
+            onSubmitEditing={handleSendMessage}
             returnKeyType="send"
             autoFocus
           />
-          <TouchableOpacity
-            onPress={() => {
-              handleSendMessage();
-              setIsChatBarExpanded(false);
-            }}
-            style={styles.sendMsgBtn}
-          >
+          <TouchableOpacity onPress={handleSendMessage} style={styles.sendMsgBtn}>
             <Icon name="send" size={16} color="#7C3AED" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setIsChatBarExpanded(false)}
+            onPress={() => {
+              setIsChatBarExpanded(false);
+              Keyboard.dismiss();
+            }}
             style={{ paddingHorizontal: 6 }}
           >
             <Icon name="close-circle" size={20} color="rgba(255,255,255,0.6)" />
@@ -3686,8 +3680,8 @@ const styles = StyleSheet.create({
   },
   chatTextInput: {
     flex: 1,
-    color: '#FFF',
-    fontSize: 11.5,
+    color: '#0F172A',
+    fontSize: 14,
     paddingVertical: 0,
   },
   sendMsgBtn: {
@@ -4732,6 +4726,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFF',
   },
+  flyingBulletAvatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#334155',
+  },
   flyingBulletUser: {
     color: '#FFF',
     fontSize: 12,
@@ -5163,18 +5162,17 @@ const styles = StyleSheet.create({
   },
   floatingChatInputBar: {
     position: 'absolute',
-    left: 12,
-    right: 12,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    zIndex: 100,
-    elevation: 10,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    zIndex: 120,
+    elevation: 14,
   },
 
   // Image 1 & 2 Header Styles

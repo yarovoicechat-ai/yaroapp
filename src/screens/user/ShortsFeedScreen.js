@@ -21,42 +21,6 @@ import EmptyStateView from '../../components/EmptyStateView';
 
 const { width, height } = Dimensions.get('window');
 
-const SAMPLE_SHORTS = [
-  {
-    id: 's1',
-    creator: { name: 'Ananya Sharma', id: '10042189', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80', isVerified: true },
-    caption: 'Late night singing session! Hope you all love this melody ✨🎶',
-    hashtags: '#Music #YaroVibes #Singing #LiveClub',
-    sound: 'Original Sound - Ananya Sharma',
-    likes: 1420,
-    comments: 89,
-    shares: 34,
-    videoPoster: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 's2',
-    creator: { name: 'Kabir Roy', id: '10084321', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&auto=format&fit=crop&q=80', isVerified: false },
-    caption: 'Chit-chatting with fans on Yaro App! Join the voice room! 🎧🔥',
-    hashtags: '#PartyRoom #VoiceChat #GoodVibes',
-    sound: 'Trending Beat - Yaro Sound Station',
-    likes: 890,
-    comments: 42,
-    shares: 18,
-    videoPoster: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 's3',
-    creator: { name: 'Pooja Verma', id: '10011928', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80', isVerified: true },
-    caption: 'Weekend dance challenge! Drop your votes in comments! 💃💃',
-    hashtags: '#DanceChallenge #YaroShorts #WeekendFun',
-    sound: 'Dance Floor Anthem - DJ Max',
-    likes: 2450,
-    comments: 156,
-    shares: 88,
-    videoPoster: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800&auto=format&fit=crop&q=80',
-  },
-];
-
 export default function ShortsFeedScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -67,10 +31,7 @@ export default function ShortsFeedScreen() {
   const [likedMap, setLikedMap] = useState({});
   const [commentsVisible, setCommentsVisible] = useState(false);
   const [commentInput, setCommentInput] = useState('');
-  const [commentsList, setCommentsList] = useState([
-    { id: 'c1', user: 'Rohan', text: 'Loved this so much! 🔥' },
-    { id: 'c2', user: 'Sneha', text: 'Super talent! 💖' },
-  ]);
+  const [commentsList, setCommentsList] = useState([]);
 
   const handleToggleLike = (id) => {
     setLikedMap((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -189,7 +150,7 @@ export default function ShortsFeedScreen() {
 
       {/* Paging Feed */}
       <FlatList
-        data={SAMPLE_SHORTS}
+        data={[]}
         keyExtractor={(item) => item.id}
         renderItem={renderShortItem}
         pagingEnabled

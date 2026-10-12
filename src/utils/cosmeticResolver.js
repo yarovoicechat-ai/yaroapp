@@ -187,10 +187,10 @@ export const resolveUserCosmetics = (user) => {
       user.equippedVipId ||
       user.equippedSvipId ||
       (user.isSvip ? 'SVIP' : user.isVip ? 'VIP' : null),
-    level: user.level || 1,
-    wealthLevel: user.wealthLevel || user.level || 1,
+    level: user.level ?? null,
+    wealthLevel: user.wealthLevel ?? user.level ?? null,
     wealthExp: user.wealthExp || 0,
-    charmLevel: user.charmLevel || 1,
+    charmLevel: user.charmLevel ?? null,
     charmExp: user.charmExp || 0,
     vehicle: normalizeCosmeticAsset(user.equippedVehicleAsset || user.equippedVehicle || null),
     profileBorder: normalizeCosmeticAsset(user.equippedProfileBorderAsset || user.equippedProfileBorder || null),

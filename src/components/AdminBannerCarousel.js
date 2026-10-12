@@ -64,8 +64,10 @@ export default function AdminBannerCarousel({ placement }) {
       const items = Array.isArray(payload) ? payload : (payload?.banners || response.data?.banners || []);
       const selected = items
         .filter(item => {
-          const itemPlacement = item?.placement || 'home';
-          return itemPlacement === placement && item?.isActive !== false;
+          const itemPlacements = Array.isArray(item?.placements) && item.placements.length
+            ? item.placements
+            : [item?.placement || 'home'];
+          return itemPlacements.includes(placement) && item?.isActive !== false;
         })
         .map(normalizeBanner)
         .filter(Boolean);

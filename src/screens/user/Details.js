@@ -22,24 +22,15 @@ export default function Details() {
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
 
-  const tx = route.params?.transaction || route.params?.item || {
-    id: route.params?.transactionId || 'TXN-' + Math.floor(10000000 + Math.random() * 90000000),
-    title: 'Diamond Recharge',
-    type: 'Diamonds',
-    amount: '₹299',
-    diamonds: 2800,
-    status: 'Completed',
-    date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-    paymentMethod: 'Google Play Billing',
-    orderId: 'GPA.' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(10000 + Math.random() * 90000),
-  };
+  const tx = route.params?.transaction || route.params?.item || {};
 
   const handleCopy = (text, label) => {
     Clipboard.setString(text);
     AlertService.show('Copied', `${label} copied to clipboard!`, 'success');
   };
 
-  const isSuccess = (tx.status || 'Completed').toLowerCase() === 'completed' || (tx.status || '').toLowerCase() === 'success';
+  const status = String(tx.status || '').toLowerCase();
+  const isSuccess = status === 'completed' || status === 'success';
 
   return (
     <View style={styles.screen}>
@@ -70,8 +61,8 @@ export default function Details() {
             <Icon name={isSuccess ? 'checkmark' : 'time'} size={36} color="#FFFFFF" />
           </View>
 
-          <Text style={styles.statusText}>{tx.status || 'Transaction Successful'}</Text>
-          <Text style={styles.amountDisplay}>{tx.amount || `${tx.diamonds || tx.coins} Units`}</Text>
+          <Text style={styles.statusText}>{tx.status || 'Transaction details unavailable'}</Text>
+          <Text style={styles.amountDisplay}>{tx.amount || (tx.diamonds != null || tx.coins != null ? `${tx.diamonds ?? tx.coins} Units` : 'Amount unavailable')}</Text>
           <Text style={styles.titleText}>{tx.title || 'Wallet Transaction'}</Text>
 
           <View style={styles.dashedDivider} />
@@ -81,10 +72,10 @@ export default function Details() {
             <Text style={styles.detailKey}>Transaction ID</Text>
             <TouchableOpacity
               style={styles.copyableValueRow}
-              onPress={() => handleCopy(tx.id || tx.orderId, 'Transaction ID')}
+              onPress={() => (tx.id || tx._id || tx.orderId) && handleCopy(String(tx.id || tx._id || tx.orderId), 'Transaction ID')}
             >
-              <Text style={styles.detailVal} numberOfLines={1}>{tx.id || tx.orderId}</Text>
-              <Icon name="copy-outline" size={14} color="#7C3AED" style={{ marginLeft: 6 }} />
+              <Text style={styles.detailVal} numberOfLines={1}>{tx.id || tx._id || tx.orderId || 'Unavailable'}</Text>
+              {(tx.id || tx._id || tx.orderId) ? <Icon name="copy-outline" size={14} color="#7C3AED" style={{ marginLeft: 6 }} /> : null}
             </TouchableOpacity>
           </View>
 

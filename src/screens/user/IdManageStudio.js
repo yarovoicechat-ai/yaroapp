@@ -153,7 +153,7 @@ export default function IdManageStudio() {
             <View style={styles.avatarBorder}>
               <Image source={getUserAvatar(user)} style={styles.avatar} />
               <View style={styles.levelTag}>
-                <Text style={styles.levelTagText}>Lv.{user?.level || 1}</Text>
+                <Text style={styles.levelTagText}>Lv.{user?.level ?? '—'}</Text>
               </View>
             </View>
 

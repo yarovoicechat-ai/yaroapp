@@ -5,19 +5,6 @@ import { AlertService } from '../../../utils/AlertService';
 export const QUANTITY_OPTIONS = [1, 5, 10, 20, 50, 100];
 export const CONFIRMATION_THRESHOLD_DIAMONDS = 50000;
 
-export const DEFAULT_GIFT_CATEGORIES = [
-  { name: 'Gifts', slug: 'gifts', icon: '🎁' },
-  { name: 'Lucky', slug: 'lucky', icon: '🍀' },
-  { name: 'Event', slug: 'event', icon: '🎉' },
-  { name: 'Surprise', slug: 'surprise', icon: '✨' },
-  { name: 'Custom', slug: 'custom', icon: '👑' },
-  { name: 'VIP', slug: 'vip', icon: '💎' },
-  { name: 'Special', slug: 'special', icon: '🔥' },
-];
-
-// Gift items are always loaded from the backend catalog.
-export const DEFAULT_GIFTS = [];
-
 export function useGift({
   roomId,
   callId,
@@ -29,8 +16,8 @@ export function useGift({
   const activeBalanceRef = useRef(activeBalance);
   activeBalanceRef.current = activeBalance;
 
-  const [categories, setCategories] = useState(DEFAULT_GIFT_CATEGORIES);
-  const [activeCategory, setActiveCategory] = useState('Gifts');
+  const [categories, setCategories] = useState([]);
+  const [activeCategory, setActiveCategory] = useState('All');
   const [gifts, setGifts] = useState([]);
   const [loadingGifts, setLoadingGifts] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,9 +38,9 @@ export function useGift({
     try {
       const response = await apiUtil.get('/gifts/categories');
       const next = response.data?.data;
-      setCategories(Array.isArray(next) && next.length ? next : DEFAULT_GIFT_CATEGORIES);
+      setCategories(Array.isArray(next) ? next : []);
     } catch (_) {
-      setCategories(DEFAULT_GIFT_CATEGORIES);
+      setCategories([]);
     }
   }, []);
 
@@ -68,7 +55,7 @@ export function useGift({
         if (current && next.some((item) => (item._id || item.id) === (current._id || current.id))) {
           return current;
         }
-        return next[0] || null;
+        return null;
       });
     } catch (error) {
       console.warn('[useGift] Gift catalog unavailable:', error?.message);

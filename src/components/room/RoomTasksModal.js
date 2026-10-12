@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
-  Dimensions,
   ActivityIndicator,
   Animated,
   StatusBar,
@@ -20,176 +19,7 @@ import { apiUtil } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
 import { AuthContext } from '../../context/AuthProvider';
 
-const { width } = Dimensions.get('window');
-
 const CATEGORIES = ['All', 'Gifts', 'Followers', 'Visitors', 'Host'];
-
-// Fallback initial task definitions (13 tasks matching the reference video)
-const DEFAULT_TASKS = [
-  // Gifts
-  {
-    id: 'task_gift_1',
-    category: 'Gifts',
-    title: 'Send a gift',
-    description: 'Send at least one gift in your room today',
-    target: 1,
-    unit: 'count',
-    progress: 0,
-    reward: 2500,
-    status: 'in_progress',
-    iconType: 'gift',
-  },
-  {
-    id: 'task_gift_10',
-    category: 'Gifts',
-    title: 'Send 10 gifts',
-    description: 'Send gifts 10 times in your room today',
-    target: 10,
-    unit: 'count',
-    progress: 0,
-    reward: 7500,
-    status: 'in_progress',
-    iconType: 'gift-box',
-  },
-  {
-    id: 'task_gift_new_3',
-    category: 'Gifts',
-    title: 'Gift 3 new users',
-    description: 'Send gifts to 3 different new users in your room (joined in the last 7 days)',
-    target: 3,
-    unit: 'count',
-    progress: 0,
-    reward: 6000,
-    status: 'in_progress',
-    iconType: 'sparkles',
-  },
-  {
-    id: 'task_gift_users_5',
-    category: 'Gifts',
-    title: '5 users send gifts',
-    description: '5 different users (not new accounts) send gifts in your room today',
-    target: 5,
-    unit: 'count',
-    progress: 0,
-    reward: 9000,
-    status: 'in_progress',
-    iconType: 'sparkles',
-  },
-  {
-    id: 'task_gift_new_send_3',
-    category: 'Gifts',
-    title: '3 new users send gifts',
-    description: '3 different new users send gifts in your room today',
-    target: 3,
-    unit: 'count',
-    progress: 0,
-    reward: 2500,
-    status: 'in_progress',
-    iconType: 'sparkles',
-  },
-
-  // Followers
-  {
-    id: 'task_follow_1',
-    category: 'Followers',
-    title: 'Get 1 new follower',
-    description: 'Gain 1 new follower today',
-    target: 1,
-    unit: 'count',
-    progress: 0,
-    reward: 1000,
-    status: 'in_progress',
-    iconType: 'users',
-  },
-  {
-    id: 'task_follow_10',
-    category: 'Followers',
-    title: 'Get 10 new followers',
-    description: 'Gain 10 new followers today',
-    target: 10,
-    unit: 'count',
-    progress: 0,
-    reward: 10000,
-    status: 'in_progress',
-    iconType: 'users',
-  },
-  {
-    id: 'task_follow_new_3',
-    category: 'Followers',
-    title: '3 new users follow you',
-    description: '3 different new users follow you today',
-    target: 3,
-    unit: 'count',
-    progress: 0,
-    reward: 4000,
-    status: 'in_progress',
-    iconType: 'sparkles',
-  },
-
-  // Visitors
-  {
-    id: 'task_visitors_10',
-    category: 'Visitors',
-    title: '10 unique visitors',
-    description: '10 different users enter your room today',
-    target: 10,
-    unit: 'count',
-    progress: 0,
-    reward: 5000,
-    status: 'in_progress',
-    iconType: 'eyes',
-  },
-  {
-    id: 'task_visitors_new_3',
-    category: 'Visitors',
-    title: '3 new visitors',
-    description: '3 different new users enter your room today',
-    target: 3,
-    unit: 'count',
-    progress: 0,
-    reward: 3000,
-    status: 'in_progress',
-    iconType: 'sparkles',
-  },
-
-  // Host
-  {
-    id: 'task_mic_10',
-    category: 'Host',
-    title: 'On mic for 10 minutes',
-    description: 'Stay on the mic in your room for 10 minutes today',
-    target: 10,
-    unit: 'minutes',
-    progress: 0,
-    reward: 2500,
-    status: 'in_progress',
-    iconType: 'mic',
-  },
-  {
-    id: 'task_mic_30',
-    category: 'Host',
-    title: 'On mic for 30 minutes',
-    description: 'Stay on the mic in your room for 30 minutes today',
-    target: 30,
-    unit: 'minutes',
-    progress: 0,
-    reward: 8000,
-    status: 'in_progress',
-    iconType: 'mic',
-  },
-  {
-    id: 'task_mic_120',
-    category: 'Host',
-    title: 'On mic for 120 minutes',
-    description: 'Stay on the mic in your room for 120 minutes today',
-    target: 120,
-    unit: 'minutes',
-    progress: 0,
-    reward: 18000,
-    status: 'in_progress',
-    iconType: 'mic',
-  },
-];
 
 export default function RoomTasksModal({ visible, onClose, roomId }) {
   const insets = useSafeAreaInsets();
@@ -198,9 +28,9 @@ export default function RoomTasksModal({ visible, onClose, roomId }) {
   const { fetchUserProfile } = useContext(AuthContext) || {};
 
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [tasks, setTasks] = useState(DEFAULT_TASKS);
-  const [summary, setSummary] = useState({ total: 13, done: 0, claimable: 0, claimed: 0 });
-  const [remainingSeconds, setRemainingSeconds] = useState(55539);
+  const [tasks, setTasks] = useState([]);
+  const [summary, setSummary] = useState({ total: 0, done: 0, claimable: 0, claimed: 0 });
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
   const [loading, setLoading] = useState(false);
   const [claimingTaskId, setClaimingTaskId] = useState(null);
 
@@ -208,6 +38,7 @@ export default function RoomTasksModal({ visible, onClose, roomId }) {
 
   // Format seconds into "15h 25m 39s"
   const formattedCountdown = useMemo(() => {
+    if (!Number.isFinite(remainingSeconds)) return 'Unavailable';
     const hours = Math.floor(remainingSeconds / 3600);
     const mins = Math.floor((remainingSeconds % 3600) / 60);
     const secs = remainingSeconds % 60;
@@ -222,7 +53,7 @@ export default function RoomTasksModal({ visible, onClose, roomId }) {
 
     // Start 1-second countdown interval
     timerRef.current = setInterval(() => {
-      setRemainingSeconds((prev) => (prev > 0 ? prev - 1 : 86400));
+      setRemainingSeconds((prev) => (Number.isFinite(prev) ? Math.max(0, prev - 1) : prev));
     }, 1000);
 
     return () => {
@@ -237,18 +68,15 @@ export default function RoomTasksModal({ visible, onClose, roomId }) {
       const res = await apiUtil.get(`/voice-club/rooms/${roomId}/tasks`);
       if (res.data?.success && res.data?.data) {
         const { tasks: remoteTasks, summary: remoteSummary, resetsInSeconds } = res.data.data;
-        if (remoteTasks && remoteTasks.length > 0) {
-          setTasks(remoteTasks);
-        }
-        if (remoteSummary) {
-          setSummary(remoteSummary);
-        }
-        if (typeof resetsInSeconds === 'number') {
-          setRemainingSeconds(resetsInSeconds);
-        }
+        setTasks(Array.isArray(remoteTasks) ? remoteTasks : []);
+        setSummary(remoteSummary || { total: 0, done: 0, claimable: 0, claimed: 0 });
+        setRemainingSeconds(typeof resetsInSeconds === 'number' ? resetsInSeconds : null);
       }
     } catch (err) {
       console.warn('[RoomTasksModal] Fetch tasks notice:', err?.message);
+      setTasks([]);
+      setSummary({ total: 0, done: 0, claimable: 0, claimed: 0 });
+      setRemainingSeconds(null);
     } finally {
       setLoading(false);
     }
@@ -331,34 +159,36 @@ export default function RoomTasksModal({ visible, onClose, roomId }) {
           {/* Countdown Pill Badge */}
           <View style={styles.countdownBadge}>
             <Icon name="time-outline" size={15} color="#3B82F6" style={{ marginRight: 6 }} />
-            <Text style={styles.countdownText}>Resets in {formattedCountdown}</Text>
+            <Text style={styles.countdownText}>
+              {Number.isFinite(remainingSeconds) ? `Resets in ${formattedCountdown}` : 'Reset time unavailable'}
+            </Text>
           </View>
 
           {/* Stats Summary Bar (13 Total | 0 Done | 0 Claimable | 0 Claimed) */}
           <View style={styles.statsSummaryCard}>
             <View style={styles.statCol}>
-              <Text style={styles.statNumDark}>{summary.total || 13}</Text>
+              <Text style={styles.statNumDark}>{summary.total ?? tasks.length}</Text>
               <Text style={styles.statLabel}>Total</Text>
             </View>
 
             <View style={styles.statDivider} />
 
             <View style={styles.statCol}>
-              <Text style={styles.statNumGreen}>{summary.done || 0}</Text>
+              <Text style={styles.statNumGreen}>{summary.done ?? 0}</Text>
               <Text style={styles.statLabel}>Done</Text>
             </View>
 
             <View style={styles.statDivider} />
 
             <View style={styles.statCol}>
-              <Text style={styles.statNumAmber}>{summary.claimable || 0}</Text>
+              <Text style={styles.statNumAmber}>{summary.claimable ?? 0}</Text>
               <Text style={styles.statLabel}>Claimable</Text>
             </View>
 
             <View style={styles.statDivider} />
 
             <View style={styles.statCol}>
-              <Text style={styles.statNumSlate}>{summary.claimed || 0}</Text>
+              <Text style={styles.statNumSlate}>{summary.claimed ?? 0}</Text>
               <Text style={styles.statLabel}>Claimed</Text>
             </View>
           </View>
@@ -398,6 +228,8 @@ export default function RoomTasksModal({ visible, onClose, roomId }) {
               <ActivityIndicator size="large" color="#6366F1" />
               <Text style={styles.loadingText}>Loading room tasks...</Text>
             </View>
+          ) : filteredTasks.length === 0 ? (
+            <Text style={styles.loadingText}>No room tasks are available from the server.</Text>
           ) : (
             filteredTasks.map((task) => {
               const isClaimed = task.status === 'claimed';

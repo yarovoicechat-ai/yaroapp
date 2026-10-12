@@ -466,7 +466,7 @@ export default function MeScreen() {
                   style={[styles.levelBadgeMini, { backgroundColor: '#F59E0B' }]}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.levelBadgeMiniText}>💎 Lv.{user?.wealthLevel || user?.level || 1}</Text>
+                  <Text style={styles.levelBadgeMiniText}>💎 Lv.{user?.wealthLevel ?? user?.level ?? '—'}</Text>
                 </TouchableOpacity>
                 {/* Charm Level */}
                 <TouchableOpacity
@@ -474,7 +474,7 @@ export default function MeScreen() {
                   style={[styles.levelBadgeMini, { backgroundColor: '#EC4899' }]}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.levelBadgeMiniText}>🌸 Lv.{user?.charmLevel || 1}</Text>
+                  <Text style={styles.levelBadgeMiniText}>🌸 Lv.{user?.charmLevel ?? '—'}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -483,7 +483,7 @@ export default function MeScreen() {
                 onPress={handleCopyId}
                 activeOpacity={0.7}
               >
-                <Text style={styles.userIdText}>ID: {user?.userId || user?._id?.slice(-8) || '---'}</Text>
+                <Text style={styles.userIdText}>YARO ID: {user?.userId || user?._id?.slice(-8) || '---'}</Text>
                 <Ionicons
                   name="copy-outline"
                   size={13}
@@ -493,28 +493,28 @@ export default function MeScreen() {
               </TouchableOpacity>
 
               <Text style={styles.bioText} numberOfLines={2}>
-                {user?.bio || 'Hey there! I am using Yaro.'}
+                {user?.bio || 'No bio available.'}
               </Text>
 
               {/* Tag Badges Row */}
               <View style={styles.tagsRow}>
-                <View style={styles.genderTag}>
+                {(user?.gender || user?.age) && <View style={styles.genderTag}>
                   <Text style={styles.genderTagText}>
-                    {user?.gender === 'female' ? '♀' : '♂'} {user?.age || '22'}
+                    {user?.gender ? `${user.gender === 'female' ? '\u2640' : '\u2642'} ` : ''}{user?.age || ''}
                   </Text>
-                </View>
+                </View>}
 
                 {Boolean(user?.country) && (
                   <View style={styles.countryTag}>
                     <Text style={styles.countryTagText}>
-                      🌍 {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() || 'India 🇮🇳' : user?.country}
+                      {'\u{1F30D} '}{typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() : user?.country}
                     </Text>
                   </View>
                 )}
 
-                <View style={styles.svipTag}>
-                  <Text style={styles.svipTagText}>👑 SVIP</Text>
-                </View>
+                {Number(user?.svipLevel || user?.svip || 0) > 0 && <View style={styles.svipTag}>
+                  <Text style={styles.svipTagText}>{'\u{1F451}'} SVIP {user?.svipLevel || user?.svip}</Text>
+                </View>}
               </View>
             </View>
 
@@ -536,7 +536,7 @@ export default function MeScreen() {
             activeOpacity={0.7}
           >
             <Text style={styles.statValue}>
-              {user?.followingCount ?? (Array.isArray(user?.following) ? user.following.length : 45)}
+              {user?.followingCount ?? (Array.isArray(user?.following) ? user.following.length : 0)}
             </Text>
             <Text style={styles.statLabel}>Following</Text>
           </TouchableOpacity>
@@ -548,7 +548,7 @@ export default function MeScreen() {
             activeOpacity={0.7}
           >
             <Text style={styles.statValue}>
-              {formatCompactBalance(user?.followersCount || 120)}
+              {formatCompactBalance(user?.followersCount ?? 0)}
             </Text>
             <Text style={styles.statLabel}>Followers</Text>
           </TouchableOpacity>
@@ -559,7 +559,7 @@ export default function MeScreen() {
             onPress={() => navigation.navigate('Followers', { initialTab: 'Visitors' })}
             activeOpacity={0.7}
           >
-            <Text style={styles.statValue}>{formatCompactBalance(user?.visitorsCount || 350)}</Text>
+            <Text style={styles.statValue}>{formatCompactBalance(user?.visitorsCount ?? 0)}</Text>
             <Text style={styles.statLabel}>Visitors</Text>
           </TouchableOpacity>
         </View>
@@ -627,7 +627,7 @@ export default function MeScreen() {
             />
             <View style={{ flex: 1 }}>
               <Text style={styles.cardMainValue}>
-                {formatCompactBalance(user?.diamondBalance || user?.diamonds || 5000)}
+                {formatCompactBalance(user?.diamondBalance ?? user?.diamonds ?? 0)}
               </Text>
               <Text style={styles.cardSmallLabel}>Diamonds</Text>
             </View>
@@ -645,7 +645,7 @@ export default function MeScreen() {
             <Text style={{ fontSize: 26, marginRight: 8 }}>🧅</Text>
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardMainValue, { color: '#065F46' }]}>
-                {formatCompactBalance(user?.beanBalance || user?.beans || 10000)}
+                {formatCompactBalance(user?.beanBalance ?? user?.beans ?? 0)}
               </Text>
               <Text style={[styles.cardSmallLabel, { color: '#047857' }]}>
                 My Beans

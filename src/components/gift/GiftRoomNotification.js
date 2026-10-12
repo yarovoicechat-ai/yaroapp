@@ -8,6 +8,8 @@ import {
   View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { resolveGiftVisual } from './giftMediaUtils';
 
 const { width } = Dimensions.get('window');
 const DEFAULT_AVATAR = 'https://api.yaroapp.in/uploads/avatars/female_default.webp';
@@ -18,9 +20,6 @@ const FLOW_COLORS = [
   ['rgba(244,63,94,0.96)', 'rgba(190,24,93,0.94)'],
   ['rgba(217,70,239,0.96)', 'rgba(124,58,237,0.94)'],
 ];
-
-const remoteImage = (value) =>
-  typeof value === 'string' && /^(?:https?:\/\/|content:\/\/|file:\/\/|data:)/i.test(value);
 
 function NotificationItem({ item, index, onDismiss }) {
   const slideAnim = useRef(new Animated.Value(-width * 0.9)).current;
@@ -61,7 +60,8 @@ function NotificationItem({ item, index, onDismiss }) {
     return () => clearTimeout(timer);
   }, [item.id, opacityAnim, slideAnim]);
 
-  const giftImage = item.giftImage || (remoteImage(item.giftIcon) ? item.giftIcon : '');
+  const giftVisual = resolveGiftVisual(item);
+  const giftImage = giftVisual.giftImage;
   const receiverAvatar = item.receiverAvatar || item.receivers?.[0]?.avatar || DEFAULT_AVATAR;
   const colors = Array.isArray(item.colors) && item.colors.length >= 2
     ? item.colors
@@ -99,8 +99,10 @@ function NotificationItem({ item, index, onDismiss }) {
         <View style={styles.giftVisual}>
           {giftImage ? (
             <Image source={{ uri: giftImage }} style={styles.giftImage} resizeMode="contain" />
+          ) : giftVisual.giftIcon ? (
+            <Text style={styles.giftEmoji}>{giftVisual.giftIcon}</Text>
           ) : (
-            <Text style={styles.giftEmoji}>{item.giftIcon || '🎁'}</Text>
+            <MaterialCommunityIcons name="gift-outline" size={23} color="#FEF08A" />
           )}
           <View style={styles.quantityPill}>
             <Text style={styles.quantityText}>×{Number(item.quantity || 1)}</Text>

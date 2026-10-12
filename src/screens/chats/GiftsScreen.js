@@ -19,8 +19,10 @@ import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/saf
 import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil } from '../../utils/apiUtil';
 import EmptyStateView from '../../components/EmptyStateView';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 
-const coinIcon = require('../../assets/coin.webp');
+const coinIcon = require('../../assets/icons/diamond.png');
 
 const GIFT_FILTER_TABS = [
   { id: 'all_gifts', label: 'All Gifts' },
@@ -43,34 +45,70 @@ export default function GiftsScreen() {
 
   const fetchGifts = useCallback(async () => {
     try {
-      const res = await apiUtil.get('/gift/all');
-      const data = res.data?.data || res.data || [];
-      if (Array.isArray(data)) {
-        const formatted = data.map((g, idx) => ({
-          id: g._id || `gift_${idx}`,
-          name: g.name || 'Special Gift',
-          age: g.category || '',
-          avatar: g.icon || g.image || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400',
-          giftName: g.name || 'Gift',
-          giftEmoji: '🎁',
-          price: String(g.coins || g.diamonds || 10),
-          time: 'Active',
-          type: 'all_gifts',
-          quote: g.description || 'Interactive virtual gift',
-        }));
-        setGifts(formatted);
+      let rows = [];
+      if (activeFilter === 'all_gifts') {
+        const response = await apiUtil.get('/gifts');
+        const data = response.data?.data;
+        rows = Array.isArray(data) ? data : data?.gifts || [];
+      } else if (activeFilter === 'received' || activeFilter === 'sent') {
+        const response = await apiUtil.get(`/gifts/${activeFilter}`, { params: { limit: 100 } });
+        rows = response.data?.data?.transactions || [];
+      } else {
+        const response = await apiUtil.get('/notifications', { params: { limit: 100 } });
+        rows = response.data?.data?.notifications || [];
       }
-    } catch (e) {
-      console.log('Error fetching gifts:', e.message);
+
+      const formatted = (Array.isArray(rows) ? rows : []).map((row) => {
+        if (activeFilter === 'system') {
+          return {
+            id: String(row._id || row.id),
+            name: row.title || 'Notification',
+            giftName: row.title || 'Notification',
+            giftEmoji: '',
+            giftImage: '',
+            price: 0,
+            type: activeFilter,
+            quote: row.message || row.content || '',
+          };
+        }
+
+        const gift = activeFilter === 'all_gifts' ? row : (row.giftId || {});
+        const person = activeFilter === 'received' ? row.senderId : row.receiverId;
+        const visual = resolveGiftVisual(gift);
+        return {
+          id: String(row._id || row.id),
+          name: activeFilter === 'all_gifts'
+            ? (gift.name || 'Gift')
+            : (person?.name || (activeFilter === 'received' ? 'Sender' : 'Recipient')),
+          age: activeFilter === 'all_gifts' ? (gift.category || '') : '',
+          avatar: activeFilter === 'all_gifts' ? '' : (person?.image || person?.avatar || ''),
+          giftName: gift.name || row.meta?.giftName || 'Gift',
+          giftEmoji: visual.giftIcon,
+          giftImage: visual.giftImage,
+          price: Number(row.totalDiamonds ?? row.totalPrice ?? gift.price ?? gift.cost ?? 0),
+          type: activeFilter,
+          quote: activeFilter === 'all_gifts'
+            ? (gift.description || 'Gift from the live catalog')
+            : `${activeFilter === 'received' ? 'Received' : 'Sent'}${row.quantity > 1 ? ` x${row.quantity}` : ''}`,
+        };
+      });
+      setGifts(formatted);
+    } catch (error) {
+      console.log('Error fetching gifts:', error?.message || error);
+      setGifts([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeFilter]);
 
   useEffect(() => {
+    setLoading(true);
     fetchGifts();
+  }, [fetchGifts]);
+
+  useEffect(() => {
     fetchUserProfile?.();
-  }, [fetchGifts, fetchUserProfile]);
+  }, [fetchUserProfile]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -85,7 +123,13 @@ export default function GiftsScreen() {
   const renderGiftItem = ({ item }) => (
     <View style={styles.cardWrapper}>
       <View style={styles.avatarWrapper}>
-        <Image source={{ uri: item.avatar }} style={styles.userAvatarImg} />
+        {item.avatar ? (
+          <Image source={{ uri: item.avatar }} style={styles.userAvatarImg} />
+        ) : (
+          <View style={[styles.userAvatarImg, styles.giftAvatarFallback]}>
+            <MaterialCommunityIcons name="gift-outline" size={20} color="#D97706" />
+          </View>
+        )}
       </View>
 
       <View style={styles.cardMainContent}>
@@ -93,20 +137,30 @@ export default function GiftsScreen() {
           <Text style={styles.userNameText}>{item.name}</Text>
           {item.age ? <Text style={styles.userAgeText}>{item.age}</Text> : null}
         </View>
-        <Text style={styles.giftSentNoticeText}>Virtual Gift</Text>
+        <Text style={styles.giftSentNoticeText}>
+          {item.type === 'received' ? 'Received gift' : item.type === 'sent' ? 'Sent gift' : item.type === 'system' ? 'System update' : 'Virtual Gift'}
+        </Text>
         <Text style={styles.giftQuoteText} numberOfLines={1}>
           {item.quote}
         </Text>
       </View>
 
       <View style={styles.giftDetailGraphicBox}>
-        <Text style={{ fontSize: 24 }}>{item.giftEmoji}</Text>
+        {item.giftImage ? (
+          <Image source={{ uri: item.giftImage }} style={{ width: 30, height: 30 }} resizeMode="contain" />
+        ) : item.giftEmoji ? (
+          <Text style={{ fontSize: 24 }}>{item.giftEmoji}</Text>
+        ) : (
+          <MaterialCommunityIcons name={item.type === 'system' ? 'bell-outline' : 'gift-outline'} size={24} color="#D97706" />
+        )}
         <View style={{ marginLeft: 6 }}>
           <Text style={styles.giftNameText}>{item.giftName}</Text>
-          <View style={styles.giftPriceCoinRow}>
-            <Image source={coinIcon} style={{ width: 13, height: 13, marginRight: 3 }} />
-            <Text style={styles.giftCoinValText}>{item.price}</Text>
-          </View>
+          {item.type !== 'system' ? (
+            <View style={styles.giftPriceCoinRow}>
+              <Image source={coinIcon} style={{ width: 13, height: 13, marginRight: 3 }} />
+              <Text style={styles.giftCoinValText}>{Number(item.price || 0).toLocaleString()}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </View>
@@ -342,6 +396,7 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: { marginRight: 12 },
   userAvatarImg: { width: 48, height: 48, borderRadius: 24 },
+  giftAvatarFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEF3C7' },
   cardMainContent: { flex: 1 },
   nameAgeBadgeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
   userNameText: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginRight: 6 },

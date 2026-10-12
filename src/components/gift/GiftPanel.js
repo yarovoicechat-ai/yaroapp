@@ -66,7 +66,7 @@ export default function GiftPanel({
   } = giftHook || {};
 
   const currentCost = Number(totalDiamonds || 0);
-  const isAffordable = hasSufficientDiamonds;
+  const isAffordable = Boolean(selectedGift) && hasSufficientDiamonds;
 
   // Single Source of Truth for Panel Visibility & Animated Progress
   const [mounted, setMounted] = useState(visible);
@@ -80,6 +80,8 @@ export default function GiftPanel({
   useEffect(() => {
     if (visible) {
       setMounted(true);
+      setSelectedGift?.(null);
+      setSelectedQuantity?.(1);
       Animated.spring(giftPanelProgress, {
         toValue: 1,
         friction: 8,
@@ -96,7 +98,7 @@ export default function GiftPanel({
         setQuantityPickerOpen(false);
       });
     }
-  }, [visible, giftPanelProgress]);
+  }, [visible, giftPanelProgress, setSelectedGift, setSelectedQuantity]);
 
   // Pan Responder for swipe-down to dismiss
   const panY = useRef(new Animated.Value(0)).current;
@@ -208,6 +210,10 @@ export default function GiftPanel({
   const sendBtnScale = useRef(new Animated.Value(1)).current;
 
   const handlePressSend = () => {
+    if (!selectedGift) {
+      AlertService.show('Select Gift', 'Pehle gift catalog se gift select karein.', 'info');
+      return;
+    }
     if (!selectedReceivers || selectedReceivers.length === 0) {
       AlertService.show('Select Recipient', 'Select a user to send a gift', 'info');
       return;
@@ -423,6 +429,7 @@ export default function GiftPanel({
                   !isAffordable && styles.sendButtonDisabled,
                 ]}
                 onPress={handlePressSend}
+                disabled={!selectedGift || sending}
                 activeOpacity={0.85}
               >
                 <LinearGradient
@@ -442,7 +449,7 @@ export default function GiftPanel({
                       comboCount > 1 && { color: '#FFFFFF', fontWeight: '900' },
                     ]}
                   >
-                    {comboCount > 1 ? `x${comboCount} SEND` : 'SEND'}
+                    {!selectedGift ? 'SELECT GIFT' : comboCount > 1 ? `x${comboCount} SEND` : 'SEND'}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>

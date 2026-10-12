@@ -25,7 +25,6 @@ import { getUserAvatar } from '../../utils/avatarUtil';
 import { normalizeLanguages } from '../../utils/hostPresentation';
 import EmptyStateView from '../../components/EmptyStateView';
 import { HostCardSkeleton } from '../../components/SkeletonLoader';
-import { DUMMY_HOSTS } from '../../constants/dummyData';
 import AdminBannerCarousel from '../../components/AdminBannerCarousel';
 
 const diamondIcon = require('../../assets/icons/diamond.png');
@@ -59,17 +58,6 @@ export default function OneToOne() {
       const response = await apiUtil.get('/user/hosts?limit=50');
       const data = response.data?.data?.hostsData || response.data?.data;
       let list = data?.hosts || (Array.isArray(data) ? data : []);
-
-      // If no hosts returned, query registered users as fallback
-      if (!Array.isArray(list) || list.length === 0) {
-        try {
-          const userRes = await apiUtil.get('/user?limit=50');
-          const userData = userRes.data?.data?.users || userRes.data?.data;
-          if (Array.isArray(userData) && userData.length > 0) {
-            list = userData.filter((u) => u._id !== user?._id);
-          }
-        } catch (_) {}
-      }
 
       if (Array.isArray(list) && list.length > 0) {
         setHosts(list);
@@ -297,7 +285,7 @@ export default function OneToOne() {
                       <Icon name="checkmark-circle" size={16} color="#A78BFA" />
                     </View>
                     <Text style={styles.hostIdText} numberOfLines={1}>
-                      ID: {host.userId || host.meethiId || host._id?.slice(-6) || 'N/A'}
+                      YARO ID: {host.userId || host.meethiId || host._id?.slice(-6) || 'N/A'}
                     </Text>
                     <View style={styles.chips}>
                       {(languages.length ? languages : ['English']).map((lang) => (

@@ -260,7 +260,7 @@ export default function SearchScreen() {
             )}
           </View>
           <Text style={styles.userSub} numberOfLines={1}>
-            ID: <Text style={styles.idHighlight}>{displayId}</Text>
+            YARO ID: <Text style={styles.idHighlight}>{displayId}</Text>
             {item.userName && String(item.userName) !== String(displayId) ? ` • @${item.userName}` : ''}
             {item.gender ? ` • ${item.gender}` : ''}
           </Text>
@@ -301,7 +301,7 @@ export default function SearchScreen() {
         </View>
         <View style={styles.roomBadge}>
           <Icon name="people" size={13} color="#10B981" />
-          <Text style={styles.roomCount}>{item.onlineCount || 1}</Text>
+          <Text style={styles.roomCount}>{item.onlineCount ?? 0}</Text>
         </View>
       </TouchableOpacity>
     );

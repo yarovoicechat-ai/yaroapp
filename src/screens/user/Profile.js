@@ -39,6 +39,18 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const { user, fetchUserProfile, equippedFrame, equippedMicWave } = useContext(AuthContext);
   const [activeTab, setActiveTab] = useState('About'); // 'About' | 'Honor'
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+    : 'Unavailable';
+  const interests = Array.isArray(user?.interests) ? user.interests : [];
+  const honors = Array.isArray(user?.honors) ? user.honors : Array.isArray(user?.badges) ? user.badges : [];
+  const fanClub = user?.fanClub || user?.fanClubInfo || null;
+  const equippedFrameName = typeof (equippedFrame || user?.equippedFrame) === 'string'
+    ? (equippedFrame || user?.equippedFrame)
+    : (equippedFrame || user?.equippedFrame)?.name || (equippedFrame || user?.equippedFrame)?.title || '';
+  const equippedMicWaveName = typeof (equippedMicWave || user?.equippedMicWave) === 'string'
+    ? (equippedMicWave || user?.equippedMicWave)
+    : (equippedMicWave || user?.equippedMicWave)?.name || (equippedMicWave || user?.equippedMicWave)?.title || '';
 
   useEffect(() => {
     fetchUserProfile();
@@ -161,7 +173,7 @@ export default function ProfileScreen() {
                 style={[styles.levelBadge, { backgroundColor: '#F59E0B' }]}
                 activeOpacity={0.8}
               >
-                <Text style={styles.levelBadgeText}>💎 Lv.{user?.wealthLevel || user?.level || 1}</Text>
+                <Text style={styles.levelBadgeText}>💎 Lv.{user?.wealthLevel ?? user?.level ?? '—'}</Text>
               </TouchableOpacity>
               {/* Charm Level */}
               <TouchableOpacity
@@ -169,7 +181,7 @@ export default function ProfileScreen() {
                 style={[styles.levelBadge, { backgroundColor: '#EC4899', marginLeft: 4 }]}
                 activeOpacity={0.8}
               >
-                <Text style={styles.levelBadgeText}>🌸 Lv.{user?.charmLevel || 1}</Text>
+                <Text style={styles.levelBadgeText}>🌸 Lv.{user?.charmLevel ?? '—'}</Text>
               </TouchableOpacity>
               {/* Equipped Medal / Badge */}
               {Boolean(user?.equippedBadge) && (
@@ -186,7 +198,7 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.userIdText}>
-                ID: {user?.userId || user?._id?.slice(-8) || '---'}
+                YARO ID: {user?.userId || user?._id?.slice(-8) || '---'}
               </Text>
               {Boolean(user?.equippedCustomId) && (
                 <View style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, marginLeft: 6, borderWidth: 0.8, borderColor: '#F59E0B' }}>
@@ -205,23 +217,25 @@ export default function ProfileScreen() {
             <View style={styles.tagsRow}>
               <View style={styles.genderTag}>
                 <Text style={styles.genderTagText}>
-                  {user?.gender === 'female' ? '♀' : '♂'} {user?.age || '22'}
+                  {user?.gender ? (user.gender === 'female' ? '♀' : '♂') : ''} {user?.age ?? ''}
                 </Text>
               </View>
 
               <View style={styles.countryTag}>
                 <Text style={styles.countryTagText}>
-                  🌍 {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() || 'India 🇮🇳' : (user?.country || 'India 🇮🇳')}
+                  🌍 {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() : (user?.country || '')}
                 </Text>
               </View>
 
-              <View style={styles.svipTag}>
-                <Text style={styles.svipTagText}>👑 SVIP</Text>
-              </View>
+              {(user?.isSvip || Number(user?.svipLevel) > 0) && (
+                <View style={styles.svipTag}>
+                  <Text style={styles.svipTagText}>👑 SVIP{user?.svipLevel || ''}</Text>
+                </View>
+              )}
 
               {Boolean(user?.isHost || user?.role === 'host') && (
                 <View style={styles.hostTag}>
-                  <Text style={styles.hostTagText}>🎙️ Official Host</Text>
+                  <Text style={styles.hostTagText}>🎙️ Host</Text>
                 </View>
               )}
             </View>
@@ -235,7 +249,7 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.statValue}>
-                {user?.followingCount ?? (Array.isArray(user?.following) ? user.following.length : 45)}
+                {user?.followingCount ?? (Array.isArray(user?.following) ? user.following.length : 0)}
               </Text>
               <Text style={styles.statLabel}>Following</Text>
             </TouchableOpacity>
@@ -248,7 +262,7 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.statValue}>
-                {formatCompactBalance(user?.followersCount || 120)}
+                {formatCompactBalance(user?.followersCount ?? 0)}
               </Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
@@ -261,7 +275,7 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.statValue}>
-                {formatCompactBalance(user?.visitorsCount || 350)}
+                {formatCompactBalance(user?.visitorsCount ?? 0)}
               </Text>
               <Text style={styles.statLabel}>Visitors</Text>
             </TouchableOpacity>
@@ -303,7 +317,7 @@ export default function ProfileScreen() {
                 <Text style={styles.cardHeaderTitle}>About Me</Text>
               </View>
               <Text style={styles.bioText}>
-                {user?.bio || 'Hey there! Welcome to my voice room. Passionate host, music lover & making friends globally 💕'}
+                {user?.bio || 'No bio available.'}
               </Text>
             </View>
 
@@ -317,27 +331,27 @@ export default function ProfileScreen() {
               <View style={styles.detailRow}>
                 <Text style={styles.detailKey}>Gender & Age</Text>
                 <Text style={styles.detailVal}>
-                  {user?.gender === 'female' ? 'Female' : 'Male'}, {user?.age || '22'} years
+                  {user?.gender || 'Gender unavailable'}{user?.age != null ? `, ${user.age} years` : ''}
                 </Text>
               </View>
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailKey}>Languages</Text>
                 <Text style={styles.detailVal}>
-                  {Array.isArray(user?.language) && user.language.length > 0 ? user.language.join(', ') : 'Hindi, English'}
+                  {Array.isArray(user?.language) && user.language.length > 0 ? user.language.join(', ') : 'No languages listed'}
                 </Text>
               </View>
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailKey}>Region / Country</Text>
                 <Text style={styles.detailVal}>
-                  {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() || 'India 🇮🇳' : (user?.country || 'India 🇮🇳')}
+                  {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() : (user?.country || 'Country unavailable')}
                 </Text>
               </View>
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailKey}>Member Since</Text>
-                <Text style={styles.detailVal}>Jan 2026</Text>
+                <Text style={styles.detailVal}>{memberSince}</Text>
               </View>
             </View>
 
@@ -350,11 +364,11 @@ export default function ProfileScreen() {
                 <View style={styles.levelCardTop}>
                   <Text style={{ fontSize: 24 }}>💎</Text>
                   <View style={[styles.miniBadge, { backgroundColor: '#F59E0B' }]}>
-                    <Text style={styles.miniBadgeText}>Lv.{user?.level || 6}</Text>
+                    <Text style={styles.miniBadgeText}>Lv.{user?.wealthLevel ?? user?.level ?? '—'}</Text>
                   </View>
                 </View>
                 <Text style={styles.levelCardTitle}>Wealth Level</Text>
-                <Text style={styles.levelCardSub}>Top Gifter Tier</Text>
+                <Text style={styles.levelCardSub}>Wealth progression</Text>
               </LinearGradient>
 
               <LinearGradient
@@ -364,16 +378,16 @@ export default function ProfileScreen() {
                 <View style={styles.levelCardTop}>
                   <Text style={{ fontSize: 24 }}>🌸</Text>
                   <View style={[styles.miniBadge, { backgroundColor: '#EC4899' }]}>
-                    <Text style={styles.miniBadgeText}>Lv.8</Text>
+                    <Text style={styles.miniBadgeText}>Lv.{user?.charmLevel ?? '—'}</Text>
                   </View>
                 </View>
                 <Text style={styles.levelCardTitle}>Charm Level</Text>
-                <Text style={styles.levelCardSub}>Rising Star</Text>
+                <Text style={styles.levelCardSub}>Charm progression</Text>
               </LinearGradient>
             </View>
 
             {/* Talent Agency Card (If host/agency member) */}
-            <View style={styles.infoCard}>
+            {(user?.agencyName || user?.agencyId) && <View style={styles.infoCard}>
               <View style={styles.cardHeaderRow}>
                 <MaterialCommunityIcons name="shield-crown-outline" size={20} color="#7C3AED" />
                 <Text style={styles.cardHeaderTitle}>Talent Agency</Text>
@@ -384,17 +398,17 @@ export default function ProfileScreen() {
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.agencyNameText}>
-                    {user?.agencyName || 'Yaro Royal Talent Club'}
+                    {user?.agencyName || 'Agency name unavailable'}
                   </Text>
                   <Text style={styles.agencySubText}>
-                    ID: {user?.agencyId || 'AG-89421'} • Certified
+                    {user?.agencyId ? `ID: ${user.agencyId}` : 'Agency ID unavailable'}
                   </Text>
                 </View>
                 <View style={styles.agencyStatusBadge}>
-                  <Text style={styles.agencyStatusText}>Official</Text>
+                  <Text style={styles.agencyStatusText}>{user?.agencyStatus || 'Member'}</Text>
                 </View>
               </View>
-            </View>
+            </View>}
 
             {/* Interest Badges */}
             <View style={styles.infoCard}>
@@ -402,20 +416,15 @@ export default function ProfileScreen() {
                 <Ionicons name="sparkles-outline" size={19} color="#D97706" />
                 <Text style={styles.cardHeaderTitle}>Interests & Tags</Text>
               </View>
-              <View style={styles.interestChipsRow}>
-                <View style={styles.interestChip}>
-                  <Text style={styles.interestChipText}>🎵 Singing & Music</Text>
+              {interests.length > 0 ? (
+                <View style={styles.interestChipsRow}>
+                  {interests.map((interest, index) => (
+                    <View key={String(interest?.id || interest?._id || interest?.name || interest || index)} style={styles.interestChip}>
+                      <Text style={styles.interestChipText}>{typeof interest === 'string' ? interest : interest?.name || interest?.label || ''}</Text>
+                    </View>
+                  ))}
                 </View>
-                <View style={styles.interestChip}>
-                  <Text style={styles.interestChipText}>🎤 Party Rooms</Text>
-                </View>
-                <View style={styles.interestChip}>
-                  <Text style={styles.interestChipText}>💖 Heart-to-Heart</Text>
-                </View>
-                <View style={styles.interestChip}>
-                  <Text style={styles.interestChipText}>☕ Late Night Chill</Text>
-                </View>
-              </View>
+              ) : <Text style={styles.emptyProfileDataText}>No interests listed.</Text>}
             </View>
           </View>
         ) : (
@@ -428,43 +437,19 @@ export default function ProfileScreen() {
                 <Text style={styles.cardHeaderTitle}>Honors & Badges</Text>
               </View>
 
-              <View style={styles.honorGrid}>
-                {/* 1. SVIP Honor */}
-                <View style={styles.honorGridItem}>
-                  <LinearGradient colors={['#FEF3C7', '#FDE68A']} style={styles.honorBadgeCircle}>
-                    <Text style={{ fontSize: 26 }}>👑</Text>
-                  </LinearGradient>
-                  <Text style={styles.honorBadgeTitle}>King Noble</Text>
-                  <Text style={styles.honorBadgeSub}>Active SVIP</Text>
+              {honors.length > 0 ? (
+                <View style={styles.honorGrid}>
+                  {honors.map((honor, index) => (
+                    <View key={String(honor?.id || honor?._id || honor?.name || honor || index)} style={styles.honorGridItem}>
+                      <LinearGradient colors={['#EDE9FE', '#DDD6FE']} style={styles.honorBadgeCircle}>
+                        <MaterialCommunityIcons name="medal-outline" size={26} color="#7C3AED" />
+                      </LinearGradient>
+                      <Text style={styles.honorBadgeTitle}>{typeof honor === 'string' ? honor : honor?.name || honor?.title || 'Badge'}</Text>
+                      <Text style={styles.honorBadgeSub}>{typeof honor === 'object' ? honor?.description || honor?.rarity || '' : ''}</Text>
+                    </View>
+                  ))}
                 </View>
-
-                {/* 2. Level Honor */}
-                <View style={styles.honorGridItem}>
-                  <LinearGradient colors={['#EDE9FE', '#DDD6FE']} style={styles.honorBadgeCircle}>
-                    <Text style={{ fontSize: 26 }}>⭐</Text>
-                  </LinearGradient>
-                  <Text style={styles.honorBadgeTitle}>Lv.{user?.level || 6} Sovereign</Text>
-                  <Text style={styles.honorBadgeSub}>Roadmap</Text>
-                </View>
-
-                {/* 3. Wealth Honor */}
-                <View style={styles.honorGridItem}>
-                  <LinearGradient colors={['#E0F2FE', '#BAE6FD']} style={styles.honorBadgeCircle}>
-                    <Text style={{ fontSize: 26 }}>💎</Text>
-                  </LinearGradient>
-                  <Text style={styles.honorBadgeTitle}>Grand Patron</Text>
-                  <Text style={styles.honorBadgeSub}>Top Gifter</Text>
-                </View>
-
-                {/* 4. Charm Honor */}
-                <View style={styles.honorGridItem}>
-                  <LinearGradient colors={['#FCE7F3', '#FBCFE8']} style={styles.honorBadgeCircle}>
-                    <Text style={{ fontSize: 26 }}>🌹</Text>
-                  </LinearGradient>
-                  <Text style={styles.honorBadgeTitle}>Rose Star</Text>
-                  <Text style={styles.honorBadgeSub}>Popular Voice</Text>
-                </View>
-              </View>
+              ) : <Text style={styles.emptyProfileDataText}>No honor badges are available for this account.</Text>}
             </View>
 
             {/* Active Equipped Decor */}
@@ -475,8 +460,7 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.decorItemsRow}>
-                {/* Equipped Frame */}
-                <TouchableOpacity
+                {equippedFrameName ? <TouchableOpacity
                   style={styles.decorItemCard}
                   onPress={() => navigation.navigate('MyItems')}
                   activeOpacity={0.8}
@@ -485,14 +469,13 @@ export default function ProfileScreen() {
                     <Text style={{ fontSize: 28 }}>🌸</Text>
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.decorItemName}>{equippedFrame || user?.equippedFrame || 'Default'}</Text>
+                    <Text style={styles.decorItemName}>{equippedFrameName}</Text>
                     <Text style={styles.decorItemType}>Avatar Frame • Equipped</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
-                </TouchableOpacity>
+                </TouchableOpacity> : null}
 
-                {/* Equipped Mic Wave */}
-                <TouchableOpacity
+                {equippedMicWaveName ? <TouchableOpacity
                   style={styles.decorItemCard}
                   onPress={() => navigation.navigate('MyItems')}
                   activeOpacity={0.8}
@@ -501,16 +484,19 @@ export default function ProfileScreen() {
                     <Text style={{ fontSize: 28 }}>🎙️</Text>
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.decorItemName}>{equippedMicWave || 'Cyber Neon Wave'}</Text>
+                    <Text style={styles.decorItemName}>{equippedMicWaveName}</Text>
                     <Text style={styles.decorItemType}>Mic Soundwave • Equipped</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
-                </TouchableOpacity>
+                </TouchableOpacity> : null}
+                {!equippedFrameName && !equippedMicWaveName ? (
+                  <Text style={styles.emptyProfileDataText}>No equipped decor is available.</Text>
+                ) : null}
               </View>
             </View>
 
             {/* Fan Club & Room Ranking */}
-            <View style={styles.infoCard}>
+            {fanClub ? <View style={styles.infoCard}>
               <View style={styles.cardHeaderRow}>
                 <Ionicons name="heart" size={19} color="#EC4899" />
                 <Text style={styles.cardHeaderTitle}>Fan Club & Room King</Text>
@@ -521,8 +507,10 @@ export default function ProfileScreen() {
                   <Text style={{ fontSize: 24 }}>💖</Text>
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.fanClubTitle}>Yaro Sweethearts Fan Club</Text>
-                  <Text style={styles.fanClubSub}>Rank #4 this week • 45 active fans</Text>
+                  <Text style={styles.fanClubTitle}>{fanClub.name || fanClub.title || 'Fan Club'}</Text>
+                  <Text style={styles.fanClubSub}>
+                    {fanClub.rank != null ? `Rank #${fanClub.rank}` : ''}{fanClub.memberCount != null ? ` • ${fanClub.memberCount} members` : ''}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.fanClubActionBtn}
@@ -531,7 +519,7 @@ export default function ProfileScreen() {
                   <Text style={styles.fanClubActionText}>View</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </View> : null}
           </View>
         )}
       </ScrollView>
@@ -931,6 +919,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  emptyProfileDataText: { color: '#64748B', fontSize: 13, lineHeight: 19, paddingVertical: 8 },
   interestChip: {
     backgroundColor: '#FFFBEB',
     paddingHorizontal: 12,

@@ -485,7 +485,7 @@ const EditProfile = () => {
                   style={styles.levelBadgeGradient}
                 >
                   <Icon name="star" size={13} color="#FFFFFF" />
-                  <Text style={styles.levelBadgeText}>LV.{user?.level || 1}</Text>
+                  <Text style={styles.levelBadgeText}>LV.{user?.level ?? '—'}</Text>
                 </LinearGradient>
               </View>
               <Text style={styles.levelSubText}>Dynamic level calculated from active calling</Text>

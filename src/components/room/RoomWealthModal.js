@@ -85,7 +85,7 @@ export default function RoomWealthModal({
                     )}
                   </View>
                   <Text style={styles.userSub}>
-                    Level {member.level || 1} • {member.points.toLocaleString()} pts
+                    Level {member.level ?? '—'} • {member.points.toLocaleString()} pts
                   </Text>
                 </View>
                 <View style={styles.pointsPill}>

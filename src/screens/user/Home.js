@@ -33,7 +33,6 @@ import OnboardingModal from '../../components/OnboardingModal';
 import { CALL_DIAMONDS_PER_MINUTE, hasCallStartIdentity } from '../../utils/callValidation';
 import { normalizeLanguages } from '../../utils/hostPresentation';
 import { getUserAvatar } from '../../utils/avatarUtil';
-import { DUMMY_HOSTS } from '../../constants/dummyData';
 import { AlertService } from '../../utils/AlertService';
 import EmptyStateView from '../../components/EmptyStateView';
 import { HostCardSkeleton } from '../../components/SkeletonLoader';
@@ -125,7 +124,10 @@ const CallAppUI = () => {
 
       const remoteBanners = items
         .filter(item => {
-          if (item?.placement && item.placement !== 'home') return false;
+          const itemPlacements = Array.isArray(item?.placements) && item.placements.length
+            ? item.placements
+            : [item?.placement || 'home'];
+          if (!itemPlacements.includes('home')) return false;
           if (item?.isActive === false) return false;
           if (item?.startDate && new Date(item.startDate).getTime() > endOfToday.getTime()) return false;
           if (item?.endDate && new Date(item.endDate).getTime() < startOfToday.getTime()) return false;
@@ -517,7 +519,7 @@ const CallAppUI = () => {
           </View>
 
           <Text style={styles.hostLanguagesSub} numberOfLines={1}>
-            ID: {host.userId || host.meethiId || host._id?.slice(-6) || 'N/A'} • {displayLanguages}
+            YARO ID: {host.userId || host.meethiId || host._id?.slice(-6) || 'N/A'} • {displayLanguages}
           </Text>
         </View>
 
@@ -697,54 +699,6 @@ const CallAppUI = () => {
             )}
           </View>
         )}
-
-        {/* Hero Promo Banner matching reference design */}
-        <View style={styles.heroPromoContainer}>
-          <LinearGradient
-            colors={['#2D1060', '#5B21B6', '#9333EA', '#EC4899']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroPromoGradient}
-          >
-            {/* Left Content */}
-            <View style={styles.promoLeftSection}>
-              <Text style={styles.promoHeadingLine1}>Talk. Connect.</Text>
-              <Text style={styles.promoHeadingLine2}>Make Friends!</Text>
-              <Text style={styles.promoSubtitleText}>
-                Call and meet amazing people from around the world.
-              </Text>
-
-              <TouchableOpacity
-                style={styles.startCallingCtaBtn}
-                activeOpacity={0.88}
-                onPress={handleRandomMatch}
-              >
-                <Text style={styles.startCallingCtaText}>Start Calling</Text>
-                <View style={styles.startCallingIconCircle}>
-                  <Icon name="call" size={12} color="#FFFFFF" />
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            {/* Right Graphic / Image */}
-            <View style={styles.promoRightGraphicSection}>
-              <Image
-                source={{ uri: 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
-                style={styles.heroHostImage}
-                resizeMode="cover"
-              />
-
-              {/* Speech Waveform Pill */}
-              <View style={styles.floatingWaveformBadgePill}>
-                <Icon name="stats-chart" size={12} color="#FFFFFF" />
-              </View>
-
-              {/* Floating Embellishments */}
-              <Text style={styles.floatingHeartEmoji}>💖</Text>
-              <Text style={styles.floatingStarEmoji}>⭐</Text>
-            </View>
-          </LinearGradient>
-        </View>
 
         {/* Filter Pills Bar matching reference design */}
         <View style={styles.filterPillsRowContainer}>
@@ -1137,114 +1091,6 @@ const styles = StyleSheet.create({
     width: 18,
     backgroundColor: '#6C5CE7',
   },
-  heroPromoContainer: {
-    paddingHorizontal: 16,
-    marginVertical: 10,
-  },
-  heroPromoGradient: {
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 140,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  promoLeftSection: {
-    flex: 0.65,
-    justifyContent: 'center',
-    paddingRight: 6,
-  },
-  promoHeadingLine1: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.2,
-  },
-  promoHeadingLine2: {
-    color: '#FF70A6',
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.2,
-    marginBottom: 4,
-  },
-  promoSubtitleText: {
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  startCallingCtaBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF7ED',
-    paddingLeft: 14,
-    paddingRight: 6,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    gap: 8,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-  },
-  startCallingCtaText: {
-    color: '#4C1D95',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  startCallingIconCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#6C5CE7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  promoRightGraphicSection: {
-    flex: 0.35,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  heroHostImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-  },
-  floatingWaveformBadgePill: {
-    position: 'absolute',
-    top: 2,
-    right: -4,
-    backgroundColor: '#EC4899',
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    elevation: 3,
-  },
-  floatingHeartEmoji: {
-    position: 'absolute',
-    left: -6,
-    bottom: 12,
-    fontSize: 16,
-  },
-  floatingStarEmoji: {
-    position: 'absolute',
-    top: 6,
-    left: 2,
-    fontSize: 14,
-  },
-
   // 3. Filter Category Pills
   filterPillsRowContainer: {
     flexDirection: 'row',

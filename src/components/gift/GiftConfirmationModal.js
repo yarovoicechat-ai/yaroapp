@@ -2,12 +2,15 @@ import React from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   Modal,
   TouchableOpacity,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { resolveGiftVisual } from './giftMediaUtils';
 
 export default function GiftConfirmationModal({
   visible,
@@ -28,6 +31,7 @@ export default function GiftConfirmationModal({
     : 'Selected User';
 
   const singlePrice = Number(gift.price !== undefined ? gift.price : (gift.cost || 0));
+  const giftVisual = resolveGiftVisual(gift);
 
   return (
     <Modal
@@ -52,7 +56,13 @@ export default function GiftConfirmationModal({
 
             {/* Gift Info */}
             <View style={styles.giftPreviewBox}>
-              <Text style={styles.giftIcon}>{gift.icon || '🎁'}</Text>
+              {giftVisual.giftImage ? (
+                <Image source={{ uri: giftVisual.giftImage }} style={styles.giftImage} resizeMode="contain" />
+              ) : giftVisual.giftIcon ? (
+                <Text style={styles.giftIcon}>{giftVisual.giftIcon}</Text>
+              ) : (
+                <MaterialCommunityIcons name="gift-outline" size={36} color="#FDE68A" />
+              )}
               <View style={styles.giftDetails}>
                 <Text style={styles.giftName}>{gift.name}</Text>
                 <Text style={styles.giftPrice}>
@@ -178,6 +188,7 @@ const styles = StyleSheet.create({
   giftIcon: {
     fontSize: 36,
   },
+  giftImage: { width: 48, height: 48 },
   giftDetails: {
     flex: 1,
   },

@@ -38,22 +38,29 @@ export default function RoomMembersListModal({
           <Text style={styles.sheetTitle}>Room Members</Text>
 
           <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-            {members.map((m, idx) => (
-              <TouchableOpacity
-                key={m.id || idx}
-                style={styles.row}
-                onPress={() => {
-                  onClose();
-                  onSelectMember && onSelectMember(m);
-                }}
-              >
-                <Image
-                  source={{ uri: typeof m === 'string' ? m : (m.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120') }}
-                  style={styles.avatar}
-                />
-                <Text style={styles.name}>{typeof m === 'string' ? `Member ${idx + 1}` : (m.name || 'User')}</Text>
-              </TouchableOpacity>
-            ))}
+            {members.map((m, idx) => {
+              const isImageString = typeof m === 'string' && /^(https?:|file:|content:|data:image)/i.test(m);
+              const avatarUri = isImageString ? m : (typeof m === 'object' ? (m?.avatar || m?.image) : '');
+              return (
+                <TouchableOpacity
+                  key={m?.id || m?._id || idx}
+                  style={styles.row}
+                  onPress={() => {
+                    onClose();
+                    onSelectMember && onSelectMember(m);
+                  }}
+                >
+                  {avatarUri ? (
+                    <Image source={{ uri: avatarUri }} style={styles.avatar} />
+                  ) : (
+                    <View style={[styles.avatar, styles.avatarFallback]}>
+                      <Icon name="person" size={18} color="#94A3B8" />
+                    </View>
+                  )}
+                  <Text style={styles.name}>{typeof m === 'string' ? (isImageString ? `Member ${idx + 1}` : m) : (m?.name || 'User')}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
       </View>
@@ -108,6 +115,11 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 12,
+  },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E293B',
   },
   name: {
     fontSize: 14,

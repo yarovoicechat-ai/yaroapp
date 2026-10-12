@@ -467,6 +467,17 @@ export const VoiceRoomProvider = ({ children }) => {
 
   // Enter Room with Real-Time Socket Connection
   const enterRoom = async (roomData, userIsHost = false, customSeats = 8, currentUser = null) => {
+    const roomId = String(roomData?.id || roomData?.roomId || '');
+    const currentUserId = currentUser?.userId
+      ? String(currentUser.userId)
+      : (currentUser?._id || currentUser?.id)
+        ? String(currentUser._id || currentUser.id)
+        : null;
+    if (!roomId || !currentUserId) {
+      AlertService.show('Room unavailable', 'Could not identify the room or your account.', 'error');
+      return false;
+    }
+
     setActiveRoom(roomData);
     setIsMinimized(false);
     setOnlineUsers([]);
@@ -475,11 +486,9 @@ export const VoiceRoomProvider = ({ children }) => {
     entryFallbackTimersRef.current.forEach((timer) => clearTimeout(timer));
     entryFallbackTimersRef.current.clear();
 
-    const roomId = String(roomData.id || roomData.roomId || ('room-' + Date.now()));
     activeRoomIdRef.current = roomId;
     currentUserRef.current = currentUser;
 
-    const currentUserId = currentUser?.userId ? String(currentUser.userId) : (currentUser?._id ? String(currentUser._id) : null);
     const roomHostId = (roomData?.hostId || roomData?.hostUserId || roomData?.creatorId)
       ? String(roomData.hostId || roomData.hostUserId || roomData.creatorId)
       : null;
@@ -517,23 +526,23 @@ export const VoiceRoomProvider = ({ children }) => {
 
     const hostObj = actuallyOwner
       ? {
-          userId: currentUserId || '10000001',
+          userId: currentUserId,
           name: currentUser?.name || 'You (Host)',
           avatar: currentUser?.avatar || currentUser?.image || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
           image: currentUser?.image || currentUser?.avatar || roomData.coverImage || '',
-          gender: currentUser?.gender || 'male',
-          level: currentUser?.level || 1,
+          gender: currentUser?.gender,
+          level: currentUser?.level,
           isCurrentUser: true,
           equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
           equippedFrameAsset: currentUser?.equippedFrameAsset || null,
         }
       : {
-          userId: roomData.hostId || '10000099',
+          userId: roomData.hostId || roomData.hostUserId || roomData.creatorId,
           name: roomData.hostName || 'Host',
           avatar: roomData.hostAvatar || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
           image: roomData.hostAvatar || roomData.coverImage || '',
-          gender: 'female',
-          level: 1,
+          gender: roomData.hostGender,
+          level: roomData.hostLevel,
           equippedFrame: roomData.hostEquippedFrameAsset || roomData.hostEquippedFrame || null,
           equippedFrameAsset: roomData.hostEquippedFrameAsset || null,
         };
@@ -952,12 +961,12 @@ export const VoiceRoomProvider = ({ children }) => {
               roomId: activeRoomIdRef.current,
               user: {
                 id: currentUser?._id || currentUser?.id || '',
-                userId: currentUserId || '10000001',
+                userId: currentUserId,
                 name: currentUser?.name || (actuallyOwner ? 'Host' : 'Guest'),
                 image: currentUser?.image || currentUser?.avatar || roomData.coverImage || '',
                 avatar: currentUser?.image || currentUser?.avatar || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-                gender: currentUser?.gender || 'male',
-                level: currentUser?.level || 1,
+                gender: currentUser?.gender,
+                level: currentUser?.level,
               },
               isHost: actuallyOwner,
               customSeats,
@@ -1008,12 +1017,12 @@ export const VoiceRoomProvider = ({ children }) => {
           roomId,
           user: {
             id: currentUser?._id || currentUser?.id || '',
-            userId: currentUserId || '10000001',
+            userId: currentUserId,
             name: currentUser?.name || (actuallyOwner ? 'Host' : 'Guest'),
             image: currentUser?.image || currentUser?.avatar || roomData.coverImage || '',
             avatar: currentUser?.image || currentUser?.avatar || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-            gender: currentUser?.gender || 'male',
-            level: currentUser?.level || 1,
+            gender: currentUser?.gender,
+            level: currentUser?.level,
             equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
             equippedFrameAsset: currentUser?.equippedFrameAsset || null,
             equippedEntry: currentUser?.equippedEntryAsset || currentUser?.equippedEntry || null,
@@ -1049,7 +1058,11 @@ export const VoiceRoomProvider = ({ children }) => {
       console.warn('Microphone permission check on take seat:', permErr?.message || permErr);
     }
 
-    const currentUserId = currentUser?.userId ? String(currentUser.userId) : (currentUser?._id ? String(currentUser._id) : null);
+    const currentUserId = currentUser?.userId ? String(currentUser.userId) : (currentUser?._id || currentUser?.id ? String(currentUser._id || currentUser.id) : null);
+    if (!currentUserId) {
+      AlertService.show('Seat unavailable', 'Could not identify your account.', 'error');
+      return false;
+    }
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
 
     setSeats((prev) => {
@@ -1067,12 +1080,12 @@ export const VoiceRoomProvider = ({ children }) => {
           return {
             ...s,
             user: {
-              userId: currentUserId || '10000055',
+              userId: currentUserId,
               name: currentUser?.name || 'You',
               avatar: currentUser?.avatar || currentUser?.image || 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
               image: currentUser?.image || currentUser?.avatar || '',
-              gender: currentUser?.gender || 'male',
-              level: currentUser?.level || 8,
+              gender: currentUser?.gender,
+              level: currentUser?.level,
               isCurrentUser: true,
               equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
               equippedFrameAsset: currentUser?.equippedFrameAsset || null,
@@ -1110,12 +1123,12 @@ export const VoiceRoomProvider = ({ children }) => {
         seatIndex: newSeatIndex,
         user: {
           id: currentUser?._id || currentUser?.id || '',
-          userId: currentUserId || '10000055',
+          userId: currentUserId,
           name: currentUser?.name || 'You',
           image: currentUser?.image || currentUser?.avatar || '',
           avatar: currentUser?.image || currentUser?.avatar || 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
-          gender: currentUser?.gender || 'male',
-          level: currentUser?.level || 8,
+          gender: currentUser?.gender,
+          level: currentUser?.level,
           equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
           equippedFrameAsset: currentUser?.equippedFrameAsset || null,
         },
@@ -1246,7 +1259,9 @@ export const VoiceRoomProvider = ({ children }) => {
   // Vacate Seat
   const leaveSeat = (currentUser) => {
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
-    const currentUserId = currentUser?.userId ? String(currentUser.userId) : (currentUser?._id ? String(currentUser._id) : null);
+    const currentUserId = currentUser?.userId
+      ? String(currentUser.userId)
+      : (currentUser?._id || currentUser?.id ? String(currentUser._id || currentUser.id) : null);
     const seatIdx = currentSeatIndexRef.current;
 
     setSeats((prev) =>

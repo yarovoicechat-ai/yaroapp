@@ -21,49 +21,13 @@ import { apiUtil } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
 import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
 
-const DEFAULT_FAMILIES = [
-  {
-    _id: 'fam_1',
-    name: 'Royal Tigers',
-    badge: '🐅 TIGER',
-    avatar: 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=100&auto=format&fit=crop',
-    slogan: 'Pride of Yaro voice rooms, ruling the top rank!',
-    ranking: 1,
-    diamondsEarned: 1540000,
-    memberCount: 48,
-    maxMembers: 50,
-  },
-  {
-    _id: 'fam_2',
-    name: 'Galaxy Warriors',
-    badge: '🌌 GALAXY',
-    avatar: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=100&auto=format&fit=crop',
-    slogan: 'Aiming for the stars together.',
-    ranking: 2,
-    diamondsEarned: 890000,
-    memberCount: 35,
-    maxMembers: 50,
-  },
-  {
-    _id: 'fam_3',
-    name: 'Sweet Harmony',
-    badge: '🌸 HARMONY',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop',
-    slogan: 'Singing, chatting, and spreading love.',
-    ranking: 3,
-    diamondsEarned: 420000,
-    memberCount: 28,
-    maxMembers: 50,
-  },
-];
-
 export default function FamilyScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user } = useContext(AuthContext);
 
   const [activeTab, setActiveTab] = useState('ranking'); // 'ranking' | 'myFamily'
-  const [families, setFamilies] = useState(DEFAULT_FAMILIES);
+  const [families, setFamilies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -78,10 +42,10 @@ export default function FamilyScreen() {
     try {
       setLoading(true);
       const res = await apiUtil.get('/family', { suppressGlobalError: true });
-      if (res?.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-        setFamilies(res.data.data);
-      }
+      const payload = res?.data?.data;
+      setFamilies(Array.isArray(payload) ? payload : Array.isArray(payload?.families) ? payload.families : []);
     } catch (_) {
+      setFamilies([]);
     } finally {
       setLoading(false);
     }
@@ -97,7 +61,7 @@ export default function FamilyScreen() {
       AlertService.show('Joined Family', `Welcome to ${fam.name}!`, 'success');
       fetchFamilies();
     } catch (err) {
-      AlertService.show('Notice', err?.message || `Application to join ${fam.name} sent to leader.`, 'info');
+      AlertService.show('Join failed', err?.response?.data?.message || err?.message || `Could not join ${fam.name}.`, 'error');
     }
   };
 
@@ -110,7 +74,7 @@ export default function FamilyScreen() {
     try {
       await apiUtil.post('/family/create', {
         name: familyName.trim(),
-        badge: familyBadge.trim() || '👑 CLAN',
+        badge: familyBadge.trim(),
         slogan: familySlogan.trim(),
       });
       setCreateModalVisible(false);
@@ -207,6 +171,8 @@ export default function FamilyScreen() {
 
             {loading ? (
               <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: 40 }} />
+            ) : filteredFamilies.length === 0 ? (
+              <Text style={styles.emptyFamiliesText}>No families are available from the server.</Text>
             ) : (
               filteredFamilies.map((fam, idx) => (
                 <View key={fam._id || idx} style={styles.familyCard}>
@@ -214,14 +180,13 @@ export default function FamilyScreen() {
                     <Text style={styles.rankText}>#{fam.ranking || idx + 1}</Text>
                   </View>
 
-                  <Image
-                    source={{
-                      uri:
-                        fam.avatar ||
-                        'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=100&auto=format&fit=crop',
-                    }}
-                    style={styles.famAvatar}
-                  />
+                  {fam.avatar ? (
+                    <Image source={{ uri: fam.avatar }} style={styles.famAvatar} />
+                  ) : (
+                    <View style={[styles.famAvatar, styles.famAvatarPlaceholder]}>
+                      <MaterialCommunityIcons name="shield-account-outline" size={26} color="#A5B4FC" />
+                    </View>
+                  )}
 
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -231,11 +196,11 @@ export default function FamilyScreen() {
                       </View>
                     </View>
                     <Text style={styles.famSlogan} numberOfLines={1}>
-                      {fam.slogan || 'Loyal brothers and sisters of Yaro.'}
+                      {fam.slogan || ''}
                     </Text>
                     <View style={styles.famStatsRow}>
                       <Text style={styles.famMembers}>
-                        👥 {fam.memberCount || 1}/{fam.maxMembers || 50}
+                        👥 {fam.memberCount ?? 0}/{fam.maxMembers ?? 0}
                       </Text>
                       <Text style={styles.famDiamonds}>
                         💎 {(fam.diamondsEarned || 0).toLocaleString()}
@@ -407,6 +372,8 @@ const styles = StyleSheet.create({
   },
   rankText: { color: '#818CF8', fontSize: 11, fontWeight: 'bold' },
   famAvatar: { width: 48, height: 48, borderRadius: 24, marginLeft: 10 },
+  famAvatarPlaceholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#312E81' },
+  emptyFamiliesText: { color: '#CBD5E1', textAlign: 'center', paddingVertical: 36 },
   famName: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
   badgePill: {
     backgroundColor: 'rgba(245,158,11,0.2)',

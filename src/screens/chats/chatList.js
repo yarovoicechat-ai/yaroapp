@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { apiUtil } from '../../utils/apiUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { AuthContext } from '../../context/AuthProvider';
+import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 
 const diamondIcon = require('../../assets/icons/diamond.png');
 
@@ -39,92 +40,6 @@ const SYSTEM_NOTICE_ENTRY = {
   icon: 'notifications',
 };
 
-const DUMMY_SYSTEM_NOTICES = [
-  {
-    id: 's1',
-    title: 'Account Verified',
-    badge: 'New',
-    subtitle: 'Your account has been successfully verified. Enjoy all features now!',
-    time: '2m ago',
-    icon: 'shield-checkmark',
-    iconColor: '#8B5CF6',
-    iconBg: '#F3E8FF',
-  },
-  {
-    id: 's2',
-    title: 'Welcome Bonus',
-    badge: 'New',
-    subtitle: 'You’ve received 120 Diamonds as a welcome bonus. Start connecting now!',
-    time: '10m ago',
-    icon: 'gift',
-    iconColor: '#D97706',
-    iconBg: '#FEF3C7',
-  },
-  {
-    id: 's3',
-    title: 'Security Alert',
-    badge: null,
-    subtitle: 'A new login was detected. If this wasn’t you, please secure your account.',
-    time: '1h ago',
-    icon: 'shield-outline',
-    iconColor: '#EF4444',
-    iconBg: '#FEE2E2',
-  },
-  {
-    id: 's4',
-    title: 'Maintenance Update',
-    badge: null,
-    subtitle: 'Scheduled maintenance completed smoothly. Performance has been optimized.',
-    time: 'Yesterday',
-    icon: 'megaphone-outline',
-    iconColor: '#A855F7',
-    iconBg: '#F3E8FF',
-  },
-  {
-    id: 's5',
-    title: 'Terms Updated',
-    badge: null,
-    subtitle: 'Our community guidelines have been updated for safe and fun voice rooms.',
-    time: '2d ago',
-    icon: 'document-text-outline',
-    iconColor: '#3B82F6',
-    iconBg: '#DBEAFE',
-  },
-];
-
-const SAMPLE_GIFTS = [
-  {
-    id: 'g1',
-    name: 'Aanya',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-    giftName: 'Rose Heart',
-    giftEmoji: '🌹',
-    price: '20',
-    time: '15m ago',
-    type: 'received',
-  },
-  {
-    id: 'g2',
-    name: 'Priya',
-    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80',
-    giftName: 'Diamond Ring',
-    giftEmoji: '💍',
-    price: '99',
-    time: '2h ago',
-    type: 'received',
-  },
-  {
-    id: 'g3',
-    name: 'Rohan',
-    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&auto=format&fit=crop&q=80',
-    giftName: 'Sports Car',
-    giftEmoji: '🏎️',
-    price: '520',
-    time: '1d ago',
-    type: 'sent',
-  },
-];
-
 export default function ChatListScreen() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
@@ -136,6 +51,10 @@ export default function ChatListScreen() {
   const [loading, setLoading] = useState(false);
   const [calls, setCalls] = useState([]);
   const [loadingCalls, setLoadingCalls] = useState(false);
+  const [giftHistory, setGiftHistory] = useState([]);
+  const [loadingGifts, setLoadingGifts] = useState(false);
+  const [systemNotices, setSystemNotices] = useState([]);
+  const [loadingNotices, setLoadingNotices] = useState(false);
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -171,6 +90,82 @@ export default function ChatListScreen() {
     }
   }, []);
 
+  const fetchGiftHistory = useCallback(async () => {
+    try {
+      setLoadingGifts(true);
+      const [sentResponse, receivedResponse] = await Promise.all([
+        apiUtil.get('/gifts/sent', { params: { limit: 50 } }),
+        apiUtil.get('/gifts/received', { params: { limit: 50 } }),
+      ]);
+      const sent = sentResponse.data?.data?.transactions || [];
+      const received = receivedResponse.data?.data?.transactions || [];
+      const mapped = [
+        ...sent.map((transaction) => {
+          const gift = transaction.giftId || {};
+          const receiver = transaction.receiverId || {};
+          const visual = resolveGiftVisual(gift);
+          return {
+            id: String(transaction._id),
+            type: 'sent',
+            name: receiver.name || 'Recipient',
+            avatar: receiver.image || receiver.avatar,
+            giftName: gift.name || transaction.meta?.giftName || 'Gift',
+            giftEmoji: visual.giftIcon,
+            giftImage: visual.giftImage,
+            price: Number(transaction.totalDiamonds || transaction.totalPrice || 0),
+            createdAt: transaction.createdAt,
+          };
+        }),
+        ...received.map((transaction) => {
+          const gift = transaction.giftId || {};
+          const sender = transaction.senderId || {};
+          const visual = resolveGiftVisual(gift);
+          return {
+            id: String(transaction._id),
+            type: 'received',
+            name: sender.name || 'Sender',
+            avatar: sender.image || sender.avatar,
+            giftName: gift.name || transaction.meta?.giftName || 'Gift',
+            giftEmoji: visual.giftIcon,
+            giftImage: visual.giftImage,
+            price: Number(transaction.totalDiamonds || transaction.totalPrice || 0),
+            createdAt: transaction.createdAt,
+          };
+        }),
+      ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setGiftHistory(mapped);
+    } catch (error) {
+      console.log('Failed to fetch gift history:', error?.message || error);
+      setGiftHistory([]);
+    } finally {
+      setLoadingGifts(false);
+    }
+  }, []);
+
+  const fetchSystemNotices = useCallback(async () => {
+    try {
+      setLoadingNotices(true);
+      const response = await apiUtil.get('/notifications', { params: { limit: 50 } });
+      const notices = response.data?.data?.notifications || [];
+      const mapped = Array.isArray(notices) ? notices.map((notice) => ({
+        id: String(notice._id || notice.id),
+        title: notice.title || 'Notification',
+        badge: notice.isRead ? null : 'New',
+        subtitle: notice.message || notice.content || '',
+        time: notice.createdAt ? new Date(notice.createdAt).toLocaleString() : '',
+        icon: notice.type === 'transaction' ? 'gift-outline' : 'notifications-outline',
+        iconColor: notice.type === 'transaction' ? '#D97706' : '#6C5CE7',
+        iconBg: notice.type === 'transaction' ? '#FEF3C7' : '#F3E8FF',
+      })) : [];
+      setSystemNotices(mapped);
+    } catch (error) {
+      console.log('Failed to fetch system notices:', error?.message || error);
+      setSystemNotices([]);
+    } finally {
+      setLoadingNotices(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchConversations();
     fetchCalls();
@@ -181,6 +176,8 @@ export default function ChatListScreen() {
     if (tabId === 'calls' && calls.length === 0) {
       fetchCalls();
     }
+    if (tabId === 'gifts') fetchGiftHistory();
+    if (tabId === 'system') fetchSystemNotices();
   };
 
   // Render conversation row
@@ -311,7 +308,7 @@ export default function ChatListScreen() {
     return (
       <View style={styles.cardWrapper}>
         <View style={styles.avatarWrapper}>
-          <Image source={{ uri: item.avatar }} style={styles.userAvatarImg} />
+          <Image source={getUserAvatar({ avatar: item.avatar, image: item.avatar })} style={styles.userAvatarImg} />
         </View>
 
         <View style={styles.cardMainContent}>
@@ -322,12 +319,18 @@ export default function ChatListScreen() {
             </Text>
           </View>
           <Text style={styles.lastMsgSnippet}>
-            {item.type === 'received' ? 'Sent you a gift' : 'You sent a gift'}
+            {item.type === 'received' ? 'Sent you' : 'You sent'} {item.giftName || 'a gift'}
           </Text>
         </View>
 
         <View style={styles.giftRightBadge}>
-          <Text style={{ fontSize: 24 }}>{item.giftEmoji}</Text>
+          {item.giftImage ? (
+            <Image source={{ uri: item.giftImage }} style={{ width: 28, height: 28 }} resizeMode="contain" />
+          ) : item.giftEmoji ? (
+            <Text style={{ fontSize: 24 }}>{item.giftEmoji}</Text>
+          ) : (
+            <Icon name="gift-outline" size={24} color="#D97706" />
+          )}
           <View style={styles.giftCoinsWrap}>
             <Image source={diamondIcon} style={{ width: 12, height: 12, marginRight: 3 }} resizeMode="contain" />
             <Text style={styles.giftCoinsVal}>{item.price}</Text>
@@ -510,17 +513,17 @@ export default function ChatListScreen() {
 
       {activeSubTab === 'gifts' && (
         <FlatList
-          data={SAMPLE_GIFTS}
+          data={giftHistory}
           renderItem={renderGiftCard}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
-            <View style={styles.emptyStateContainer}>
-              <Icon name="gift-outline" size={42} color="#94A3B8" />
-              <Text style={styles.emptyStateTitle}>No Gifts Yet</Text>
-              <Text style={styles.emptyStateSubtitle}>
-                Gifts received and sent during voice rooms and calls will appear here.
-              </Text>
-            </View>
+            loadingGifts ? <ActivityIndicator size="small" color="#6C5CE7" style={{ marginTop: 40 }} /> : (
+              <View style={styles.emptyStateContainer}>
+                <Icon name="gift-outline" size={42} color="#94A3B8" />
+                <Text style={styles.emptyStateTitle}>No Gifts Yet</Text>
+                <Text style={styles.emptyStateSubtitle}>Real gifts you send or receive will appear here.</Text>
+              </View>
+            )
           }
           contentContainerStyle={[
             styles.listContentContainer,
@@ -532,9 +535,18 @@ export default function ChatListScreen() {
 
       {activeSubTab === 'system' && (
         <FlatList
-          data={DUMMY_SYSTEM_NOTICES}
+          data={systemNotices}
           renderItem={renderSystemCard}
           keyExtractor={(item) => item.id}
+          ListEmptyComponent={
+            loadingNotices ? <ActivityIndicator size="small" color="#6C5CE7" style={{ marginTop: 40 }} /> : (
+              <View style={styles.emptyStateContainer}>
+                <Icon name="notifications-outline" size={42} color="#94A3B8" />
+                <Text style={styles.emptyStateTitle}>No Notifications Yet</Text>
+                <Text style={styles.emptyStateSubtitle}>Account updates and messages from Yaro will appear here.</Text>
+              </View>
+            )
+          }
           contentContainerStyle={[
             styles.listContentContainer,
             { paddingBottom: bottomTabBarPadding },

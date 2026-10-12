@@ -42,15 +42,21 @@ export default function LiveListScreen() {
         const payload = res.data.data?.hostsData || res.data.data;
         const hosts = payload?.hosts || (Array.isArray(payload) ? payload : []);
 
-        const mapped = hosts.map((h, i) => ({
-          id: h._id || String(i),
-          title: `${h.name}'s Live Stream ✨`,
-          hostName: h.name || 'Broadcaster',
-          coverImage: h.image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80',
-          viewers: Math.floor(Math.random() * 80) + 12,
-          category: CATEGORIES[(i % (CATEGORIES.length - 1)) + 1],
-          hostObj: h,
-        }));
+        const mapped = hosts
+          .filter((host) =>
+            (host?.isLive === true || host?.isStreaming === true || host?.liveStream?.isLive === true) &&
+            Boolean(host.liveStream?.roomId || host.liveRoomId || host.roomId),
+          )
+          .map((host, index) => ({
+            id: String(host.liveStream?.id || host.liveStream?._id || host.liveRoomId || host.roomId || host._id || host.userId || index),
+            title: host.liveStream?.title || host.liveTitle || `${host.name || 'Host'}'s Live Stream`,
+            hostName: host.name || 'Broadcaster',
+            coverImage: host.liveStream?.coverImage || host.liveCoverImage || host.image || host.avatar || '',
+            viewers: Number(host.liveStream?.viewerCount ?? host.viewerCount ?? host.viewers ?? 0) || 0,
+            category: host.liveStream?.category || host.liveCategory || host.category || 'All',
+            hostObj: host,
+            roomId: host.liveStream?.roomId || host.liveRoomId || host.roomId || '',
+          }));
         setStreams(mapped);
       } else {
         setStreams([]);
@@ -80,9 +86,13 @@ export default function LiveListScreen() {
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.9}
-      onPress={() => navigation.navigate('LiveStream', { isHost: false, host: item.hostObj })}
+      onPress={() => navigation.navigate('LiveStream', { isHost: false, host: item.hostObj, roomId: item.roomId })}
     >
-      <Image source={{ uri: item.coverImage }} style={styles.cardCover} />
+      {item.coverImage ? (
+        <Image source={{ uri: item.coverImage }} style={styles.cardCover} />
+      ) : (
+        <View style={[styles.cardCover, { backgroundColor: '#312E81' }]} />
+      )}
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.8)']}
         style={StyleSheet.absoluteFillObject}
@@ -170,30 +180,11 @@ export default function LiveListScreen() {
             <EmptyStateView
               icon="videocam-outline"
               title="No Active Streams"
-              subtitle="No broadcasters are currently live in this category. Be the first to start a live stream!"
-              actionText="Go Live Now"
-              onAction={() => navigation.navigate('LiveStream', { isHost: true })}
+              subtitle="No broadcasters are currently live in this category."
             />
           }
         />
       )}
-
-      {/* Floating Go Live FAB */}
-      <TouchableOpacity
-        style={[styles.fab, { bottom: bottomPadding + 10 }]}
-        activeOpacity={0.88}
-        onPress={() => navigation.navigate('LiveStream', { isHost: true })}
-      >
-        <LinearGradient
-          colors={['#EC4899', '#8B5CF6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.fabGradient}
-        >
-          <Icon name="videocam" size={20} color="#FFFFFF" />
-          <Text style={styles.fabText}>Start Live</Text>
-        </LinearGradient>
-      </TouchableOpacity>
     </View>
   );
 }

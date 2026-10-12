@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   Animated,
@@ -9,6 +10,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { resolveGiftVisual } from './giftMediaUtils';
 
 export default function GiftQuickSend({
   visible,
@@ -77,6 +79,7 @@ export default function GiftQuickSend({
 
   const unitCost = Number(gift.price !== undefined ? gift.price : (gift.cost || 0));
   const totalDiamonds = unitCost * selectedQty;
+  const giftVisual = resolveGiftVisual(gift);
 
   return (
     <Animated.View
@@ -97,7 +100,13 @@ export default function GiftQuickSend({
       >
         {/* Left: Gift Thumbnail & Info */}
         <View style={styles.leftCol}>
-          <Text style={styles.giftIcon}>{gift.icon || '🎁'}</Text>
+          {giftVisual.giftImage ? (
+            <Image source={{ uri: giftVisual.giftImage }} style={styles.giftImage} resizeMode="contain" />
+          ) : giftVisual.giftIcon ? (
+            <Text style={styles.giftIcon}>{giftVisual.giftIcon}</Text>
+          ) : (
+            <MaterialCommunityIcons name="gift-outline" size={24} color="#FDE68A" />
+          )}
           <View style={styles.infoCol}>
             <Text style={styles.giftName} numberOfLines={1}>{gift.name}</Text>
             <Text style={styles.costText}>💎 {totalDiamonds.toLocaleString()}</Text>
@@ -184,6 +193,7 @@ const styles = StyleSheet.create({
   giftIcon: {
     fontSize: 22,
   },
+  giftImage: { width: 30, height: 30 },
   infoCol: {
     maxWidth: 75,
   },

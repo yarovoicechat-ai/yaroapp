@@ -31,6 +31,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { apiUtil } from '../../utils/apiUtil.js';
 import { getSocket, initSocket } from '../../sockets';
 import GiftMedia from '../../components/GiftMedia';
+import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import { AuthContext } from '../../context/AuthProvider';
 import { useCall } from '../../context/CallContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -381,18 +382,20 @@ const OnGoing = ({ route, navigation }) => {
 
   // Dynamic Categories System: Automatically extracts ANY new category created in Admin Panel
   const categories = useMemo(() => {
-    const defaults = ['All', 'Popular', 'Luxury', 'Romantic', 'Special'];
-    if (!gifts || gifts.length === 0) return defaults;
-
-    const customCats = gifts
-      .map(g => g.category?.trim())
-      .filter(c => c && !defaults.some(d => d.toLowerCase() === c.toLowerCase()));
-
-    const uniqueCustom = Array.from(new Set(customCats));
-    return [...defaults, ...uniqueCustom];
+    const catalogCategories = gifts
+      .map((gift) => typeof gift.category === 'string' ? gift.category.trim() : gift.category?.name?.trim())
+      .filter(Boolean);
+    return ['All', ...Array.from(new Set(catalogCategories))];
   }, [gifts]);
 
   const quantities = [1, 5, 10, 52, 99, 520, 1314];
+
+  const openGiftModal = () => {
+    setSelectedPopupGift(null);
+    setSelectedQuantity(1);
+    setActiveTab('All');
+    setShowGiftModal(true);
+  };
 
   // Request Microphone Permissions
   const requestPermission = async () => {
@@ -858,15 +861,16 @@ const OnGoing = ({ route, navigation }) => {
   const fetchGifts = async () => {
     setLoadingGifts(true);
     try {
-      const res = await apiUtil.get('/gift/all');
+      const res = await apiUtil.get('/gifts');
       if (res.data?.success) {
-        setGifts(res.data.data || []);
-        if (res.data.data?.length > 0) {
-          setSelectedPopupGift(res.data.data[0]);
-        }
+        setGifts(Array.isArray(res.data.data) ? res.data.data : []);
+      } else {
+        setGifts([]);
       }
     } catch (err) {
       console.log("Error fetching gifts", err);
+      setGifts([]);
+      setSelectedPopupGift(null);
     } finally {
       setLoadingGifts(false);
     }
@@ -877,26 +881,44 @@ const OnGoing = ({ route, navigation }) => {
       AlertService.show('Error', 'Please select a gift first', 'error');
       return;
     }
-    const cost = (gift.cost || 0) * quantity;
-    const userBalance = Number((user?.diamonds || 0) + (user?.coins || 0));
+    const cost = Number(gift.price ?? gift.cost ?? gift.priceDiamonds ?? 0) * quantity;
+    const userBalance = Number(user?.diamonds || 0);
     if (userBalance < cost) {
       AlertService.show('Insufficient Balance', 'Please recharge your wallet to send this gift.', 'error');
       return;
     }
 
     try {
-      const res = await apiUtil.post('/gift/send', {
-        giftId: gift._id,
+      if (!targetParticipantId) {
+        AlertService.show('Gift failed', 'Call participant ID is missing.', 'error');
+        return;
+      }
+      const res = await apiUtil.post('/gifts/send', {
+        requestId: `gift_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+        giftId: gift._id || gift.id,
+        quantity,
+        comboCount: 1,
         callId: transactionId,
-        count: quantity,
+        currency: 'DIAMONDS',
+        receiverIds: [targetParticipantId],
+        receiverId: targetParticipantId,
       });
 
       if (res.data?.success) {
         if (fetchUserProfile) fetchUserProfile();
-        setActiveGift(res.data.data);
+        const result = res.data?.data?.data || res.data?.data || {};
+        const payload = result?.data || result;
+        setActiveGift({
+          ...gift,
+          ...(payload.gift || {}),
+          gift: payload.gift || gift,
+          quantity: payload.quantity || quantity,
+        });
         if (giftTimerRef.current) clearTimeout(giftTimerRef.current);
         giftTimerRef.current = setTimeout(() => setActiveGift(null), 1800);
         setShowGiftModal(false);
+        setSelectedPopupGift(null);
+        setSelectedQuantity(1);
 
       } else {
         AlertService.show('Failed', res.data?.message || 'Could not send gift', 'error');
@@ -909,45 +931,45 @@ const OnGoing = ({ route, navigation }) => {
   const getFilteredGifts = () => {
     if (activeTab.toLowerCase() === 'all') return gifts;
     return gifts.filter((gift) => {
-      const category = gift.category || 'Popular';
+      const category = typeof gift.category === 'string' ? gift.category : gift.category?.name || '';
       return category.toLowerCase() === activeTab.toLowerCase();
     });
   };
 
   const renderPopupGiftItem = ({ item }) => {
-    const isSelected = selectedPopupGift?._id === item._id;
+    const isSelected = String(selectedPopupGift?._id || selectedPopupGift?.id) === String(item._id || item.id);
+    const giftVisual = resolveGiftVisual(item);
     return (
       <TouchableOpacity
         style={[styles.popupGiftItem, isSelected && styles.selectedPopupGiftItem]}
         onPress={() => setSelectedPopupGift(item)}
         activeOpacity={0.8}
       >
-        <GiftMedia
-          source={item.icon}
-          mediaType={item.mediaType}
-          style={styles.popupGiftIcon}
-          resizeMode="contain"
-          fallbackSource={require('../../assets/avtar.webp')}
-        />
+        {item.animationUrl || giftVisual.giftImage ? (
+          <GiftMedia
+            source={item.animationUrl || giftVisual.giftImage}
+            mediaType={item.mediaType}
+            style={styles.popupGiftIcon}
+            resizeMode="contain"
+          />
+        ) : giftVisual.giftIcon ? (
+          <Text style={{ fontSize: 32 }}>{giftVisual.giftIcon}</Text>
+        ) : (
+          <Icon name="gift" size={30} color="#FBBF24" />
+        )}
         <View style={styles.popupGiftDetails}>
           <Text style={styles.popupGiftName}>{item.name}</Text>
           <View style={styles.popupGiftCostRow}>
             <Image source={require('../../assets/icons/diamond.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
-            <Text style={styles.popupGiftCost}>{item.cost}</Text>
+            <Text style={styles.popupGiftCost}>{item.price ?? item.cost ?? item.priceDiamonds ?? 0}</Text>
           </View>
         </View>
       </TouchableOpacity>
     );
   };
 
-  const previewGifts = [
-    { _id: 'preview_rose', name: 'Rose', cost: 10, previewIcon: 'flower' },
-    { _id: 'preview_kiss', name: 'Kiss', cost: 20, previewIcon: 'lipstick' },
-    { _id: 'preview_heart', name: 'Heart', cost: 50, previewIcon: 'heart' },
-    { _id: 'preview_star', name: 'Star', cost: 80, previewIcon: 'star-four-points' },
-    { _id: 'preview_crown', name: 'Crown', cost: 100, previewIcon: 'crown' },
-  ];
-  const featuredGifts = [...gifts.slice(0, 5), ...previewGifts].slice(0, 5);
+  const featuredGifts = gifts.slice(0, 5);
+  const activeGiftVisual = resolveGiftVisual(activeGift?.gift || activeGift || {});
 
   const getInitials = value => (value || 'You')
     .trim()
@@ -1032,11 +1054,19 @@ const OnGoing = ({ route, navigation }) => {
       {activeGift && (
         <View pointerEvents="none" style={styles.giftCelebrationOverlay}>
           <View style={styles.giftCelebrationGlow}>
-            <GiftMedia
-              source={activeGift.animationUrl || activeGift.icon}
-              mediaType={activeGift.mediaType}
-              style={styles.giftCelebrationMedia}
-            />
+            {activeGift.animationUrl || activeGift.mediaUrl ? (
+              <GiftMedia
+                source={activeGift.animationUrl || activeGift.mediaUrl}
+                mediaType={activeGift.mediaType}
+                style={styles.giftCelebrationMedia}
+              />
+            ) : activeGiftVisual.giftImage ? (
+              <Image source={{ uri: activeGiftVisual.giftImage }} style={styles.giftCelebrationMedia} resizeMode="contain" />
+            ) : activeGiftVisual.giftIcon ? (
+              <Text style={{ fontSize: 96 }}>{activeGiftVisual.giftIcon}</Text>
+            ) : (
+              <Icon name="gift" size={96} color="#FBBF24" />
+            )}
           </View>
         </View>
       )}
@@ -1086,7 +1116,7 @@ const OnGoing = ({ route, navigation }) => {
               <Text style={styles.avatarNameText} numberOfLines={1}>{name || 'Yaro Voice'}</Text>
               {Boolean(route.params?.hostId || route.params?.userId || route.params?.meethiId || route.params?.callerId) && (
                 <Text style={styles.avatarIdText} numberOfLines={1}>
-                  ID: {route.params?.hostId || route.params?.userId || route.params?.meethiId || route.params?.callerId}
+                  YARO ID: {route.params?.hostId || route.params?.userId || route.params?.meethiId || route.params?.callerId}
                 </Text>
               )}
             </View>
@@ -1116,13 +1146,10 @@ const OnGoing = ({ route, navigation }) => {
           <TouchableOpacity
             style={styles.quickGiftBalance}
             activeOpacity={0.8}
-            onPress={() => {
-              setShowGiftModal(true);
-              if (gifts[0]) setSelectedPopupGift(gifts[0]);
-            }}
+            onPress={openGiftModal}
           >
             <Image source={require('../../assets/icons/diamond.png')} style={{ width: 16, height: 16, marginRight: 4 }} resizeMode="contain" />
-            <Text style={styles.quickGiftBalanceText}>{Number((user?.coins || 0) + (user?.diamonds || 0)).toLocaleString()}</Text>
+              <Text style={styles.quickGiftBalanceText}>{Number(user?.diamonds || 0).toLocaleString()}</Text>
           </TouchableOpacity>
         </View>
 
@@ -1138,10 +1165,7 @@ const OnGoing = ({ route, navigation }) => {
             renderItem={({ item }) => item.isMoreBtn ? (
               <TouchableOpacity
                 style={[styles.quickGiftBox, styles.quickGiftMoreBox]}
-                onPress={() => {
-                  setShowGiftModal(true);
-                  if (gifts[0]) setSelectedPopupGift(gifts[0]);
-                }}
+                onPress={openGiftModal}
               >
                 <Icon name="gift-open-outline" size={32} color="#03dcfe" />
                 <Text style={styles.quickGiftMoreText}>More</Text>
@@ -1149,24 +1173,22 @@ const OnGoing = ({ route, navigation }) => {
             ) : (
               <View style={styles.quickGiftBox}>
                 <View style={styles.giftVisualWrap}>
-                  {item.previewIcon ? (
-                    <Icon
-                      name={item.previewIcon}
-                      size={WP(10)}
-                      color={item.previewIcon === 'heart' ? '#ff315d' : item.previewIcon === 'lipstick' ? '#ff4cac' : '#ff334f'}
-                    />
-                  ) : (
-                    <GiftMedia source={item.icon} mediaType={item.mediaType} style={styles.quickGiftIcon} />
-                  )}
+                  {(() => {
+                    const visual = resolveGiftVisual(item);
+                    if (item.animationUrl || visual.giftImage) {
+                      return <GiftMedia source={item.animationUrl || visual.giftImage} mediaType={item.mediaType} style={styles.quickGiftIcon} />;
+                    }
+                    if (visual.giftIcon) return <Text style={{ fontSize: WP(9) }}>{visual.giftIcon}</Text>;
+                    return <Icon name="gift" size={WP(9)} color="#FBBF24" />;
+                  })()}
                 </View>
                 <Text style={styles.quickGiftName} numberOfLines={1}>{item.name}</Text>
                 <View style={styles.quickGiftCostRow}>
                   <Image source={require('../../assets/icons/diamond.png')} style={{ width: 12, height: 12, marginRight: 3 }} resizeMode="contain" />
-                  <Text style={styles.quickGiftCost}>{item.cost}</Text>
+                  <Text style={styles.quickGiftCost}>{item.price ?? item.cost ?? item.priceDiamonds ?? 0}</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.quickGiftSendBtn}
-                  disabled={Boolean(item.previewIcon)}
                   onPress={() => handleSendGift(item, 1)}
                   activeOpacity={0.8}
                 >
@@ -1186,10 +1208,7 @@ const OnGoing = ({ route, navigation }) => {
             <View style={styles.giftPagerDot} />
           </View>
           <TouchableOpacity
-            onPress={() => {
-              setShowGiftModal(true);
-              if (gifts[0]) setSelectedPopupGift(gifts[0]);
-            }}
+              onPress={openGiftModal}
           >
             <Icon name="chevron-right" size={28} color="#9c50ff" />
           </TouchableOpacity>
@@ -1264,7 +1283,7 @@ const OnGoing = ({ route, navigation }) => {
                 <View style={styles.modalCoinBadge}>
                   <Icon name="bitcoin" size={14} color="#FFD700" />
                   <Text style={styles.modalCoinBadgeText}>
-                    {Number((user?.coins || 0) + (user?.diamonds || 0)).toLocaleString()}
+                    {Number(user?.diamonds || 0).toLocaleString()}
                   </Text>
                 </View>
               </View>
@@ -1283,10 +1302,7 @@ const OnGoing = ({ route, navigation }) => {
                     style={[styles.categoryTabButton, isActive && styles.categoryTabButtonActive]}
                     onPress={() => {
                       setActiveTab(tab);
-                      const filtered = gifts.filter(g => (g.category || 'Popular').toLowerCase() === tab.toLowerCase());
-                      if (filtered.length > 0) {
-                        setSelectedPopupGift(filtered[0]);
-                      }
+                      setSelectedPopupGift(null);
                     }}
                     activeOpacity={0.8}
                   >
@@ -1365,7 +1381,7 @@ const OnGoing = ({ route, navigation }) => {
                   style={styles.modalSendBtnGradient}
                 >
                   <Text style={styles.modalSendBtnText}>
-                    Send ({selectedPopupGift ? selectedPopupGift.cost * selectedQuantity : 0})
+                    Send ({selectedPopupGift ? Number(selectedPopupGift.price ?? selectedPopupGift.cost ?? selectedPopupGift.priceDiamonds ?? 0) * selectedQuantity : 0})
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>

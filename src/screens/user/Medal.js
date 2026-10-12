@@ -18,164 +18,8 @@ import { AlertService } from '../../utils/AlertService';
 const { width } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (width - 56) / 3;
 
-const MEDALS_DATA = [
-  {
-    id: 'm1',
-    name: 'Rising Star',
-    description: 'Awarded to creators who hit the top trending chart in their first month.',
-    earnedDate: 'Earned on 04 Jan 2025',
-    isOwned: true,
-    isEquipped: false,
-    rarity: 'Common',
-    iconType: 'star_wreath',
-    primaryColor: '#D97706',
-    secondaryColor: '#F59E0B',
-    ribbonColor: '#DC2626',
-  },
-  {
-    id: 'm2',
-    name: 'Social Pro',
-    description: 'Maintained over 100+ active conversations and voice interactions.',
-    earnedDate: 'Earned on 18 Feb 2025',
-    isOwned: true,
-    isEquipped: false,
-    rarity: 'Rare',
-    iconType: 'crown_wreath',
-    primaryColor: '#EA580C',
-    secondaryColor: '#FBBF24',
-    ribbonColor: '#9333EA',
-  },
-  {
-    id: 'm3',
-    name: 'Chat Lover',
-    description: 'Sent more than 10,000 engaging messages in voice parties and private chats.',
-    earnedDate: 'Earned on 28 Apr 2025',
-    isOwned: true,
-    isEquipped: false,
-    rarity: 'Epic',
-    iconType: 'heart_wings',
-    primaryColor: '#DB2777',
-    secondaryColor: '#F472B6',
-    ribbonColor: '#EC4899',
-  },
-  {
-    id: 'm4',
-    name: 'VIP Star',
-    description: 'For being a valuable member\nEarned on 12 Aug 2025',
-    earnedDate: 'Earned on 12 Aug 2025',
-    isOwned: true,
-    isEquipped: true,
-    rarity: 'Legendary',
-    iconType: 'ribbon_star',
-    primaryColor: '#F59E0B',
-    secondaryColor: '#FCD34D',
-    ribbonColor: '#EF4444',
-  },
-  {
-    id: 'm5',
-    name: 'Gift Master',
-    description: 'Generous soul who has sent over 50,000 diamonds in gifts to favorite hosts.',
-    earnedDate: 'Earned on 03 Jul 2025',
-    isOwned: true,
-    isEquipped: false,
-    rarity: 'Epic',
-    iconType: 'gift_wings',
-    primaryColor: '#E11D48',
-    secondaryColor: '#FB7185',
-    ribbonColor: '#F43F5E',
-  },
-  {
-    id: 'm6',
-    name: 'Voice King',
-    description: 'Hosted room audio sessions exceeding 100 total broadcast hours.',
-    earnedDate: 'Earned on 15 Aug 2025',
-    isOwned: true,
-    isEquipped: false,
-    rarity: 'Mythic',
-    iconType: 'voice_crown',
-    primaryColor: '#2563EB',
-    secondaryColor: '#60A5FA',
-    ribbonColor: '#3B82F6',
-  },
-  {
-    id: 'm7',
-    name: 'Active User',
-    description: 'Logged into Yaro consecutively for 60 consecutive days.',
-    earnedDate: 'Earned on 10 Jun 2025',
-    isOwned: true,
-    isEquipped: false,
-    rarity: 'Common',
-    iconType: 'silver_shield',
-    primaryColor: '#64748B',
-    secondaryColor: '#94A3B8',
-    ribbonColor: '#475569',
-  },
-  {
-    id: 'm8',
-    name: 'Popular',
-    description: 'Received over 5,000 room likes and profile visitors in a single week.',
-    earnedDate: 'Earned on 01 Sep 2025',
-    isOwned: true,
-    isEquipped: false,
-    rarity: 'Rare',
-    iconType: 'purple_orb',
-    primaryColor: '#7C3AED',
-    secondaryColor: '#A78BFA',
-    ribbonColor: '#8B5CF6',
-  },
-  {
-    id: 'm9',
-    name: 'Elite Member',
-    description: 'Privileged member of the elite council with verified community standing.',
-    earnedDate: 'Earned on 14 Sep 2025',
-    isOwned: true,
-    isEquipped: false,
-    rarity: 'Legendary',
-    iconType: 'gold_crest',
-    primaryColor: '#B45309',
-    secondaryColor: '#F59E0B',
-    ribbonColor: '#DC2626',
-  },
-];
-
-const STORE_MEDALS = [
-  {
-    id: 'sm1',
-    name: 'Super Diamond',
-    description: 'Exclusive commemorative medal for sending 100,000 diamonds.',
-    cost: '5,000 Diamonds',
-    unlocked: false,
-    progress: '42%',
-    iconType: 'gold_crest',
-    primaryColor: '#0284C7',
-    secondaryColor: '#38BDF8',
-    ribbonColor: '#0EA5E9',
-  },
-  {
-    id: 'sm2',
-    name: 'Party Prince',
-    description: 'Host voice parties with over 50 listeners simultaneously for 5 sessions.',
-    cost: '2,500 Diamonds',
-    unlocked: false,
-    progress: '3/5 Done',
-    iconType: 'crown_wreath',
-    primaryColor: '#9333EA',
-    secondaryColor: '#C084FC',
-    ribbonColor: '#7C3AED',
-  },
-  {
-    id: 'sm3',
-    name: 'Grand Champion',
-    description: 'Achieve Rank 1 in weekly party or gifter leaderboard rankings.',
-    cost: '10,000 Diamonds',
-    unlocked: false,
-    progress: 'Rank 8 currently',
-    iconType: 'ribbon_star',
-    primaryColor: '#E11D48',
-    secondaryColor: '#F43F5E',
-    ribbonColor: '#BE123C',
-  },
-];
+const MEDALS_DATA = [];
+const STORE_MEDALS = [];
 
 export default function Medal() {
   const insets = useSafeAreaInsets();
@@ -184,9 +28,9 @@ export default function Medal() {
 
   const [activeTab, setActiveTab] = useState('my'); // 'my' or 'store'
   const [medals, setMedals] = useState(MEDALS_DATA);
-  const [selectedMedalId, setSelectedMedalId] = useState('m4'); // VIP Star by default
+  const [selectedMedalId, setSelectedMedalId] = useState(null);
 
-  const selectedMedal = medals.find((m) => m.id === selectedMedalId) || medals[3];
+  const selectedMedal = medals.find((m) => m.id === selectedMedalId) || null;
 
   const handleSelectMedal = (medal) => {
     setSelectedMedalId(medal.id);
@@ -430,6 +274,13 @@ export default function Medal() {
         contentContainerStyle={styles.scrollContent}
       >
         {activeTab === 'my' ? (
+          medals.length === 0 ? (
+            <View style={styles.emptyMedalsCard}>
+              <MaterialCommunityIcons name="medal-outline" size={48} color="#94A3B8" />
+              <Text style={styles.emptyMedalsTitle}>Medals aren’t available yet</Text>
+              <Text style={styles.emptyMedalsText}>Your medals will appear here when they’re available.</Text>
+            </View>
+          ) : (
           <>
             {/* 3. Hero Showcase Card (Displays selected medal) */}
             <View style={styles.heroCard}>
@@ -513,15 +364,18 @@ export default function Medal() {
               })}
             </View>
           </>
+          )
         ) : (
           /* Medal Store Tab */
           <View style={styles.storeContainer}>
             <Text style={styles.storeSectionTitle}>Unlock Exclusive Medals</Text>
             <Text style={styles.storeSectionSubtitle}>
-              Complete achievements or purchase limited edition event badges
+              Medal store items will appear here when available.
             </Text>
 
-            {STORE_MEDALS.map((sMedal) => (
+            {STORE_MEDALS.length === 0 ? (
+              <Text style={styles.emptyMedalsText}>No medal store items are available yet.</Text>
+            ) : STORE_MEDALS.map((sMedal) => (
               <View key={sMedal.id} style={styles.storeCard}>
                 <View style={styles.storeMedalGraphic}>
                   {renderMedalGraphic(sMedal, 'small')}
@@ -559,6 +413,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  emptyMedalsCard: { alignItems: 'center', justifyContent: 'center', minHeight: 240, padding: 24, borderRadius: 22, backgroundColor: '#FFFFFF', marginTop: 22 },
+  emptyMedalsTitle: { color: '#0F172A', fontSize: 17, fontWeight: '800', marginTop: 12 },
+  emptyMedalsText: { color: '#64748B', fontSize: 13, textAlign: 'center', lineHeight: 19, marginTop: 8 },
   headerBar: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -268,7 +268,7 @@ export default function AgencyDashboardScreen() {
                       </View>
                     )}
                   </View>
-                  <Text style={styles.hostIdText}>ID: {host.userId}</Text>
+                  <Text style={styles.hostIdText}>YARO ID: {host.userId}</Text>
 
                   <View style={styles.hostStatsRow}>
                     <Text style={styles.hostStatSnippet}>

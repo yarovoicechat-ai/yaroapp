@@ -10,6 +10,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import GiftMedia from '../GiftMedia';
+import { resolveGiftVisual } from './giftMediaUtils';
 
 const { width } = Dimensions.get('window');
 const H_PADDING = 12;
@@ -75,6 +76,7 @@ export default function GiftCard({ gift, isSelected, onSelect }) {
   const badgeText =
     gift.badge ||
     (gift.isVip ? 'VIP' : (gift.isLimited ? 'LIMITED' : ((gift.isNew || gift.isNewItem) ? 'NEW' : (gift.isHot ? 'HOT' : (gift.category === 'Event' ? 'EVENT' : null)))));
+  const giftVisual = resolveGiftVisual(gift);
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -137,15 +139,15 @@ export default function GiftCard({ gift, isSelected, onSelect }) {
               { transform: [{ scale: imageBounce }] },
             ]}
           >
-            {gift.animationUrl || gift.image?.startsWith('http') || gift.icon?.startsWith('http') ? (
+            {gift.animationUrl || giftVisual.giftImage ? (
               <GiftMedia
-                source={gift.animationUrl || gift.image || gift.icon}
+                source={gift.animationUrl || giftVisual.giftImage}
                 mediaType={gift.mediaType || 'image'}
                 style={styles.media}
                 resizeMode="contain"
               />
             ) : (
-              <Text style={styles.emojiIcon}>{gift.icon || '🎁'}</Text>
+              <Text style={styles.emojiIcon}>{giftVisual.giftIcon || gift.icon || '🎁'}</Text>
             )}
           </Animated.View>
 

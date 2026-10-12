@@ -5,9 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  FlatList,
   StatusBar,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -21,145 +21,13 @@ import { apiUtil } from '../../utils/apiUtil';
 
 const { width } = Dimensions.get('window');
 
-// Sample realistic room session history (when room turned on, duration, gifts/beans received)
-const SAMPLE_ROOM_SESSIONS = [
-  {
-    id: 'room-session-1',
-    date: 'Today, 23 Sep 2026',
-    startTime: '08:15 PM',
-    endTime: '10:30 PM',
-    duration: '2h 15m',
-    durationMinutes: 135,
-    giftCount: 78,
-    beansReceived: 36400,
-    peakListeners: 42,
-    roomTitle: 'Evening Musical Vibes 🎸 & Chat',
-    status: 'Completed',
-  },
-  {
-    id: 'room-session-2',
-    date: 'Yesterday, 22 Sep 2026',
-    startTime: '09:00 PM',
-    endTime: '10:45 PM',
-    duration: '1h 45m',
-    durationMinutes: 105,
-    giftCount: 54,
-    beansReceived: 24800,
-    peakListeners: 35,
-    roomTitle: 'Late Night Talk & Chill ☕',
-    status: 'Completed',
-  },
-  {
-    id: 'room-session-3',
-    date: '21 Sep 2026',
-    startTime: '04:30 PM',
-    endTime: '06:00 PM',
-    duration: '1h 30m',
-    durationMinutes: 90,
-    giftCount: 41,
-    beansReceived: 18200,
-    peakListeners: 28,
-    roomTitle: 'Q&A Fun Session 🎉',
-    status: 'Completed',
-  },
-  {
-    id: 'room-session-4',
-    date: '20 Sep 2026',
-    startTime: '07:00 PM',
-    endTime: '09:30 PM',
-    duration: '2h 30m',
-    durationMinutes: 150,
-    giftCount: 92,
-    beansReceived: 45000,
-    peakListeners: 50,
-    roomTitle: 'Weekend Special Party 🚀',
-    status: 'Completed',
-  },
-  {
-    id: 'room-session-5',
-    date: '19 Sep 2026',
-    startTime: '08:00 PM',
-    endTime: '09:15 PM',
-    duration: '1h 15m',
-    durationMinutes: 75,
-    giftCount: 30,
-    beansReceived: 14500,
-    peakListeners: 22,
-    roomTitle: 'Daily Catch-Up 💬',
-    status: 'Completed',
-  },
-];
-
-// Sample voice call logs for voice hosting
-const SAMPLE_VOICE_CALLS = [
-  {
-    id: 'vc-1',
-    callerName: 'Aarav Patel',
-    date: 'Today, 06:45 PM',
-    duration: '14m 20s',
-    rate: '120 Beans/min',
-    beansEarned: 1720,
-    giftsReceived: 3,
-  },
-  {
-    id: 'vc-2',
-    callerName: 'Vikram Singh',
-    date: 'Today, 04:10 PM',
-    duration: '22m 05s',
-    rate: '120 Beans/min',
-    beansEarned: 2640,
-    giftsReceived: 5,
-  },
-  {
-    id: 'vc-3',
-    callerName: 'Rohan Sharma',
-    date: 'Yesterday, 11:30 PM',
-    duration: '35m 12s',
-    rate: '120 Beans/min',
-    beansEarned: 4220,
-    giftsReceived: 8,
-  },
-  {
-    id: 'vc-4',
-    callerName: 'Sameer Khan',
-    date: '21 Sep, 09:15 PM',
-    duration: '18m 40s',
-    rate: '120 Beans/min',
-    beansEarned: 2240,
-    giftsReceived: 2,
-  },
-];
-
-// Sample video call logs for video hosting
-const SAMPLE_VIDEO_CALLS = [
-  {
-    id: 'vdc-1',
-    callerName: 'Anand Verma',
-    date: 'Today, 07:15 PM',
-    duration: '12m 30s',
-    rate: '250 Beans/min',
-    beansEarned: 3125,
-    giftsReceived: 6,
-  },
-  {
-    id: 'vdc-2',
-    callerName: 'Kunal Joshi',
-    date: 'Yesterday, 08:45 PM',
-    duration: '19m 10s',
-    rate: '250 Beans/min',
-    beansEarned: 4790,
-    giftsReceived: 11,
-  },
-  {
-    id: 'vdc-3',
-    callerName: 'Deepak Roy',
-    date: '20 Sep, 10:00 PM',
-    duration: '26m 45s',
-    rate: '250 Beans/min',
-    beansEarned: 6680,
-    giftsReceived: 14,
-  },
-];
+const formatDuration = (seconds = 0) => {
+  const value = Math.max(0, Number(seconds) || 0);
+  const hours = Math.floor(value / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const remainingSeconds = value % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m ${remainingSeconds}s`;
+};
 
 export default function DataCenter() {
   const navigation = useNavigation();
@@ -169,6 +37,11 @@ export default function DataCenter() {
   const { user } = useContext(AuthContext);
 
   const [liveAgency, setLiveAgency] = useState(null);
+  const [roomSessions, setRoomSessions] = useState([]);
+  const [voiceCalls, setVoiceCalls] = useState([]);
+  const [videoCalls, setVideoCalls] = useState([]);
+  const [receivedGifts, setReceivedGifts] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -176,7 +49,9 @@ export default function DataCenter() {
       try {
         const res = await apiUtil.get('/host/my-status');
         if (isMounted && res.data?.data) {
-          setLiveAgency(res.data.data.agencyDetails || res.data.data.agency || res.data.data);
+          const status = res.data.data;
+          setLiveAgency({ ...status, ...(status.agencyDetails || status.agency || {}) });
+          setRoomSessions(Array.isArray(status.roomSessions) ? status.roomSessions : []);
         }
       } catch (e) {
         // Fallback gracefully
@@ -186,52 +61,93 @@ export default function DataCenter() {
     return () => { isMounted = false; };
   }, []);
 
-  // Agency info
-  const agencyName = liveAgency?.agencyName || liveAgency?.name || user?.agencyName || user?.agency?.name || 'Yaro Royal Talent Agency';
-  const agencyNumber = liveAgency?.agencyCode || liveAgency?.code || user?.agencyCode || user?.agencyId || user?.agency?.code || 'AG-89421';
-  const agencyContact = liveAgency?.agencyNumber || liveAgency?.phoneNumber || liveAgency?.mobileNumber || user?.agencyPhone || '+91 98765 43210';
-  const agencyLeader = liveAgency?.agencyLeader || liveAgency?.leaderName || user?.agencyLeader || 'Rahul Sharma (Leader)';
-  const hostId = user?.userId || user?._id || '888888';
+  useEffect(() => {
+    let isMounted = true;
+    const fetchActivity = async () => {
+      try {
+        setActivityLoading(true);
+        const [callResult, giftResult] = await Promise.allSettled([
+          apiUtil.get('/call/history?days=30'),
+          apiUtil.get('/gifts/received', { params: { limit: 100 } }),
+        ]);
+        const callRows = callResult.status === 'fulfilled'
+          ? callResult.value.data?.data?.calls || []
+          : [];
+        const callItems = Array.isArray(callRows) ? callRows.filter((item) => /call/i.test(String(item.type || ''))) : [];
+        const mapCall = (item) => ({
+          ...item,
+          id: String(item._id || item.id),
+          callerName: item.name || item.callerName || 'User',
+          date: item.date || (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''),
+          beansEarned: Number(item.commission ?? (Number(item.voice || 0) + Number(item.gift || 0))),
+          giftsReceived: Number(item.gift || 0),
+          durationSeconds: String(item.duration || '').split(':').reduce((total, part) => total * 60 + (Number(part) || 0), 0),
+        });
+        const video = callItems.filter((item) => /video/i.test(String(item.type || ''))).map(mapCall);
+        const voice = callItems.filter((item) => !/video/i.test(String(item.type || ''))).map(mapCall);
+        const giftRows = giftResult.status === 'fulfilled'
+          ? giftResult.value.data?.data?.transactions || []
+          : [];
+        if (isMounted) {
+          setVoiceCalls(voice);
+          setVideoCalls(video);
+          setReceivedGifts(Array.isArray(giftRows) ? giftRows : []);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setVoiceCalls([]);
+          setVideoCalls([]);
+          setReceivedGifts([]);
+        }
+        console.log('Failed to fetch host activity:', error?.message || error);
+      } finally {
+        if (isMounted) setActivityLoading(false);
+      }
+    };
+    fetchActivity();
+    return () => { isMounted = false; };
+  }, []);
 
-  // Determine which hosting types this host is approved for
-  // Users can have 1, 2, or 3 of: ['voice', 'video', 'room']
+  // Agency info
+  const agencyName = liveAgency?.agencyName || liveAgency?.name || user?.agencyName || user?.agency?.name || 'Not linked';
+  const agencyNumber = liveAgency?.agencyCode || liveAgency?.code || user?.agencyCode || user?.agencyId || user?.agency?.code || '—';
+  const agencyContact = liveAgency?.agencyNumber || liveAgency?.phoneNumber || liveAgency?.mobileNumber || user?.agencyPhone || '—';
+  const agencyLeader = liveAgency?.agencyLeader || liveAgency?.leaderName || user?.agencyLeader || '—';
+  const hostId = user?.userId || user?._id || '—';
+
+  // Show only hosting types and totals reported by the backend.
   const availableTabs = useMemo(() => {
     const tabs = [];
-    const userTypes = liveAgency?.hostingTypes || user?.hostingTypes || user?.hostTypes || ['voice', 'video', 'room'];
+    const rawTypes = liveAgency?.hostingTypes || user?.hostingTypes || user?.hostTypes || [];
+    const userTypes = Array.isArray(rawTypes) ? rawTypes : [];
+    const hasVoice = liveAgency?.canVoiceCall === true || user?.canVoiceCall === true ||
+      userTypes.includes('voice') || userTypes.includes('voice_call');
+    const hasVideo = liveAgency?.canVideoCall === true || user?.canVideoCall === true ||
+      userTypes.includes('video') || userTypes.includes('video_call');
+    const hasRoom = liveAgency?.canRoomHost === true || user?.canRoomHost === true ||
+      userTypes.includes('room') || userTypes.includes('room_hosting');
 
-    const hasVoice = (liveAgency?.canVoiceCall !== false && user?.canVoiceCall !== false) &&
-      (userTypes.includes('voice') || userTypes.includes('voice_call'));
-    const hasVideo = (liveAgency?.canVideoCall !== false && user?.canVideoCall !== false) &&
-      (userTypes.includes('video') || userTypes.includes('video_call'));
-    const hasRoom = (liveAgency?.canRoomHost !== false && user?.canRoomHost !== false) &&
-      (userTypes.includes('room') || userTypes.includes('room_hosting'));
-
-    if (hasVoice) {
-      tabs.push({ id: 'voice', label: 'Voice Call', icon: 'call-outline', mIcon: 'phone' });
-    }
-    if (hasVideo) {
-      tabs.push({ id: 'video', label: 'Video Call', icon: 'videocam-outline', mIcon: 'videocam' });
-    }
-    if (hasRoom) {
-      tabs.push({ id: 'room', label: 'Room Hosting', icon: 'radio-outline', mIcon: 'mic' });
-    }
-
-    // Default to at least room if none specified
-    if (tabs.length === 0) {
-      tabs.push({ id: 'room', label: 'Room Hosting', icon: 'radio-outline', mIcon: 'mic' });
-    }
+    if (hasVoice) tabs.push({ id: 'voice', label: 'Voice Call', icon: 'call-outline', mIcon: 'phone' });
+    if (hasVideo) tabs.push({ id: 'video', label: 'Video Call', icon: 'videocam-outline', mIcon: 'videocam' });
+    if (hasRoom) tabs.push({ id: 'room', label: 'Room Hosting', icon: 'radio-outline', mIcon: 'mic' });
     return tabs;
   }, [liveAgency, user]);
 
-  const [activeTab, setActiveTab] = useState(availableTabs[0]?.id || 'room');
+  const [activeTab, setActiveTab] = useState(null);
+  useEffect(() => {
+    if (!availableTabs.some((tab) => tab.id === activeTab)) {
+      setActiveTab(availableTabs[0]?.id || null);
+    }
+  }, [activeTab, availableTabs]);
 
-  // Stats calculation
-  const totalRoomMinutes = SAMPLE_ROOM_SESSIONS.reduce((acc, s) => acc + s.durationMinutes, 0);
-  const totalRoomBeans = SAMPLE_ROOM_SESSIONS.reduce((acc, s) => acc + s.beansReceived, 0);
-  const totalRoomGifts = SAMPLE_ROOM_SESSIONS.reduce((acc, s) => acc + s.giftCount, 0);
-
-  const totalVoiceBeans = SAMPLE_VOICE_CALLS.reduce((acc, c) => acc + c.beansEarned, 0);
-  const totalVideoBeans = SAMPLE_VIDEO_CALLS.reduce((acc, c) => acc + c.beansEarned, 0);
+  const roomGiftTransactions = receivedGifts.filter((gift) => gift.roomId && !gift.callId);
+  const totalRoomMinutes = roomSessions.reduce((sum, session) => sum + Number(session.durationMinutes || 0), 0);
+  const totalRoomBeans = roomGiftTransactions.reduce((sum, gift) => sum + Number(gift.hostEarning || gift.totalDiamonds || 0), 0);
+  const totalRoomGifts = roomGiftTransactions.reduce((sum, gift) => sum + Number(gift.quantity || 1), 0);
+  const totalVoiceBeans = voiceCalls.reduce((sum, call) => sum + Number(call.beansEarned || 0), 0);
+  const totalVideoBeans = videoCalls.reduce((sum, call) => sum + Number(call.beansEarned || 0), 0);
+  const totalVoiceSeconds = voiceCalls.reduce((sum, call) => sum + Number(call.durationSeconds || 0), 0);
+  const totalVideoSeconds = videoCalls.reduce((sum, call) => sum + Number(call.durationSeconds || 0), 0);
 
   return (
     <View style={styles.container}>
@@ -255,7 +171,7 @@ export default function DataCenter() {
           <Text style={styles.headerTitle}>Host Data Center</Text>
           <View style={styles.verifiedHostBadge}>
             <MaterialIcons name="verified" size={14} color="#10B981" />
-            <Text style={styles.verifiedHostText}>Active Host</Text>
+            <Text style={styles.verifiedHostText}>{liveAgency?.status || 'Host status unavailable'}</Text>
           </View>
         </View>
 
@@ -294,7 +210,7 @@ export default function DataCenter() {
             <View style={styles.agencyMetaDivider} />
             <View style={styles.agencyMetaItem}>
               <Text style={styles.agencyMetaLabel}>Hosting Status</Text>
-              <Text style={[styles.agencyMetaVal, { color: '#10B981' }]}>Approved</Text>
+              <Text style={[styles.agencyMetaVal, { color: '#10B981' }]}>{liveAgency?.status || 'Unavailable'}</Text>
             </View>
           </View>
         </View>
@@ -333,6 +249,12 @@ export default function DataCenter() {
         contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomPadding + 20 }]}
         showsVerticalScrollIndicator={false}
       >
+        {!activeTab ? (
+          <View style={{ alignItems: 'center', paddingVertical: 36 }}>
+            {activityLoading ? <ActivityIndicator size="small" color="#4F46E5" /> : null}
+            <Text style={styles.sectionSubtitleBadge}>Host activity access has not been provided by the server.</Text>
+          </View>
+        ) : null}
         {/* ===================== TAB 1: ROOM HOSTING ===================== */}
         {activeTab === 'room' && (
           <View>
@@ -381,12 +303,14 @@ export default function DataCenter() {
                 <Text style={styles.sectionTitle}>Room Turn-On History & Gifts</Text>
               </View>
               <Text style={styles.sectionSubtitleBadge}>
-                {SAMPLE_ROOM_SESSIONS.length} Sessions Logged
+                {roomSessions.length} Sessions Logged
               </Text>
             </View>
 
             {/* List of room sessions with time turned on, duration, and gifts received */}
-            {SAMPLE_ROOM_SESSIONS.map((session) => (
+            {roomSessions.length === 0 ? (
+              <Text style={styles.sectionSubtitleBadge}>No room session records are available yet.</Text>
+            ) : roomSessions.map((session) => (
               <View key={session.id} style={styles.sessionCard}>
                 <View style={styles.sessionTopRow}>
                   <View style={styles.sessionDateCol}>
@@ -457,7 +381,7 @@ export default function DataCenter() {
                   style={styles.overviewCardInner}
                 >
                   <MaterialIcons name="phone-in-talk" size={22} color="#4F46E5" />
-                  <Text style={styles.overviewVal}>1h 30m</Text>
+                  <Text style={styles.overviewVal}>{formatDuration(totalVoiceSeconds)}</Text>
                   <Text style={styles.overviewLabel}>Talk Time</Text>
                 </LinearGradient>
               </View>
@@ -468,7 +392,7 @@ export default function DataCenter() {
                   style={styles.overviewCardInner}
                 >
                   <Icon name="call" size={20} color="#D97706" />
-                  <Text style={styles.overviewVal}>{SAMPLE_VOICE_CALLS.length}</Text>
+                  <Text style={styles.overviewVal}>{voiceCalls.length}</Text>
                   <Text style={styles.overviewLabel}>Total Calls</Text>
                 </LinearGradient>
               </View>
@@ -491,10 +415,12 @@ export default function DataCenter() {
                 <Icon name="call" size={18} color="#0F172A" />
                 <Text style={styles.sectionTitle}>1-on-1 Voice Call Records</Text>
               </View>
-              <Text style={styles.sectionSubtitleBadge}>Rate: 120 Beans/min</Text>
+              <Text style={styles.sectionSubtitleBadge}>Recorded transactions</Text>
             </View>
 
-            {SAMPLE_VOICE_CALLS.map((call) => (
+            {voiceCalls.length === 0 ? (
+              <Text style={styles.sectionSubtitleBadge}>No voice call records found.</Text>
+            ) : voiceCalls.map((call) => (
               <View key={call.id} style={styles.callRecordCard}>
                 <View style={styles.callRecordAvatarBox}>
                   <Icon name="person" size={22} color="#6366F1" />
@@ -505,7 +431,7 @@ export default function DataCenter() {
                 </View>
                 <View style={styles.callEarningsBox}>
                   <Text style={styles.callBeansText}>+{call.beansEarned.toLocaleString()} 🫘</Text>
-                  <Text style={styles.callGiftsText}>{call.giftsReceived} gifts received</Text>
+                  <Text style={styles.callGiftsText}>Gift earnings: {Number(call.giftsReceived || 0).toLocaleString()}</Text>
                 </View>
               </View>
             ))}
@@ -523,7 +449,7 @@ export default function DataCenter() {
                   style={styles.overviewCardInner}
                 >
                   <MaterialIcons name="videocam" size={22} color="#4F46E5" />
-                  <Text style={styles.overviewVal}>58m 25s</Text>
+                  <Text style={styles.overviewVal}>{formatDuration(totalVideoSeconds)}</Text>
                   <Text style={styles.overviewLabel}>Video Talk Time</Text>
                 </LinearGradient>
               </View>
@@ -534,7 +460,7 @@ export default function DataCenter() {
                   style={styles.overviewCardInner}
                 >
                   <MaterialIcons name="video-call" size={22} color="#D97706" />
-                  <Text style={styles.overviewVal}>{SAMPLE_VIDEO_CALLS.length}</Text>
+                  <Text style={styles.overviewVal}>{videoCalls.length}</Text>
                   <Text style={styles.overviewLabel}>Video Calls</Text>
                 </LinearGradient>
               </View>
@@ -557,10 +483,12 @@ export default function DataCenter() {
                 <Icon name="videocam" size={18} color="#0F172A" />
                 <Text style={styles.sectionTitle}>1-on-1 Video Call Records</Text>
               </View>
-              <Text style={styles.sectionSubtitleBadge}>Rate: 250 Beans/min</Text>
+              <Text style={styles.sectionSubtitleBadge}>Recorded transactions</Text>
             </View>
 
-            {SAMPLE_VIDEO_CALLS.map((call) => (
+            {videoCalls.length === 0 ? (
+              <Text style={styles.sectionSubtitleBadge}>No video call records found.</Text>
+            ) : videoCalls.map((call) => (
               <View key={call.id} style={styles.callRecordCard}>
                 <View style={[styles.callRecordAvatarBox, { backgroundColor: '#FDF2F8' }]}>
                   <Icon name="videocam" size={22} color="#EC4899" />
@@ -571,7 +499,7 @@ export default function DataCenter() {
                 </View>
                 <View style={styles.callEarningsBox}>
                   <Text style={styles.callBeansText}>+{call.beansEarned.toLocaleString()} 🫘</Text>
-                  <Text style={styles.callGiftsText}>{call.giftsReceived} gifts received</Text>
+                  <Text style={styles.callGiftsText}>Gift earnings: {Number(call.giftsReceived || 0).toLocaleString()}</Text>
                 </View>
               </View>
             ))}

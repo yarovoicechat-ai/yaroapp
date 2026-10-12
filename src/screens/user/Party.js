@@ -121,7 +121,11 @@ export default function PartyScreen() {
   };
 
   const launchRoomWithConfig = (config) => {
-    const myUserId = String(user?.userId || user?.meethiId || user?._id || '10000001');
+    const myUserId = String(user?.userId || user?.meethiId || user?._id || user?.id || '');
+    if (!myUserId) {
+      AlertService.show('Room unavailable', 'Could not identify your account.', 'error');
+      return;
+    }
     const finalTitle = config.title || (user?.name ? `${user.name}'s Party Club 🎶` : 'My Voice Party 🎵');
 
     // Room ID and User ID are strictly the same!
@@ -157,7 +161,11 @@ export default function PartyScreen() {
 
   // First time room create, then direct room opening!
   const handleOpenGoLive = async () => {
-    const myUserId = String(user?.userId || user?.meethiId || user?._id || '10000001');
+    const myUserId = String(user?.userId || user?.meethiId || user?._id || user?.id || '');
+    if (!myUserId) {
+      AlertService.show('Room unavailable', 'Could not identify your account.', 'error');
+      return;
+    }
 
     try {
       // Server room details are canonical; local cache can contain an older cover.

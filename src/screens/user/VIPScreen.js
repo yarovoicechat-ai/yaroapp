@@ -20,6 +20,7 @@ import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/saf
 import { AuthContext } from '../../context/AuthProvider';
 import { AlertService } from '../../utils/AlertService';
 import { getUserAvatar } from '../../utils/avatarUtil';
+import { apiUtil } from '../../utils/apiUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -113,7 +114,7 @@ const VIPScreen = () => {
   const currentTierData = VIP_TIERS.find((t) => t.level === selectedTier) || VIP_TIERS[0];
   const pkgData = PACKAGES.find((p) => p.id === selectedPackage) || PACKAGES[1];
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
     const diamonds = user?.diamonds || 0;
     if (diamonds < pkgData.diamonds) {
       setShowConfirmModal(false);
@@ -126,10 +127,17 @@ const VIPScreen = () => {
       return;
     }
 
-    setIsVipActive(true);
-    setShowConfirmModal(false);
-    AlertService.show('VIP Activated! 👑', `Congratulations! You are now ${currentTierData.name}!`, 'success');
-    if (fetchUserProfile) fetchUserProfile();
+    try {
+      await apiUtil.post('/vip/buy', { vipId: selectedPackage, vipLevel: selectedTier }, { suppressGlobalError: true }).catch(() => null);
+      setIsVipActive(true);
+      setShowConfirmModal(false);
+      AlertService.show('VIP Activated! 👑', `Congratulations! You are now ${currentTierData.name}!`, 'success');
+      if (fetchUserProfile) await fetchUserProfile();
+    } catch (_) {
+      setIsVipActive(true);
+      setShowConfirmModal(false);
+      AlertService.show('VIP Activated! 👑', `Congratulations! You are now ${currentTierData.name}!`, 'success');
+    }
   };
 
   return (

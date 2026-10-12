@@ -137,8 +137,8 @@ function LevelScreen() {
   const navigation = useNavigation();
   const { user, equippedFrame } = useContext(AuthContext);
 
-  const [currentLevel, setCurrentLevel] = useState(6);
-  const [currentExp, setCurrentExp] = useState(83);
+  const [currentLevel, setCurrentLevel] = useState(Number(user?.level) || 1);
+  const [currentExp, setCurrentExp] = useState(Number(user?.experience || user?.exp) || 0);
   const [selectedTier, setSelectedTier] = useState('All');
   const [selectedRange, setSelectedRange] = useState('Lv 1-20');
   const [claimedTasks, setClaimedTasks] = useState([]);
@@ -146,7 +146,8 @@ function LevelScreen() {
   const [selectedReward, setSelectedReward] = useState(null);
 
   useEffect(() => {
-    if (user?.level) setCurrentLevel(Number(user.level) || 6);
+    if (user?.level != null) setCurrentLevel(Number(user.level) || 1);
+    if (user?.experience != null || user?.exp != null) setCurrentExp(Number(user.experience || user.exp) || 0);
   }, [user]);
 
   useEffect(() => {

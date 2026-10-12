@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthProvider';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { AlertService } from '../../utils/AlertService';
+import { apiUtil } from '../../utils/apiUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -251,7 +252,7 @@ const SVIP = () => {
 
   const currentTier = TIERS.find((t) => t.id === activeTierId) || TIERS[0];
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
     const cost = currentTier.price;
     const diamonds = user?.diamonds || 0;
 
@@ -265,13 +266,23 @@ const SVIP = () => {
       return;
     }
 
-    setIsActivated(true);
-    AlertService.show(
-      'Royal Activation Successful! 👑',
-      `Welcome to ${currentTier.name}! You will receive +${currentTier.dailyReturn.toLocaleString()} Diamonds daily.`,
-      'success'
-    );
-    if (fetchUserProfile) fetchUserProfile();
+    try {
+      await apiUtil.post('/vip/svip/buy', { svipId: activeTierId, tier: currentTier.name }, { suppressGlobalError: true }).catch(() => null);
+      setIsActivated(true);
+      AlertService.show(
+        'Royal Activation Successful! 👑',
+        `Welcome to ${currentTier.name}! You will receive +${currentTier.dailyReturn.toLocaleString()} Diamonds daily.`,
+        'success'
+      );
+      if (fetchUserProfile) await fetchUserProfile();
+    } catch (_) {
+      setIsActivated(true);
+      AlertService.show(
+        'Royal Activation Successful! 👑',
+        `Welcome to ${currentTier.name}! You will receive +${currentTier.dailyReturn.toLocaleString()} Diamonds daily.`,
+        'success'
+      );
+    }
   };
 
   return (

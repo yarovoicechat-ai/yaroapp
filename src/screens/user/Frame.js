@@ -1,20 +1,17 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  Image,
   ScrollView,
-  Dimensions,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
+  Alert,
   View as ScreenBackgroundView,
   StatusBar as ScreenBackgroundStatusBar,
   StyleSheet as ScreenBackgroundStyleSheet
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import IonIcon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import { apiUtil } from '../../utils/apiUtil';
@@ -24,11 +21,7 @@ import AnimatedTitleLine from '../../components/AnimatedTitleLine';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 
-import { getUserAvatar } from '../../utils/avatarUtil';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
-import avatar from '../../assets/avtar.webp';
-
-const { width, height } = Dimensions.get('window');
 
 const Frame = () => {
   const navigation = useNavigation();
@@ -38,76 +31,59 @@ const Frame = () => {
   const { user, equippedFrame, setEquippedFrame } = useContext(AuthContext);
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [selectedFrame, setSelectedFrame] = useState(user?.equippedFrame || equippedFrame || 'Galaxy Wings');
-
-  // Local mock list matching the mockup image precisely
-  const frameList = [
-    { id: '4', level: '4', name: 'Silver Ring', color: '#a855f7', border: '#cbd5e1', isLocked: false, isDefault: false },
-    { id: '5', level: '5', name: 'Galaxy Wings', color: '#c084fc', border: '#a855f7', isLocked: false, isDefault: false },
-    { id: '6', level: '6', name: 'Golden Crown', color: '#facc15', border: '#eab308', isLocked: true, isDefault: false },
-    { id: '7', level: '7', name: 'Neon Rockstar', color: '#03dcfe', border: '#3b82f6', isLocked: true, isDefault: false },
-    { id: 'default', level: 'D', name: 'Default Frame', color: '#64748b', border: 'rgba(255,255,255,0.2)', isLocked: false, isDefault: true },
-  ];
+  const [frameInventory, setFrameInventory] = useState([]);
+  const [inventoryError, setInventoryError] = useState(false);
+  const [equipping, setEquipping] = useState(false);
+  const selectedFrame = user?.equippedFrame || equippedFrame || 'Default Frame';
+  const frameList = useMemo(() => [
+    { id: 'default', name: 'Default Frame', isDefault: true },
+    ...frameInventory,
+  ], [frameInventory]);
 
   useEffect(() => {
-    // Mimic API loading
-    setTimeout(() => {
-      setLoading(false);
-    }, 400);
+    let isMounted = true;
+    apiUtil.get('/store/inventory')
+      .then((response) => {
+        const items = response?.data?.data?.items;
+        if (!isMounted) return;
+        setFrameInventory(Array.isArray(items)
+          ? items.filter((item) => ['frame', 'frames'].includes(
+              String(item.catalogItem?.category || item.category || '').trim().toLowerCase(),
+            ))
+          : []);
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setFrameInventory([]);
+          setInventoryError(true);
+        }
+        console.log('Could not load owned frames:', error?.message || error);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => { isMounted = false; };
   }, []);
 
-  const renderFrameBadge = (name) => {
-    // Renders visual frame outline mockup based on frame name
-    if (name === 'Silver Ring') {
-      return (
-        <View style={[styles.frameRingOuter, { borderColor: '#94a3b8' }]}>
-          <View style={[styles.frameRingInner, { borderColor: '#e2e8f0', borderStyle: 'dashed' }]}>
-            <IonIcon name="person" size={16} color="rgba(255,255,255,0.4)" />
-          </View>
-        </View>
-      );
+  const renderFrameBadge = (item) => (
+    <AvatarWithFrame
+      user={user}
+      frame={item.isDefault ? null : item}
+      size={42}
+      showOnlineDot={false}
+    />
+  );
+
+  const handleEquipFrame = async (item) => {
+    if (equipping) return;
+    setEquipping(true);
+    try {
+      await setEquippedFrame?.(item.isDefault ? null : item);
+    } catch (error) {
+      Alert.alert('Frame', error?.message || 'Frame update nahi ho saka.');
+    } finally {
+      setEquipping(false);
     }
-    if (name === 'Galaxy Wings') {
-      return (
-        <View style={[styles.frameRingOuter, { borderColor: '#a855f7' }]}>
-          <LinearGradient
-            colors={['#c084fc', '#8b5cf6']}
-            style={[styles.frameRingInner, { borderWidth: 1 }]}
-          >
-            {/* Wing decoration absolute items */}
-            <View style={[styles.wingLeft, { backgroundColor: '#a855f7' }]} />
-            <View style={[styles.wingRight, { backgroundColor: '#a855f7' }]} />
-            <IonIcon name="person" size={16} color="rgba(255,255,255,0.4)" />
-          </LinearGradient>
-        </View>
-      );
-    }
-    if (name === 'Golden Crown') {
-      return (
-        <View style={[styles.frameRingOuter, { borderColor: '#eab308' }]}>
-          <View style={[styles.frameRingInner, { borderColor: '#facc15' }]}>
-            <IonIcon name="crown" size={8} color="#facc15" style={{ position: 'absolute', top: -4 }} />
-            <IonIcon name="person" size={16} color="rgba(255,255,255,0.4)" />
-          </View>
-        </View>
-      );
-    }
-    if (name === 'Neon Rockstar') {
-      return (
-        <View style={[styles.frameRingOuter, { borderColor: '#03dcfe' }]}>
-          <View style={[styles.frameRingInner, { borderColor: '#3b82f6', borderWidth: 2 }]}>
-            <IonIcon name="person" size={16} color="rgba(255,255,255,0.4)" />
-          </View>
-        </View>
-      );
-    }
-    return (
-      <View style={[styles.frameRingOuter, { borderColor: 'rgba(255, 255, 255, 0.15)' }]}>
-        <View style={styles.frameRingInner}>
-          <IonIcon name="person" size={16} color="rgba(255,255,255,0.3)" />
-        </View>
-      </View>
-    );
   };
 
   if (loading) {
@@ -146,54 +122,31 @@ const Frame = () => {
                 <View style={styles.avatarWrap}>
                   <AvatarWithFrame
                     user={user}
-                    frame={selectedFrame}
+                    frame={user?.equippedFrameAsset || user?.equippedFrame || equippedFrame}
                     size={64}
                     showOnlineDot={false}
                   />
-                  {/* Badge */}
-                  <View style={styles.avatarLevelBadge}>
-                    <Text style={styles.avatarLevelText}>Lv.5</Text>
-                  </View>
                 </View>
               </View>
 
-              {/* Progress and Frame Selection text */}
+              {/* Current account and equipped frame */}
               <View style={styles.middleCol}>
-                <Text style={styles.voiceChatTitle}>Yaro Voice Chat</Text>
-                
-                <View style={styles.levelBadgeRow}>
-                  <IonIcon name="star" size={10} color="#fff" style={{ marginRight: 4 }} />
-                  <Text style={styles.levelBadgeText}>Level 5</Text>
-                </View>
-
-                <View style={styles.progressRow}>
-                  <Text style={styles.progressLabel}>To Next Level 6</Text>
-                  <Text style={styles.progressVal}>83 / 150</Text>
-                </View>
-                
-                {/* Horizontal Progress Bar */}
-                <View style={styles.progressBarBg}>
-                  <LinearGradient
-                    colors={['#6366F1', '#4F46E5']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.progressBarFill, { width: '55%' }]}
-                  />
-                </View>
+                <Text style={styles.voiceChatTitle}>{user?.name || 'Your profile'}</Text>
+                <Text style={styles.progressLabel}>Your equipped frame</Text>
+                <Text style={styles.currentFrameName} numberOfLines={2}>{selectedFrame}</Text>
               </View>
 
-              {/* Current Frame Display Box */}
+              {/* Preview of the frame currently in use */}
               <View style={styles.rightCol}>
                 <View style={styles.currentFrameBox}>
-                  {/* Outer glowing frame border mockup */}
-                  <View style={[styles.galaxyBoxBorder, { borderColor: '#8B5CF6' }]}>
-                    <View style={styles.galaxyBoxInside}>
-                      <IonIcon name="person" size={24} color="#94A3B8" />
-                    </View>
-                  </View>
+                  <AvatarWithFrame
+                    user={user}
+                    frame={user?.equippedFrameAsset || user?.equippedFrame || equippedFrame}
+                    size={38}
+                    showOnlineDot={false}
+                  />
                 </View>
                 <Text style={styles.currentFrameLabel}>Current Frame</Text>
-                <Text style={styles.currentFrameName}>{selectedFrame}</Text>
               </View>
             </View>
           </View>
@@ -204,46 +157,40 @@ const Frame = () => {
           <View style={styles.tableInner}>
             {/* Table Header Row */}
             <View style={styles.tableHeaderRow}>
-              <Text style={styles.headerCellLeft}>Level</Text>
-              <Text style={styles.headerCellRight}>Frame</Text>
+              <Text style={styles.headerCellLeft}>Your Frames</Text>
+              <Text style={styles.headerCellRight}>Status</Text>
             </View>
 
-            {/* Table Rows list */}
-            {frameList.map((item, idx) => {
-              const isActive = selectedFrame === item.name;
+            {frameList.map((item) => {
+              const isActive = item.isDefault
+                ? selectedFrame === 'Default Frame' || (!user?.equippedFrame && !user?.equippedFrameAsset && !equippedFrame)
+                : selectedFrame === item.name;
               return (
                 <TouchableOpacity
-                  key={idx}
-                  activeOpacity={item.isLocked ? 1 : 0.85}
-                  onPress={() => {
-                    if (!item.isLocked) {
-                      setSelectedFrame(item.name);
-                      setEquippedFrame?.(item.name);
-                    }
-                  }}
+                  key={String(item.itemId || item._id || item.id || item.name)}
+                  activeOpacity={0.85}
+                  onPress={() => handleEquipFrame(item)}
+                  disabled={equipping}
                   style={[
                     styles.tableRow,
                     isActive && styles.tableRowActive,
                   ]}
                 >
-                  {/* Left Column (Level Badge & title) */}
+                  {/* Inventory item */}
                   <View style={styles.rowLeftCol}>
-                    <LinearGradient
-                      colors={item.isDefault ? ['#94A3B8', '#64748B'] : item.isLocked ? ['#F59E0B', '#D97706'] : ['#8B5CF6', '#6366F1']}
-                      style={styles.rowBadgeHex}
-                    >
-                      <Text style={styles.rowBadgeText}>{item.level}</Text>
-                    </LinearGradient>
-                    <Text style={styles.rowLevelTitle}>
-                      {item.isDefault ? 'Default' : `Level ${item.level}`}
-                    </Text>
+                    <IonIcon name={item.isDefault ? 'person-outline' : 'checkmark-circle-outline'} size={18} color={isActive ? '#4F46E5' : '#94A3B8'} />
                   </View>
 
-                  {/* Middle Column (Frame graphic and name) */}
+                  {/* Actual frame asset from inventory */}
                   <View style={styles.rowMiddleCol}>
-                    {renderFrameBadge(item.name)}
+                    {renderFrameBadge(item)}
                     <View style={styles.rowMiddleDetails}>
                       <Text style={styles.rowFrameName}>{item.name}</Text>
+                      {!item.isDefault && item.expiresAt ? (
+                        <Text style={styles.progressLabel}>
+                          Expires {new Date(item.expiresAt).toLocaleDateString()}
+                        </Text>
+                      ) : null}
                       {isActive && (
                         <View style={styles.inUseTag}>
                           <Text style={styles.inUseTagText}>In Use</Text>
@@ -254,11 +201,7 @@ const Frame = () => {
 
                   {/* Right Column (Checkbox circle/lock status) */}
                   <View style={styles.rowRightCol}>
-                    {item.isLocked ? (
-                      <View style={styles.lockBadge}>
-                        <IonIcon name="lock-closed" size={12} color="#94A3B8" />
-                      </View>
-                    ) : isActive ? (
+                    {isActive ? (
                       <View style={styles.checkboxChecked}>
                         <IonIcon name="checkmark" size={12} color="#fff" />
                       </View>
@@ -269,23 +212,17 @@ const Frame = () => {
                 </TouchableOpacity>
               );
             })}
-          </View>
-        </View>
-
-        {/* How to Unlock bottom card encouragement banner */}
-        <View style={styles.footerBanner}>
-          <View style={styles.footerInner}>
-            <View style={styles.footerLeft}>
-              <IonIcon name="ribbon-outline" size={24} color="#6366F1" />
-            </View>
-            <View style={styles.footerMiddle}>
-              <Text style={styles.footerTitle}>How to Unlock Frames?</Text>
-              <Text style={styles.footerSubtitle}>Upgrade your level and unlock exclusive frames to stand out in every call.</Text>
-            </View>
-            <TouchableOpacity style={styles.footerBtn}>
-              <Text style={styles.footerBtnText}>Upgrade Now</Text>
-              <IonIcon name="chevron-forward" size={10} color="#fff" style={{ marginLeft: 3 }} />
-            </TouchableOpacity>
+            {!loading && frameInventory.length === 0 ? (
+              <View style={{ alignItems: 'center', padding: 22 }}>
+                <Text style={styles.progressLabel}>
+                  {inventoryError ? 'Could not load your frame inventory.' : 'No frames in your inventory yet.'}
+                </Text>
+                <TouchableOpacity style={styles.footerBtn} onPress={() => navigation.navigate('Store')}>
+                  <Text style={styles.footerBtnText}>Open Store</Text>
+                  <IonIcon name="chevron-forward" size={10} color="#fff" style={{ marginLeft: 3 }} />
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         </View>
 

@@ -53,46 +53,6 @@ const THEMES = {
   },
 };
 
-// High-fidelity fallback / demo data matching user's screenshots
-const SAMPLE_RANKINGS = {
-  Honor: [
-    { id: '1', rank: 1, name: 'Kelvin🖤', level: 5, score: 97000, scoreText: '97K', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces' },
-    { id: '2', rank: 2, name: 'Diwani🖤', level: 14, score: 87500, scoreText: '87.50K', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=faces' },
-    { id: '3', rank: 3, name: 'Avish...', level: 5, score: 65000, scoreText: '65K', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&h=200&fit=crop&crop=faces' },
-    { id: '4', rank: 4, name: 'Ridoy Chowdhury', level: 5, score: 24000, scoreText: '24K', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces' },
-    { id: '5', rank: 5, name: 'Sandeep Yadav', level: 3, score: 12000, scoreText: '12K', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=faces' },
-    { id: '6', rank: 6, name: 'Justin', level: 35, score: 10000, scoreText: '10K', avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=200&h=200&fit=crop&crop=faces' },
-    { id: '7', rank: 7, name: 'nasrin akter', level: 3, score: 6000, scoreText: '6000', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=faces' },
-    { id: '8', rank: 8, name: 'Royal Prince', level: 8, score: 4500, scoreText: '4.5K', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop&crop=faces' },
-    { id: '9', rank: 9, name: 'Sweet Angel', level: 12, score: 3800, scoreText: '3.8K', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=faces' },
-    { id: '10', rank: 10, name: 'Voice Star', level: 6, score: 2500, scoreText: '2.5K', avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&h=200&fit=crop&crop=faces' },
-  ],
-  Charm: [
-    { id: '1', rank: 1, name: 'Avish...', level: 5, score: 119000, scoreText: '119K', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&h=200&fit=crop&crop=faces' },
-    { id: '2', rank: 2, name: 'Shahid', level: 1, score: 60000, scoreText: '60K', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop&crop=faces' },
-    { id: '3', rank: 3, name: 'Diwani🖤', level: 14, score: 29000, scoreText: '29K', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=faces' },
-    { id: '4', rank: 4, name: 'Baby doll 🥻', level: 3, score: 25000, scoreText: '25K', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces' },
-    { id: '5', rank: 5, name: 'CS_THE END.', level: 27, score: 21000, scoreText: '21K', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces' },
-    { id: '6', rank: 6, name: 'Nasrin Akther', level: 6, score: 18000, scoreText: '18K', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=faces' },
-    { id: '7', rank: 7, name: 'Kelvin🖤', level: 5, score: 17500, scoreText: '17.50K', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=faces' },
-    { id: '8', rank: 8, name: 'Moon Light', level: 9, score: 14000, scoreText: '14K', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=faces' },
-    { id: '9', rank: 9, name: 'Heart Hacker', level: 4, score: 11000, scoreText: '11K', avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=200&h=200&fit=crop&crop=faces' },
-    { id: '10', rank: 10, name: 'Queen Bee', level: 16, score: 9500, scoreText: '9.5K', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=faces' },
-  ],
-  Room: [
-    { id: '1', rank: 1, name: 'Romantic s...', level: 5, score: 178000, scoreText: '178K', isRoom: true, avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=200&h=200&fit=crop' },
-    { id: '2', rank: 2, name: 'Welcome ne...', level: 1, score: 61000, scoreText: '61K', isRoom: true, avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop' },
-    { id: '3', rank: 3, name: 'YouFun Hel...', level: 27, score: 37000, scoreText: '37K', isRoom: true, avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&h=200&fit=crop', isSvip: true },
-    { id: '4', rank: 4, name: 'Nasrin Akther', level: 6, score: 20500, scoreText: '20.50K', isRoom: true, avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop' },
-    { id: '5', rank: 5, name: 'Zunish world', level: 2, score: 11000, scoreText: '11K', isRoom: true, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop' },
-    { id: '6', rank: 6, name: 'DUKASH...', level: 14, score: 11000, scoreText: '11K', isRoom: true, avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop' },
-    { id: '7', rank: 7, name: 'Dosto ke duneya', level: 22, score: 5000, scoreText: '5000', isRoom: true, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop' },
-    { id: '8', rank: 8, name: 'Club 99 Music', level: 15, score: 4200, scoreText: '4.2K', isRoom: true, avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=200&h=200&fit=crop' },
-    { id: '9', rank: 9, name: 'Midnight Chill', level: 7, score: 3100, scoreText: '3.1K', isRoom: true, avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&h=200&fit=crop' },
-    { id: '10', rank: 10, name: 'Desi Mehfil', level: 11, score: 2800, scoreText: '2.8K', isRoom: true, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop' },
-  ],
-};
-
 // Crown Frame for Rank 1 Podium
 const GoldenLaurelCrownSvg = () => (
   <Svg width="124" height="124" viewBox="0 0 120 120" style={styles.svgFrameAbsolute}>
@@ -167,7 +127,7 @@ const PurpleCrystalSvg = () => (
 );
 
 // Level Badge Component (Matches hexagon badge from screenshot e.g. Lv.5 gold, Lv.14 green, Lv.27 cyan)
-const LevelBadge = ({ level = 1, type = 'wealth' }) => {
+const LevelBadge = ({ level = '—', type = 'wealth' }) => {
   const isCharm = type === 'charm';
   const colors = isCharm
     ? level >= 20
@@ -209,7 +169,7 @@ export default function Ranking() {
 
   const currentTheme = THEMES[activeCategory] || THEMES.Honor;
 
-  // Fetch ranking from backend API with fallback to high-fidelity seed data
+  // Fetch ranking from the backend; show an empty state when no rows are available.
   const fetchRanking = useCallback(async () => {
     try {
       setLoading(true);
@@ -222,19 +182,17 @@ export default function Ranking() {
           id: String(item.id || item._id || index + 1),
           rank: index + 1,
           name: item.name || 'Yaro User',
-          level: activeCategory === 'Charm' ? (item.charmLevel || item.level || 1) : (item.wealthLevel || item.level || 1),
+          level: activeCategory === 'Charm' ? (item.charmLevel ?? item.level ?? null) : (item.wealthLevel ?? item.level ?? null),
           score: item[metric] || item.coins || item.diamonds || 0,
           scoreText: formatScore(item[metric] || item.coins || item.diamonds || 0),
           avatar: item.image || item.avatar || null,
         }));
         setRankingData(mapped);
       } else {
-        // Fallback to high-fidelity live demo dataset
-        setRankingData(SAMPLE_RANKINGS[activeCategory] || SAMPLE_RANKINGS.Honor);
+        setRankingData([]);
       }
     } catch (_) {
-      // Fallback
-      setRankingData(SAMPLE_RANKINGS[activeCategory] || SAMPLE_RANKINGS.Honor);
+      setRankingData([]);
     } finally {
       setLoading(false);
     }
@@ -278,17 +236,7 @@ export default function Ranking() {
   // Self User Stats
   const selfUserRank = useMemo(() => {
     const myId = String(user?.id || user?._id || user?.userId || '');
-    const found = rankingData.find((item) => String(item.id) === myId);
-    if (found) return found;
-    return {
-      rank: 99,
-      isUnranked: true,
-      name: user?.name || 'You',
-      level: user?.level || 6,
-      score: 1250,
-      scoreText: '1.25K',
-      avatar: user?.avatar || user?.image,
-    };
+    return rankingData.find((item) => String(item.id) === myId) || null;
   }, [rankingData, user]);
 
   return (
@@ -391,7 +339,7 @@ export default function Ranking() {
                 </LinearGradient>
               </View>
               <Text style={styles.podiumUserName} numberOfLines={1}>{rank2.name}</Text>
-              <LevelBadge level={rank2.level || 1} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+              <LevelBadge level={rank2.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
               <View style={styles.podiumScorePill}>
                 <Text style={styles.coinIcon}>{currentTheme.unitIcon}</Text>
                 <Text style={styles.podiumScoreText}>{rank2.scoreText}</Text>
@@ -411,7 +359,7 @@ export default function Ranking() {
                 </LinearGradient>
               </View>
               <Text style={styles.podiumUserNameCenter} numberOfLines={1}>{rank1.name}</Text>
-              <LevelBadge level={rank1.level || 5} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+              <LevelBadge level={rank1.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
               <View style={styles.podiumScorePillCenter}>
                 <Text style={styles.coinIcon}>{currentTheme.unitIcon}</Text>
                 <Text style={styles.podiumScoreTextCenter}>{rank1.scoreText}</Text>
@@ -430,7 +378,7 @@ export default function Ranking() {
                 </LinearGradient>
               </View>
               <Text style={styles.podiumUserName} numberOfLines={1}>{rank3.name}</Text>
-              <LevelBadge level={rank3.level || 1} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+              <LevelBadge level={rank3.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
               <View style={styles.podiumScorePill}>
                 <Text style={styles.coinIcon}>{currentTheme.unitIcon}</Text>
                 <Text style={styles.podiumScoreText}>{rank3.scoreText}</Text>
@@ -510,10 +458,10 @@ export default function Ranking() {
                       {item.name || 'Yaro User'}
                     </Text>
                     <View style={styles.rowBadgeRow}>
-                      <LevelBadge level={item.level || 3} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
-                      {item.isSvip && (
+                      <LevelBadge level={item.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+                      {(item.isSvip || item.svipLevel || item.svip) && (
                         <View style={styles.svipMiniPill}>
-                          <Text style={styles.svipMiniText}>SVIP 1</Text>
+                          <Text style={styles.svipMiniText}>SVIP{item.svipLevel || item.svip ? ` ${item.svipLevel || item.svip}` : ''}</Text>
                         </View>
                       )}
                     </View>
@@ -534,7 +482,7 @@ export default function Ranking() {
       {/* ============================================================== */}
       {/* 4. STICKY FLOATING "SELF" RANK BAR (BOTTOM OF SCREEN)          */}
       {/* ============================================================== */}
-      <View style={[styles.selfBottomBar, { paddingBottom: insets.bottom + 8 }]}>
+      {selfUserRank ? <View style={[styles.selfBottomBar, { paddingBottom: insets.bottom + 8 }]}>
         <LinearGradient
           colors={['#FFFFFF', '#F8FAFC']}
           start={{ x: 0, y: 0 }}
@@ -568,7 +516,7 @@ export default function Ranking() {
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <LevelBadge
-                level={activeCategory === 'Charm' ? (user?.charmLevel || 1) : (user?.wealthLevel || user?.level || 1)}
+                level={activeCategory === 'Charm' ? (user?.charmLevel ?? '—') : (user?.wealthLevel ?? user?.level ?? '—')}
                 type={activeCategory === 'Charm' ? 'charm' : 'wealth'}
               />
               <Text style={styles.selfDistanceHint}>
@@ -592,7 +540,7 @@ export default function Ranking() {
             </TouchableOpacity>
           </View>
         </LinearGradient>
-      </View>
+      </View> : null}
 
       {/* Rules & Rewards Modal */}
       <Modal visible={infoModalVisible} transparent animationType="fade" onRequestClose={() => setInfoModalVisible(false)}>

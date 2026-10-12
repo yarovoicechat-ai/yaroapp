@@ -5,6 +5,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import Icon from 'react-native-vector-icons/Ionicons';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import AvatarWithFrame from '../AvatarWithFrame';
+import { resolveGiftVisual } from '../gift/giftMediaUtils';
 
 const { width } = Dimensions.get('window');
 const MAX_BUBBLE_WIDTH = Math.floor(width * 0.78);
@@ -24,9 +25,9 @@ export default function ResponsiveChatBubble({
   const isOwner = Boolean(message?.isOwner || message?.userRole === 'owner');
   const svipLevel = message?.svipLevel || (isSvip ? 1 : null);
   const vipLevel = message?.vipLevel || (isVip ? 1 : null);
-  const userLevel = message?.level || 44;
-  const charmLevel = message?.charmLevel || 33;
-  const clubName = message?.clubName || 'SMCLUB';
+  const userLevel = message?.level ?? sender?.level ?? null;
+  const charmLevel = message?.charmLevel ?? sender?.charmLevel ?? sender?.charm ?? null;
+  const clubName = message?.clubName || sender?.clubName || '';
 
   const equippedFrame =
     message?.equippedFrameAsset ||
@@ -138,72 +139,38 @@ export default function ResponsiveChatBubble({
     const giftName = message?.giftName || message?.gift || 'Gift';
     const giftCount = message?.count || message?.quantity || message?.combo || 1;
     const receiverName = message?.to || message?.receiverName || 'Host';
-    const giftIcon = message?.giftIcon || message?.icon || (message?.giftImage ? '' : '🎁');
+    const giftVisual = resolveGiftVisual(message);
 
     return (
       <View style={styles.giftMessageContainer}>
-        {/* Sender Avatar */}
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
           style={styles.giftAvatarWrapper}
         >
           <Image source={avatarSource} style={styles.giftSenderAvatar} />
-          <View style={styles.giftAvatarCrown}>
-            <MaterialCommunityIcons name="crown" size={10} color="#F59E0B" />
-          </View>
         </TouchableOpacity>
 
         <View style={styles.giftContentCol}>
-          {/* User Name & Badges */}
           <View style={styles.giftUserRow}>
-            <MaterialCommunityIcons name="shield-star" size={13} color="#FBBF24" />
             <Text style={styles.giftSenderName} numberOfLines={1}>
-              👑 {senderName} 🏆
+              {senderName} sent a gift
             </Text>
           </View>
-
-          {/* Badges Row */}
-          <View style={styles.badgesRow}>
-            <LinearGradient
-              colors={['#78350F', '#D97706']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.svipBadgePill}
-            >
-              <MaterialCommunityIcons name="shield-crown" size={10} color="#FEF08A" />
-              <Text style={styles.svipBadgeText}>SVIP1</Text>
-            </LinearGradient>
-
-            <View style={styles.levelBadgeGreen}>
-              <Text style={styles.levelBadgeIcon}>🌿</Text>
-              <Text style={styles.levelBadgeText}>Lv.17</Text>
-            </View>
-
-            <View style={styles.levelBadgeBlue}>
-              <Text style={styles.levelBadgeIcon}>⭐</Text>
-              <Text style={styles.levelBadgeText}>Lv.19</Text>
-            </View>
-
-            <View style={styles.miniMedalsRow}>
-              <Text style={styles.miniMedal}>🎖️</Text>
-              <Text style={styles.miniMedal}>💎</Text>
-            </View>
-          </View>
-
-          {/* Sent To Target */}
           <View style={styles.giftTargetRow}>
             <Text style={styles.sentToLabel}>Sent to </Text>
-            <Text style={styles.giftReceiverName}>🪶{receiverName}💙</Text>
+            <Text style={styles.giftReceiverName}>{receiverName}</Text>
           </View>
 
-          {/* Big Animated Gift Visual with Combo */}
           <View style={styles.giftVisualRow}>
-            {message?.giftImage ? (
-              <Image source={{ uri: message.giftImage }} style={styles.bigGiftImage} />
+            {giftVisual.giftImage ? (
+              <Image source={{ uri: giftVisual.giftImage }} style={styles.bigGiftImage} resizeMode="contain" />
+            ) : giftVisual.giftIcon ? (
+              <Text style={styles.bigGiftEmoji}>{giftVisual.giftIcon}</Text>
             ) : (
-              <Text style={styles.bigGiftEmoji}>{giftIcon}</Text>
+              <MaterialCommunityIcons name="gift-outline" size={30} color="#FDE68A" />
             )}
+            <Text style={styles.giftNameText} numberOfLines={1}>{giftName}</Text>
             <Text style={styles.giftMultiplierText}>x{giftCount}</Text>
           </View>
         </View>
@@ -212,7 +179,7 @@ export default function ResponsiveChatBubble({
   }
 
   // 2. VIP 1 / Owner Royal Red-Gold Ornate Bubble (Bubble 1 in Image 1)
-  if (!customBubble && (isOwner || (svipLevel && svipLevel === 1))) {
+  if (!customBubble && svipLevel === 1) {
     return (
       <View style={styles.luxuryBubbleContainer}>
         {/* Double Gold Ornate Frame */}
@@ -258,21 +225,21 @@ export default function ResponsiveChatBubble({
                   style={styles.svipBadgePill}
                 >
                   <MaterialCommunityIcons name="shield-crown" size={10} color="#FEF08A" />
-                  <Text style={styles.svipBadgeText}>SVIP1</Text>
+                  <Text style={styles.svipBadgeText}>SVIP{svipLevel}</Text>
                 </LinearGradient>
 
                 <View style={styles.levelBadgeShield}>
                   <Text style={styles.levelBadgeIcon}>🛡️</Text>
-                  <Text style={styles.levelBadgeText}>Lv.{userLevel}</Text>
+                  <Text style={styles.levelBadgeText}>{userLevel != null ? `Lv.${userLevel}` : ''}</Text>
                 </View>
 
                 <View style={styles.levelBadgeGreen}>
                   <Text style={styles.levelBadgeIcon}>🌿</Text>
-                  <Text style={styles.levelBadgeText}>Lv.{charmLevel}</Text>
+                  <Text style={styles.levelBadgeText}>{charmLevel != null ? `Lv.${charmLevel}` : ''}</Text>
                 </View>
 
                 <View style={styles.clubPillBadge}>
-                  <Text style={styles.clubPillText}>💎 {clubName}</Text>
+                  <Text style={styles.clubPillText}>{clubName ? `💎 ${clubName}` : ''}</Text>
                 </View>
               </View>
             </View>
@@ -338,17 +305,17 @@ export default function ResponsiveChatBubble({
                   style={styles.svipBadgePill}
                 >
                   <MaterialCommunityIcons name="crown" size={10} color="#FEF08A" />
-                  <Text style={styles.svipBadgeText}>SVIP3</Text>
+                  <Text style={styles.svipBadgeText}>SVIP{svipLevel}</Text>
                 </LinearGradient>
 
                 <View style={styles.levelBadgeGreen}>
                   <Text style={styles.levelBadgeIcon}>🌿</Text>
-                  <Text style={styles.levelBadgeText}>Lv.22</Text>
+                  <Text style={styles.levelBadgeText}>{userLevel != null ? `Lv.${userLevel}` : ''}</Text>
                 </View>
 
                 <View style={styles.levelBadgeBlue}>
                   <Text style={styles.levelBadgeIcon}>⭐</Text>
-                  <Text style={styles.levelBadgeText}>Lv.15</Text>
+                  <Text style={styles.levelBadgeText}>{charmLevel != null ? `Lv.${charmLevel}` : ''}</Text>
                 </View>
               </View>
             </View>
@@ -369,7 +336,7 @@ export default function ResponsiveChatBubble({
 
           {/* Corner Eagle/Badge */}
           <View style={styles.emeraldBadgeCorner}>
-            <Text style={styles.emeraldBadgeCornerText}>SVIP3</Text>
+            <Text style={styles.emeraldBadgeCornerText}>SVIP{svipLevel}</Text>
           </View>
         </LinearGradient>
       </View>
@@ -413,11 +380,11 @@ export default function ResponsiveChatBubble({
               <View style={styles.badgesRow}>
                 <View style={styles.levelBadgeGreen}>
                   <Text style={styles.levelBadgeIcon}>⭐</Text>
-                  <Text style={styles.levelBadgeText}>Lv.{userLevel || 1}</Text>
+                  <Text style={styles.levelBadgeText}>{userLevel != null ? `Lv.${userLevel}` : ''}</Text>
                 </View>
                 <View style={styles.levelBadgeBlue}>
                   <Text style={styles.levelBadgeIcon}>🌸</Text>
-                  <Text style={styles.levelBadgeText}>Lv.{charmLevel || 1}</Text>
+                  <Text style={styles.levelBadgeText}>{charmLevel != null ? `Lv.${charmLevel}` : ''}</Text>
                 </View>
               </View>
             </View>
@@ -451,9 +418,11 @@ export default function ResponsiveChatBubble({
           <Text style={styles.normalSenderName} numberOfLines={1}>
             {senderName}
           </Text>
-          <View style={styles.normalLevelPill}>
-            <Text style={styles.normalLevelText}>Lv.{userLevel || 1}</Text>
-          </View>
+          {userLevel != null ? (
+            <View style={styles.normalLevelPill}>
+              <Text style={styles.normalLevelText}>Lv.{userLevel}</Text>
+            </View>
+          ) : null}
         </View>
         <Text style={styles.normalMessageText}>{text}</Text>
       </View>
@@ -529,6 +498,13 @@ const styles = StyleSheet.create({
   },
   bigGiftEmoji: {
     fontSize: 26,
+  },
+  giftNameText: {
+    flexShrink: 1,
+    maxWidth: 100,
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
   giftMultiplierText: {
     fontSize: 22,

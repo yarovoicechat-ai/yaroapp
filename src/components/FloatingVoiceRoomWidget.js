@@ -104,10 +104,13 @@ export default function FloatingVoiceRoomWidget() {
           accessibilityLabel={`Return to ${activeRoom.title || activeRoom.hostName || 'Voice Room'}`}
         >
           <View style={styles.avatarWrapper}>
-            <Image
-              source={{ uri: activeRoom.coverImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
-              style={styles.avatarImg}
-            />
+            {activeRoom.coverImage ? (
+              <Image source={{ uri: activeRoom.coverImage }} style={styles.avatarImg} />
+            ) : (
+              <View style={[styles.avatarImg, styles.avatarFallback]}>
+                <Icon name="people" size={20} color="#C4B5FD" />
+              </View>
+            )}
             <View style={styles.liveDot} />
           </View>
 
@@ -196,6 +199,11 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     borderWidth: 1.5,
     borderColor: '#F59E0B',
+  },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#312E81',
   },
   liveDot: {
     position: 'absolute',

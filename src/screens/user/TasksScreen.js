@@ -14,172 +14,42 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
-import { AuthContext } from '../../context/AuthProvider';
-import { AlertService } from '../../utils/AlertService';
+import { useNavigation } from '@react-navigation/native';
+import { apiUtil } from '../../utils/apiUtil';
 
 const { width } = Dimensions.get('window');
 
-const DAILY_TASKS_INITIAL = [
-  {
-    id: 'dt_1',
-    title: 'Daily Check-in',
-    desc: 'Log in to YaroApp today and claim your streak bonus',
-    reward: '20 Beans',
-    type: 'beans',
-    progress: 1,
-    target: 1,
-    status: 'claimable',
-    route: null,
-  },
-  {
-    id: 'dt_2',
-    title: 'Stay 5 Mins in Voice Room',
-    desc: 'Join any active party voice room and listen for 5 mins',
-    reward: '50 Beans',
-    type: 'beans',
-    progress: 3,
-    target: 5,
-    status: 'in_progress',
-    route: 'Party',
-  },
-  {
-    id: 'dt_3',
-    title: 'Complete 1 Voice/Video Call',
-    desc: 'Call or accept an incoming 1-on-1 call for at least 1 min',
-    reward: '100 Beans',
-    type: 'beans',
-    progress: 0,
-    target: 1,
-    status: 'in_progress',
-    route: 'OneToOne',
-  },
-  {
-    id: 'dt_4',
-    title: 'Send a Room Gift',
-    desc: 'Send any gift in a voice room or 1-on-1 video call',
-    reward: '15 Diamonds',
-    type: 'diamonds',
-    progress: 0,
-    target: 1,
-    status: 'in_progress',
-    route: 'Party',
-  },
-  {
-    id: 'dt_5',
-    title: 'Follow 3 New Creators',
-    desc: 'Follow 3 interesting hosts or creators today',
-    reward: '30 Beans',
-    type: 'beans',
-    progress: 2,
-    target: 3,
-    status: 'in_progress',
-    route: 'Home',
-  },
-];
-
-const GROWTH_TASKS_INITIAL = [
-  {
-    id: 'gt_1',
-    title: 'Profile Complete 100%',
-    desc: 'Set avatar, nickname, bio, gender, and age',
-    reward: '100 Diamonds',
-    type: 'diamonds',
-    progress: 1,
-    target: 1,
-    status: 'completed',
-    route: 'EditProfile',
-  },
-  {
-    id: 'gt_2',
-    title: 'Reach Host Level 3',
-    desc: 'Accumulate call minutes to unlock Bronze Host tier',
-    reward: '300 Beans',
-    type: 'beans',
-    progress: 1,
-    target: 3,
-    status: 'in_progress',
-    route: 'Level',
-  },
-  {
-    id: 'gt_3',
-    title: 'KYC Verified Host',
-    desc: 'Verify your ID and face verification for instant withdrawals',
-    reward: '200 Diamonds',
-    type: 'diamonds',
-    progress: 0,
-    target: 1,
-    status: 'in_progress',
-    route: 'VerificationHub',
-  },
-  {
-    id: 'gt_4',
-    title: 'Invite 3 Friends',
-    desc: 'Share your referral code and have 3 friends register',
-    reward: '500 Beans',
-    type: 'beans',
-    progress: 1,
-    target: 3,
-    status: 'in_progress',
-    route: 'InviteEarn',
-  },
-  {
-    id: 'gt_5',
-    title: 'Spend 30 Mins on Mic',
-    desc: 'Grab a seat in any party room and interact on mic',
-    reward: '250 Beans',
-    type: 'beans',
-    progress: 12,
-    target: 30,
-    status: 'in_progress',
-    route: 'Party',
-  },
-];
-
-const STREAK_DAYS = [
-  { day: 1, reward: '+20', claimed: true },
-  { day: 2, reward: '+30', claimed: true },
-  { day: 3, reward: '+50', active: true },
-  { day: 4, reward: '+50', locked: true },
-  { day: 5, reward: '+80', locked: true },
-  { day: 6, reward: '+100', locked: true },
-  { day: 7, reward: '💎 +20', locked: true, special: true },
-];
-
 const TasksScreen = () => {
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
-  const navigation = useNavigation();
-  const { user, fetchUserProfile } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
 
   const [activeTab, setActiveTab] = useState('daily');
-  const [dailyTasks, setDailyTasks] = useState(DAILY_TASKS_INITIAL);
-  const [growthTasks, setGrowthTasks] = useState(GROWTH_TASKS_INITIAL);
+  const [dailyTasks, setDailyTasks] = useState([]);
+  const [growthTasks, setGrowthTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleClaim = (taskId, isDaily) => {
-    if (isDaily) {
-      setDailyTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: 'completed' } : t))
-      );
-    } else {
-      setGrowthTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: 'completed' } : t))
-      );
-    }
-    AlertService.show('Reward Claimed! 🎉', 'Beans / Diamonds have been credited to your wallet.', 'success');
-    if (fetchUserProfile) fetchUserProfile();
-  };
-
-  const handleAction = (task, isDaily) => {
-    if (task.status === 'claimable') {
-      handleClaim(task.id, isDaily);
-    } else if (task.status === 'in_progress' && task.route) {
-      navigation.navigate(task.route);
-    }
-  };
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await apiUtil.get('/room-tasks/tasks', { suppressGlobalError: true }).catch(() => null);
+        if (mounted && res?.data?.data?.tasks) {
+          const all = res.data.data.tasks;
+          setDailyTasks(all.filter((t) => t.category === 'Daily' || !t.category));
+          setGrowthTasks(all.filter((t) => t.category === 'Growth' || t.category === 'Weekly'));
+        }
+      } catch (_) {} finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const currentList = activeTab === 'daily' ? dailyTasks : growthTasks;
 
@@ -215,57 +85,6 @@ const TasksScreen = () => {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Streak Check-in Hero */}
-        <LinearGradient
-          colors={['#4F46E5', '#7C3AED', '#9333EA']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroCard}
-        >
-          <View style={styles.heroHeader}>
-            <View>
-              <Text style={styles.heroTitle}>7-Day Daily Check-in</Text>
-              <Text style={styles.heroSub}>Keep your streak alive to earn rare rewards</Text>
-            </View>
-            <View style={styles.streakBadge}>
-              <Icon name="local-fire-department" size={18} color="#F59E0B" />
-              <Text style={styles.streakBadgeText}>Day 3</Text>
-            </View>
-          </View>
-
-          {/* 7 Day Circles Row */}
-          <View style={styles.streakRow}>
-            {STREAK_DAYS.map((item) => (
-              <View key={item.day} style={styles.streakCol}>
-                <View
-                  style={[
-                    styles.streakCircle,
-                    item.claimed && styles.streakClaimed,
-                    item.active && styles.streakActive,
-                    item.locked && styles.streakLocked,
-                  ]}
-                >
-                  {item.claimed ? (
-                    <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                  ) : item.special ? (
-                    <MaterialCommunityIcons name="diamond-stone" size={16} color="#FBBF24" />
-                  ) : (
-                    <Text
-                      style={[
-                        styles.streakRewardText,
-                        item.active && { color: '#FFFFFF', fontWeight: 'bold' },
-                      ]}
-                    >
-                      {item.reward}
-                    </Text>
-                  )}
-                </View>
-                <Text style={styles.streakDayLabel}>Day {item.day}</Text>
-              </View>
-            ))}
-          </View>
-        </LinearGradient>
-
         {/* Tab Switcher */}
         <View style={styles.tabBar}>
           <TouchableOpacity
@@ -303,7 +122,9 @@ const TasksScreen = () => {
 
         {/* Task Cards List */}
         <View style={styles.tasksList}>
-          {currentList.map((task) => {
+          {currentList.length === 0 ? (
+            <Text style={styles.emptyTasksText}>No {activeTab} task data is available from the server.</Text>
+          ) : currentList.map((task) => {
             const isCompleted = task.status === 'completed';
             const isClaimable = task.status === 'claimable';
             const progressRatio = Math.min(task.progress / task.target, 1);
@@ -375,7 +196,7 @@ const TasksScreen = () => {
                       isCompleted && styles.actionBtnCompleted,
                     ]}
                     disabled={isCompleted}
-                    onPress={() => handleAction(task, activeTab === 'daily')}
+                    onPress={() => {}}
                     activeOpacity={0.8}
                   >
                     {isCompleted ? (

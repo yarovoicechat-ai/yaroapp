@@ -8,10 +8,13 @@ import {
   FlatList,
   ActivityIndicator,
   Dimensions,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { apiUtil } from '../../utils/apiUtil';
+import { resolveGiftVisual } from './giftMediaUtils';
 
 const { height } = Dimensions.get('window');
 
@@ -29,7 +32,7 @@ export default function GiftHistoryModal({ visible, onClose }) {
         const endpoint = activeTab === 'sent' ? '/gifts/sent' : '/gifts/received';
         const res = await apiUtil.get(`${endpoint}?page=${pageNum}&limit=15`);
         const data = res.data?.data;
-        const items = data?.items || [];
+        const items = data?.transactions || data?.items || [];
 
         if (shouldAppend) {
           setHistoryItems((prev) => [...prev, ...items]);
@@ -37,7 +40,7 @@ export default function GiftHistoryModal({ visible, onClose }) {
           setHistoryItems(items);
         }
 
-        const totalPages = data?.pagination?.pages || 1;
+        const totalPages = data?.pagination?.totalPages || data?.pagination?.pages || 1;
         setHasMore(pageNum < totalPages);
         setPage(pageNum);
       } catch (err) {
@@ -64,7 +67,11 @@ export default function GiftHistoryModal({ visible, onClose }) {
 
   const renderItem = ({ item }) => {
     const isSent = activeTab === 'sent';
-    const otherParty = isSent ? item.receiver : item.sender;
+    const otherParty = isSent
+      ? (item.receiverId || item.receiver)
+      : (item.senderId || item.sender);
+    const gift = item.giftId || item.gift || {};
+    const giftVisual = resolveGiftVisual(gift);
     const dateFormatted = item.createdAt
       ? new Date(item.createdAt).toLocaleDateString(undefined, {
           month: 'short',
@@ -77,14 +84,18 @@ export default function GiftHistoryModal({ visible, onClose }) {
     return (
       <View style={styles.historyCard}>
         <View style={styles.giftIconWrap}>
-          <Text style={styles.giftIconEmoji}>
-            {item.gift?.icon || '🎁'}
-          </Text>
+          {giftVisual.giftImage ? (
+            <Image source={{ uri: giftVisual.giftImage }} style={styles.giftHistoryImage} resizeMode="contain" />
+          ) : giftVisual.giftIcon ? (
+            <Text style={styles.giftIconEmoji}>{giftVisual.giftIcon}</Text>
+          ) : (
+            <MaterialCommunityIcons name="gift-outline" size={25} color="#FDE68A" />
+          )}
         </View>
 
         <View style={styles.midCol}>
           <Text style={styles.giftTitle} numberOfLines={1}>
-            {item.gift?.name || 'Gift'} x{item.quantity}
+            {gift.name || item.meta?.giftName || 'Gift'} x{item.quantity}
           </Text>
           <Text style={styles.partyText} numberOfLines={1}>
             {isSent ? 'To: ' : 'From: '}
@@ -274,6 +285,7 @@ const styles = StyleSheet.create({
   giftIconEmoji: {
     fontSize: 22,
   },
+  giftHistoryImage: { width: 30, height: 30 },
   midCol: {
     flex: 1,
   },

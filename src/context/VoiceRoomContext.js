@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useRef } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import { AppState } from 'react-native';
 import { navigationRef } from '../utils/navigationRef';
 import { AlertService } from '../utils/AlertService';
 import { getSocket, initSocket } from '../sockets';
@@ -11,6 +12,15 @@ import {
 } from 'react-native-agora';
 import InCallManager from 'react-native-incall-manager';
 import { generateAgoraRtcToken, AGORA_APP_ID, AGORA_APP_CERTIFICATE, AGORA_SECONDARY_CERTIFICATE } from '../utils/agoraTokenUtil';
+
+const normalizeRoomId = (id) => {
+  const clean = String(id || '').trim();
+  if (/^10000\d{3}$/.test(clean)) {
+    const lastDigits = clean.slice(5);
+    return `100000000${lastDigits}`.slice(-10);
+  }
+  return clean;
+};
 
 const VoiceRoomContext = createContext();
 
@@ -46,6 +56,11 @@ export const VoiceRoomProvider = ({ children }) => {
   const [musicVolume, setMusicVolumeState] = useState(80);
   const [micVolume, setMicVolumeState] = useState(100);
 
+  // Speaking Indicators & Live Requests & Reactions State
+  const [speakingSeatIndices, setSpeakingSeatIndices] = useState(new Set());
+  const [pendingLiveRequests, setPendingLiveRequests] = useState([]);
+  const [lastReaction, setLastReaction] = useState(null);
+
   const socketRef = useRef(null);
   const activeRoomIdRef = useRef(null);
   const currentSeatIndexRef = useRef(null);
@@ -56,8 +71,58 @@ export const VoiceRoomProvider = ({ children }) => {
   const seenJoinEventsRef = useRef(new Set());
   const entryFallbackTimersRef = useRef(new Map());
 
+  const isMutedRef = useRef(isMuted);
+  isMutedRef.current = isMuted;
+
+  const currentSeatsRef = useRef(seats);
+  currentSeatsRef.current = seats;
+
+  const currentLocalUidRef = useRef(null);
+  const lastVolumeReportTimeRef = useRef(0);
+
   // Sync ref with current seat
   currentSeatIndexRef.current = currentSeatIndex;
+
+  // AppState Listener (Background / Foreground transition safety)
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      console.log('📡 [VoiceRoomContext] AppState change:', nextAppState);
+      if (nextAppState === 'active' && activeRoomIdRef.current) {
+        // App returned to foreground - reconcile audio & socket
+        const sock = socketRef.current || getSocket();
+        if (sock) {
+          if (!sock.connected) {
+            console.log('📡 [VoiceRoomContext] Reconnecting socket on app foreground...');
+            sock.connect();
+          } else {
+            // Re-sync room state silently
+            sock.emit('voice_room:join', {
+              roomId: activeRoomIdRef.current,
+              user: currentUserRef.current,
+              isHost: isOwner,
+              customSeats: seatCount,
+            });
+          }
+        }
+
+        // Reconcile Agora audio stream
+        if (agoraEngineRef.current) {
+          try {
+            agoraEngineRef.current.enableLocalAudio(true);
+            agoraEngineRef.current.muteLocalAudioStream(isMutedRef.current);
+            if (currentSeatIndexRef.current !== null) {
+              agoraEngineRef.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+            }
+          } catch (agoraErr) {
+            console.warn('Agora foreground reconciliation notice:', agoraErr);
+          }
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [isOwner, seatCount]);
 
   const initAgoraVoice = async (roomId, currentUserId, isBroadcaster) => {
     if (isAgoraConnectingRef.current) return;
@@ -80,6 +145,7 @@ export const VoiceRoomProvider = ({ children }) => {
       const appId = creds?.appId || AGORA_APP_ID;
       const channelName = creds?.channelName || `voiceroom_${roomId}`;
       const uid = creds?.agoraUid || (currentUserId ? (parseInt(String(currentUserId).replace(/\D/g, '').slice(-8), 10) || 1000) : (Math.floor(Math.random() * 1e8) + 1000));
+      currentLocalUidRef.current = uid;
       
       let token = creds?.token || '';
       if (!token) {
@@ -97,6 +163,13 @@ export const VoiceRoomProvider = ({ children }) => {
         engine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
         engine.setDefaultAudioRouteToSpeakerphone(true);
         engine.setEnableSpeakerphone(true);
+        engine.enableAudioVolumeIndication(200, 3, true);
+      } else {
+        engine.enableAudio();
+        engine.enableLocalAudio(true);
+        engine.setDefaultAudioRouteToSpeakerphone(true);
+        engine.setEnableSpeakerphone(true);
+        engine.enableAudioVolumeIndication(200, 3, true);
       }
 
       engine.setDefaultAudioRouteToSpeakerphone(true);
@@ -107,6 +180,47 @@ export const VoiceRoomProvider = ({ children }) => {
           console.warn('🎙️ [VoiceRoom] Agora Voice joined successfully! Channel:', conn?.channelId, 'UID:', conn?.localUid);
           setAgoraStatus('connected');
           setAgoraErrorMessage(null);
+          try {
+            engine.enableAudioVolumeIndication(200, 3, true);
+          } catch (_) {}
+        },
+        onAudioVolumeIndication: (conn, speakers, totalVolume) => {
+          const now = Date.now();
+          if (now - lastVolumeReportTimeRef.current < 180) return;
+          lastVolumeReportTimeRef.current = now;
+
+          const activeIndices = new Set();
+          const currentSeat = currentSeatIndexRef.current;
+          const currentMuted = isMutedRef.current;
+
+          if (Array.isArray(speakers)) {
+            speakers.forEach((spk) => {
+              const vol = spk?.volume || 0;
+              const spkUid = spk?.uid;
+              if (vol > 12) {
+                if ((spkUid === 0 || spkUid === currentLocalUidRef.current) && currentSeat !== null && !currentMuted) {
+                  activeIndices.add(currentSeat);
+                } else if (spkUid > 0) {
+                  const matchedSeat = currentSeatsRef.current.find((s) => {
+                    if (!s.user) return false;
+                    const uIdStr = String(s.user.userId || s.user._id || s.user.id || '');
+                    const uNumeric = parseInt(uIdStr.replace(/\D/g, '').slice(-8), 10);
+                    return uNumeric === spkUid || Number(s.user.agoraUid) === spkUid;
+                  });
+                  if (matchedSeat && !matchedSeat.isMuted) {
+                    activeIndices.add(matchedSeat.seatIndex);
+                  }
+                }
+              }
+            });
+          }
+
+          setSpeakingSeatIndices((prev) => {
+            if (prev.size === activeIndices.size && [...prev].every((x) => activeIndices.has(x))) {
+              return prev;
+            }
+            return activeIndices;
+          });
         },
         onUserJoined: (conn, remoteUid) => {
           console.warn('🎙️ [VoiceRoom] Remote speaker joined voice channel:', remoteUid);
@@ -307,6 +421,12 @@ export const VoiceRoomProvider = ({ children }) => {
     sock.off('voice_room:moved_to_audience');
     sock.off('voice_room:user_kicked');
     sock.off('voice_room:force_leave');
+    sock.off('voice_room:all_seats_locked');
+    sock.off('voice_room:details_updated');
+    sock.off('voice_room:live_seat_request');
+    sock.off('voice_room:live_request_submitted');
+    sock.off('voice_room:live_request_approved');
+    sock.off('voice_room:live_request_rejected');
     sock.off('room:vip-entry');
     sock.off('vip:entry');
     sock.off('entry:effect');
@@ -367,7 +487,17 @@ export const VoiceRoomProvider = ({ children }) => {
     const actuallyOwner = Boolean(
       userIsHost ||
       Boolean(roomData?.isSelfHost) ||
-      (currentUserId && roomHostId && currentUserId === roomHostId)
+      (currentUserId && roomHostId && (
+        String(currentUserId) === String(roomHostId) ||
+        normalizeRoomId(currentUserId) === normalizeRoomId(roomHostId)
+      )) ||
+      (currentUserId && (
+        String(currentUserId) === String(roomId) ||
+        normalizeRoomId(currentUserId) === normalizeRoomId(roomId)
+      )) ||
+      (currentUserId && (roomData?.ownerId || roomData?.owner?._id) && (
+        String(currentUserId) === String(roomData.ownerId || roomData.owner?._id)
+      ))
     );
 
     setIsOwner(actuallyOwner);
@@ -375,6 +505,15 @@ export const VoiceRoomProvider = ({ children }) => {
     setAdmins([]);
     setBannedChatUsers([]);
     setMutedUsers([]);
+
+    try {
+      InCallManager.start({ media: 'audio', auto: false, ringback: '' });
+      InCallManager.setKeepScreenOn(true);
+      InCallManager.setForceSpeakerphoneOn(true);
+      InCallManager.setSpeakerphoneOn(true);
+    } catch (inCallErr) {
+      console.warn('InCallManager start notice:', inCallErr?.message);
+    }
 
     const hostObj = actuallyOwner
       ? {
@@ -463,14 +602,52 @@ export const VoiceRoomProvider = ({ children }) => {
         // 1. Initial Synchronized Room State from Server
         sock.on('voice_room:state', (data) => {
           console.log('📡 [VoiceRoom] Initial state received from server:', data?.roomId);
+          const serverSaysOwner = Boolean(
+            data?.isHost ||
+            data?.isOwner ||
+            actuallyOwner ||
+            (data?.hostUser?.userId && currentUserId && (
+              String(data.hostUser.userId) === String(currentUserId) ||
+              normalizeRoomId(data.hostUser.userId) === normalizeRoomId(currentUserId)
+            ))
+          );
+          if (serverSaysOwner) {
+            setIsOwner(true);
+          }
           if (data?.seats && Array.isArray(data.seats) && data.seats.length > 0) {
             const mapped = mapSeatsWithCurrentUser(data.seats, currentUserId);
             setSeats(mapped);
-            const mySeat = mapped.find((s) => s.user && (s.user.isCurrentUser || (s.seatIndex === 0 && actuallyOwner)));
+            const mySeat = mapped.find((s) => s.user && (s.user.isCurrentUser || (s.seatIndex === 0 && serverSaysOwner)));
             if (mySeat) {
               setCurrentSeatIndex(mySeat.seatIndex);
               setIsMuted(mySeat.isMuted);
+              if (serverSaysOwner && mySeat.seatIndex === 0) {
+                if (agoraEngineRef.current) {
+                  try {
+                    agoraEngineRef.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+                    agoraEngineRef.current.muteLocalAudioStream(false);
+                  } catch (_) {}
+                }
+              }
+            } else if (serverSaysOwner) {
+              setCurrentSeatIndex(0);
+              setIsMuted(false);
+              if (agoraEngineRef.current) {
+                try {
+                  agoraEngineRef.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+                  agoraEngineRef.current.muteLocalAudioStream(false);
+                } catch (_) {}
+              }
             }
+          }
+          if (data?.coverImage) {
+            setActiveRoom((prev) => (prev ? { ...prev, coverImage: data.coverImage } : prev));
+          }
+          if (data?.title) {
+            setActiveRoom((prev) => (prev ? { ...prev, title: data.title } : prev));
+          }
+          if (data?.about) {
+            setActiveRoom((prev) => (prev ? { ...prev, about: data.about } : prev));
           }
           if (Array.isArray(data?.onlineUsers)) setOnlineUsers(data.onlineUsers);
           if (data?.onlineCount !== undefined) {
@@ -486,6 +663,79 @@ export const VoiceRoomProvider = ({ children }) => {
             setShowSeatCharm(data.showSeatCharm);
           } else {
             setShowSeatCharm(false);
+          }
+        });
+
+        // 1.1 Reaction received broadcast
+        sock.on('voice_room:reaction_received', (data) => {
+          console.log('📡 [VoiceRoom] Reaction received:', data?.emoji, data?.user);
+          if (data?.emoji) {
+            setLastReaction({
+              id: data.id || ('react-' + Date.now() + Math.random()),
+              emoji: data.emoji,
+              user: data.user || 'Guest',
+              timestamp: Date.now(),
+            });
+          }
+        });
+
+        // 1.2 All seats locked broadcast
+        sock.on('voice_room:all_seats_locked', (data) => {
+          console.log('📡 [VoiceRoom] All seats locked updated:', data?.isLocked);
+          if (data?.seats && Array.isArray(data.seats)) {
+            setSeats(mapSeatsWithCurrentUser(data.seats, currentUserId));
+          }
+        });
+
+        // 1.3 Room Details (DP / Title / About) updated broadcast
+        sock.on('voice_room:details_updated', (data) => {
+          console.log('📡 [VoiceRoom] Room details updated from server:', data);
+          if (data) {
+            setActiveRoom((prev) => (prev ? {
+              ...prev,
+              coverImage: data.coverImage || prev.coverImage,
+              title: data.title || prev.title,
+              about: data.about || prev.about,
+              seatCount: data.seatCount || prev.seatCount,
+            } : prev));
+          }
+        });
+
+        // 1.4 Co-Host Live Seat Requests & Decisions
+        sock.on('voice_room:live_seat_request', (data) => {
+          console.log('📡 [VoiceRoom] Live seat request received from:', data?.requester?.name);
+          setPendingLiveRequests((prev) => [...prev.filter((r) => r.requestId !== data.requestId), data]);
+        });
+
+        sock.on('voice_room:live_request_submitted', (data) => {
+          AlertService.show('Application Sent', data?.message || 'Application sent to Host! Waiting for approval.', 'info');
+        });
+
+        sock.on('voice_room:live_request_approved', (data) => {
+          console.log('📡 [VoiceRoom] Live request approved:', data);
+          if (data?.targetUserId && currentUserId && String(data.targetUserId) === String(currentUserId)) {
+            setCurrentSeatIndex(data.seatIndex);
+            setIsMuted(false);
+            if (agoraEngineRef.current) {
+              try {
+                agoraEngineRef.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+                agoraEngineRef.current.updateChannelMediaOptions({
+                  clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+                  publishMicrophoneTrack: true,
+                  autoSubscribeAudio: true,
+                });
+                agoraEngineRef.current.enableLocalAudio(true);
+                agoraEngineRef.current.muteLocalAudioStream(false);
+              } catch (_) {}
+            }
+            AlertService.show('Approved! 🎉', `Host approved your application for Live seat #${data.seatIndex + 1}!`, 'success');
+          }
+        });
+
+        sock.on('voice_room:live_request_rejected', (data) => {
+          console.log('📡 [VoiceRoom] Live request rejected:', data);
+          if (data?.targetUserId && currentUserId && String(data.targetUserId) === String(currentUserId)) {
+            AlertService.show('Application Declined', data?.message || 'Your application was declined by the room host.', 'warning');
           }
         });
 
@@ -930,12 +1180,12 @@ export const VoiceRoomProvider = ({ children }) => {
     setSeats((prev) =>
       prev.map((s) => {
         if (s.seatIndex === 0) return s;
-        if (sock && roomId) {
-          sock.emit('voice_room:lock_seat', { roomId, seatIndex: s.seatIndex, isLocked: true });
-        }
         return { ...s, isLocked: true, user: null };
       })
     );
+    if (sock && roomId) {
+      sock.emit('voice_room:lock_all_seats', { roomId, isLocked: true });
+    }
   };
 
   // Unlock all guest seats
@@ -945,12 +1195,54 @@ export const VoiceRoomProvider = ({ children }) => {
     setSeats((prev) =>
       prev.map((s) => {
         if (s.seatIndex === 0) return s;
-        if (sock && roomId) {
-          sock.emit('voice_room:lock_seat', { roomId, seatIndex: s.seatIndex, isLocked: false });
-        }
         return { ...s, isLocked: false };
       })
     );
+    if (sock && roomId) {
+      sock.emit('voice_room:lock_all_seats', { roomId, isLocked: false });
+    }
+  };
+
+  // Toggle lock all seats
+  const toggleLockAllSeats = () => {
+    const hasAnyUnlocked = seats.some((s) => s.seatIndex !== 0 && !s.isLocked);
+    if (hasAnyUnlocked) {
+      lockAllSeats();
+    } else {
+      unlockAllSeats();
+    }
+  };
+
+  // Co-Host Live Seat Application
+  const applyLiveSeat = (seatIndex, user) => {
+    const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
+    const sock = socketRef.current || getSocket();
+    const resolvedUser = user || currentUserRef.current;
+    if (sock && roomId) {
+      sock.emit('voice_room:apply_live', {
+        roomId,
+        seatIndex,
+        user: {
+          userId: resolvedUser?.userId || resolvedUser?._id || resolvedUser?.id,
+          name: resolvedUser?.name || 'Guest',
+          image: resolvedUser?.image || resolvedUser?.avatar || '',
+        },
+      });
+    }
+  };
+
+  // Owner Response to Live Seat Application
+  const respondLiveRequest = (requestId, approved) => {
+    const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
+    const sock = socketRef.current || getSocket();
+    if (sock && roomId && requestId) {
+      sock.emit('voice_room:respond_live_request', {
+        roomId,
+        requestId,
+        approved: Boolean(approved),
+      });
+      setPendingLiveRequests((prev) => prev.filter((r) => r.requestId !== requestId));
+    }
   };
 
   // Vacate Seat
@@ -1015,6 +1307,7 @@ export const VoiceRoomProvider = ({ children }) => {
   // Leave completely
   const leaveRoom = (currentUser) => {
     try {
+      InCallManager.setKeepScreenOn(false);
       InCallManager.stop();
       if (agoraEngineRef.current) {
         agoraEngineRef.current.muteLocalAudioStream(true);
@@ -1266,6 +1559,14 @@ export const VoiceRoomProvider = ({ children }) => {
   // Update room settings (title, cover, about, seats, lock)
   const updateRoomDetails = (updatedData) => {
     setActiveRoom((prev) => ({ ...prev, ...updatedData }));
+    const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
+    const sock = socketRef.current || getSocket();
+    if (sock && roomId) {
+      sock.emit('voice_room:update_details', {
+        roomId,
+        ...updatedData,
+      });
+    }
     if (updatedData.seatCount) {
       setSeatCount(updatedData.seatCount);
       setSeats((prev) => {
@@ -1297,6 +1598,9 @@ export const VoiceRoomProvider = ({ children }) => {
         mutedUsers,
         seatCount,
         seats,
+        speakingSeatIndices,
+        pendingLiveRequests,
+        lastReaction,
         onlineCount,
         onlineUsers,
         joinedNotification,
@@ -1310,6 +1614,8 @@ export const VoiceRoomProvider = ({ children }) => {
         updateRoomDetails,
         takeSeat,
         leaveSeat,
+        applyLiveSeat,
+        respondLiveRequest,
         minimizeRoom,
         maximizeRoom,
         leaveRoom,
@@ -1328,6 +1634,7 @@ export const VoiceRoomProvider = ({ children }) => {
         toggleSeatLock,
         lockAllSeats,
         unlockAllSeats,
+        toggleLockAllSeats,
         broadcastChatMessage,
         broadcastReaction,
         agoraStatus,

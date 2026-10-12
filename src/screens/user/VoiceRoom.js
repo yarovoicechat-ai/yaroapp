@@ -18,6 +18,7 @@ import {
   BackHandler,
   Share,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -62,12 +63,16 @@ import RoomMusicModal from '../../components/room/RoomMusicModal';
 import SeatLayoutModal from '../../components/room/SeatLayoutModal';
 import RoomThemeModal from '../../components/room/RoomThemeModal';
 import RoomSeatSkinModal from '../../components/room/RoomSeatSkinModal';
+import RoomTasksModal from '../../components/room/RoomTasksModal';
+import RoomSupportModal from '../../components/room/RoomSupportModal';
 import {
   resolveEntryAssets,
   resolveRoomTheme,
   resolveSeatSkin,
   DEFAULT_ROOM_BG,
   DEFAULT_ROOM_THEME,
+  DEFAULT_SEAT_IMAGE,
+  LOCK_SEAT_IMAGE,
 } from '../../utils/cosmeticResolver';
 
 const { width, height } = Dimensions.get('window');
@@ -172,6 +177,12 @@ export default function VoiceRoomScreen() {
     toggleSeatLock,
     lockAllSeats,
     unlockAllSeats,
+    toggleLockAllSeats,
+    speakingSeatIndices,
+    pendingLiveRequests,
+    lastReaction,
+    applyLiveSeat,
+    respondLiveRequest,
     broadcastChatMessage,
     broadcastReaction,
     joinedNotification,
@@ -217,6 +228,59 @@ export default function VoiceRoomScreen() {
   const [seatLayoutModalVisible, setSeatLayoutModalVisible] = useState(false);
   const [themeModalVisible, setThemeModalVisible] = useState(false);
   const [seatSkinModalVisible, setSeatSkinModalVisible] = useState(false);
+  const [roomTasksVisible, setRoomTasksVisible] = useState(false);
+  const [roomSupportVisible, setRoomSupportVisible] = useState(false);
+
+  // Periodic on-mic heartbeat for Room Tasks (10 min, 30 min, 120 min)
+  useEffect(() => {
+    const activeRoomId = room?.id || room?.roomId || route?.params?.roomId;
+    if (!isUserOnSeat || isMuted || !activeRoomId) return;
+
+    const micHeartbeatInterval = setInterval(() => {
+      apiUtil.post(`/voice-club/rooms/${activeRoomId}/tasks/mic-heartbeat`, { minutes: 1 }).catch(() => {});
+    }, 60000);
+
+    return () => clearInterval(micHeartbeatInterval);
+  }, [isUserOnSeat, isMuted, room?.id, room?.roomId, route?.params?.roomId]);
+
+  // Android Keyboard Tracker for clean chat positioning
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setIsKeyboardVisible(true);
+        setKeyboardHeight(e.endCoordinates.height);
+        setTimeout(() => {
+          chatListRef.current?.scrollToEnd({ animated: true });
+        }, 120);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setIsKeyboardVisible(false);
+        setKeyboardHeight(0);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // Broadcast Reaction Listener (All users in room see floating reactions)
+  useEffect(() => {
+    if (lastReaction?.emoji) {
+      const id = lastReaction.id || ('react-' + Date.now() + Math.random());
+      setReactions((prev) => [...prev, { id, emoji: lastReaction.emoji }]);
+      setTimeout(() => {
+        setReactions((prev) => prev.filter((r) => r.id !== id));
+      }, 2000);
+    }
+  }, [lastReaction]);
 
   // Image 2 Announcement & Notice States
   const [roomAnnouncement, setRoomAnnouncement] = useState("Welcome to my room, let's chat together!");
@@ -1278,6 +1342,40 @@ export default function VoiceRoomScreen() {
         </Animated.View>
       )}
 
+      {/* Live Seat Application Requests Banner (Host & Admins Only) */}
+      {(isRoomOwner || isContextOwnerMatch || isCurrentUserAdmin) && pendingLiveRequests?.length > 0 && (
+        <View style={styles.liveRequestBannerContainer}>
+          {pendingLiveRequests.map((req) => (
+            <View key={req.requestId} style={styles.liveRequestCard}>
+              <Image
+                source={{ uri: req.requester?.image || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
+                style={styles.liveRequestAvatar}
+              />
+              <View style={styles.liveRequestInfo}>
+                <Text style={styles.liveRequestName} numberOfLines={1}>{req.requester?.name || 'Guest'}</Text>
+                <Text style={styles.liveRequestSub}>Applied for Seat #{Number(req.seatIndex) + 1}</Text>
+              </View>
+              <View style={styles.liveRequestActions}>
+                <TouchableOpacity
+                  style={styles.liveRequestDeclineBtn}
+                  onPress={() => respondLiveRequest(req.requestId, false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.liveRequestDeclineText}>Decline</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.liveRequestAcceptBtn}
+                  onPress={() => respondLiveRequest(req.requestId, true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.liveRequestAcceptText}>Accept</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* Gift Celebration Banner */}
       {/* Voice Seats Grid: Top 2 Featured Seats (Host & Co-Host) + Responsive Bottom Grid */}
       <View style={styles.seatsAreaContainer}>
@@ -1312,7 +1410,7 @@ export default function VoiceRoomScreen() {
                 {isOccupied ? (
                   <View style={styles.occupiedSeatWrapper}>
                     <VipMicWave
-                      state={seat.isMuted ? 'MUTED' : (seat.isSpeaking ? 'SPEAKING' : 'IDLE')}
+                      state={seat.isMuted ? 'MUTED' : ((speakingSeatIndices?.has?.(seat.seatIndex) || seat.isSpeaking) ? 'SPEAKING' : 'IDLE')}
                       waveColors={isHostSeat ? ['#F59E0B', '#FBBF24'] : ['#EC4899', '#F472B6']}
                       intensity={1.1}
                       size={56}
@@ -1350,15 +1448,23 @@ export default function VoiceRoomScreen() {
                   </View>
                 ) : (
                   <View style={styles.emptySeatWrapper}>
-                    <View style={[styles.topFeaturedEmptyCircle, isHostSeat ? styles.hostEmptyBorder : styles.cpEmptyBorder]}>
-                      <MaterialCommunityIcons
-                        name={isHostSeat ? 'crown-outline' : 'heart-outline'}
-                        size={22}
-                        color={isHostSeat ? '#F59E0B' : '#EC4899'}
-                      />
+                    <View style={[styles.topFeaturedEmptyCircle, isHostSeat ? styles.hostEmptyBorder : styles.cpEmptyBorder, { overflow: 'hidden' }]}>
+                      {seat.isLocked ? (
+                        <Image
+                          source={LOCK_SEAT_IMAGE}
+                          style={{ width: 50, height: 50, borderRadius: 25 }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Image
+                          source={DEFAULT_SEAT_IMAGE}
+                          style={{ width: 50, height: 50, borderRadius: 25 }}
+                          resizeMode="cover"
+                        />
+                      )}
                     </View>
                     <Text style={[styles.topSeatLabel, isHostSeat ? styles.hostLabelColor : styles.cpLabelColor]}>
-                      {isHostSeat ? 'Host 👑' : 'Co-Host 💖'}
+                      {seat.isLocked ? 'Locked 🔒' : (isHostSeat ? 'Host 👑' : 'Co-Host 💖')}
                     </Text>
                     {showSeatCharm && (
                       <View style={styles.charmPill}>
@@ -1409,7 +1515,7 @@ export default function VoiceRoomScreen() {
                   {isOccupied ? (
                     <View style={styles.occupiedSeatWrapper}>
                       <VipMicWave
-                        state={seat.isMuted ? 'MUTED' : (seat.isSpeaking ? 'SPEAKING' : 'IDLE')}
+                        state={seat.isMuted ? 'MUTED' : ((speakingSeatIndices?.has?.(seat.seatIndex) || seat.isSpeaking) ? 'SPEAKING' : 'IDLE')}
                         waveColors={activeSeatSkin?.ringColors || ['#38BDF8', '#0284C7']}
                         size={circleSize}
                       >
@@ -1454,15 +1560,25 @@ export default function VoiceRoomScreen() {
                           width: circleSize,
                           height: circleSize,
                           borderRadius: circleSize / 2,
-                          borderColor: activeSeatSkin?.borderColor || 'rgba(255, 255, 255, 0.4)',
-                          backgroundColor: activeSeatSkin?.bgColor || 'rgba(255, 255, 255, 0.08)',
+                          borderColor: seat.isLocked ? 'rgba(245, 158, 11, 0.9)' : (activeSeatSkin?.borderColor || 'rgba(255, 255, 255, 0.4)'),
+                          backgroundColor: seat.isLocked ? 'rgba(245, 158, 11, 0.2)' : (activeSeatSkin?.bgColor || 'rgba(255, 255, 255, 0.08)'),
                           borderWidth: 1.5,
                           overflow: 'hidden',
                           alignItems: 'center',
                           justifyContent: 'center',
                         },
                       ]}>
-                        {activeSeatSkin?.imageUrl ? (
+                        {seat.isLocked ? (
+                          <Image
+                            source={LOCK_SEAT_IMAGE}
+                            style={{
+                              width: circleSize,
+                              height: circleSize,
+                              borderRadius: circleSize / 2,
+                            }}
+                            resizeMode="cover"
+                          />
+                        ) : activeSeatSkin?.imageUrl ? (
                           <Image
                             source={typeof activeSeatSkin.imageUrl === 'string' ? { uri: activeSeatSkin.imageUrl } : activeSeatSkin.imageUrl}
                             style={{
@@ -1473,14 +1589,20 @@ export default function VoiceRoomScreen() {
                             resizeMode="cover"
                           />
                         ) : (
-                          <MaterialCommunityIcons
-                            name={activeSeatSkin?.icon || 'sofa-outline'}
-                            size={isCompactLayout ? 17 : 20}
-                            color={activeSeatSkin?.previewColor || 'rgba(255, 255, 255, 0.55)'}
+                          <Image
+                            source={DEFAULT_SEAT_IMAGE}
+                            style={{
+                              width: circleSize,
+                              height: circleSize,
+                              borderRadius: circleSize / 2,
+                            }}
+                            resizeMode="cover"
                           />
                         )}
                       </View>
-                      <Text style={[styles.seatNumText, isCompactLayout && { fontSize: 8.5 }]}>{seatNum}</Text>
+                      <Text style={[styles.seatNumText, isCompactLayout && { fontSize: 8.5 }, seat.isLocked && { color: '#F59E0B' }]}>
+                        {seat.isLocked ? 'Locked 🔒' : seatNum}
+                      </Text>
                       {showSeatCharm && (
                         <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
                           <Text style={styles.charmFlower}>🌸</Text>
@@ -1663,6 +1785,23 @@ export default function VoiceRoomScreen() {
           ]}
           pointerEvents="box-none"
         >
+          {/* 0. Room Tasks Floating Widget (Matching Reference Video 00:01-00:06) */}
+          <TouchableOpacity
+            style={styles.roomTasksFloatingWidget}
+            onPress={() => setRoomTasksVisible(true)}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#3B82F6', '#6366F1']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.roomTasksWidgetBox}
+            >
+              <Text style={{ fontSize: 16 }}>📋</Text>
+              <Text style={styles.roomTasksWidgetLabel}>Tasks</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
           {/* 1. Lucky Widget */}
           <TouchableOpacity
             style={styles.luckyFruitWidget}
@@ -1886,7 +2025,12 @@ export default function VoiceRoomScreen() {
 
       {/* Floating Expanded Chat Input Bar when in On-Seat Mode */}
       {isUserOnSeat && isChatBarExpanded && (
-        <View style={[styles.floatingChatInputBar, { bottom: (insets.bottom > 0 ? insets.bottom : 6) + 56 }]}>
+        <View style={[
+          styles.floatingChatInputBar,
+          {
+            bottom: (Platform.OS === 'ios' ? keyboardHeight : 0) + (insets.bottom > 0 ? insets.bottom : 6) + 56,
+          },
+        ]}>
           <TouchableOpacity
             style={[styles.bulletToggleBtn, isBulletMode && styles.bulletToggleBtnActive]}
             onPress={() => {
@@ -1966,7 +2110,7 @@ export default function VoiceRoomScreen() {
           }
         }}
         onRoomSettings={() => setRoomSettingsModalVisible(true)}
-        onLockSeats={lockAllSeats}
+        onLockSeats={toggleLockAllSeats}
         onClearChat={clearChat}
         onOpenMusic={() => setMusicModalVisible(true)}
         onOpenSeatSettings={() => setSeatLayoutModalVisible(true)}
@@ -1982,8 +2126,24 @@ export default function VoiceRoomScreen() {
           );
         }}
         seatCount={seatCount}
-        isHost={isRoomOwner}
+        isHost={isRoomOwner || isContextOwnerMatch || isCurrentUserAdmin}
+        onOpenRoomTasks={() => setRoomTasksVisible(true)}
+        onOpenRoomSupport={() => setRoomSupportVisible(true)}
         bottomSafePadding={bottomSafePadding}
+      />
+
+      {/* MODAL: ROOM TASKS MODAL (MATCHING REFERENCE VIDEO 00:06-00:21) */}
+      <RoomTasksModal
+        visible={roomTasksVisible}
+        onClose={() => setRoomTasksVisible(false)}
+        roomId={room?.id || room?.roomId || route?.params?.roomId}
+      />
+
+      {/* MODAL: ROOM SUPPORT MODAL (MATCHING REFERENCE VIDEO 00:22-00:37) */}
+      <RoomSupportModal
+        visible={roomSupportVisible}
+        onClose={() => setRoomSupportVisible(false)}
+        roomId={room?.id || room?.roomId || route?.params?.roomId}
       />
 
       {/* MODAL: ROOM THEME (OWNER TOOLS) */}
@@ -5331,5 +5491,96 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 13,
     fontWeight: '800',
+  },
+  liveRequestBannerContainer: {
+    marginHorizontal: 12,
+    marginBottom: 8,
+    gap: 6,
+    zIndex: 99,
+  },
+  liveRequestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.5)',
+  },
+  liveRequestAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 10,
+    backgroundColor: '#334155',
+  },
+  liveRequestInfo: {
+    flex: 1,
+  },
+  liveRequestName: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  liveRequestSub: {
+    color: '#F59E0B',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  liveRequestActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  liveRequestDeclineBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  liveRequestDeclineText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  liveRequestAcceptBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
+  },
+  liveRequestAcceptText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  roomTasksFloatingWidget: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  roomTasksWidgetBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  roomTasksWidgetLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFF',
+    letterSpacing: 0.3,
+    marginTop: 1,
   },
 });

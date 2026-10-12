@@ -81,6 +81,24 @@ export default function RoomSeatSkinModal({
 
         const catalogPayload = catalogResponse?.data?.data || catalogResponse?.data || {};
         const catalogItems = Array.isArray(catalogPayload) ? catalogPayload : (catalogPayload.items || []);
+        
+        const freeRoomToolSkins = catalogItems
+          .filter((item) => {
+            if (!['seat skin', 'seat skins'].includes(String(item.category || '').toLowerCase())) return false;
+            const location = String(
+              item.metadata?.seatSkinLocation ||
+              item.metadata?.themeLocation ||
+              item.metadata?.location ||
+              'STORE'
+            )
+              .trim()
+              .toUpperCase()
+              .replace(/[ -]+/g, '_');
+            const isFree = item.metadata?.isFree === true || Number(item.price || 0) === 0;
+            return isFree && ['ROOM_TOOL', 'BOTH'].includes(location);
+          })
+          .map((item) => normalizeSkin({ ...item, isFree: true }));
+
         const storeSkins = catalogItems
           .filter((item) => ['seat skin', 'seat skins'].includes(String(item.category || '').toLowerCase()))
           .map((item) => normalizeSkin({ ...item, isFromStore: true }));
@@ -90,7 +108,9 @@ export default function RoomSeatSkinModal({
         PRESET_SEAT_SKINS.forEach((preset) => byId.set(preset.id, { ...preset }));
         // 2. Merge store catalog items
         storeSkins.forEach((skin) => byId.set(skin.id, { ...(byId.get(skin.id) || {}), ...skin }));
-        // 3. Merge owned skins
+        // 3. Merge free room tool skins from panel
+        freeRoomToolSkins.forEach((skin) => byId.set(skin.id, { ...(byId.get(skin.id) || {}), ...skin, isFree: true }));
+        // 4. Merge owned skins
         ownedSkins.forEach((skin) => byId.set(skin.id, { ...(byId.get(skin.id) || {}), ...skin, isOwned: true }));
 
         const combined = Array.from(byId.values());
@@ -174,7 +194,11 @@ export default function RoomSeatSkinModal({
                       ) : (
                         <MaterialCommunityIcons name={item.icon || 'sofa-outline'} size={32} color={item.previewColor || '#F59E0B'} />
                       )}
-                      {isActive && <Text style={styles.activeBadge}>IN USE</Text>}
+                      {isActive ? (
+                        <Text style={styles.activeBadge}>IN USE</Text>
+                      ) : (item.isFree || item.price === 0) ? (
+                        <Text style={[styles.activeBadge, { backgroundColor: '#3B82F6' }]}>FREE</Text>
+                      ) : null}
                       {isSelected && (
                         <View style={styles.checkCircle}>
                           <Icon name="checkmark" size={12} color="#FFF" />

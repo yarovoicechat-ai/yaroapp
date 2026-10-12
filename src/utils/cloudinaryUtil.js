@@ -29,7 +29,7 @@ export const uploadToCloudinary = async (file, type = 'help') => {
         formData.append('timestamp', timestamp);
         formData.append('signature', signature);
         formData.append('public_id', public_id);
-        
+
         if (folder) {
             formData.append('folder', folder);
         }

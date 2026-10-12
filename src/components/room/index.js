@@ -7,3 +7,5 @@ export { default as RoomMembersListModal } from './RoomMembersListModal';
 export { default as RoomDetailsModal } from './RoomDetailsModal';
 export { default as RoomUserProfileModal } from './RoomUserProfileModal';
 export { default as RoomEntryEffectEngine } from './RoomEntryEffectEngine';
+export { default as RoomTasksModal } from './RoomTasksModal';
+export { default as RoomSupportModal } from './RoomSupportModal';

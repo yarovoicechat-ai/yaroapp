@@ -201,7 +201,8 @@ export const resolveUserCosmetics = (user) => {
 export const DEFAULT_ROOM_BG = require('../assets/backgraund/default_room_bg.png');
 
 // HD Seat Skin Assets
-export const DEFAULT_SEAT_IMAGE = require('../assets/seats/default_seat.jpg');
+export const DEFAULT_SEAT_IMAGE = require('../assets/seats/default_seat.png');
+export const LOCK_SEAT_IMAGE = require('../assets/seats/lock_seat.png');
 export const GOLDEN_THRONE_SEAT_IMAGE = require('../assets/seats/golden_throne.jpg');
 export const CYBER_POD_SEAT_IMAGE = require('../assets/seats/cyber_pod.jpg');
 export const LOTUS_THRONE_SEAT_IMAGE = require('../assets/seats/lotus_throne.jpg');
@@ -210,6 +211,7 @@ export const MERMAID_PEARL_SEAT_IMAGE = require('../assets/seats/mermaid_pearl.j
 
 export const SEAT_SKIN_ASSETS = {
   default: DEFAULT_SEAT_IMAGE,
+  lock: LOCK_SEAT_IMAGE,
   golden_throne: GOLDEN_THRONE_SEAT_IMAGE,
   cyber_pod: CYBER_POD_SEAT_IMAGE,
   lotus_throne: LOTUS_THRONE_SEAT_IMAGE,
@@ -232,16 +234,16 @@ export const DEFAULT_ROOM_THEME = {
 export const DEFAULT_SEAT_SKIN = {
   id: 'default',
   itemId: 'default',
-  name: 'Cyber Glass VIP Seat',
+  name: 'Golden Orb VIP Seat',
   seatSkinType: 'default',
   imageUrl: DEFAULT_SEAT_IMAGE,
   image: DEFAULT_SEAT_IMAGE,
-  icon: 'microphone-variant',
-  previewColor: '#C084FC',
-  borderColor: 'rgba(192, 132, 252, 0.75)',
-  bgColor: 'rgba(168, 85, 247, 0.18)',
-  ringColors: ['#C084FC', '#8B5CF6'],
-  desc: 'Ultra luxury neon glassmorphic VIP voice seat with holographic microphone pedestal.',
+  icon: 'chair-rolling',
+  previewColor: '#F59E0B',
+  borderColor: 'rgba(245, 158, 11, 0.85)',
+  bgColor: 'rgba(245, 158, 11, 0.20)',
+  ringColors: ['#F59E0B', '#FBBF24'],
+  desc: 'Royal Golden Armchair inside glowing crystal orb with golden reflections.',
   isPreset: true,
   isFree: true,
 };

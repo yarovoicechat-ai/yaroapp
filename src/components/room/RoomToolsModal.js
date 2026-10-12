@@ -27,6 +27,8 @@ export default function RoomToolsModal({
   onToggleSeatCharm,
   seatCount = 8,
   isHost,
+  onOpenRoomTasks,
+  onOpenRoomSupport,
   bottomSafePadding = 16,
 }) {
   if (!visible) return null;
@@ -225,6 +227,40 @@ export default function RoomToolsModal({
               >
                 {showSeatCharm ? 'Charm ON' : 'Charm OFF'}
               </Text>
+            </TouchableOpacity>
+
+            {/* Room Tasks */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenRoomTasks && onOpenRoomTasks();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, { borderColor: '#818CF8' }]}>
+                <MaterialCommunityIcons name="clipboard-check-outline" size={22} color="#818CF8" />
+              </View>
+              <Text style={styles.toolLabel}>Tasks 🎯</Text>
+            </TouchableOpacity>
+
+            {/* Room Support */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenRoomSupport && onOpenRoomSupport();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, { borderColor: '#F59E0B' }]}>
+                <MaterialCommunityIcons name="trophy-award" size={22} color="#F59E0B" />
+              </View>
+              <Text style={styles.toolLabel}>Support 🏆</Text>
             </TouchableOpacity>
           </View>
 

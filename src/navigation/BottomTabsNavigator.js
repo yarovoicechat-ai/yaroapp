@@ -22,7 +22,6 @@ import Me from "../screens/user/Me";
 import { AuthContext } from "../context/AuthProvider";
 import { apiUtil } from "../utils/apiUtil";
 import { getSocket } from "../sockets";
-import FloatingVoiceRoomWidget from "../components/FloatingVoiceRoomWidget";
 
 import {
   TAB_BAR_HORIZONTAL_MARGIN,
@@ -321,7 +320,6 @@ export default function BottomTabsNavigator() {
         <Tab.Screen name="ChatScreen" component={ChatListScreen} />
         <Tab.Screen name="Me" component={Me} />
       </Tab.Navigator>
-      <FloatingVoiceRoomWidget />
     </View>
   );
 }

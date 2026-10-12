@@ -9,6 +9,7 @@ import { NotificationListen, requestUserPermission } from "./src/utils/Notificat
 import { navigationRef } from "./src/utils/navigationRef";
 
 import { StatusBar, StyleSheet, View } from "react-native";
+import FloatingVoiceRoomWidget from "./src/components/FloatingVoiceRoomWidget";
 
 const AppTheme = {
   ...DefaultTheme,
@@ -85,6 +86,7 @@ const AppWrapper = () => {
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
         <AppNavigator />
       </NavigationContainer>
+      <FloatingVoiceRoomWidget />
     </View>
   );
 };

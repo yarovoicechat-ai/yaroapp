@@ -57,7 +57,7 @@ const normalizeStoreItem = (item) => ({
 
 const StoreAsset = ({ item, style, resizeMode = 'contain' }) => {
   const animationUrl = item?.animationUrl;
-  const imageUrl = item?.imageUrl || item?.image;
+  const imageUrl = item?.coverImageUrl || item?.imageUrl || item?.image;
   const source = animationUrl || imageUrl;
   if (!source) return null;
 
@@ -461,7 +461,7 @@ export default function StoreScreen() {
 
     // 6. FRAMES PREVIEW
     if (activeCategory === 'Frames') {
-      const hasUploadedFrame = Boolean(item?.animationUrl || item?.imageUrl);
+      const coverImage = item?.coverImageUrl || item?.imageUrl || item?.image;
       return (
         <LinearGradient
           colors={['#4C1D95', '#6D28D9', '#7C3AED']}
@@ -471,12 +471,20 @@ export default function StoreScreen() {
         >
           <View style={styles.framePreviewRow}>
             <View style={styles.previewAvatarWrap}>
-              <AvatarWithFrame
-                user={user}
-                frame={item || 'Rose frame'}
-                size={66}
-                showOnlineDot={false}
-              />
+              {item?.animationUrl || !coverImage ? (
+                <AvatarWithFrame
+                  user={user}
+                  frame={item || 'Rose frame'}
+                  size={66}
+                  showOnlineDot={false}
+                />
+              ) : (
+                <Image
+                  source={{ uri: coverImage }}
+                  style={styles.gridItemAsset}
+                  resizeMode="contain"
+                />
+              )}
             </View>
 
             <View style={styles.previewTextCol}>
@@ -652,12 +660,32 @@ export default function StoreScreen() {
                   </View>
                 ) : activeCategory === 'Frames' ? (
                   <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor}12` }]}>
-                    <AvatarWithFrame
-                      user={user}
-                      frame={item}
-                      size={54}
-                      showOnlineDot={false}
-                    />
+                    {(item.coverImageUrl || item.imageUrl || item.image) ? (
+                      <Image
+                        source={{ uri: item.coverImageUrl || item.imageUrl || item.image }}
+                        style={styles.gridItemAsset}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <AvatarWithFrame
+                        user={user}
+                        frame={item}
+                        size={54}
+                        showOnlineDot={false}
+                      />
+                    )}
+                  </View>
+                ) : activeCategory === 'Entry' && (item.coverImageUrl || item.imageUrl || item.image || item.animationUrl) ? (
+                  <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor}18` }]}>
+                    {(item.coverImageUrl || item.imageUrl || item.image) ? (
+                      <Image
+                        source={{ uri: item.coverImageUrl || item.imageUrl || item.image }}
+                        style={styles.gridItemAsset}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <StoreAsset item={item} style={styles.gridItemAsset} />
+                    )}
                   </View>
                 ) : activeCategory === 'Seat Skin' ? (
                   <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor || '#F59E0B'}18`, overflow: 'hidden', borderWidth: 1.5, borderColor: item.borderColor || `${item.previewColor || '#F59E0B'}60` }]}>
@@ -740,12 +768,20 @@ export default function StoreScreen() {
             <View style={styles.previewShowcaseBox}>
               {activeCategory === 'Frames' ? (
                 <View style={styles.popupFrameWrap}>
-                  <AvatarWithFrame
-                    user={user}
-                    frame={selectedItem}
-                    size={110}
-                    showOnlineDot={false}
-                  />
+                  {(selectedItem?.animationUrl || !(selectedItem?.coverImageUrl || selectedItem?.imageUrl || selectedItem?.image)) ? (
+                    <AvatarWithFrame
+                      user={user}
+                      frame={selectedItem}
+                      size={110}
+                      showOnlineDot={false}
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: selectedItem.coverImageUrl || selectedItem.imageUrl || selectedItem.image }}
+                      style={styles.popupGenericAsset}
+                      resizeMode="contain"
+                    />
+                  )}
                 </View>
               ) : activeCategory === 'Entry' ? (
                 <LinearGradient

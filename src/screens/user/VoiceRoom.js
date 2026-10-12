@@ -32,6 +32,7 @@ import { useVoiceRoom } from '../../context/VoiceRoomContext';
 import { AlertService } from '../../utils/AlertService';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { apiUtil } from '../../utils/apiUtil';
+import { uploadToCloudinary } from '../../utils/cloudinaryUtil';
 import { requestCameraAndCapture, requestGalleryAndSelect } from '../../utils/verificationMedia';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RoomUserProfileModal from '../../components/room/RoomUserProfileModal';
@@ -246,6 +247,11 @@ export default function VoiceRoomScreen() {
   // Android Keyboard Tracker for clean chat positioning
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [roomLayoutHeight, setRoomLayoutHeight] = useState(0);
+  const roomBaseHeightRef = useRef(0);
+  const keyboardLift = isKeyboardVisible
+    ? Math.max(0, keyboardHeight - Math.max(0, roomBaseHeightRef.current - roomLayoutHeight))
+    : 0;
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -807,74 +813,174 @@ export default function VoiceRoomScreen() {
   const [currentRoomCover, setCurrentRoomCover] = useState(room.coverImage);
   const [currentRoomAbout, setCurrentRoomAbout] = useState(room.about || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!');
   const [currentSeatCount, setCurrentSeatCount] = useState(room.seatCount || 8);
-  const [currentRoomLocked, setCurrentRoomLocked] = useState(room.isLocked || false);
-  const [currentRoomPin, setCurrentRoomPin] = useState(room.pin || '');
+  const [currentRoomLocked, setCurrentRoomLocked] = useState(Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || '')));
+  const [hasRoomPin, setHasRoomPin] = useState(Boolean(room.hasPin || room.pin));
 
   const [roomDetailsModalVisible, setRoomDetailsModalVisible] = useState(false);
   const [roomSettingsModalVisible, setRoomSettingsModalVisible] = useState(false);
+  const [isSavingRoomSettings, setIsSavingRoomSettings] = useState(false);
 
   // Edit settings form state
-  const [editRoomName, setEditRoomName] = useState(room.title);
+  const [editRoomName, setEditRoomName] = useState(room.title || '');
   const [editRoomCover, setEditRoomCover] = useState(room.coverImage);
+  const [pendingRoomCoverUpload, setPendingRoomCoverUpload] = useState(null);
   const [editRoomAbout, setEditRoomAbout] = useState(room.about || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!');
   const [editSeatCount, setEditSeatCount] = useState(room.seatCount || 8);
-  const [editRoomLocked, setEditRoomLocked] = useState(false);
+  const [editRoomLocked, setEditRoomLocked] = useState(Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || '')));
   const [editRoomPin, setEditRoomPin] = useState('');
 
+  useEffect(() => {
+    const about = room.about || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!';
+    const locked = Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || ''));
+    setCurrentRoomTitle(room.title || 'Voice Room');
+    setCurrentRoomCover(room.coverImage || '');
+    setCurrentRoomAbout(about);
+    setCurrentSeatCount(room.seatCount || 8);
+    setCurrentRoomLocked(locked);
+    setHasRoomPin(Boolean(room.hasPin || room.pin));
+    setRoomAnnouncement(about);
+
+    // Refresh the editor whenever it opens or a different room is loaded. Keep
+    // drafts untouched while the host is actively editing the form.
+    if (!roomSettingsModalVisible) {
+      setEditRoomName(room.title || '');
+      setEditRoomCover(room.coverImage || '');
+      setPendingRoomCoverUpload(null);
+      setEditRoomAbout(about);
+      setEditSeatCount(room.seatCount || 8);
+      setEditRoomLocked(locked);
+      setEditRoomPin('');
+    }
+  }, [room.id, room.title, room.coverImage, room.about, room.seatCount, room.isLocked, room.mode, room.hasPin, room.pin, roomSettingsModalVisible]);
+
+  const openRoomSettings = () => {
+    const about = room.about || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!';
+    const locked = Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || ''));
+    setEditRoomName(room.title || '');
+    setEditRoomCover(room.coverImage || '');
+    setPendingRoomCoverUpload(null);
+    setEditRoomAbout(about);
+    setEditSeatCount(room.seatCount || 8);
+    setEditRoomLocked(locked);
+    setHasRoomPin(Boolean(room.hasPin || room.pin));
+    setEditRoomPin('');
+    setRoomSettingsModalVisible(true);
+  };
+
+  const persistRoomSettings = async (settings) => {
+    const response = await apiUtil.post('/voice-room/create-or-update', settings);
+    if (!response.data?.success) {
+      throw new Error(response.data?.message || 'Room settings save nahi ho sakin.');
+    }
+
+    const canonicalRoom = response.data?.data?.room || {};
+    const savedSettings = {
+      title: canonicalRoom.title || settings.title,
+      coverImage: canonicalRoom.coverImage || settings.coverImage || '',
+      about: canonicalRoom.about ?? settings.about ?? '',
+      seatCount: canonicalRoom.seatCount || settings.seatCount || 8,
+      category: canonicalRoom.category || settings.category || 'Music 🎵',
+      mode: canonicalRoom.mode || settings.mode || 'Public',
+      isLocked: typeof canonicalRoom.isLocked === 'boolean' ? canonicalRoom.isLocked : Boolean(settings.isLocked),
+      hasPin: typeof canonicalRoom.hasPin === 'boolean' ? canonicalRoom.hasPin : Boolean(settings.isLocked && (settings.pin || hasRoomPin)),
+    };
+
+    const roomUserId = String(user?.userId || user?.meethiId || user?._id || room.id || room.roomId || '');
+    const config = { ...savedSettings };
+    await Promise.all([
+      AsyncStorage.setItem('@yaro_my_room_config', JSON.stringify(config)),
+      AsyncStorage.setItem(`@yaro_room_created_${roomUserId}`, JSON.stringify(config)),
+    ]).catch((cacheError) => console.log('Room cache sync warning:', cacheError?.message || cacheError));
+
+    setCurrentRoomTitle(savedSettings.title);
+    setCurrentRoomCover(savedSettings.coverImage);
+    setCurrentRoomAbout(savedSettings.about);
+    setCurrentSeatCount(savedSettings.seatCount);
+    setCurrentRoomLocked(savedSettings.isLocked);
+    setHasRoomPin(savedSettings.hasPin);
+    setRoomAnnouncement(savedSettings.about);
+    setEditRoomName(savedSettings.title);
+    setEditRoomCover(savedSettings.coverImage);
+    setEditRoomAbout(savedSettings.about);
+    setEditSeatCount(savedSettings.seatCount);
+    setEditRoomLocked(savedSettings.isLocked);
+    setEditRoomPin('');
+    setPendingRoomCoverUpload(null);
+
+    updateRoomDetails(savedSettings);
+    return savedSettings;
+  };
+
   const handleSaveRoomSettings = async () => {
+    if (isSavingRoomSettings) return;
     const trimmedTitle = editRoomName.trim();
     if (!trimmedTitle) {
       AlertService.show('Required', 'Please enter a valid room title', 'error');
       return;
     }
 
-    if (editRoomLocked && (!editRoomPin || editRoomPin.length !== 4)) {
+    if (editRoomLocked && editRoomPin && editRoomPin.length !== 4) {
+      AlertService.show('PIN Required', 'PIN 4 digits ka hona chahiye.', 'error');
+      return;
+    }
+
+    if (editRoomLocked && !editRoomPin && !hasRoomPin) {
       AlertService.show('PIN Required', 'Please enter a 4-digit PIN for passcode lock', 'error');
       return;
     }
 
-    setCurrentRoomTitle(trimmedTitle);
-    setCurrentRoomCover(editRoomCover);
-    setCurrentRoomAbout(editRoomAbout.trim());
-    setCurrentSeatCount(editSeatCount);
-    setCurrentRoomLocked(editRoomLocked);
-    setCurrentRoomPin(editRoomPin);
-
-    // Update in context
-    updateRoomDetails({
-      title: trimmedTitle,
-      coverImage: editRoomCover,
-      about: editRoomAbout.trim(),
-      seatCount: editSeatCount,
-      isLocked: editRoomLocked,
-      pin: editRoomPin,
-    });
-
-    // Save to AsyncStorage for future Go Live
+    setIsSavingRoomSettings(true);
     try {
-      const config = {
+      let coverImageToSave = editRoomCover;
+      if (pendingRoomCoverUpload) {
+        AlertService.show('Uploading', 'Room DP upload ho raha hai...', 'info');
+        coverImageToSave = await uploadToCloudinary(pendingRoomCoverUpload, 'host');
+      } else if (/^(file|content):\/\//i.test(String(coverImageToSave || ''))) {
+        AlertService.show('Room DP Required', 'Room DP ko dobara select karein, phir save karein.', 'error');
+        return;
+      }
+
+      await persistRoomSettings({
         title: trimmedTitle,
-        coverImage: editRoomCover,
+        coverImage: coverImageToSave,
         about: editRoomAbout.trim(),
         seatCount: editSeatCount,
         category: room.category || 'Music 🎵',
         mode: editRoomLocked ? 'Private (PIN)' : 'Public',
-      };
-      await AsyncStorage.setItem('@yaro_my_room_config', JSON.stringify(config));
-      // Persist to server database
-      apiUtil.post('/voice-room/create-or-update', {
-        title: trimmedTitle,
-        coverImage: editRoomCover,
-        about: editRoomAbout.trim(),
-        seatCount: editSeatCount,
-        mode: editRoomLocked ? 'Private (PIN)' : 'Public',
-      }).catch((e) => console.log('Server room sync err:', e));
+        isLocked: editRoomLocked,
+        pin: editRoomLocked ? (editRoomPin || undefined) : '',
+      });
+      setRoomSettingsModalVisible(false);
+      AlertService.show('Settings Saved', 'Room settings saved and applied successfully!', 'success');
     } catch (e) {
-      console.log('Error saving room config', e);
+      console.log('Error saving room config', e?.message || e);
+      AlertService.show('Save Failed', e?.message || 'Room settings save nahi ho sakin. Dobara try karein.', 'error');
+    } finally {
+      setIsSavingRoomSettings(false);
     }
+  };
 
-    setRoomSettingsModalVisible(false);
-    AlertService.show('Settings Saved', 'Room settings saved and applied successfully!', 'success');
+  const handleSaveAnnouncement = async () => {
+    if (isSavingRoomSettings) return;
+    const announcement = tempAnnouncement.trim() || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!';
+    setIsSavingRoomSettings(true);
+    try {
+      await persistRoomSettings({
+        title: currentRoomTitle || room.title || 'Voice Room',
+        coverImage: currentRoomCover || room.coverImage || '',
+        about: announcement,
+        seatCount: currentSeatCount || room.seatCount || 8,
+        category: room.category || 'Music 🎵',
+        mode: currentRoomLocked ? 'Private (PIN)' : (room.mode || 'Public'),
+        isLocked: currentRoomLocked,
+      });
+      setIsEditingAnnouncement(false);
+      AlertService.show('Announcement Saved', 'Room announcement saved successfully.', 'success');
+    } catch (e) {
+      AlertService.show('Save Failed', e?.message || 'Room announcement save nahi ho saka.', 'error');
+    } finally {
+      setIsSavingRoomSettings(false);
+    }
   };
 
   // Pulse animation for host
@@ -1137,6 +1243,11 @@ export default function VoiceRoomScreen() {
         styles.screenContainer,
         { backgroundColor: activeTheme?.bgColors?.[0] || '#1E0A3C' },
       ]}
+      onLayout={({ nativeEvent }) => {
+        const nextHeight = nativeEvent.layout.height;
+        setRoomLayoutHeight(nextHeight);
+        if (!isKeyboardVisible) roomBaseHeightRef.current = nextHeight;
+      }}
       resizeMode="cover"
     >
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
@@ -1230,43 +1341,53 @@ export default function VoiceRoomScreen() {
           <Text style={styles.groupPillText}>Group 1</Text>
         </View>
 
-        {/* Right: Top 3 Contributors */}
-        <TouchableOpacity
-          style={styles.topContribRowTouch}
-          onPress={() => setWealthModalVisible(true)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.topContribAvatarsRow}>
-            <View style={[styles.contribAvatarWrap, { zIndex: 3 }]}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100' }}
-                style={styles.smallContribAvatar}
-              />
-              <View style={[styles.contribRankBadge, { backgroundColor: '#F59E0B' }]}>
-                <Text style={styles.contribRankText}>1</Text>
+        {/* Keep Top 3 and place Tasks directly underneath it. */}
+        <View style={styles.topContribActions}>
+          <TouchableOpacity
+            style={styles.topContribRowTouch}
+            onPress={() => setWealthModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.topContribAvatarsRow}>
+              <View style={[styles.contribAvatarWrap, { zIndex: 3 }]}>
+                <Image
+                  source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100' }}
+                  style={styles.smallContribAvatar}
+                />
+                <View style={[styles.contribRankBadge, { backgroundColor: '#F59E0B' }]}>
+                  <Text style={styles.contribRankText}>1</Text>
+                </View>
+              </View>
+              <View style={[styles.contribAvatarWrap, { marginLeft: -6, zIndex: 2 }]}>
+                <Image
+                  source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' }}
+                  style={styles.smallContribAvatar}
+                />
+                <View style={[styles.contribRankBadge, { backgroundColor: '#94A3B8' }]}>
+                  <Text style={styles.contribRankText}>2</Text>
+                </View>
+              </View>
+              <View style={[styles.contribAvatarWrap, { marginLeft: -6, zIndex: 1 }]}>
+                <Image
+                  source={{ uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' }}
+                  style={styles.smallContribAvatar}
+                />
+                <View style={[styles.contribRankBadge, { backgroundColor: '#B45309' }]}>
+                  <Text style={styles.contribRankText}>3</Text>
+                </View>
               </View>
             </View>
-            <View style={[styles.contribAvatarWrap, { marginLeft: -6, zIndex: 2 }]}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' }}
-                style={styles.smallContribAvatar}
-              />
-              <View style={[styles.contribRankBadge, { backgroundColor: '#94A3B8' }]}>
-                <Text style={styles.contribRankText}>2</Text>
-              </View>
-            </View>
-            <View style={[styles.contribAvatarWrap, { marginLeft: -6, zIndex: 1 }]}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' }}
-                style={styles.smallContribAvatar}
-              />
-              <View style={[styles.contribRankBadge, { backgroundColor: '#B45309' }]}>
-                <Text style={styles.contribRankText}>3</Text>
-              </View>
-            </View>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={15} color="rgba(255, 255, 255, 0.7)" />
-        </TouchableOpacity>
+            <MaterialCommunityIcons name="chevron-right" size={15} color="rgba(255, 255, 255, 0.7)" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.topTasksButton}
+            onPress={() => setRoomTasksVisible(true)}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons name="clipboard-list-outline" size={13} color="#DBEAFE" />
+            <Text style={styles.topTasksText}>Tasks</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Top Flying Gift Announcement Banner (Image 1 top left) */}
@@ -1323,21 +1444,22 @@ export default function VoiceRoomScreen() {
             end={{ x: 1, y: 0 }}
             style={styles.roomJoinBannerGradient}
           >
-            <AvatarWithFrame
-              user={activeJoinBanner}
-              frame={activeJoinBanner.equippedFrameAsset || activeJoinBanner.equippedFrame || null}
-              size={30}
-              showOnlineDot={false}
-              style={{ marginRight: 7 }}
-            />
-            <View style={styles.joinCopyRow}>
+            <View style={styles.joinAvatarWithBadge}>
+              <AvatarWithFrame
+                user={activeJoinBanner}
+                frame={activeJoinBanner.equippedFrameAsset || activeJoinBanner.equippedFrame || null}
+                size={32}
+                showOnlineDot={false}
+              />
+              <Text style={styles.joinAvatarEmoji}>✨</Text>
+            </View>
+            <View style={styles.joinCopyColumn}>
               <Text style={styles.joinUserName} numberOfLines={1}>{activeJoinBanner.name || 'User'}</Text>
-              <Text style={styles.joinSubText}> has joined</Text>
+              <Text style={styles.joinSubText}>has joined</Text>
               <View style={styles.joinLevelBadge}>
                 <Text style={styles.joinLevelText}>💎 Lv.{activeJoinBanner.wealthLevel || activeJoinBanner.level || 1}</Text>
               </View>
             </View>
-            <Text style={styles.joinSparkle}>✨</Text>
           </LinearGradient>
         </Animated.View>
       )}
@@ -1448,7 +1570,7 @@ export default function VoiceRoomScreen() {
                   </View>
                 ) : (
                   <View style={styles.emptySeatWrapper}>
-                    <View style={[styles.topFeaturedEmptyCircle, isHostSeat ? styles.hostEmptyBorder : styles.cpEmptyBorder, { overflow: 'hidden' }]}>
+                    <View style={[styles.topFeaturedEmptyCircle, { borderWidth: 0, borderColor: 'transparent', backgroundColor: 'transparent', overflow: 'hidden' }]}>
                       {seat.isLocked ? (
                         <Image
                           source={LOCK_SEAT_IMAGE}
@@ -1525,8 +1647,8 @@ export default function VoiceRoomScreen() {
                             width: circleSize,
                             height: circleSize,
                             borderRadius: circleSize / 2,
-                            borderWidth: (seat.user?.equippedFrameAsset || seat.user?.equippedFrame) ? 0 : 1.5,
-                            borderColor: activeSeatSkin?.borderColor || 'rgba(255, 255, 255, 0.3)',
+                            borderWidth: 0,
+                            borderColor: 'transparent',
                           },
                         ]}>
                           <AvatarWithFrame
@@ -1560,9 +1682,9 @@ export default function VoiceRoomScreen() {
                           width: circleSize,
                           height: circleSize,
                           borderRadius: circleSize / 2,
-                          borderColor: seat.isLocked ? 'rgba(245, 158, 11, 0.9)' : (activeSeatSkin?.borderColor || 'rgba(255, 255, 255, 0.4)'),
-                          backgroundColor: seat.isLocked ? 'rgba(245, 158, 11, 0.2)' : (activeSeatSkin?.bgColor || 'rgba(255, 255, 255, 0.08)'),
-                          borderWidth: 1.5,
+                          borderColor: 'transparent',
+                          backgroundColor: 'transparent',
+                          borderWidth: 0,
                           overflow: 'hidden',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1669,27 +1791,20 @@ export default function VoiceRoomScreen() {
           </View>
         </View>
 
-        {/* Right Column: Weekly CP Side Event Card */}
+        {/* Room Support shortcut */}
         <TouchableOpacity
           style={styles.sideEventCard}
           activeOpacity={0.85}
-          onPress={() => AlertService.show('Weekly CP', 'Weekly CP couples ranking event live now!', 'info')}
+          onPress={() => setRoomSupportVisible(true)}
         >
           <LinearGradient
-            colors={['#4C1D95', '#BE185D']}
+            colors={['#0F766E', '#2563EB']}
             style={styles.sideEventGradient}
           >
-            <MaterialCommunityIcons name="heart-multiple" size={18} color="#F472B6" />
-            <Text style={styles.sideEventTitle}>Weekly</Text>
-            <Text style={styles.sideEventSub}>CP</Text>
+            <MaterialCommunityIcons name="hand-heart" size={20} color="#CCFBF1" />
+            <Text style={styles.sideEventTitle}>Room</Text>
+            <Text style={styles.sideEventSub}>Support</Text>
           </LinearGradient>
-          {/* Carousel Indicator Dots */}
-          <View style={styles.sideEventDots}>
-            <View style={styles.eventDot} />
-            <View style={styles.eventDot} />
-            <View style={styles.eventDot} />
-            <View style={[styles.eventDot, styles.eventDotActive]} />
-          </View>
         </TouchableOpacity>
       </View>
 
@@ -1785,23 +1900,6 @@ export default function VoiceRoomScreen() {
           ]}
           pointerEvents="box-none"
         >
-          {/* 0. Room Tasks Floating Widget (Matching Reference Video 00:01-00:06) */}
-          <TouchableOpacity
-            style={styles.roomTasksFloatingWidget}
-            onPress={() => setRoomTasksVisible(true)}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['#3B82F6', '#6366F1']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.roomTasksWidgetBox}
-            >
-              <Text style={{ fontSize: 16 }}>📋</Text>
-              <Text style={styles.roomTasksWidgetLabel}>Tasks</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
           {/* 1. Lucky Widget */}
           <TouchableOpacity
             style={styles.luckyFruitWidget}
@@ -1843,7 +1941,22 @@ export default function VoiceRoomScreen() {
       </View>
 
       {/* Bottom Room Control Bar */}
-      <View style={[styles.bottomControlBar, { paddingBottom: insets.bottom > 0 ? insets.bottom : 6 }]}>
+      <View
+        pointerEvents={isKeyboardVisible && isUserOnSeat && isChatBarExpanded ? 'none' : 'auto'}
+        style={[
+          styles.bottomControlBar,
+          isKeyboardVisible && {
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: keyboardLift,
+            zIndex: 110,
+            elevation: 12,
+          },
+          { paddingBottom: insets.bottom > 0 ? insets.bottom : 6 },
+          isKeyboardVisible && isUserOnSeat && isChatBarExpanded && { opacity: 0 },
+        ]}
+      >
         {!isUserOnSeat ? (
           <>
             {/* 1. Speaker button */}
@@ -2028,7 +2141,7 @@ export default function VoiceRoomScreen() {
         <View style={[
           styles.floatingChatInputBar,
           {
-            bottom: (Platform.OS === 'ios' ? keyboardHeight : 0) + (insets.bottom > 0 ? insets.bottom : 6) + 56,
+            bottom: keyboardLift + (insets.bottom > 0 ? insets.bottom : 6) + 56,
           },
         ]}>
           <TouchableOpacity
@@ -2109,7 +2222,7 @@ export default function VoiceRoomScreen() {
             AlertService.show('Seats Full', 'All seats are currently occupied.', 'info');
           }
         }}
-        onRoomSettings={() => setRoomSettingsModalVisible(true)}
+        onRoomSettings={openRoomSettings}
         onLockSeats={toggleLockAllSeats}
         onClearChat={clearChat}
         onOpenMusic={() => setMusicModalVisible(true)}
@@ -2468,6 +2581,7 @@ export default function VoiceRoomScreen() {
                   style={styles.headerSavePillBtn}
                   onPress={handleSaveRoomSettings}
                   activeOpacity={0.8}
+                  disabled={isSavingRoomSettings}
                 >
                   <LinearGradient
                     colors={['#8B5CF6', '#EC4899']}
@@ -2476,7 +2590,7 @@ export default function VoiceRoomScreen() {
                     style={styles.headerSavePillGradient}
                   >
                     <Icon name="checkmark" size={14} color="#FFF" />
-                    <Text style={styles.headerSavePillText}>Save</Text>
+                    <Text style={styles.headerSavePillText}>{isSavingRoomSettings ? 'Saving…' : 'Save'}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setRoomSettingsModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -2505,6 +2619,7 @@ export default function VoiceRoomScreen() {
                           const picked = await requestGalleryAndSelect();
                           if (picked?.uri) {
                             setEditRoomCover(picked.uri);
+                            setPendingRoomCoverUpload(picked);
                           }
                         } catch (e) {
                           console.log('Upload error', e);
@@ -2523,6 +2638,7 @@ export default function VoiceRoomScreen() {
                           const captured = await requestCameraAndCapture('back');
                           if (captured?.uri) {
                             setEditRoomCover(captured.uri);
+                            setPendingRoomCoverUpload(captured);
                           }
                         } catch (e) {
                           console.log('Camera error', e);
@@ -2623,14 +2739,16 @@ export default function VoiceRoomScreen() {
 
                 {editRoomLocked && (
                   <View style={styles.pinInputContainer}>
-                    <Text style={styles.pinInputHint}>Set 4-Digit Passcode PIN:</Text>
+                    <Text style={styles.pinInputHint}>
+                      {hasRoomPin ? 'PIN saved hai. Naya PIN set karne ke liye 4 digits enter karein:' : 'Set 4-Digit Passcode PIN:'}
+                    </Text>
                     <TextInput
                       style={styles.pinTextInput}
                       value={editRoomPin}
                       onChangeText={(val) => setEditRoomPin(val.replace(/[^0-9]/g, '').slice(0, 4))}
                       keyboardType="numeric"
                       maxLength={4}
-                      placeholder="e.g. 1234"
+                      placeholder={hasRoomPin ? 'Leave blank to keep saved PIN' : 'e.g. 1234'}
                       placeholderTextColor="#94A3B8"
                     />
                   </View>
@@ -2644,6 +2762,7 @@ export default function VoiceRoomScreen() {
                 style={styles.saveSettingsSubmitBtn}
                 onPress={handleSaveRoomSettings}
                 activeOpacity={0.85}
+                disabled={isSavingRoomSettings}
               >
                 <LinearGradient
                   colors={['#8B5CF6', '#EC4899']}
@@ -2913,13 +3032,10 @@ export default function VoiceRoomScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.announcementSaveBtn}
-                onPress={() => {
-                  setRoomAnnouncement(tempAnnouncement.trim() || "Welcome to my room, let's chat together!");
-                  setIsEditingAnnouncement(false);
-                  AlertService.show('Announcement Saved', 'Room announcement updated successfully', 'success');
-                }}
+                onPress={handleSaveAnnouncement}
+                disabled={isSavingRoomSettings}
               >
-                <Text style={styles.announcementSaveText}>Save</Text>
+                <Text style={styles.announcementSaveText}>{isSavingRoomSettings ? 'Saving…' : 'Save'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -3057,7 +3173,8 @@ const styles = StyleSheet.create({
   roomJoinBanner: {
     position: 'absolute',
     top: 260,
-    left: 0,
+    left: 16,
+    width: Math.min(width - 32, 278),
     zIndex: 10800,
     elevation: 22,
     shadowColor: '#F59E0B',
@@ -3066,6 +3183,7 @@ const styles = StyleSheet.create({
     shadowRadius: 7,
   },
   roomJoinBannerGradient: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
@@ -3074,33 +3192,40 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     borderColor: 'rgba(254, 240, 138, 0.85)',
   },
-  joinAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    marginRight: 10,
-    backgroundColor: '#6366F1',
-  },
   joinUserName: {
-    maxWidth: width * 0.29,
+    maxWidth: width * 0.5,
+    flexShrink: 1,
     color: '#FEF3C7',
     fontSize: 11.5,
     fontWeight: '900',
   },
-  joinCopyRow: {
+  joinCopyColumn: {
     flex: 1,
     minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  joinAvatarWithBadge: {
+    position: 'relative',
+    width: 38,
+    height: 38,
+    marginRight: 8,
+  },
+  joinAvatarEmoji: {
+    position: 'absolute',
+    top: -7,
+    right: -4,
+    fontSize: 13,
+    zIndex: 3,
   },
   joinLevelBadge: {
     backgroundColor: 'rgba(76,29,149,0.9)',
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 8,
-    marginLeft: 6,
+    marginLeft: 0,
+    marginTop: 2,
     borderWidth: 0.7,
     borderColor: 'rgba(255,255,255,0.55)',
   },
@@ -3113,10 +3238,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '800',
-  },
-  joinSparkle: {
-    fontSize: 15,
-    marginHorizontal: 3,
   },
   giftCelebrationBanner: {
     marginHorizontal: 16,
@@ -3202,12 +3323,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hostEmptyBorder: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderWidth: 0,
+    borderColor: 'transparent',
   },
   cpEmptyBorder: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(236, 72, 153, 0.4)',
+    borderWidth: 0,
+    borderColor: 'transparent',
   },
   topSeatLabel: {
     fontSize: 11,
@@ -3241,9 +3362,9 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -5130,6 +5251,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  topContribActions: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  topTasksButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(37, 99, 235, 0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(191, 219, 254, 0.6)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  topTasksText: {
+    color: '#EFF6FF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
   contribAvatarWrap: {
     position: 'relative',
   },
@@ -5283,7 +5424,7 @@ const styles = StyleSheet.create({
     lineHeight: 13.5,
   },
   sideEventCard: {
-    width: 82,
+    width: 90,
     borderRadius: 10,
     overflow: 'hidden',
     borderWidth: 1.2,
@@ -5293,8 +5434,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(30, 10, 45, 0.85)',
   },
   sideEventGradient: {
+    flex: 1,
     width: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
     paddingVertical: 6,
   },
   sideEventTitle: {
@@ -5557,30 +5701,5 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 11,
     fontWeight: '800',
-  },
-  roomTasksFloatingWidget: {
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  roomTasksWidgetBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
-    elevation: 6,
-  },
-  roomTasksWidgetLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#FFF',
-    letterSpacing: 0.3,
-    marginTop: 1,
   },
 });

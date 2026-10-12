@@ -52,13 +52,9 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     const entrance = resolvedAssets.entrance || {};
     const tassel = resolvedAssets.tassel || null;
     const animationUrl = entry.animationUrl || entrance.animationUrl || '';
-    const imageUrl =
-      entry.imageUrl ||
-      entry.image ||
-      entrance.imageUrl ||
-      entrance.image ||
-      '';
-    const visualUrl = animationUrl || imageUrl;
+    // Entry image/imageUrl is only the store cover. Play only the actual
+    // animation asset so a cover image is never broadcast as the room effect.
+    const visualUrl = animationUrl;
     const isAnimatedAsset = Boolean(animationUrl);
 
     const hasVisualAsset = Boolean(visualUrl);
@@ -191,24 +187,21 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   const entry = resolvedAssets.entry || resolvedAssets.entrance || {};
   const entrance = resolvedAssets.entrance || {};
   const tassel = resolvedAssets.tassel || {};
+  const hasAvatarTassel = Boolean(
+    tassel.name || tassel.animationUrl || tassel.imageUrl || tassel.image,
+  );
   const user = currentEntry.user || {};
   const colors =
     Array.isArray(entry.bannerColors) && entry.bannerColors.length >= 2
       ? entry.bannerColors
       : ['#7C3AED', '#4C1D95'];
   const animationUrl = entry.animationUrl || entrance.animationUrl || '';
-  const imageUrl =
-    entry.imageUrl ||
-    entry.image ||
-    entrance.imageUrl ||
-    entrance.image ||
-    '';
-  const visualUrl = animationUrl || imageUrl;
+  const visualUrl = animationUrl;
   const isAnimatedAsset = Boolean(animationUrl);
 
   return (
     <View style={styles.overlay} pointerEvents="none">
-      {/* 1. Full-Screen Edge-to-Edge SVGA / Vehicle / Ride Animation Layer */}
+      {/* 1. Scaled SVGA / Vehicle / Ride Animation Layer */}
       {showAsset && visualUrl ? (
         <Animated.View
           style={[
@@ -225,7 +218,6 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
             style={isAnimatedAsset ? styles.fullScreenSvga : styles.staticAssetImage}
             loops={1}
             resizeMode="contain"
-            fallbackImage={imageUrl || undefined}
           />
         </Animated.View>
       ) : null}
@@ -239,38 +231,39 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
         pointerEvents="none"
       >
         <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.bannerGradient}>
-          <AvatarWithFrame
-            user={user}
-            frame={user.equippedFrameAsset || user.equippedFrame || null}
-            size={46}
-            showOnlineDot={false}
-          />
+          <View style={styles.entryAvatarWrap}>
+            <AvatarWithFrame
+              user={user}
+              frame={user.equippedFrameAsset || user.equippedFrame || null}
+              size={38}
+              showOnlineDot={false}
+            />
+            {showTassel && hasAvatarTassel ? (
+              <Animated.View
+                style={[
+                  styles.tasselAvatarBadge,
+                  {
+                    opacity: tasselOpacity,
+                    borderColor: tassel.previewColor || '#F59E0B',
+                    transform: [{ translateY: tasselY }],
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="ribbon"
+                  size={12}
+                  color={tassel.previewColor || '#F59E0B'}
+                />
+              </Animated.View>
+            ) : null}
+          </View>
           <View style={styles.bannerText}>
             <Text style={styles.userName} numberOfLines={1}>{user.name || 'User'}</Text>
-            <Text style={styles.tagText} numberOfLines={1}>
-              {entry.tagText || currentEntry.tagText || entry.name || 'Entered the room'}
-            </Text>
+            <Text style={styles.tagText} numberOfLines={1}>has joined</Text>
           </View>
         </LinearGradient>
       </Animated.View>
 
-      {/* 3. Floating Tassel Badge (If equipped) */}
-      {showTassel ? (
-        <Animated.View
-          style={[
-            styles.tasselCard,
-            { opacity: tasselOpacity, transform: [{ translateY: tasselY }] },
-          ]}
-          pointerEvents="none"
-        >
-          <MaterialCommunityIcons
-            name="ribbon"
-            size={18}
-            color={tassel.previewColor || '#F59E0B'}
-          />
-          <Text style={styles.tasselText} numberOfLines={1}>{tassel.name}</Text>
-        </Animated.View>
-      ) : null}
     </View>
   );
 }
@@ -286,15 +279,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   assetStage: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
+    position: 'absolute',
+    top: height * 0.3,
+    left: width * 0.16,
+    width: width * 0.68,
+    height: height * 0.32,
     zIndex: 9998,
     alignItems: 'center',
     justifyContent: 'center',
   },
   fullScreenSvga: {
-    ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
   },
@@ -304,10 +298,11 @@ const styles = StyleSheet.create({
   },
   banner: {
     position: 'absolute',
-    top: 310,
-    left: 0,
-    borderRadius: 22,
-    overflow: 'hidden',
+    top: height * 0.17,
+    left: 16,
+    width: Math.min(width - 32, 280),
+    borderRadius: 18,
+    overflow: 'visible',
     zIndex: 10000,
     elevation: 20,
     shadowColor: '#000',
@@ -316,32 +311,38 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   bannerGradient: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 22,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 18,
     borderWidth: 1.2,
     borderColor: 'rgba(255,255,255,0.45)',
   },
-  bannerText: { flex: 1, marginLeft: 10 },
-  userName: { color: '#FFF', fontSize: 14.5, fontWeight: '900', letterSpacing: 0.3 },
-  tagText: { color: '#FEF3C7', fontSize: 11, fontWeight: '700', marginTop: 2, letterSpacing: 0.2 },
-  tasselCard: {
-    position: 'absolute',
-    top: height * 0.08 + 64,
-    maxWidth: width - 48,
-    flexDirection: 'row',
+  entryAvatarWrap: {
+    width: 42,
+    height: 42,
+    marginRight: 8,
+    position: 'relative',
     alignItems: 'center',
-    gap: 7,
-    backgroundColor: 'rgba(15,23,42,0.94)',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.5)',
-    zIndex: 10000,
-    elevation: 20,
+    justifyContent: 'center',
   },
-  tasselText: { color: '#FDE68A', fontSize: 11, fontWeight: '700', maxWidth: width - 100 },
+  tasselAvatarBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#111827',
+    borderWidth: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10001,
+    elevation: 21,
+  },
+  bannerText: { flex: 1, minWidth: 0, marginLeft: 2 },
+  userName: { color: '#FFF', fontSize: 12.5, fontWeight: '900', letterSpacing: 0.2 },
+  tagText: { color: '#FEF3C7', fontSize: 10, fontWeight: '700', marginTop: 1, letterSpacing: 0.2 },
 });

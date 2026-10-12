@@ -90,18 +90,19 @@ export default function FloatingVoiceRoomWidget() {
 
   return (
     <Animated.View style={[styles.floatingContainer, { transform: [{ scale: pulseAnim }] }]}>
-      <TouchableOpacity
-        style={styles.touchableCard}
-        activeOpacity={0.9}
-        onPress={maximizeRoom}
+      <LinearGradient
+        colors={['#1E1B4B', '#312E81', '#4338CA']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.gradientCard}
       >
-        <LinearGradient
-          colors={['#1E1B4B', '#312E81', '#4338CA']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.gradientCard}
+        <TouchableOpacity
+          style={styles.roomPressArea}
+          activeOpacity={0.85}
+          onPress={maximizeRoom}
+          accessibilityRole="button"
+          accessibilityLabel={`Return to ${activeRoom.title || activeRoom.hostName || 'Voice Room'}`}
         >
-          {/* Avatar with pulse ring */}
           <View style={styles.avatarWrapper}>
             <Image
               source={{ uri: activeRoom.coverImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
@@ -110,13 +111,11 @@ export default function FloatingVoiceRoomWidget() {
             <View style={styles.liveDot} />
           </View>
 
-          {/* Room Title & Equalizer */}
           <View style={styles.infoWrapper}>
             <View style={styles.topRow}>
               <View style={styles.partyBadge}>
                 <Text style={styles.partyBadgeText}>LIVE PARTY</Text>
               </View>
-              {/* Animated Sound Wave Equalizer */}
               <View style={styles.equalizer}>
                 <Animated.View style={[styles.eqBar, { height: bar1 }]} />
                 <Animated.View style={[styles.eqBar, { height: bar2 }]} />
@@ -127,39 +126,34 @@ export default function FloatingVoiceRoomWidget() {
               {activeRoom.title || activeRoom.hostName || 'Voice Room'}
             </Text>
           </View>
+        </TouchableOpacity>
 
-          {/* Quick Controls */}
-          <View style={styles.controlsRow}>
-            {/* Quick Mic Toggle */}
-            <TouchableOpacity
-              style={[styles.miniControlBtn, !isMuted && styles.micActiveBtn]}
-              onPress={(e) => {
-                e.stopPropagation();
-                toggleMic();
-              }}
-              activeOpacity={0.7}
-            >
-              <Icon
-                name={isMuted ? 'mic-off' : 'mic'}
-                size={14}
-                color={isMuted ? '#94A3B8' : '#22C55E'}
-              />
-            </TouchableOpacity>
+        <View style={styles.controlsRow}>
+          <TouchableOpacity
+            style={[styles.miniControlBtn, !isMuted && styles.micActiveBtn]}
+            onPress={toggleMic}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+          >
+            <Icon
+              name={isMuted ? 'mic-off' : 'mic'}
+              size={14}
+              color={isMuted ? '#94A3B8' : '#22C55E'}
+            />
+          </TouchableOpacity>
 
-            {/* Quick Leave Button */}
-            <TouchableOpacity
-              style={styles.miniCloseBtn}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleConfirmLeave();
-              }}
-              activeOpacity={0.7}
-            >
-              <Icon name="close" size={14} color="#CBD5E1" />
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.miniCloseBtn}
+            onPress={handleConfirmLeave}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Leave room"
+          >
+            <Icon name="close" size={14} color="#CBD5E1" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
     </Animated.View>
   );
 }
@@ -177,10 +171,6 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
   },
-  touchableCard: {
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
   gradientCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -189,6 +179,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
+  },
+  roomPressArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   avatarWrapper: {
     position: 'relative',

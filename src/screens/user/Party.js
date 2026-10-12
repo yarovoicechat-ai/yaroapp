@@ -138,6 +138,8 @@ export default function PartyScreen() {
       flag: '🇮🇳',
       category: config.category || 'Music 🎵',
       mode: config.mode || 'Public',
+      isLocked: Boolean(config.isLocked || /private\s*\(pin\)/i.test(config.mode || '')),
+      hasPin: Boolean(config.hasPin),
       seatCount: config.seatCount || 8,
       isSelfHost: true,
     };
@@ -157,20 +159,20 @@ export default function PartyScreen() {
     const myUserId = String(user?.userId || user?.meethiId || user?._id || '10000001');
 
     try {
-      // 1. Check local storage if room already created
-      const stored = await AsyncStorage.getItem(`@yaro_room_created_${myUserId}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        launchRoomWithConfig(parsed);
-        return;
-      }
-
-      // 2. Check backend if room already exists
+      // Server room details are canonical; local cache can contain an older cover.
       const res = await apiUtil.get('/voice-room/my-room');
       if (res.data?.success && res.data?.data?.exists && res.data?.data?.room) {
         const existingRoom = res.data.data.room;
         await AsyncStorage.setItem(`@yaro_room_created_${myUserId}`, JSON.stringify(existingRoom));
         launchRoomWithConfig(existingRoom);
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      const stored = await AsyncStorage.getItem(`@yaro_room_created_${myUserId}`);
+      if (stored) {
+        launchRoomWithConfig(JSON.parse(stored));
         return;
       }
     } catch (_) {}
@@ -222,7 +224,7 @@ export default function PartyScreen() {
           })}
         </View>
 
-        {/* Right Action Icons: Search, HD Trophy (Leaderboard), & VIP Crown Badge */}
+        {/* Right Action Icons: Search & HD Trophy (Leaderboard) */}
         <View style={styles.rightIconsGroup}>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -242,17 +244,6 @@ export default function PartyScreen() {
               style={styles.trophyIconImg}
               resizeMode="contain"
             />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.crownBadgeBtn}
-            onPress={() => navigation.navigate('SVIP')}
-          >
-            <Text style={{ fontSize: 18 }}>👑</Text>
-            <View style={styles.newBadgeTag}>
-              <Text style={styles.newBadgeText}>SVIP</Text>
-            </View>
           </TouchableOpacity>
         </View>
       </View>

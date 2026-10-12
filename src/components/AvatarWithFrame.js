@@ -39,12 +39,13 @@ export default function AvatarWithFrame({
         (item?.animationUrl || item?.imageUrl || item?.image || item?.catalogItem),
     ),
   );
-  const uploadedFrame =
-    resolvedFrame?.animationUrl || resolvedFrame?.imageUrl
-      ? resolvedFrame
-      : inventoryFrame?.animationUrl || inventoryFrame?.imageUrl
-        ? inventoryFrame
-        : null;
+  // Frame imageUrl/image is a store cover. Only animationUrl is the actual
+  // overlay asset, so an opaque cover can never hide the user's avatar.
+  const uploadedFrame = resolvedFrame?.animationUrl
+    ? resolvedFrame
+    : inventoryFrame?.animationUrl
+      ? inventoryFrame
+      : null;
 
   // Resolve user avatar strictly - never let the frame image or SVGA become the user's avatar
   const frameAssetUrl = uploadedFrame?.imageUrl || null;
@@ -67,13 +68,13 @@ export default function AvatarWithFrame({
   }
 
   const hasFrame = Boolean(
-    (uploadedFrame && (uploadedFrame.animationUrl || uploadedFrame.imageUrl)) ||
+    uploadedFrame?.animationUrl ||
     (resolvedFrame && frameName && frameName !== 'default' && frameName !== 'none' && frameName !== 'null')
   );
 
   // Render specific luxury frame ornament overlays (fallback when no asset file uploaded)
   const renderFrameDecorations = () => {
-    if (!hasFrame || uploadedFrame?.animationUrl || uploadedFrame?.imageUrl) return null;
+    if (!hasFrame || uploadedFrame?.animationUrl) return null;
 
     // 1. ROSE FRAME
     if (frameName.includes('rose')) {
@@ -239,7 +240,7 @@ export default function AvatarWithFrame({
       )}
 
       {/* Uploaded Animated SVGA or Static Frame Overlay */}
-      {uploadedFrame && (uploadedFrame.animationUrl || uploadedFrame.imageUrl) ? (
+      {uploadedFrame?.animationUrl ? (
         <View
           style={{
             position: 'absolute',
@@ -253,20 +254,11 @@ export default function AvatarWithFrame({
           }}
           pointerEvents="none"
         >
-          {uploadedFrame.animationUrl ? (
-            <SvgaView
-              source={uploadedFrame.animationUrl}
-              style={StyleSheet.absoluteFillObject}
-              loops={0}
-              fallbackImage={uploadedFrame.imageUrl}
-            />
-          ) : uploadedFrame.imageUrl ? (
-            <Image
-              source={{ uri: uploadedFrame.imageUrl }}
-              style={StyleSheet.absoluteFillObject}
-              resizeMode="contain"
-            />
-          ) : null}
+          <SvgaView
+            source={uploadedFrame.animationUrl}
+            style={StyleSheet.absoluteFillObject}
+            loops={0}
+          />
         </View>
       ) : null}
 

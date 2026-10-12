@@ -553,11 +553,6 @@ export const VoiceRoomProvider = ({ children }) => {
 
     setChatMessages([
       {
-        id: 'sys-rule-1',
-        type: 'system',
-        text: '🛡️ Room Guidelines: Please respect each other and chat in friendly manner. Abuse, sexual and violent contents are not allowed. All violators will be banned.',
-      },
-      {
         id: 'welcome-self-' + Date.now(),
         type: 'welcome',
         variant: 'self',
@@ -697,6 +692,9 @@ export const VoiceRoomProvider = ({ children }) => {
               title: data.title || prev.title,
               about: data.about || prev.about,
               seatCount: data.seatCount || prev.seatCount,
+              isLocked: typeof data.isLocked === 'boolean' ? data.isLocked : prev.isLocked,
+              mode: data.mode || prev.mode,
+              hasPin: typeof data.hasPin === 'boolean' ? data.hasPin : prev.hasPin,
             } : prev));
           }
         });

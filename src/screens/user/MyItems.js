@@ -228,6 +228,31 @@ export default function MyItems() {
 
   const renderItemVisual = (item) => {
     const avatar = getUserAvatar(user);
+    const frameCover = item?.coverImageUrl || item?.imageUrl || item?.image;
+
+    if (item.coverType === 'avatar_frame') {
+      if (item.animationUrl) {
+        return (
+          <View style={styles.avatarFramePreviewWrap}>
+            <AvatarWithFrame user={user} frame={item} size={68} showOnlineDot={false} />
+          </View>
+        );
+      }
+      if (frameCover) {
+        return (
+          <Image
+            source={{ uri: frameCover }}
+            style={{ width: 86, height: 86 }}
+            resizeMode="contain"
+          />
+        );
+      }
+      return (
+        <View style={styles.avatarFramePreviewWrap}>
+          <AvatarWithFrame user={user} frame={item} size={68} showOnlineDot={false} />
+        </View>
+      );
+    }
 
     const assetUrl = item.animationUrl || item.imageUrl;
     if (assetUrl) {
@@ -239,28 +264,7 @@ export default function MyItems() {
           fallbackImage={item.imageUrl}
         />
       );
-      if (item.coverType === 'avatar_frame') {
-        return (
-          <View style={styles.ownedFramePreview}>
-            <Image source={avatar} style={styles.ownedFrameAvatar} />
-            {media}
-          </View>
-        );
-      }
       return media;
-    }
-
-    if (item.coverType === 'avatar_frame') {
-      return (
-        <View style={styles.avatarFramePreviewWrap}>
-          <AvatarWithFrame
-            user={user}
-            frame={item.name}
-            size={68}
-            showOnlineDot={false}
-          />
-        </View>
-      );
     }
 
     if (item.coverType === 'mic_wave') {
@@ -403,14 +407,23 @@ export default function MyItems() {
     const hasMedia = Boolean(item?.animationUrl || item?.imageUrl);
 
     if (item?.type === 'Frame' || item?.coverType === 'avatar_frame') {
+      const frameCover = item?.coverImageUrl || item?.imageUrl || item?.image;
       return (
         <View style={styles.modalFrameShowcase}>
-          <AvatarWithFrame
-            user={user}
-            frame={item}
-            size={110}
-            showOnlineDot={false}
-          />
+          {item?.animationUrl || !frameCover ? (
+            <AvatarWithFrame
+              user={user}
+              frame={item}
+              size={110}
+              showOnlineDot={false}
+            />
+          ) : (
+            <Image
+              source={{ uri: frameCover }}
+              style={{ width: 140, height: 140 }}
+              resizeMode="contain"
+            />
+          )}
         </View>
       );
     }

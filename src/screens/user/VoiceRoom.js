@@ -182,6 +182,8 @@ export default function VoiceRoomScreen() {
     admins,
     bannedChatUsers,
     mutedUsers,
+    locallyMutedUsers,
+    speakerphoneEnabled,
     seats,
     seatCount,
     setRoomSeatCount,
@@ -234,6 +236,7 @@ export default function VoiceRoomScreen() {
     stopMusicMixing,
     setMusicVolume,
     setMicVolume,
+    setSpeakerphoneEnabled,
     currentRoomTheme,
     currentSeatSkin,
     updateRoomTheme,
@@ -321,9 +324,9 @@ export default function VoiceRoomScreen() {
   }, [lastReaction]);
 
   // Image 2 Announcement & Notice States
-  const [roomAnnouncement, setRoomAnnouncement] = useState("Welcome to my room, let's chat together!");
+  const [roomAnnouncement, setRoomAnnouncement] = useState('');
   const [isEditingAnnouncement, setIsEditingAnnouncement] = useState(false);
-  const [tempAnnouncement, setTempAnnouncement] = useState("Welcome to my room, let's chat together!");
+  const [tempAnnouncement, setTempAnnouncement] = useState('');
 
   // Image 1 Top Flying Gift Announcement State
   const [flyingGiftBanner, setFlyingGiftBanner] = useState(null);
@@ -399,12 +402,12 @@ export default function VoiceRoomScreen() {
   const isSelfHostFromDeepLink = Boolean(incomingRoomId && user?.userId && String(incomingRoomId) === String(user.userId));
 
   const room = activeRoom || route.params?.room || {
-    id: incomingRoomId || ('room-' + Date.now()),
-    roomId: incomingRoomId || ('room-' + Date.now()),
+    id: incomingRoomId || '',
+    roomId: incomingRoomId || '',
     title: isSelfHostFromDeepLink ? (user?.name ? `${user.name}'s Party Lounge 🎶` : 'Voice Party Lounge 🎶') : (incomingRoomId ? `Voice Room #${incomingRoomId}` : 'Voice Party Lounge 🎶'),
-    hostName: isSelfHostFromDeepLink ? (user?.name || 'You') : (incomingRoomId ? `Host #${incomingRoomId}` : 'Voice Host'),
-    coverImage: isSelfHostFromDeepLink ? (user?.avatar || user?.image) : 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-    onlineCount: '1',
+    hostName: isSelfHostFromDeepLink ? (user?.name || '') : '',
+    coverImage: isSelfHostFromDeepLink ? (user?.avatar || user?.image || '') : '',
+    onlineCount: '0',
     flag: '🇮🇳',
     hostId: incomingRoomId,
     isSelfHost: isSelfHostFromDeepLink,
@@ -417,7 +420,11 @@ export default function VoiceRoomScreen() {
 
   const handleShareRoom = async () => {
     try {
-      const shareRoomId = room.id || room.roomId || route.params?.roomId || user?.userId || '1000000001';
+      const shareRoomId = room.id || room.roomId || route.params?.roomId || '';
+      if (!shareRoomId) {
+        AlertService.show('Room unavailable', 'This room does not have a valid ID yet.', 'warning');
+        return;
+      }
       const shareTitle = currentRoomTitle || room.title || 'Voice Party Lounge';
       const shareUrl = `https://yaroapp.in/room/${shareRoomId}`;
       await Share.share({
@@ -520,9 +527,9 @@ export default function VoiceRoomScreen() {
             id: incomingId,
             roomId: incomingId,
             title: isSelf ? (user?.name ? `${user.name}'s Party Lounge 🎶` : 'Voice Party Lounge 🎶') : `Voice Room #${incomingId}`,
-            hostName: isSelf ? (user?.name || 'You') : `Host #${incomingId}`,
-            coverImage: isSelf ? (user?.avatar || user?.image) : 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-            onlineCount: '1',
+            hostName: isSelf ? (user?.name || '') : '',
+            coverImage: isSelf ? (user?.avatar || user?.image || '') : '',
+            onlineCount: '0',
             flag: '🇮🇳',
             seatCount: 8,
             isSelfHost: isSelf,
@@ -536,12 +543,21 @@ export default function VoiceRoomScreen() {
 
   // Strict ownership check: prevent visitor from getting host/admin controls
   const currentUserId = user?.userId ? String(user.userId) : (user?._id || user?.id ? String(user._id || user.id) : null);
-  const roomHostId = (room?.hostId || room?.hostUserId || room?.creatorId)
-    ? String(room.hostId || room.hostUserId || room.creatorId)
+  const roomHostId = (room?.hostId || room?.hostUserId || room?.creatorId || room?.ownerId || room?.owner?._id)
+    ? String(room.hostId || room.hostUserId || room.creatorId || room.ownerId || room.owner?._id)
     : null;
+  const normalizeOwnerId = (id) => {
+    const clean = String(id || '').trim();
+    if (/^10000\d{3}$/.test(clean)) {
+      return `100000000${clean.slice(5)}`.slice(-10);
+    }
+    return clean;
+  };
 
   const isSelfHostParam = Boolean(route.params?.room?.isSelfHost || room?.isSelfHost);
-  const isIdMatch = Boolean(currentUserId && roomHostId && currentUserId === roomHostId);
+  const isIdMatch = Boolean(
+    currentUserId && roomHostId && normalizeOwnerId(currentUserId) === normalizeOwnerId(roomHostId)
+  );
   const isContextOwnerMatch = Boolean(contextIsOwner && activeRoom?.id === room?.id && (activeRoom?.isSelfHost || isSelfHostParam || isIdMatch));
 
   const isRoomOwner = Boolean(isSelfHostParam || isIdMatch || isContextOwnerMatch);
@@ -557,7 +573,6 @@ export default function VoiceRoomScreen() {
   // Seat Action Modal for Host/Admin
   const [selectedSeatForAction, setSelectedSeatForAction] = useState(null);
   const [seatActionModalVisible, setSeatActionModalVisible] = useState(false);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [isChatBarExpanded, setIsChatBarExpanded] = useState(false);
   const isUserOnSeat = currentSeatIndex !== null && currentSeatIndex !== undefined && currentSeatIndex !== -1;
 
@@ -756,31 +771,6 @@ export default function VoiceRoomScreen() {
     onRoomNotification: (notif) => {
       setRoomGiftNotifications((prev) => [...prev, notif].slice(-5));
     },
-    onEntryEffect: (entryPayload) => {
-      const entryAssets = resolveEntryAssets(entryPayload);
-      if (entryPayload && (entryAssets.entry || entryAssets.entrance)) {
-        setActiveEntryEffect(entryPayload);
-        const effectName = entryAssets.entry?.name || entryAssets.entrance?.name || 'Entry Effect';
-        const userName = entryPayload.user?.name || 'User';
-        const entryId = entryPayload.entryId || entryPayload.id || `entry-${Date.now()}`;
-        setChatMessages((prev) => {
-          if (prev.some((m) => m.id === `entry-${entryId}` || m.entryId === entryId)) {
-            return prev;
-          }
-          return [
-            ...prev,
-            {
-              id: `entry-${entryId}`,
-              entryId: entryId,
-              type: 'system',
-              text: `👑 ${userName} entered with ${effectName}!`,
-              tagText: entryPayload.tagText,
-              timestamp: Date.now(),
-            },
-          ];
-        });
-      }
-    },
   });
 
   useEffect(() => {
@@ -835,7 +825,7 @@ export default function VoiceRoomScreen() {
   // Room Details and Settings Modals
   const [currentRoomTitle, setCurrentRoomTitle] = useState(room.title);
   const [currentRoomCover, setCurrentRoomCover] = useState(room.coverImage);
-  const [currentRoomAbout, setCurrentRoomAbout] = useState(room.about || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!');
+  const [currentRoomAbout, setCurrentRoomAbout] = useState(room.about || '');
   const [currentSeatCount, setCurrentSeatCount] = useState(room.seatCount || 8);
   const [currentRoomLocked, setCurrentRoomLocked] = useState(Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || '')));
   const [hasRoomPin, setHasRoomPin] = useState(Boolean(room.hasPin || room.pin));
@@ -848,7 +838,7 @@ export default function VoiceRoomScreen() {
   const [editRoomName, setEditRoomName] = useState(room.title || '');
   const [editRoomCover, setEditRoomCover] = useState(room.coverImage);
   const [pendingRoomCoverUpload, setPendingRoomCoverUpload] = useState(null);
-  const [editRoomAbout, setEditRoomAbout] = useState(room.about || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!');
+  const [editRoomAbout, setEditRoomAbout] = useState(room.about || '');
   const [editSeatCount, setEditSeatCount] = useState(room.seatCount || 8);
   const [editRoomLocked, setEditRoomLocked] = useState(Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || '')));
   const [editRoomPin, setEditRoomPin] = useState('');
@@ -977,7 +967,7 @@ export default function VoiceRoomScreen() {
   }, []);
 
   useEffect(() => {
-    const about = room.about || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!';
+    const about = room.about || '';
     const locked = Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || ''));
     setCurrentRoomTitle(room.title || 'Voice Room');
     setCurrentRoomCover(room.coverImage || '');
@@ -1001,7 +991,7 @@ export default function VoiceRoomScreen() {
   }, [room.id, room.title, room.coverImage, room.about, room.seatCount, room.isLocked, room.mode, room.hasPin, room.pin, roomSettingsModalVisible]);
 
   const openRoomSettings = () => {
-    const about = room.about || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!';
+    const about = room.about || '';
     const locked = Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || ''));
     setEditRoomName(room.title || '');
     setEditRoomCover(room.coverImage || '');
@@ -1119,7 +1109,7 @@ export default function VoiceRoomScreen() {
 
   const handleSaveAnnouncement = async () => {
     if (isSavingRoomSettings) return;
-    const announcement = tempAnnouncement.trim() || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!';
+    const announcement = tempAnnouncement.trim();
     setIsSavingRoomSettings(true);
     try {
       await persistRoomSettings({
@@ -1184,15 +1174,9 @@ export default function VoiceRoomScreen() {
       ].filter(Boolean).map(String);
 
       const isMatchingId = myIdList.some((id) => seatUserIdList.includes(id));
-      const isMatchingName = Boolean(
-        user?.name &&
-        seat.user.name &&
-        String(user.name).trim().toLowerCase() === String(seat.user.name).trim().toLowerCase()
-      );
       const isCurrentUserSeat = Boolean(
         seat.user.isCurrentUser ||
         isMatchingId ||
-        isMatchingName ||
         (seat.seatIndex === 0 && (isRoomOwner || isContextOwnerMatch))
       );
 
@@ -1250,7 +1234,7 @@ export default function VoiceRoomScreen() {
   const handleSendMessage = () => {
     if (!inputText.trim()) return;
 
-    if (user?.userId && bannedChatUsers.includes(user.userId)) {
+    if (user?.userId && bannedChatUsers.map(String).includes(String(user.userId))) {
       AlertService.show('Muted from Chat', 'You are currently muted from chat in this room', 'error');
       return;
     }
@@ -1440,7 +1424,7 @@ export default function VoiceRoomScreen() {
             </Text>
             <View style={styles.headerRoomSubRow}>
               <Text style={styles.headerRoomIdText}>ID:{room.id || room.roomId || '1000000002'}</Text>
-              <Text style={styles.headerRoomMembersText}>👤 {onlineCount ?? 2}</Text>
+              <Text style={styles.headerRoomMembersText}>👤 {onlineCount ?? 0}</Text>
               {agoraStatus === 'connected' ? (
                 <View style={styles.voiceLiveBadge}>
                   <View style={styles.voiceGreenDot} />
@@ -1923,7 +1907,7 @@ export default function VoiceRoomScreen() {
               </TouchableOpacity>
             </View>
             <Text style={styles.announcementBody} numberOfLines={2}>
-              {roomAnnouncement}
+              {roomAnnouncement || 'No announcement yet.'}
             </Text>
           </View>
         </View>
@@ -2096,19 +2080,14 @@ export default function VoiceRoomScreen() {
             <TouchableOpacity
               style={styles.controlCircleBtn}
               onPress={() => {
-                const next = !isSpeakerOn;
-                setIsSpeakerOn(next);
-                try {
-                  InCallManager.setForceSpeakerphoneOn(next);
-                  InCallManager.setSpeakerphoneOn(next);
-                } catch (_) {}
+                setSpeakerphoneEnabled(!speakerphoneEnabled);
               }}
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons
-                name={isSpeakerOn ? 'volume-high' : 'volume-off'}
+                name={speakerphoneEnabled ? 'volume-high' : 'volume-off'}
                 size={22}
-                color={isSpeakerOn ? '#FFF' : '#EF4444'}
+                color={speakerphoneEnabled ? '#FFF' : '#EF4444'}
               />
             </TouchableOpacity>
 
@@ -2160,19 +2139,14 @@ export default function VoiceRoomScreen() {
             <TouchableOpacity
               style={styles.controlCircleBtn}
               onPress={() => {
-                const next = !isSpeakerOn;
-                setIsSpeakerOn(next);
-                try {
-                  InCallManager.setForceSpeakerphoneOn(next);
-                  InCallManager.setSpeakerphoneOn(next);
-                } catch (_) {}
+                setSpeakerphoneEnabled(!speakerphoneEnabled);
               }}
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons
-                name={isSpeakerOn ? 'volume-high' : 'volume-off'}
+                name={speakerphoneEnabled ? 'volume-high' : 'volume-off'}
                 size={22}
-                color={isSpeakerOn ? '#FFF' : '#EF4444'}
+                color={speakerphoneEnabled ? '#FFF' : '#EF4444'}
               />
             </TouchableOpacity>
 
@@ -2466,47 +2440,9 @@ export default function VoiceRoomScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* System Item */}
-            <TouchableOpacity
-              style={styles.messageRowItem}
-              activeOpacity={0.8}
-              onPress={() => {
-                setMessageModalVisible(false);
-                AlertService.show('System Notices', 'Welcome to Voice Club! Keep conversation friendly and respectful.', 'info');
-              }}
-            >
-              <LinearGradient
-                colors={['#A855F7', '#7C3AED']}
-                style={styles.noticeIconCircle}
-              >
-                <MaterialCommunityIcons name="volume-high" size={22} color="#FFF" />
-              </LinearGradient>
-              <View style={styles.noticeInfoCol}>
-                <Text style={styles.noticeTitle}>System</Text>
-              </View>
-              <Text style={styles.noticeTimestamp}>Early morning02:31</Text>
-            </TouchableOpacity>
-
-            {/* Activity Item */}
-            <TouchableOpacity
-              style={styles.messageRowItem}
-              activeOpacity={0.8}
-              onPress={() => {
-                setMessageModalVisible(false);
-                AlertService.show('Activity Notices', 'Daily check-in and room event rewards available!', 'info');
-              }}
-            >
-              <LinearGradient
-                colors={['#F59E0B', '#D97706']}
-                style={styles.noticeIconCircle}
-              >
-                <MaterialCommunityIcons name="bullhorn-variant" size={22} color="#FFF" />
-              </LinearGradient>
-              <View style={styles.noticeInfoCol}>
-                <Text style={styles.noticeTitle}>Activity</Text>
-              </View>
-              <Text style={styles.noticeTimestamp}>Early morning02:31</Text>
-            </TouchableOpacity>
+            <Text style={{ color: '#94A3B8', textAlign: 'center', paddingVertical: 28 }}>
+              No new messages or activity.
+            </Text>
           </View>
         </View>
       </Modal>
@@ -2517,12 +2453,20 @@ export default function VoiceRoomScreen() {
         onClose={() => setProfileModalVisible(false)}
         user={selectedProfileUser}
         currentUserId={user?.userId || user?.id || user?._id}
-        currentUserName={user?.name}
         currentUserFrame={user?.equippedFrameAsset || user?.equippedFrame}
         onLeaveSeat={() => leaveSeat(user)}
-        onOpenFullProfile={() => {
+        onOpenFullProfile={(target) => {
           setProfileModalVisible(false);
-          navigation.navigate('MainTabs', { screen: 'Profile' });
+          const targetId = target?.userId || target?.id || target?._id;
+          const isSelf = [user?.userId, user?.id, user?._id]
+            .filter(Boolean)
+            .map(String)
+            .includes(String(targetId || ''));
+          if (isSelf || !targetId) {
+            navigation.navigate('MainTabs', { screen: 'Profile' });
+          } else {
+            navigation.navigate('UserProfile', { userId: targetId, user: target });
+          }
         }}
         onMention={handleMentionUser}
         onGift={(u) => {
@@ -2548,14 +2492,14 @@ export default function VoiceRoomScreen() {
         roomOwnerId={room.hostId || room.creatorId || room.ownerId || (isContextOwnerMatch ? user?.userId : null)}
         admins={admins}
         seats={seats}
-        onToggleAdmin={(u) => toggleAdmin(String(u?.userId || u?.id), u?.name)}
-        onBanChat={(u) => toggleChatBan(String(u?.userId || u?.id), u?.name)}
-        onKickUser={(u) => kickFromRoom24h(String(u?.userId || u?.id), u?.name)}
-        onRemoveFromSeat={(u) => removeFromSeat(String(u?.userId || u?.id), u?.name)}
+        onToggleAdmin={(u) => toggleAdmin(String(u?.userId || u?.id || u?._id), u?.name)}
+        onBanChat={(u) => toggleChatBan(String(u?.userId || u?.id || u?._id), u?.name)}
+        onKickUser={(u) => kickFromRoom24h(String(u?.userId || u?.id || u?._id), u?.name)}
+        onRemoveFromSeat={(u) => removeFromSeat(String(u?.userId || u?.id || u?._id), u?.name)}
         onToggleSeatLock={(seatIdx) => toggleSeatLock(seatIdx)}
-        onMuteSeat={(u) => toggleMuteUser(String(u?.userId || u?.id), u?.name)}
+        onMuteSeat={(u) => toggleMuteUser(String(u?.userId || u?.id || u?._id), u?.name)}
         bannedChatUsers={bannedChatUsers}
-        mutedUsers={mutedUsers}
+        mutedUsers={[...new Set([...(mutedUsers || []).map(String), ...(locallyMutedUsers || []).map(String)])]}
         bottomSafePadding={bottomSafePadding}
       />
 
@@ -2668,11 +2612,11 @@ export default function VoiceRoomScreen() {
         visible={roomDetailsModalVisible}
         onClose={() => setRoomDetailsModalVisible(false)}
         room={{
-          id: room.id || room.roomId || '30001',
-          title: currentRoomTitle || room.title || 'TÜRKİYE',
+          id: room.id || room.roomId || '',
+          title: currentRoomTitle || room.title || 'Voice Room',
           coverImage: currentRoomCover || room.coverImage,
-          tag: room.tag || 'Party',
-          about: currentRoomAbout || 'No title',
+          tag: room.tag || '',
+          about: currentRoomAbout || room.about || '',
         }}
         members={onlineUsers}
         onFollow={() => {}}

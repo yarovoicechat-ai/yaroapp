@@ -134,12 +134,12 @@ export default function PartyScreen() {
       roomId: myUserId,
       channelName: myUserId,
       title: finalTitle,
-      about: config.about || 'Welcome to my party! Grab a seat and chat 💕',
+      about: config.about || '',
       hostName: user?.name || 'You',
       hostId: myUserId,
       country: user?.country?.name || '',
       coverImage: config.coverImage || selectedCover || user?.avatar || user?.image,
-      onlineCount: '1',
+      onlineCount: '0',
       flag: '🇮🇳',
       category: config.category || 'Music 🎵',
       mode: config.mode || 'Public',
@@ -195,7 +195,7 @@ export default function PartyScreen() {
 
   const handleCreateRoom = async () => {
     const finalTitle = roomTitleInput.trim() || (user?.name ? `${user.name}'s Party Club 🎶` : 'My Voice Party 🎵');
-    const finalAbout = roomAboutInput.trim() || 'Welcome to my party! Grab a seat and chat 💕';
+    const finalAbout = roomAboutInput.trim();
     const config = {
       title: finalTitle,
       about: finalAbout,

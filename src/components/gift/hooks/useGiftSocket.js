@@ -11,12 +11,10 @@ export function useGiftSocket({
   onGiftSent,
   onRoomNotification,
   onComboUpdate,
-  onEntryEffect,
 }) {
   const isAppActiveRef = useRef(true);
   const seenTransactionsRef = useRef(new Set());
   const seenAnimationsRef = useRef(new Set());
-  const seenEntriesRef = useRef(new Set());
 
   // Keep callback refs up to date without triggering effect recreation
   const onGiftAnimationRef = useRef(onGiftAnimation);
@@ -34,8 +32,6 @@ export function useGiftSocket({
   const onComboUpdateRef = useRef(onComboUpdate);
   onComboUpdateRef.current = onComboUpdate;
 
-  const onEntryEffectRef = useRef(onEntryEffect);
-  onEntryEffectRef.current = onEntryEffect;
 
   // AppState Listener (Background / Foreground transition safety)
   useEffect(() => {
@@ -149,20 +145,6 @@ export function useGiftSocket({
       onGiftSentRef.current && onGiftSentRef.current(payload);
     };
 
-    const handleEntryEffect = (payload) => {
-      if (!payload || !isAppActiveRef.current) return;
-      const entryId = payload.entryId || payload.id || (payload.user?.userId ? `${payload.user.userId}_${payload.timestamp || ''}` : null);
-      if (entryId) {
-        if (seenEntriesRef.current.has(entryId)) return;
-        seenEntriesRef.current.add(entryId);
-        if (seenEntriesRef.current.size > 100) {
-          const first = seenEntriesRef.current.values().next().value;
-          seenEntriesRef.current.delete(first);
-        }
-      }
-      onEntryEffectRef.current && onEntryEffectRef.current(payload);
-    };
-
       const handleConnect = () => {
         if (roomId) {
           socket.emit('voice_room:subscribe_gifts', { roomId });
@@ -172,8 +154,6 @@ export function useGiftSocket({
       socket.on('gift:animation', handleGiftAnimation);
       socket.on('gift:received', handleGiftReceived);
       socket.on('gift:sent', handleGiftSent);
-      socket.on('entry:effect', handleEntryEffect);
-      socket.on('room:entry', handleEntryEffect);
       socket.on('connect', handleConnect);
     };
 
@@ -201,8 +181,6 @@ export function useGiftSocket({
         attachedSocket.off('gift:animation');
         attachedSocket.off('gift:received');
         attachedSocket.off('gift:sent');
-        attachedSocket.off('entry:effect');
-        attachedSocket.off('room:entry');
       }
     };
   }, [roomId, currentUserId, callId]);

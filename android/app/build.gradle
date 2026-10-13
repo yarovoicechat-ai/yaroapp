@@ -70,14 +70,16 @@ android {
 
             def storeFileName = System.getenv("MYAPP_UPLOAD_STORE_FILE") ?: (project.findProperty("MYAPP_UPLOAD_STORE_FILE") ?: localProps.getProperty("MYAPP_UPLOAD_STORE_FILE", "yaro-upload-key.keystore"))
             def keyAliasVal = System.getenv("MYAPP_UPLOAD_KEY_ALIAS") ?: (project.findProperty("MYAPP_UPLOAD_KEY_ALIAS") ?: localProps.getProperty("MYAPP_UPLOAD_KEY_ALIAS", "yaro-upload-key"))
-            def storePasswordVal = System.getenv("MYAPP_UPLOAD_STORE_PASSWORD") ?: (project.findProperty("MYAPP_UPLOAD_STORE_PASSWORD") ?: localProps.getProperty("MYAPP_UPLOAD_STORE_PASSWORD", ""))
-            def keyPasswordVal = System.getenv("MYAPP_UPLOAD_KEY_PASSWORD") ?: (project.findProperty("MYAPP_UPLOAD_KEY_PASSWORD") ?: localProps.getProperty("MYAPP_UPLOAD_KEY_PASSWORD", ""))
+            def storePasswordVal = System.getenv("MYAPP_UPLOAD_STORE_PASSWORD") ?: (project.findProperty("MYAPP_UPLOAD_STORE_PASSWORD") ?: localProps.getProperty("MYAPP_UPLOAD_STORE_PASSWORD", "yaroapp@2026"))
+            def keyPasswordVal = System.getenv("MYAPP_UPLOAD_KEY_PASSWORD") ?: (project.findProperty("MYAPP_UPLOAD_KEY_PASSWORD") ?: localProps.getProperty("MYAPP_UPLOAD_KEY_PASSWORD", "yaroapp@2026"))
 
             if (file(storeFileName).exists() && storePasswordVal && keyPasswordVal) {
                 storeFile file(storeFileName)
                 storePassword storePasswordVal
                 keyAlias keyAliasVal
                 keyPassword keyPasswordVal
+            } else {
+                println("⚠️ [SigningConfig] Release keystore not found or passwords missing: ${storeFileName}")
             }
         }
     }

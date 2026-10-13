@@ -22,7 +22,6 @@ export default function RoomUserProfileModal({
   onClose,
   user,
   currentUserId,
-  currentUserName,
   currentUserFrame = null,
   onMention,
   onGift,
@@ -73,8 +72,7 @@ export default function RoomUserProfileModal({
     ? seats.find((s) => s.user && (
         String(s.user.userId) === targetUserId ||
         String(s.user.id) === targetUserId ||
-        String(s.user._id) === targetUserId ||
-        (s.user.name && targetName && s.user.name.toLowerCase() === targetName.toLowerCase())
+        String(s.user._id) === targetUserId
       ))
     : null;
   const isTargetInSeat = Boolean(targetSeat);
@@ -85,8 +83,7 @@ export default function RoomUserProfileModal({
 
   const isSelf = Boolean(
     user?.isCurrentUser ||
-    (currentUserId && targetIds.includes(String(currentUserId))) ||
-    (currentUserName && targetName && String(currentUserName).trim().toLowerCase() === String(targetName).trim().toLowerCase())
+    (currentUserId && targetIds.includes(String(currentUserId)))
   );
 
   // Can perform moderation actions if viewer is Owner or Admin, and target is NOT the room owner AND NOT oneself
@@ -236,7 +233,7 @@ export default function RoomUserProfileModal({
                   style={styles.actionItem}
                   onPress={() => {
                     onClose();
-                    AlertService.show('Profile', `Opening ${targetName}'s full profile`, 'info');
+                    onOpenFullProfile && onOpenFullProfile(user);
                   }}
                   activeOpacity={0.7}
                 >
@@ -272,12 +269,11 @@ export default function RoomUserProfileModal({
               {/* Row 2: Lock / Unlock Seat, Mute / Unmute Mic, Ban / Unban Chat */}
               <View style={styles.actionsRow}>
                 <TouchableOpacity
-                  style={styles.actionItem}
+                  style={[styles.actionItem, !isTargetInSeat && { opacity: 0.45 }]}
+                  disabled={!isTargetInSeat}
                   onPress={() => {
                     onClose();
-                    if (onToggleSeatLock) {
-                      onToggleSeatLock(targetSeatIndex !== null ? targetSeatIndex : (user?.seatIndex ?? 1));
-                    }
+                    if (onToggleSeatLock && targetSeatIndex !== null) onToggleSeatLock(targetSeatIndex);
                   }}
                   activeOpacity={0.7}
                 >
@@ -352,23 +348,25 @@ export default function RoomUserProfileModal({
                   <Text style={[styles.actionLabel, { color: '#EF4444' }]}>Kick (24h Ban)</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.actionItem}
-                  onPress={() => {
-                    onClose();
-                    onToggleAdmin && onToggleAdmin(user);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name={isTargetAdmin ? "account-star-outline" : "account-star"}
-                    size={28}
-                    color={isTargetAdmin ? "#EF4444" : "#F59E0B"}
-                  />
-                  <Text style={[styles.actionLabel, isTargetAdmin && { color: '#EF4444' }]}>
-                    {isTargetAdmin ? 'Remove Admin' : 'Set Admin'}
-                  </Text>
-                </TouchableOpacity>
+                {isRoomOwner && (
+                  <TouchableOpacity
+                    style={styles.actionItem}
+                    onPress={() => {
+                      onClose();
+                      onToggleAdmin && onToggleAdmin(user);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialCommunityIcons
+                      name={isTargetAdmin ? "account-star-outline" : "account-star"}
+                      size={28}
+                      color={isTargetAdmin ? "#EF4444" : "#F59E0B"}
+                    />
+                    <Text style={[styles.actionLabel, isTargetAdmin && { color: '#EF4444' }]}>
+                      {isTargetAdmin ? 'Remove Admin' : 'Set Admin'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           ) : (
@@ -379,7 +377,7 @@ export default function RoomUserProfileModal({
                   style={styles.actionItem}
                   onPress={() => {
                     onClose();
-                    AlertService.show('Profile', `Opening ${targetName}'s full profile`, 'info');
+                    onOpenFullProfile && onOpenFullProfile(user);
                   }}
                   activeOpacity={0.7}
                 >

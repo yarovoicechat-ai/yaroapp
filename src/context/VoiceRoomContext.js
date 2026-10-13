@@ -866,9 +866,16 @@ export const VoiceRoomProvider = ({ children }) => {
         sock.on('voice_room:user_joined', (data) => {
           console.log('📡 [VoiceRoom] User joined room:', data?.user?.name);
           if (data?.onlineCount !== undefined) setOnlineCount(data.onlineCount);
-          if (data?.user?.userId) {
+          const joinedUserIds = new Set(
+            [data?.user?.userId, data?.user?.id, data?.user?._id].filter(Boolean).map(String),
+          );
+          if (joinedUserIds.size) {
             setOnlineUsers((previous) => [
-              ...previous.filter((person) => String(person.userId) !== String(data.user.userId)),
+              ...previous.filter((person) => ![
+                person?.userId,
+                person?.id,
+                person?._id,
+              ].filter(Boolean).some((id) => joinedUserIds.has(String(id)))),
               data.user,
             ]);
           }
@@ -933,7 +940,16 @@ export const VoiceRoomProvider = ({ children }) => {
         sock.on('voice_room:user_left', (data) => {
           console.log('📡 [VoiceRoom] User left room:', data?.user?.name);
           if (data?.onlineCount !== undefined) setOnlineCount(data.onlineCount);
-          if (data?.user?.userId) setOnlineUsers(previous => previous.filter(person => String(person.userId) !== String(data.user.userId)));
+          const leavingUserIds = new Set(
+            [data?.user?.userId, data?.user?.id, data?.user?._id].filter(Boolean).map(String),
+          );
+          if (leavingUserIds.size) {
+            setOnlineUsers((previous) => previous.filter((person) => ![
+              person?.userId,
+              person?.id,
+              person?._id,
+            ].filter(Boolean).some((id) => leavingUserIds.has(String(id)))));
+          }
           if (data?.seats) {
             setSeats(mapSeatsWithCurrentUser(data.seats, currentUserId));
           }
@@ -1019,21 +1035,32 @@ export const VoiceRoomProvider = ({ children }) => {
         });
 
         // 10. Room Entry & VIP Entry effects
-        const acceptEntryEffect = (data, eventName) => {
-          const entryUserKey = String(
-            data?.user?.userId || data?.userId || data?.user?.id || data?.user?._id || '',
-          );
+        const rememberEntryEvent = (data) => {
+          const userKeys = [...new Set([
+            data?.user?.userId,
+            data?.userId,
+            data?.user?.id,
+            data?.user?._id,
+          ].filter(Boolean).map(String))];
           const entryId = String(data?.entryId || data?.id || '');
+          const eventKey = entryId ? `event:${entryId}` : '';
           const now = Date.now();
-          const lastEntryAt = entryUserKey ? recentEntryUsersRef.current.get(entryUserKey) : 0;
-          if ((entryId && recentEntryUsersRef.current.get(`event:${entryId}`)) ||
-              (lastEntryAt && now - lastEntryAt < 3000)) return;
-          if (entryUserKey) recentEntryUsersRef.current.set(entryUserKey, now);
-          if (entryId) recentEntryUsersRef.current.set(`event:${entryId}`, now);
+          const hasSeenEvent = eventKey && recentEntryUsersRef.current.has(eventKey);
+          const hasRecentUserEvent = userKeys.some((key) => {
+            const seenAt = recentEntryUsersRef.current.get(key) || 0;
+            return seenAt && now - seenAt < 3000;
+          });
+          if (hasSeenEvent || hasRecentUserEvent) return false;
+          userKeys.forEach((key) => recentEntryUsersRef.current.set(key, now));
+          if (eventKey) recentEntryUsersRef.current.set(eventKey, now);
           if (recentEntryUsersRef.current.size > 200) {
             const first = recentEntryUsersRef.current.keys().next().value;
             recentEntryUsersRef.current.delete(first);
           }
+          return true;
+        };
+        const acceptEntryEffect = (data, eventName) => {
+          if (!rememberEntryEvent(data)) return;
           console.warn(`📡 [VoiceRoom] ${eventName} received in Context:`, data?.entryId, data?.user?.name);
           setActiveEntryEffect(data);
         };
@@ -1049,10 +1076,7 @@ export const VoiceRoomProvider = ({ children }) => {
             acceptEntryEffect(data, 'room:vip-entry');
             return;
           }
-          const vipUserKey = String(data?.user?.userId || data?.userId || data?.user?.id || '');
-          const lastEntryAt = vipUserKey ? recentEntryUsersRef.current.get(vipUserKey) || 0 : 0;
-          if (lastEntryAt && Date.now() - lastEntryAt < 3000) return;
-          if (vipUserKey) recentEntryUsersRef.current.set(vipUserKey, Date.now());
+          if (!rememberEntryEvent(data)) return;
           setActiveVipEntry(data);
         });
         sock.on('vip:entry', (data) => {
@@ -1060,10 +1084,7 @@ export const VoiceRoomProvider = ({ children }) => {
             acceptEntryEffect(data, 'vip:entry');
             return;
           }
-          const vipUserKey = String(data?.user?.userId || data?.userId || data?.user?.id || '');
-          const lastEntryAt = vipUserKey ? recentEntryUsersRef.current.get(vipUserKey) || 0 : 0;
-          if (lastEntryAt && Date.now() - lastEntryAt < 3000) return;
-          if (vipUserKey) recentEntryUsersRef.current.set(vipUserKey, Date.now());
+          if (!rememberEntryEvent(data)) return;
           setActiveVipEntry(data);
         });
 

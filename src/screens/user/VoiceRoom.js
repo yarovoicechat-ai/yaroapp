@@ -1423,7 +1423,7 @@ export default function VoiceRoomScreen() {
               {currentRoomTitle || room.title}
             </Text>
             <View style={styles.headerRoomSubRow}>
-              <Text style={styles.headerRoomIdText}>ID:{room.id || room.roomId || '1000000002'}</Text>
+              <Text style={styles.headerRoomIdText}>ID:{room.id || room.roomId || '—'}</Text>
               <Text style={styles.headerRoomMembersText}>👤 {onlineCount ?? 0}</Text>
               {agoraStatus === 'connected' ? (
                 <View style={styles.voiceLiveBadge}>

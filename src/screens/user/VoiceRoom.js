@@ -5,6 +5,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Image,
   ImageBackground,
   Dimensions,
@@ -299,6 +300,7 @@ export default function VoiceRoomScreen() {
       () => {
         setIsKeyboardVisible(false);
         setKeyboardHeight(0);
+        setIsChatBarExpanded(false);
       }
     );
     return () => {
@@ -812,14 +814,7 @@ export default function VoiceRoomScreen() {
 
   const [exitModalVisible, setExitModalVisible] = useState(false);
 
-  useEffect(() => {
-    const onBackPress = () => {
-      setExitModalVisible(true);
-      return true;
-    };
-    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => sub.remove();
-  }, []);
+
 
   const [roomMenuModalVisible, setRoomMenuModalVisible] = useState(false);
   const [emojiModalVisible, setEmojiModalVisible] = useState(false);
@@ -857,6 +852,129 @@ export default function VoiceRoomScreen() {
   const [editSeatCount, setEditSeatCount] = useState(room.seatCount || 8);
   const [editRoomLocked, setEditRoomLocked] = useState(Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || '')));
   const [editRoomPin, setEditRoomPin] = useState('');
+
+  // Refs to avoid stale closures in Android hardwareBackPress handler
+  const isChatBarExpandedRef = useRef(false);
+  isChatBarExpandedRef.current = isChatBarExpanded;
+  const isKeyboardVisibleRef = useRef(false);
+  isKeyboardVisibleRef.current = isKeyboardVisible;
+
+  const modalsStateRef = useRef({});
+  modalsStateRef.current = {
+    isChatBarExpanded,
+    isKeyboardVisible,
+    exitModalVisible,
+    giftPanelVisible,
+    roomMenuModalVisible,
+    toolsModalVisible,
+    emojiModalVisible,
+    roomTasksVisible,
+    roomSupportVisible,
+    roomDetailsModalVisible,
+    roomSettingsModalVisible,
+    profileModalVisible,
+    wealthModalVisible,
+    onlineUsersModalVisible,
+    seatSkinModalVisible,
+    themeModalVisible,
+    seatLayoutModalVisible,
+    musicModalVisible,
+    selfSeatModalVisible,
+    seatActionModalVisible,
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      const s = modalsStateRef.current;
+
+      // 1. If room chat input is open or keyboard is visible, dismiss it immediately!
+      if (s.isChatBarExpanded || s.isKeyboardVisible) {
+        setIsChatBarExpanded(false);
+        Keyboard.dismiss();
+        return true;
+      }
+
+      // 2. If exit modal is already visible, dismiss it
+      if (s.exitModalVisible) {
+        setExitModalVisible(false);
+        return true;
+      }
+
+      // 3. If any room sheet / modal is open, dismiss it first
+      if (s.giftPanelVisible) {
+        setGiftPanelVisible(false);
+        return true;
+      }
+      if (s.toolsModalVisible || s.roomMenuModalVisible) {
+        setToolsModalVisible(false);
+        setRoomMenuModalVisible(false);
+        return true;
+      }
+      if (s.roomTasksVisible) {
+        setRoomTasksVisible(false);
+        return true;
+      }
+      if (s.roomSupportVisible) {
+        setRoomSupportVisible(false);
+        return true;
+      }
+      if (s.emojiModalVisible) {
+        setEmojiModalVisible(false);
+        return true;
+      }
+      if (s.wealthModalVisible) {
+        setWealthModalVisible(false);
+        return true;
+      }
+      if (s.onlineUsersModalVisible) {
+        setOnlineUsersModalVisible(false);
+        return true;
+      }
+      if (s.profileModalVisible) {
+        setProfileModalVisible(false);
+        return true;
+      }
+      if (s.roomDetailsModalVisible) {
+        setRoomDetailsModalVisible(false);
+        return true;
+      }
+      if (s.roomSettingsModalVisible) {
+        setRoomSettingsModalVisible(false);
+        return true;
+      }
+      if (s.seatSkinModalVisible) {
+        setSeatSkinModalVisible(false);
+        return true;
+      }
+      if (s.themeModalVisible) {
+        setThemeModalVisible(false);
+        return true;
+      }
+      if (s.seatLayoutModalVisible) {
+        setSeatLayoutModalVisible(false);
+        return true;
+      }
+      if (s.musicModalVisible) {
+        setMusicModalVisible(false);
+        return true;
+      }
+      if (s.selfSeatModalVisible) {
+        setSelfSeatModalVisible(false);
+        return true;
+      }
+      if (s.seatActionModalVisible) {
+        setSeatActionModalVisible(false);
+        return true;
+      }
+
+      // 4. Fallback: prompt room exit confirmation modal
+      setExitModalVisible(true);
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     const about = room.about || 'Welcome to our voice club! Jump on a seat, chat, send gifts & enjoy!';
@@ -1968,14 +2086,6 @@ export default function VoiceRoomScreen() {
         pointerEvents={isChatBarExpanded ? 'none' : 'auto'}
         style={[
           styles.bottomControlBar,
-          isKeyboardVisible && {
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: keyboardLift,
-            zIndex: 110,
-            elevation: 12,
-          },
           { paddingBottom: insets.bottom > 0 ? insets.bottom : 6 },
           isChatBarExpanded && { opacity: 0 },
         ]}
@@ -2136,12 +2246,24 @@ export default function VoiceRoomScreen() {
         )}
       </View>
 
+      {/* Backdrop to dismiss room chat composer on outside tap */}
+      {isChatBarExpanded && (
+        <TouchableWithoutFeedback
+          onPress={() => {
+            setIsChatBarExpanded(false);
+            Keyboard.dismiss();
+          }}
+        >
+          <View style={styles.chatBackdropDismiss} />
+        </TouchableWithoutFeedback>
+      )}
+
       {/* Single chat composer, positioned directly above the keyboard. */}
       {isChatBarExpanded && (
         <View style={[
           styles.floatingChatInputBar,
           {
-            bottom: isKeyboardVisible ? keyboardLift + 4 : bottomSafePadding + 8,
+            bottom: isKeyboardVisible ? keyboardLift : (insets.bottom > 0 ? insets.bottom : 8),
           },
         ]}>
           <TouchableOpacity
@@ -2155,28 +2277,39 @@ export default function VoiceRoomScreen() {
             <Text style={{ fontSize: 16 }}>🚀</Text>
             {isBulletMode && <View style={styles.bulletActiveDot} />}
           </TouchableOpacity>
-          <TextInput
-            ref={textInputRef}
-            style={styles.chatTextInput}
-            placeholder={isBulletMode ? 'Bullet message...' : 'Type a message...'}
-            placeholderTextColor="#94A3B8"
-            value={inputText}
-            onChangeText={setInputText}
-            onSubmitEditing={handleSendMessage}
-            returnKeyType="send"
-            autoFocus
-          />
-          <TouchableOpacity onPress={handleSendMessage} style={styles.sendMsgBtn}>
-            <Icon name="send" size={16} color="#7C3AED" />
-          </TouchableOpacity>
+
+          <View style={styles.chatInputPill}>
+            <TextInput
+              ref={textInputRef}
+              style={styles.chatTextInput}
+              placeholder={isBulletMode ? 'Bullet message...' : 'Type a message...'}
+              placeholderTextColor="rgba(255, 255, 255, 0.45)"
+              value={inputText}
+              onChangeText={setInputText}
+              onSubmitEditing={handleSendMessage}
+              returnKeyType="send"
+              autoFocus
+            />
+            <TouchableOpacity onPress={handleSendMessage} style={styles.sendMsgBtn} activeOpacity={0.85}>
+              <LinearGradient
+                colors={['#8B5CF6', '#6D28D9']}
+                style={styles.sendBtnGradient}
+              >
+                <Icon name="send" size={13} color="#FFFFFF" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             onPress={() => {
               setIsChatBarExpanded(false);
               Keyboard.dismiss();
             }}
             style={{ paddingHorizontal: 6 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.8}
           >
-            <Icon name="close-circle" size={20} color="rgba(255,255,255,0.6)" />
+            <Icon name="close-circle" size={22} color="rgba(255, 255, 255, 0.7)" />
           </TouchableOpacity>
         </View>
       )}
@@ -3678,14 +3811,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
   },
+  chatInputPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    minHeight: 38,
+  },
   chatTextInput: {
     flex: 1,
-    color: '#0F172A',
+    color: '#FFFFFF',
     fontSize: 14,
-    paddingVertical: 0,
+    paddingVertical: 4,
   },
   sendMsgBtn: {
-    paddingHorizontal: 3,
+    paddingLeft: 4,
+  },
+  sendBtnGradient: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatBackdropDismiss: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    zIndex: 115,
   },
   controlCircleBtn: {
     width: 36,
@@ -5166,13 +5322,20 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
+    backgroundColor: '#1E1238',
+    paddingHorizontal: 10,
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: 'rgba(255, 255, 255, 0.12)',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     zIndex: 120,
-    elevation: 14,
+    elevation: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    gap: 8,
   },
 
   // Image 1 & 2 Header Styles

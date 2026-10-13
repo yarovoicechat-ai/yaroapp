@@ -312,7 +312,10 @@ export default function GiftPanel({
           <GiftCategoryTabs
             categories={categories}
             activeCategory={activeCategory}
-            onSelectCategory={setActiveCategory}
+            onSelectCategory={(cat) => {
+              setActiveCategory(cat);
+              setSelectedGift?.(null);
+            }}
           />
 
           {/* 5. 4-Column Gift Grid */}
@@ -333,16 +336,22 @@ export default function GiftPanel({
                 showsVerticalScrollIndicator={false}
               >
                 {gifts.map((item) => {
-                  const itemId = String(item?._id || item?.id || '');
-                  const selectedId = String(selectedGift?._id || selectedGift?.id || '');
-                  const isItemSelected = Boolean(selectedGift && itemId && selectedId && itemId === selectedId);
+                  const itemKey = item?._id ? String(item._id) : (item?.id ? String(item.id) : null);
+                  const selectedKey = selectedGift?._id ? String(selectedGift._id) : (selectedGift?.id ? String(selectedGift.id) : null);
+                  const isItemSelected = Boolean(selectedGift && selectedKey && itemKey && selectedKey === itemKey);
                   return (
                     <GiftCard
-                      key={item._id || item.id}
+                      key={itemKey || item?.name || Math.random().toString()}
                       gift={item}
                       isSelected={isItemSelected}
                       onSelect={(gift) => {
-                        setSelectedGift(gift);
+                        if (!gift) return;
+                        const tappedKey = gift?._id ? String(gift._id) : (gift?.id ? String(gift.id) : null);
+                        if (selectedKey && tappedKey && selectedKey === tappedKey) {
+                          setSelectedGift?.(null);
+                        } else {
+                          setSelectedGift?.(gift);
+                        }
                       }}
                     />
                   );

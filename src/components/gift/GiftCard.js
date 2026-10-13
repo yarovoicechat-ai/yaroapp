@@ -18,13 +18,14 @@ const GAP = 6;
 // Exactly 4 columns per row
 export const CARD_WIDTH = Math.floor((width - H_PADDING * 2 - GAP * 3) / 4);
 
-export default function GiftCard({ gift, isSelected, onSelect }) {
+export default function GiftCard({ gift, isSelected = false, onSelect }) {
+  const isSelectedBool = Boolean(isSelected);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const imageBounce = useRef(new Animated.Value(1)).current;
   const glowOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (isSelected) {
+    if (isSelectedBool) {
       Animated.sequence([
         Animated.timing(scaleAnim, {
           toValue: 1.05,
@@ -65,7 +66,7 @@ export default function GiftCard({ gift, isSelected, onSelect }) {
         useNativeDriver: true,
       }).start();
     }
-  }, [isSelected]);
+  }, [isSelectedBool]);
 
   const price = Number(
     gift.price !== undefined
@@ -83,13 +84,13 @@ export default function GiftCard({ gift, isSelected, onSelect }) {
       <TouchableOpacity
         style={[
           styles.container,
-          isSelected && styles.containerSelected,
+          isSelectedBool && styles.containerSelected,
         ]}
         onPress={() => onSelect(gift)}
         activeOpacity={0.85}
       >
         {/* Selected Glowing Gold Border */}
-        {isSelected && (
+        {isSelectedBool && (
           <LinearGradient
             colors={['#FDE047', '#EAB308', '#CA8A04']}
             start={{ x: 0, y: 0 }}
@@ -98,7 +99,7 @@ export default function GiftCard({ gift, isSelected, onSelect }) {
           />
         )}
 
-        <View style={[styles.cardInner, isSelected && styles.cardInnerSelected]}>
+        <View style={[styles.cardInner, isSelectedBool && styles.cardInnerSelected]}>
           {/* Header Row: Badge */}
           <View style={styles.badgeRow}>
             {badgeText ? (
@@ -125,7 +126,7 @@ export default function GiftCard({ gift, isSelected, onSelect }) {
             )}
 
             {/* Check Indicator when selected */}
-            {isSelected && (
+            {isSelectedBool && (
               <View style={styles.selectedRadio}>
                 <MaterialCommunityIcons name="check" size={10} color="#0F172A" />
               </View>
@@ -152,14 +153,14 @@ export default function GiftCard({ gift, isSelected, onSelect }) {
           </Animated.View>
 
           {/* Gift Name */}
-          <Text style={[styles.giftName, isSelected && styles.giftNameSelected]} numberOfLines={1}>
+          <Text style={[styles.giftName, isSelectedBool && styles.giftNameSelected]} numberOfLines={1}>
             {gift.name}
           </Text>
 
           {/* Price with Diamond 💎 */}
-          <View style={[styles.priceRow, isSelected && styles.priceRowSelected]}>
+          <View style={[styles.priceRow, isSelectedBool && styles.priceRowSelected]}>
             <Text style={styles.diamondEmoji}>💎</Text>
-            <Text style={[styles.priceText, isSelected && styles.priceTextSelected]}>
+            <Text style={[styles.priceText, isSelectedBool && styles.priceTextSelected]}>
               {price.toLocaleString()}
             </Text>
           </View>

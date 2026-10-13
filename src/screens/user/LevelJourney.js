@@ -343,7 +343,7 @@ export default function LevelJourney() {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* TOP HEADER */}
+      {/* TOP HEADER WITH WEALTH & CHARM TABS (Matching Reference Images 1 & 2) */}
       <View style={[styles.headerBar, { paddingTop: topSafeInset + 6 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -354,63 +354,48 @@ export default function LevelJourney() {
           <Icon name="chevron-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>Level System</Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={() => setShowHowToUpgrade(true)}
-          style={styles.helpHeaderBtn}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="help-circle-outline" size={22} color="#FBBF24" />
-        </TouchableOpacity>
-      </View>
-
-      {/* SEGMENTED TAB SWITCHER [ 💎 Wealth ] [ 🌸 Charm ] */}
-      <View style={styles.tabsContainer}>
-        <View style={styles.tabTrack}>
+        {/* Center Tabs: Wealth & Charm */}
+        <View style={styles.centerTabsRow}>
           <TouchableOpacity
-            style={[styles.tabButton, isWealth && styles.tabButtonActiveWealth]}
+            style={styles.centerTabBtn}
             onPress={() => setJourneyType('wealth')}
             activeOpacity={0.85}
           >
-            <LinearGradient
-              colors={isWealth ? ['#F59E0B', '#D97706'] : ['transparent', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.tabButtonGradient}
-            >
-              <MaterialCommunityIcons
-                name="diamond-stone"
-                size={16}
-                color={isWealth ? '#0F172A' : '#94A3B8'}
-                style={{ marginRight: 6 }}
-              />
-              <Text style={[styles.tabButtonText, isWealth && styles.tabButtonTextActiveWealth]}>
-                Wealth Level
-              </Text>
-            </LinearGradient>
+            <Text style={[styles.centerTabText, isWealth && styles.centerTabTextActive]}>
+              Wealth
+            </Text>
+            {isWealth && <View style={styles.centerTabIndicator} />}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabButton, !isWealth && styles.tabButtonActiveCharm]}
+            style={styles.centerTabBtn}
             onPress={() => setJourneyType('charm')}
             activeOpacity={0.85}
           >
-            <LinearGradient
-              colors={!isWealth ? ['#EC4899', '#DB2777'] : ['transparent', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.tabButtonGradient}
-            >
-              <Text style={{ marginRight: 4, fontSize: 14 }}>🌸</Text>
-              <Text style={[styles.tabButtonText, !isWealth && styles.tabButtonTextActiveCharm]}>
-                Charm Level
-              </Text>
-            </LinearGradient>
+            <Text style={[styles.centerTabText, !isWealth && styles.centerTabTextActive]}>
+              Charm
+            </Text>
+            {!isWealth && <View style={styles.centerTabIndicator} />}
           </TouchableOpacity>
         </View>
+
+        {/* Right: Leaderboard Trophy Icon */}
+        <TouchableOpacity
+          onPress={() => {
+            try {
+              navigation.navigate('Ranking', { initialTab: isWealth ? 'wealth' : 'charm' });
+            } catch (_) {
+              setShowHowToUpgrade(true);
+            }
+          }}
+          style={styles.trophyBtn}
+          activeOpacity={0.8}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <View style={styles.trophyBadge}>
+            <Text style={{ fontSize: 18 }}>🏆</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* MAIN SCROLLABLE CONTENT */}
@@ -1072,11 +1057,11 @@ export default function LevelJourney() {
         </View>
       </Modal>
 
-      {/* MODAL 2: "HOW TO UPGRADE?" EXPLANATION MODAL */}
+      {/* MODAL 2: "HOW TO UPGRADE?" EXPLANATION MODAL (Matching Image 1 & 2) */}
       <Modal
         visible={showHowToUpgrade}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowHowToUpgrade(false)}
       >
         <View style={styles.modalBackdrop}>
@@ -1085,104 +1070,225 @@ export default function LevelJourney() {
             activeOpacity={1}
             onPress={() => setShowHowToUpgrade(false)}
           />
-          <View style={styles.upgradeGuideCard}>
-            <View style={styles.guideHeaderRow}>
-              <Text style={styles.guideTitleText}>How to Upgrade Level?</Text>
-              <TouchableOpacity
-                onPress={() => setShowHowToUpgrade(false)}
-                style={styles.modalCloseBtn}
+
+          <View
+            style={[
+              styles.upgradeGuideCard,
+              {
+                backgroundColor: isWealth ? '#F7E7CE' : '#EFE4FD',
+                borderColor: isWealth ? '#E2B887' : '#D4B8F6',
+              },
+            ]}
+          >
+            {/* Floating Top Badge (Crown for Wealth, Star for Charm) */}
+            <View style={styles.guideFloatingBadgeWrap}>
+              <LinearGradient
+                colors={isWealth ? ['#F59E0B', '#D97706', '#92400E'] : ['#E2E8F0', '#94A3B8', '#475569']}
+                style={styles.guideFloatingBadgeGrad}
               >
-                <Icon name="close" size={22} color="#94A3B8" />
-              </TouchableOpacity>
+                <Text style={{ fontSize: 24 }}>{isWealth ? '👑' : '⭐'}</Text>
+                <View style={[styles.guideFloatingBadgeRibbon, { backgroundColor: isWealth ? '#F59E0B' : '#64748B' }]}>
+                  <Text style={styles.guideFloatingBadgeRibbonText}>
+                    {isWealth ? `Lv.${currentLevel}` : `${currentLevel}`}
+                  </Text>
+                </View>
+              </LinearGradient>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
-              {/* Wealth Rules */}
-              <View style={styles.guideSection}>
-                <View style={styles.guideSectionTitleRow}>
-                  <MaterialCommunityIcons name="diamond-stone" size={18} color="#F59E0B" />
-                  <Text style={[styles.guideSectionTitle, { color: '#FBBF24' }]}>
-                    Wealth Level Progression
-                  </Text>
-                </View>
-                <Text style={styles.guideRuleDesc}>
-                  Earn Wealth EXP by spending Diamonds across the Yaro Platform:
-                </Text>
-
-                <View style={styles.guidePillRow}>
-                  <View style={styles.guidePill}>
-                    <Text style={styles.guidePillEmoji}>🎁</Text>
-                    <Text style={styles.guidePillTitle}>Send Gifts</Text>
-                    <Text style={styles.guidePillSub}>1 💎 Spent = 1 EXP</Text>
-                  </View>
-                  <View style={styles.guidePill}>
-                    <Text style={styles.guidePillEmoji}>📞</Text>
-                    <Text style={styles.guidePillTitle}>Voice Calls</Text>
-                    <Text style={styles.guidePillSub}>1 💎 Spent = 1 EXP</Text>
-                  </View>
-                </View>
-
-                <View style={[styles.guidePillRow, { marginTop: 8 }]}>
-                  <View style={styles.guidePill}>
-                    <Text style={styles.guidePillEmoji}>🛍️</Text>
-                    <Text style={styles.guidePillTitle}>Store Purchases</Text>
-                    <Text style={styles.guidePillSub}>1 💎 Spent = 1 EXP</Text>
-                  </View>
-                  <View style={styles.guidePill}>
-                    <Text style={styles.guidePillEmoji}>👑</Text>
-                    <Text style={styles.guidePillTitle}>VIP & SVIP</Text>
-                    <Text style={styles.guidePillSub}>1 💎 Spent = 1 EXP</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Charm Rules */}
-              <View style={[styles.guideSection, { marginTop: 18 }]}>
-                <View style={styles.guideSectionTitleRow}>
-                  <Text style={{ fontSize: 16 }}>🌸</Text>
-                  <Text style={[styles.guideSectionTitle, { color: '#F472B6' }]}>
-                    Charm Level Progression
-                  </Text>
-                </View>
-                <Text style={styles.guideRuleDesc}>
-                  Earn Charm EXP by receiving engagement, gifts, and hosting calls:
-                </Text>
-
-                <View style={styles.guidePillRow}>
-                  <View style={styles.guidePill}>
-                    <Text style={styles.guidePillEmoji}>💝</Text>
-                    <Text style={styles.guidePillTitle}>Receive Gifts</Text>
-                    <Text style={styles.guidePillSub}>1 💎 Gifted = 1 EXP</Text>
-                  </View>
-                  <View style={styles.guidePill}>
-                    <Text style={styles.guidePillEmoji}>🎙️</Text>
-                    <Text style={styles.guidePillTitle}>Receive Calls</Text>
-                    <Text style={styles.guidePillSub}>Earn Coins & Minutes</Text>
-                  </View>
-                </View>
-
-                <View style={[styles.guidePillRow, { marginTop: 8 }]}>
-                  <View style={styles.guidePill}>
-                    <Text style={styles.guidePillEmoji}>✨</Text>
-                    <Text style={styles.guidePillTitle}>Room Interaction</Text>
-                    <Text style={styles.guidePillSub}>Mic Time & Popularity</Text>
-                  </View>
-                  <View style={styles.guidePill}>
-                    <Text style={styles.guidePillEmoji}>🎉</Text>
-                    <Text style={styles.guidePillTitle}>Party Events</Text>
-                    <Text style={styles.guidePillSub}>Host Voice Rooms</Text>
-                  </View>
-                </View>
-              </View>
-            </ScrollView>
-
+            {/* Top Close Button (top-right X) */}
             <TouchableOpacity
               onPress={() => setShowHowToUpgrade(false)}
-              style={styles.guideDismissBtn}
-              activeOpacity={0.85}
+              style={styles.guideTopCloseBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Text style={styles.guideDismissBtnText}>Got It</Text>
+              <Icon name="close" size={22} color={isWealth ? '#78350F' : '#4C1D95'} />
             </TouchableOpacity>
+
+            {/* Title */}
+            <Text
+              style={[
+                styles.guideMainTitle,
+                { color: isWealth ? '#78350F' : '#3B0764' },
+              ]}
+            >
+              How to upgrade?
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
+              {isWealth ? (
+                /* WEALTH UPGRADE RULES (Matching 1st Image) */
+                <View style={styles.guideContentList}>
+                  {/* 1. Give a diamond gift */}
+                  <View style={styles.guideRuleItem}>
+                    <View style={styles.guideRuleHeader}>
+                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
+                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
+                        Give a diamond gift
+                      </Text>
+                    </View>
+                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
+                      1 Diamond = 1 EXP
+                    </Text>
+
+                    {/* SVIP Privilege Boxes */}
+                    <View style={styles.svipListCol}>
+                      {[
+                        { svip: 'SVIP 6', exp: '1.1' },
+                        { svip: 'SVIP 7', exp: '1.2' },
+                        { svip: 'SVIP 8', exp: '1.3' },
+                        { svip: 'SVIP 9', exp: '1.4' },
+                        { svip: 'SVIP 10', exp: '1.5' },
+                      ].map((item) => (
+                        <View key={item.svip} style={styles.svipPrivilegePill}>
+                          <Text style={styles.svipPrivilegeText}>
+                            {item.svip} privilege: 1 Diamond = {item.exp} EXP
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+
+                  <View style={styles.guideDivider} />
+
+                  {/* 2. Shop for diamond items */}
+                  <View style={styles.guideRuleItem}>
+                    <View style={styles.guideRuleHeader}>
+                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
+                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
+                        Shop for diamond items
+                      </Text>
+                    </View>
+                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
+                      1 Diamond = 1 EXP
+                    </Text>
+                  </View>
+
+                  <View style={styles.guideDivider} />
+
+                  {/* 3. Enter the room */}
+                  <View style={styles.guideRuleItem}>
+                    <View style={styles.guideRuleHeader}>
+                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
+                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
+                        Enter the room
+                      </Text>
+                    </View>
+                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
+                      200 EXP/day
+                    </Text>
+                  </View>
+
+                  <View style={styles.guideDivider} />
+
+                  {/* 4. Share the room */}
+                  <View style={styles.guideRuleItem}>
+                    <View style={styles.guideRuleHeader}>
+                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
+                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
+                        Share the room
+                      </Text>
+                    </View>
+                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
+                      200 EXP/day
+                    </Text>
+                  </View>
+
+                  <View style={styles.guideDivider} />
+
+                  {/* 5. Stay in your own room */}
+                  <View style={styles.guideRuleItem}>
+                    <View style={styles.guideRuleHeader}>
+                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
+                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
+                        Stay in your own room (Limited Time)
+                      </Text>
+                    </View>
+                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
+                      10 min = 100 EXP,  500 EXP/day
+                    </Text>
+                  </View>
+
+                  <View style={styles.guideDivider} />
+
+                  {/* 6. Stay on other rooms */}
+                  <View style={styles.guideRuleItem}>
+                    <View style={styles.guideRuleHeader}>
+                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
+                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
+                        Stay on other rooms (Limited Time)
+                      </Text>
+                    </View>
+                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
+                      10 min = 100 EXP,  1000 EXP/day
+                    </Text>
+                  </View>
+
+                  <View style={styles.guideDivider} />
+
+                  {/* 7. Participate in activities */}
+                  <View style={styles.guideRuleItem}>
+                    <View style={styles.guideRuleHeader}>
+                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
+                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
+                        Participate in activities
+                      </Text>
+                    </View>
+                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
+                      Speed up upgrade
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                /* CHARM UPGRADE RULES (Matching 2nd Image) */
+                <View style={styles.guideContentList}>
+                  {/* 1. Receive Diamond Gifts */}
+                  <View style={styles.guideRuleItem}>
+                    <View style={styles.guideRuleHeader}>
+                      <View style={[styles.guideBulletDot, { backgroundColor: '#6B21A8' }]} />
+                      <Text style={[styles.guideRuleTitle, { color: '#3B0764' }]}>
+                        Receive Diamond Gifts
+                      </Text>
+                    </View>
+                    <Text style={[styles.guideRuleSub, { color: '#6B21A8' }]}>
+                      1 Diamond = 1 EXP
+                    </Text>
+                  </View>
+
+                  <View style={[styles.guideDivider, { backgroundColor: 'rgba(107, 33, 168, 0.12)' }]} />
+
+                  {/* 2. Receive Lucky Gifts */}
+                  <View style={styles.guideRuleItem}>
+                    <View style={styles.guideRuleHeader}>
+                      <View style={[styles.guideBulletDot, { backgroundColor: '#6B21A8' }]} />
+                      <Text style={[styles.guideRuleTitle, { color: '#3B0764' }]}>
+                        Receive Lucky Gifts
+                      </Text>
+                    </View>
+                    <Text style={[styles.guideRuleSub, { color: '#6B21A8' }]}>
+                      10 Diamond = 2 EXP
+                    </Text>
+                  </View>
+
+                  <View style={[styles.guideDivider, { backgroundColor: 'rgba(107, 33, 168, 0.12)' }]} />
+
+                  {/* 3. On-Mic Experience(Limited Time) */}
+                  <View style={styles.guideRuleItem}>
+                    <View style={styles.guideRuleHeader}>
+                      <View style={[styles.guideBulletDot, { backgroundColor: '#6B21A8' }]} />
+                      <Text style={[styles.guideRuleTitle, { color: '#3B0764' }]}>
+                        On-Mic Experience(Limited Time)
+                      </Text>
+                    </View>
+                    <Text style={[styles.guideRuleSub, { color: '#6B21A8' }]}>
+                      1 minute = 50 EXP, 6000 EXP/day
+                    </Text>
+                    <Text style={[styles.guideRuleNote, { color: '#7E22CE' }]}>
+                      Note: The EXP is counted only when you are on mic for at least 1 minute in an unlocked room with active mic status
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1210,19 +1316,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitleWrap: {
+  centerTabsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 22,
   },
-  headerTitle: {
-    color: '#FFFFFF',
+  centerTabBtn: {
+    alignItems: 'center',
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+  },
+  centerTabText: {
+    color: 'rgba(255, 255, 255, 0.55)',
     fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontWeight: '700',
   },
-  helpHeaderBtn: {
+  centerTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+  },
+  centerTabIndicator: {
+    width: 18,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#FFFFFF',
+    marginTop: 4,
+  },
+  trophyBtn: {
     width: 38,
     height: 38,
-    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trophyBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1893,86 +2022,121 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  // "How to upgrade" Guide Card
+  // "How to upgrade" Guide Card (Matching Reference Images 1 & 2)
   upgradeGuideCard: {
-    width: '100%',
+    width: '92%',
     maxWidth: 360,
-    backgroundColor: '#160B2C',
-    borderRadius: 26,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 22,
+    paddingHorizontal: 18,
+    borderWidth: 1.5,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    position: 'relative',
   },
-  guideHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  guideFloatingBadgeWrap: {
+    alignSelf: 'center',
+    marginTop: -44,
+    marginBottom: 6,
     alignItems: 'center',
-    marginBottom: 12,
+    zIndex: 5,
   },
-  guideTitleText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  guideSection: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 0.8,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  guideSectionTitleRow: {
-    flexDirection: 'row',
+  guideFloatingBadgeGrad: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     alignItems: 'center',
-    marginBottom: 4,
-    gap: 6,
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
   },
-  guideSectionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
+  guideFloatingBadgeRibbon: {
+    position: 'absolute',
+    bottom: -6,
+    paddingHorizontal: 8,
+    paddingVertical: 1.5,
+    borderRadius: 8,
   },
-  guideRuleDesc: {
-    color: '#94A3B8',
-    fontSize: 11,
-    lineHeight: 15,
-    marginBottom: 10,
-  },
-  guidePillRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  guidePill: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 8,
-    alignItems: 'center',
-  },
-  guidePillEmoji: {
-    fontSize: 18,
-    marginBottom: 2,
-  },
-  guidePillTitle: {
+  guideFloatingBadgeRibbonText: {
     color: '#FFFFFF',
     fontSize: 10.5,
+    fontWeight: '900',
+  },
+  guideTopCloseBtn: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    zIndex: 10,
+    padding: 6,
+  },
+  guideMainTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 14,
+    letterSpacing: 0.2,
+  },
+  guideContentList: {
+    paddingHorizontal: 4,
+    paddingBottom: 10,
+  },
+  guideRuleItem: {
+    marginVertical: 4,
+  },
+  guideRuleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  guideBulletDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  guideRuleTitle: {
+    fontSize: 13.5,
     fontWeight: '800',
   },
-  guidePillSub: {
-    color: '#94A3B8',
-    fontSize: 9,
+  guideRuleSub: {
+    fontSize: 12,
     fontWeight: '600',
-    marginTop: 1,
+    marginLeft: 14,
+    marginTop: 3,
   },
-  guideDismissBtn: {
-    backgroundColor: '#7C3AED',
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginTop: 14,
+  svipListCol: {
+    marginLeft: 14,
+    marginTop: 6,
+    gap: 4,
   },
-  guideDismissBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '900',
+  svipPrivilegePill: {
+    backgroundColor: 'rgba(217, 119, 6, 0.14)',
+    borderRadius: 12,
+    paddingVertical: 3.5,
+    paddingHorizontal: 12,
+  },
+  svipPrivilegeText: {
+    color: '#92400E',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  guideDivider: {
+    height: 1,
+    backgroundColor: 'rgba(120, 53, 15, 0.12)',
+    marginVertical: 8,
+  },
+  guideRuleNote: {
+    marginLeft: 14,
+    marginTop: 6,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '500',
   },
 });

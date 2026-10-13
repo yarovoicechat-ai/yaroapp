@@ -2263,7 +2263,9 @@ export default function VoiceRoomScreen() {
         <View style={[
           styles.floatingChatInputBar,
           {
-            bottom: isKeyboardVisible ? keyboardLift : (insets.bottom > 0 ? insets.bottom : 8),
+            bottom: isKeyboardVisible
+              ? keyboardLift + (Platform.OS === 'android' ? Math.max(42, (insets.bottom || 0) + 18) : 6)
+              : (insets.bottom > 0 ? insets.bottom + 4 : 10),
           },
         ]}>
           <TouchableOpacity

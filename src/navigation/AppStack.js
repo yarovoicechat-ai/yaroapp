@@ -59,8 +59,6 @@ import Medal from "../screens/user/Medal";
 import UserProfile from "../screens/user/UserProfile";
 import Profile from "../screens/user/Profile";
 import Me from "../screens/user/Me";
-import FamilyScreen from "../screens/user/FamilyScreen";
-import CpSpaceScreen from "../screens/user/CpSpaceScreen";
 
 // Newly created and verified production screens
 import UPIVerify from "../screens/user/UPIVerify";
@@ -96,8 +94,6 @@ export default function AppStack() {
       <Stack.Screen name="Ranking" component={Ranking} />
       <Stack.Screen name="Level" component={Level} />
       <Stack.Screen name="LevelHelp" component={LevelHelp} />
-      <Stack.Screen name="Family" component={FamilyScreen} />
-      <Stack.Screen name="CpSpace" component={CpSpaceScreen} />
       <Stack.Screen name="Frame" component={Frame} />
       <Stack.Screen name="Rules" component={Rules} />
       <Stack.Screen name="Withdrawal" component={Withdrawal} />

@@ -337,51 +337,6 @@ export default function PartyScreen() {
     </View>
   );
 
-  const renderPromoBanner = () => (
-    <View style={styles.bannerContainer}>
-      <LinearGradient
-        colors={['#2D0B5A', '#6B11A1', '#C026D3', '#F43F5E']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.bannerGradient}
-      >
-        {/* Left Text & CTA */}
-        <View style={styles.bannerLeftContent}>
-          <Text style={styles.bannerTitleLine1}>Meet Amazing Voices</Text>
-          <Text style={styles.bannerTitleLine2}>
-            From <Text style={styles.pinkHighlight}>Around the World</Text>
-          </Text>
-          <Text style={styles.bannerSubtext}>Chat  •  Make Friends  •  Have Fun</Text>
-
-          <TouchableOpacity activeOpacity={0.85} style={styles.exploreCtaBtn}>
-            <LinearGradient
-              colors={['#FF2D55', '#E11D48']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.exploreCtaGradient}
-            >
-              <Text style={styles.exploreCtaText}>Start Exploring</Text>
-              <Icon name="chevron-forward" size={14} color="#FFF" style={{ marginLeft: 2 }} />
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-
-        {/* Right Hero Image Graphic */}
-        <View style={styles.bannerRightGraphic}>
-          <Image
-            source={{ uri: 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
-            style={styles.heroHeadphoneImg}
-            resizeMode="cover"
-          />
-          {/* Floating Vibes Badge */}
-          <View style={styles.goodVibesBadge}>
-            <Text style={styles.goodVibesText}>Good Vibes Only! 💕</Text>
-          </View>
-        </View>
-      </LinearGradient>
-    </View>
-  );
-
   const renderRoomCard = ({ item }) => (
     <TouchableOpacity
       activeOpacity={0.88}
@@ -508,7 +463,6 @@ export default function PartyScreen() {
 
         {/* 3. Panel-managed banner after the first four rooms */}
         <AdminBannerCarousel placement="party" />
-        {renderPromoBanner()}
 
         {/* 4. Remaining Rooms Grid (after banner) */}
         {visibleRooms.length > 4 && (
@@ -967,92 +921,6 @@ const styles = StyleSheet.create({
   },
   flagEmoji: {
     fontSize: 14,
-  },
-
-  // 3. Hero Banner Card
-  bannerContainer: {
-    paddingHorizontal: 16,
-    marginVertical: 8,
-  },
-  bannerGradient: {
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 145,
-    overflow: 'hidden',
-  },
-  bannerLeftContent: {
-    flex: 0.65,
-    justifyContent: 'center',
-  },
-  bannerTitleLine1: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '900',
-    letterSpacing: -0.2,
-  },
-  bannerTitleLine2: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '900',
-    letterSpacing: -0.2,
-    marginBottom: 4,
-  },
-  pinkHighlight: {
-    color: '#FF6584',
-  },
-  bannerSubtext: {
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontSize: 11,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  exploreCtaBtn: {
-    alignSelf: 'flex-start',
-    borderRadius: 20,
-    overflow: 'hidden',
-    elevation: 4,
-  },
-  exploreCtaGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  exploreCtaText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  bannerRightGraphic: {
-    flex: 0.35,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  heroHeadphoneImg: {
-    width: 95,
-    height: 95,
-    borderRadius: 47.5,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-  },
-  goodVibesBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -8,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  goodVibesText: {
-    color: '#BE185D',
-    fontSize: 9,
-    fontWeight: '800',
   },
 
   // 4. Party Rooms Grid

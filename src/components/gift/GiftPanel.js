@@ -332,14 +332,21 @@ export default function GiftPanel({
                 contentContainerStyle={styles.gridContent}
                 showsVerticalScrollIndicator={false}
               >
-                {gifts.map((item) => (
-                  <GiftCard
-                    key={item._id || item.id}
-                    gift={item}
-                    isSelected={selectedGift?._id === item._id || selectedGift?.id === item.id}
-                    onSelect={setSelectedGift}
-                  />
-                ))}
+                {gifts.map((item) => {
+                  const itemId = String(item?._id || item?.id || '');
+                  const selectedId = String(selectedGift?._id || selectedGift?.id || '');
+                  const isItemSelected = Boolean(selectedGift && itemId && selectedId && itemId === selectedId);
+                  return (
+                    <GiftCard
+                      key={item._id || item.id}
+                      gift={item}
+                      isSelected={isItemSelected}
+                      onSelect={(gift) => {
+                        setSelectedGift(gift);
+                      }}
+                    />
+                  );
+                })}
               </ScrollView>
             )}
           </View>

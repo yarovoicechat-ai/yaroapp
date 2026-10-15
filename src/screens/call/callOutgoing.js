@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
   StatusBar,
+  Animated,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
@@ -21,10 +22,7 @@ import { getCallTiming } from '../../utils/callLifecycle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
 
-const { width, height } = Dimensions.get('window');
-const RF = (size) => Math.sqrt(width * width + height * height) * (size / 1000);
-const WP = (percent) => (width * percent) / 100;
-const HP = (percent) => (height * percent) / 100;
+const { width } = Dimensions.get('window');
 
 const OutGoing = () => {
   const route = useRoute();
@@ -50,8 +48,10 @@ const OutGoing = () => {
     hostId,
     host,
   } = route.params || {};
+
   const isVideoCall = isVideo === true || callType === 'video';
   const noAnswerTimerRef = useRef(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const [status, setStatus] = useState('Ringing...');
   const [micOn, setMicOn] = useState(true);
@@ -64,7 +64,25 @@ const OutGoing = () => {
     return 0;
   });
 
-  // Load User Balance from backend API fallback
+  // Pulse animation for avatar
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.12,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [pulseAnim]);
+
+  // Load User Balance from backend API
   useEffect(() => {
     let isMounted = true;
     const fetchBalance = async () => {
@@ -73,30 +91,42 @@ const OutGoing = () => {
         if (isMounted && res.data?.success) {
           const uData = res.data.data?.user || res.data.data;
           if (uData) {
-            const liveDiamonds = uData.diamonds !== undefined ? uData.diamonds : (uData.coins !== undefined ? uData.coins : 0);
+            const liveDiamonds =
+              uData.diamonds !== undefined
+                ? uData.diamonds
+                : uData.coins !== undefined
+                ? uData.coins
+                : 0;
             setBalance(liveDiamonds);
           }
         }
       } catch (err) {
-        console.log("Error loading balance for outgoing screen", err);
+        console.log('Error loading balance for outgoing screen', err);
       }
     };
     fetchBalance();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Button Handlers
   const handleMicToggle = () => {
     setMicOn(!micOn);
   };
 
   const handleSpeakerToggle = () => {
-    setSpeakerOn(!speakerOn);
+    const nextSpeaker = !speakerOn;
+    setSpeakerOn(nextSpeaker);
+    try {
+      InCallManager.setSpeakerphoneOn(nextSpeaker);
+    } catch (_) {}
   };
 
   const handleEndCall = async () => {
     console.log('📞 Call ended');
-    try { InCallManager.stop({ busytone: '_BUNDLE_' }); } catch (_) {}
+    try {
+      InCallManager.stop({ busytone: '_BUNDLE_' });
+    } catch (_) {}
     const activeSocket = getSocket();
     if (transactionId) {
       activeSocket?.emit('endCall', { transactionId });
@@ -113,22 +143,24 @@ const OutGoing = () => {
   const verifyCallStatus = async () => {
     if (!transactionId) return;
     try {
-      console.log("🔍 Checking call status via API fallback...");
       const res = await apiUtil.get(`/call/status/${transactionId}`);
       if (res.data.success) {
         const { status: currentStatus, agora: fetchedAgora, channelName: fetchedChannel } = res.data.data;
-        console.log("📡 API Call status:", currentStatus);
-        
+
         if (['accepted', 'connecting', 'connected', 'ongoing'].includes(currentStatus)) {
           if (noAnswerTimerRef.current) clearTimeout(noAnswerTimerRef.current);
-          console.log("🚀 Call already accepted! Transitioning to Ongoing/VideoCall screen...");
-          try { InCallManager.stop(); } catch (_) {}
-          setStatus("Accepted ✅");
-          const ongoingCall = getValidOngoingCall({
-            transactionId,
-            channelName: fetchedChannel || channelName,
-            agora: fetchedAgora || agora,
-          }, true);
+          try {
+            InCallManager.stop();
+          } catch (_) {}
+          setStatus('Accepted ✅');
+          const ongoingCall = getValidOngoingCall(
+            {
+              transactionId,
+              channelName: fetchedChannel || channelName,
+              agora: fetchedAgora || agora,
+            },
+            true
+          );
           if (!ongoingCall) {
             setStatus('Connection failed');
             handleEndCall();
@@ -136,7 +168,7 @@ const OutGoing = () => {
           }
           const isVideoCallTarget = isVideoCall || res.data.data?.isVideo === true || res.data.data?.callType === 'video';
           if (isVideoCallTarget) {
-            navigation.replace("VideoCall", {
+            navigation.replace('VideoCall', {
               ...ongoingCall,
               name: name || 'User',
               maxMinutes,
@@ -147,7 +179,7 @@ const OutGoing = () => {
               host: host || { name, image, _id: hostId },
             });
           } else {
-            navigation.replace("OnGoing", {
+            navigation.replace('OnGoing', {
               ...ongoingCall,
               name: name || 'User',
               maxMinutes,
@@ -157,8 +189,9 @@ const OutGoing = () => {
           }
         } else if (['ended', 'cancelled', 'rejected', 'missed', 'expired'].includes(currentStatus)) {
           if (noAnswerTimerRef.current) clearTimeout(noAnswerTimerRef.current);
-          console.log("❌ Call already ended/rejected! Resetting to MainTabs...");
-          try { InCallManager.stop({ busytone: '_BUNDLE_' }); } catch (_) {}
+          try {
+            InCallManager.stop({ busytone: '_BUNDLE_' });
+          } catch (_) {}
           setStatus(currentStatus.toUpperCase() + ' ⏹️');
           setTimeout(() => {
             navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'MainTabs' }] }));
@@ -166,20 +199,25 @@ const OutGoing = () => {
         }
       }
     } catch (err) {
-      console.error("API Call status check failed:", err.message);
+      console.error('API Call status check failed:', err.message);
     }
   };
 
   useEffect(() => {
-    try { InCallManager.start({ media: isVideoCall ? 'video' : 'audio', ringback: '_BUNDLE_' }); } catch (err) { console.warn('InCallManager start error:', err); }
+    try {
+      InCallManager.start({ media: isVideoCall ? 'video' : 'audio', ringback: '_BUNDLE_' });
+    } catch (err) {
+      console.warn('InCallManager start error:', err);
+    }
 
-    // Backend owns expiry. The caller only reconciles UI from the server deadline.
     const { ringExpiresAtMs } = getCallTiming({ createdAt, ringExpiresAt });
     noAnswerTimerRef.current = setTimeout(async () => {
-      try { InCallManager.stop({ busytone: '_BUNDLE_' }); } catch (_) {}
+      try {
+        InCallManager.stop({ busytone: '_BUNDLE_' });
+      } catch (_) {}
       setStatus('No answer');
       await verifyCallStatus();
-    }, Math.max(0, ringExpiresAtMs - Date.now() + 1_500));
+    }, Math.max(0, ringExpiresAtMs - Date.now() + 1500));
 
     if (transactionId) {
       verifyCallStatus();
@@ -188,23 +226,26 @@ const OutGoing = () => {
     let activeSocket = getSocket();
 
     const handleConnect = () => {
-      console.log("🔌 Socket connected/reconnected on OutGoing screen. Verifying status...");
       verifyCallStatus();
     };
 
     const onCallAccepted = (payload) => {
-      console.log("📞 callAccepted RECEIVED", payload);
       if (!payload || payload.transactionId !== transactionId) return;
       if (noAnswerTimerRef.current) clearTimeout(noAnswerTimerRef.current);
 
-      try { InCallManager.stop(); } catch (_) {}
-      setStatus("Accepted ✅");
+      try {
+        InCallManager.stop();
+      } catch (_) {}
+      setStatus('Accepted ✅');
 
-      const ongoingCall = getValidOngoingCall({
-        transactionId: payload.transactionId,
-        channelName: payload.channelName,
-        agora: payload.agora,
-      }, true);
+      const ongoingCall = getValidOngoingCall(
+        {
+          transactionId: payload.transactionId,
+          channelName: payload.channelName,
+          agora: payload.agora,
+        },
+        true
+      );
       if (!ongoingCall) {
         setStatus('Connection failed');
         handleEndCall();
@@ -212,7 +253,7 @@ const OutGoing = () => {
       }
       const isVideoCallTarget = isVideoCall || payload?.isVideo === true || payload?.callType === 'video';
       if (isVideoCallTarget) {
-        navigation.replace("VideoCall", {
+        navigation.replace('VideoCall', {
           ...ongoingCall,
           name: name || 'User',
           maxMinutes,
@@ -223,7 +264,7 @@ const OutGoing = () => {
           host: host || { name, image, _id: hostId },
         });
       } else {
-        navigation.replace("OnGoing", {
+        navigation.replace('OnGoing', {
           ...ongoingCall,
           name: name || 'User',
           maxMinutes,
@@ -236,7 +277,9 @@ const OutGoing = () => {
     const onCallRejected = ({ transactionId: rejectedTxn }) => {
       if (rejectedTxn === transactionId) {
         if (noAnswerTimerRef.current) clearTimeout(noAnswerTimerRef.current);
-        try { InCallManager.stop({ busytone: '_BUNDLE_' }); } catch (_) {}
+        try {
+          InCallManager.stop({ busytone: '_BUNDLE_' });
+        } catch (_) {}
         setStatus('Rejected ❌');
         setTimeout(() => {
           navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'MainTabs' }] }));
@@ -247,7 +290,9 @@ const OutGoing = () => {
     const onCallEnded = ({ transactionId: endedTxn }) => {
       if (endedTxn === transactionId) {
         if (noAnswerTimerRef.current) clearTimeout(noAnswerTimerRef.current);
-        try { InCallManager.stop({ busytone: '_BUNDLE_' }); } catch (_) {}
+        try {
+          InCallManager.stop({ busytone: '_BUNDLE_' });
+        } catch (_) {}
         setStatus('Ended ⏹️');
         setTimeout(() => {
           navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'MainTabs' }] }));
@@ -256,11 +301,10 @@ const OutGoing = () => {
     };
 
     const registerListeners = (sock) => {
-      sock.on("connect", handleConnect);
-      sock.on("callAccepted", onCallAccepted);
-      sock.on("callRejected", onCallRejected);
-      sock.on("callEnded", onCallEnded);
-      console.log("🔌 Socket listeners registered immediately on OutGoing screen");
+      sock.on('connect', handleConnect);
+      sock.on('callAccepted', onCallAccepted);
+      sock.on('callRejected', onCallRejected);
+      sock.on('callEnded', onCallEnded);
     };
 
     if (activeSocket) {
@@ -276,247 +320,203 @@ const OutGoing = () => {
       InCallManager.stop();
       const sock = getSocket() || activeSocket;
       if (sock) {
-        sock.off("connect", handleConnect);
-        sock.off("callAccepted", onCallAccepted);
-        sock.off("callRejected", onCallRejected);
-        sock.off("callEnded", onCallEnded);
-        console.log("🧹 Socket listeners cleaned up on OutGoing screen");
+        sock.off('connect', handleConnect);
+        sock.off('callAccepted', onCallAccepted);
+        sock.off('callRejected', onCallRejected);
+        sock.off('callEnded', onCallEnded);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    transactionId,
-    navigation,
-    agora,
-    name,
-    maxMinutes,
-    image,
-    createdAt,
-    ringExpiresAt,
-  ]);
+  }, [transactionId, navigation, agora, name, maxMinutes, image, createdAt, ringExpiresAt, isVideoCall]);
+
+  const targetHostId = hostId || route.params?.userId || route.params?.meethiId || route.params?.host?.userId;
 
   return (
     <LinearGradient
-      colors={['#060212', '#0e0423', '#030109']}
+      colors={['#070214', '#110629', '#1C0B3B']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[
-        styles.profileCard,
+        styles.screen,
         {
-          paddingTop: topSafeInset + 8,
-          paddingBottom: Math.max(12, insets.bottom || 0),
+          paddingTop: topSafeInset + 14,
+          paddingBottom: Math.max(24, (insets.bottom || 0) + 16),
         },
       ]}
     >
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-      {/* Header bar */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleEndCall} style={styles.backBtn}>
-          <Icon name="chevron-left" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Outgoing Call</Text>
-        <TouchableOpacity style={styles.reportBtn}>
-          <Icon name="info-outline" size={16} color="#d946ef" style={styles.reportIcon} />
-          <Text style={styles.reportText}>Report</Text>
-        </TouchableOpacity>
+
+      {/* Top Header & Call Type Badge */}
+      <View style={styles.topBadgeContainer}>
+        <LinearGradient
+          colors={
+            isVideoCall
+              ? ['rgba(236,72,153,0.25)', 'rgba(124,58,237,0.25)']
+              : ['rgba(14,165,233,0.25)', 'rgba(124,58,237,0.25)']
+          }
+          style={styles.callTypePill}
+        >
+          <Icon
+            name={isVideoCall ? 'videocam' : 'phone'}
+            size={18}
+            color={isVideoCall ? '#F472B6' : '#38BDF8'}
+          />
+          <Text style={[styles.callTypeText, { color: isVideoCall ? '#F472B6' : '#38BDF8' }]}>
+            {isVideoCall ? 'Outgoing HD Video Call' : 'Outgoing HD Voice Call'}
+          </Text>
+        </LinearGradient>
       </View>
 
-      <View style={styles.mainContent}>
-        {/* Equalizer Wave and Avatar row */}
-        <View style={styles.avatarRowContainer}>
-          {/* Left Equalizer */}
-          <View style={styles.equalizerWave}>
-            {[12, 20, 28, 38, 28, 20, 12].map((h, i) => (
-              <View key={`l-${i}`} style={[styles.equalizerBar, { height: h }]} />
-            ))}
-          </View>
-
-          {/* Central Avatar */}
-          <View style={styles.avatarGlowContainer}>
-            <View style={styles.avatarBorderOuter}>
-              <Image
-                source={getUserAvatar(image || callerImage, gender)}
-                style={styles.avatarImage}
-                resizeMode="cover"
-              />
-            </View>
-          </View>
-
-          {/* Right Equalizer */}
-          <View style={styles.equalizerWave}>
-            {[12, 20, 28, 38, 28, 20, 12].map((h, i) => (
-              <View key={`r-${i}`} style={[styles.equalizerBar, { height: h }]} />
-            ))}
+      {/* Center Section: Avatar & Host Info */}
+      <View style={styles.centerSection}>
+        {/* Radar Pulsing Avatar */}
+        <View style={styles.avatarWrap}>
+          <Animated.View
+            style={[
+              styles.avatarRadarRing,
+              {
+                borderColor: isVideoCall ? 'rgba(236,72,153,0.35)' : 'rgba(56,189,248,0.35)',
+                transform: [{ scale: pulseAnim }],
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.avatarInnerBorder,
+              { borderColor: isVideoCall ? '#EC4899' : '#38BDF8' },
+            ]}
+          >
+            <Image
+              source={getUserAvatar(image || callerImage, gender)}
+              style={styles.avatarImg}
+              resizeMode="cover"
+            />
           </View>
         </View>
 
-        {/* User Details */}
-        <View style={styles.detailsContainer}>
+        {/* Host Name & Badges */}
+        <View style={styles.infoBox}>
           <View style={styles.nameRow}>
-            <Text style={styles.callerNameText}>{name || "User"}</Text>
-            {gender !== "male" && (
-              <View style={styles.genderBadge}>
+            <Text style={styles.callerName} numberOfLines={1}>
+              {name || 'Host'}
+            </Text>
+            {gender === 'female' ? (
+              <View style={[styles.genderBadge, { backgroundColor: '#F43F5E' }]}>
                 <Text style={styles.genderSymbol}>♀</Text>
               </View>
-            )}
+            ) : gender === 'male' ? (
+              <View style={[styles.genderBadge, { backgroundColor: '#0284C7' }]}>
+                <Text style={styles.genderSymbol}>♂</Text>
+              </View>
+            ) : null}
           </View>
 
-          {Boolean(hostId || route.params?.userId || route.params?.meethiId || route.params?.host?.userId) && (
-            <Text style={styles.targetIdBadge}>
-              Host ID: {hostId || route.params?.userId || route.params?.meethiId || route.params?.host?.userId}
-            </Text>
+          {Boolean(targetHostId) && (
+            <View style={styles.idChip}>
+              <Text style={styles.idChipText}>Host ID: {targetHostId}</Text>
+            </View>
           )}
 
-          {Boolean(user?.userId || user?.meethiId || user?.id) && (
-            <Text style={styles.myIdBadge}>
-              {user?.role === 'host' ? 'My Host ID' : 'My ID'}: {user?.userId || user?.meethiId || user?.id}
-            </Text>
-          )}
-
-          <View style={styles.statusRow}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.statusText}>Online</Text>
+          <View style={styles.statusLiveRow}>
+            <View style={styles.pulseDot} />
+            <Text style={styles.statusLiveText}>{status}</Text>
           </View>
-
-          <Text style={styles.callStatusText}>Calling...</Text>
         </View>
 
-        {/* Cost and Balance Panel */}
-        <View style={styles.panelCardContainer}>
-          <LinearGradient
-            colors={['rgba(124, 77, 255, 0.2)', 'rgba(3, 220, 254, 0.2)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.panelCardBorder}
-          >
-            <View style={styles.panelCard}>
-              {/* Cost column */}
-              <View style={styles.panelCol}>
-                <Icon name="phone" size={18} color="rgba(255, 255, 255, 0.5)" />
-                <Text style={styles.panelLabel}>Call Cost</Text>
-                <View style={styles.panelValueRow}>
-                  <Text style={styles.panelValueYellow}>{callRatePerMinute}</Text>
-                  <Image source={require('../../assets/icons/diamond.png')} style={styles.diamondIconSmall} resizeMode="contain" />
-                  <Text style={styles.panelValueSub}>/ min</Text>
-                </View>
-              </View>
-
-              <View style={styles.panelDivider} />
-
-              {/* Balance column */}
-              <View style={styles.panelCol}>
-                <Icon name="account-balance-wallet" size={18} color="rgba(255, 255, 255, 0.5)" />
-                <Text style={styles.panelLabel}>Your Balance</Text>
-                <View style={styles.panelValueRow}>
-                  <Text style={styles.panelValueWhite}>
-                    {typeof balance === 'number' && !isNaN(balance) ? balance.toLocaleString() : (balance || 0)}
-                  </Text>
-                  <Image source={require('../../assets/icons/diamond.png')} style={styles.diamondIconSmall} resizeMode="contain" />
-                  <TouchableOpacity style={styles.addCoinsBtn}>
-                    <Icon name="add-circle" size={16} color="#03dcfe" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Feature Badges Row */}
-        <View style={styles.featureBadgesRow}>
-          <View style={styles.featureBadge}>
-            <View style={styles.badgeIconBg}>
-              <Icon name="hd" size={16} color="#03dcfe" />
-            </View>
-            <View style={styles.badgeTexts}>
-              <Text style={styles.badgeTitle}>High Quality</Text>
-              <Text style={styles.badgeSub}>Crystal Clear Voice</Text>
+        {/* Cost & Balance Glass Card */}
+        <View style={styles.costCardContainer}>
+          <View style={styles.costCardCol}>
+            <Text style={styles.costCardLabel}>Call Rate</Text>
+            <View style={styles.costValRow}>
+              <Text style={styles.costValNumber}>{callRatePerMinute}</Text>
+              <Image
+                source={require('../../assets/icons/diamond.png')}
+                style={styles.diamondIcon}
+                resizeMode="contain"
+              />
+              <Text style={styles.costValUnit}>/ min</Text>
             </View>
           </View>
 
-          <View style={styles.featureBadge}>
-            <View style={styles.badgeIconBg}>
-              <Icon name="lock" size={15} color="#03dcfe" />
-            </View>
-            <View style={styles.badgeTexts}>
-              <Text style={styles.badgeTitle}>Secure Call</Text>
-              <Text style={styles.badgeSub}>End-to-end Encrypted</Text>
-            </View>
-          </View>
+          <View style={styles.costCardDivider} />
 
-          <View style={styles.featureBadge}>
-            <View style={styles.badgeIconBg}>
-              <Icon name="mic-off" size={15} color="#03dcfe" />
-            </View>
-            <View style={styles.badgeTexts}>
-              <Text style={styles.badgeTitle}>No Recording</Text>
-              <Text style={styles.badgeSub}>100% Private</Text>
+          <View style={styles.costCardCol}>
+            <Text style={styles.costCardLabel}>Your Balance</Text>
+            <View style={styles.costValRow}>
+              <Text style={styles.costValNumber}>
+                {typeof balance === 'number' && !isNaN(balance)
+                  ? balance.toLocaleString()
+                  : balance || 0}
+              </Text>
+              <Image
+                source={require('../../assets/icons/diamond.png')}
+                style={styles.diamondIcon}
+                resizeMode="contain"
+              />
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Recharge')}
+                style={styles.rechargeChip}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.rechargeChipText}>+ Add</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
       </View>
 
-      {/* Control buttons row */}
-      <View style={styles.controlBar}>
+      {/* Bottom Controls Bar */}
+      <View style={styles.bottomBar}>
         {/* Mute Button */}
-        <View style={styles.controlWrapper}>
+        <View style={styles.controlItem}>
           <TouchableOpacity
             onPress={handleMicToggle}
             activeOpacity={0.8}
-            style={[styles.controlButton, !micOn ? styles.controlActive : styles.controlInactive]}
+            style={[styles.controlBtn, !micOn && styles.controlBtnActive]}
           >
-            <Icon name={micOn ? "mic" : "mic-off"} size={22} color={micOn ? "rgba(255, 255, 255, 0.8)" : "#03dcfe"} />
+            <Icon
+              name={micOn ? 'mic' : 'mic-off'}
+              size={24}
+              color={micOn ? 'rgba(255, 255, 255, 0.85)' : '#38BDF8'}
+            />
           </TouchableOpacity>
-          <Text style={styles.controlLabel}>Mute</Text>
+          <Text style={styles.controlLabel}>{micOn ? 'Mute' : 'Muted'}</Text>
         </View>
 
-        {/* Cancel Button */}
-        <View style={styles.controlWrapper}>
+        {/* End Call Button */}
+        <View style={styles.controlItem}>
           <TouchableOpacity
             onPress={handleEndCall}
-            activeOpacity={0.8}
-            style={[styles.controlButton, styles.endCallButton]}
+            activeOpacity={0.85}
+            style={styles.endCallBtn}
           >
-            <Icon name="call-end" size={28} color="#fff" />
+            <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.endCallGradient}>
+              <Icon name="call-end" size={30} color="#FFFFFF" />
+            </LinearGradient>
           </TouchableOpacity>
-          <Text style={styles.controlLabel}>Cancel</Text>
+          <Text style={[styles.controlLabel, { color: '#EF4444' }]}>Cancel</Text>
         </View>
 
         {/* Speaker Button */}
-        <View style={styles.controlWrapper}>
+        <View style={styles.controlItem}>
           <TouchableOpacity
             onPress={handleSpeakerToggle}
             activeOpacity={0.8}
-            style={[styles.controlButton, speakerOn ? styles.controlActive : styles.controlInactive]}
+            style={[styles.controlBtn, speakerOn && styles.controlBtnActive]}
           >
-            <Icon name={speakerOn ? "volume-up" : "volume-mute"} size={22} color={speakerOn ? "#03dcfe" : "rgba(255, 255, 255, 0.8)"} />
+            <Icon
+              name={speakerOn ? 'volume-up' : 'volume-mute'}
+              size={24}
+              color={speakerOn ? '#38BDF8' : 'rgba(255, 255, 255, 0.85)'}
+            />
           </TouchableOpacity>
-          <Text style={styles.controlLabel}>Speaker</Text>
+          <Text style={styles.controlLabel}>{speakerOn ? 'Speaker' : 'Ear'}</Text>
         </View>
       </View>
 
-      {/* Bottom Ringing Banner Bar */}
-      <View style={styles.bottomBannerContainer}>
-        <LinearGradient
-          colors={['rgba(124, 77, 255, 0.1)', 'rgba(3, 220, 254, 0.1)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.bottomBanner}
-        >
-          <View style={styles.bannerLeftRow}>
-            <View style={styles.phoneIconBg}>
-              <Icon name="phone" size={14} color="#03dcfe" />
-            </View>
-            <View style={styles.bannerTexts}>
-              <Text style={styles.bannerTitleText}>Using 6 diamonds per minute</Text>
-              <Text style={styles.bannerSubText}>Call will be connected once accepted.</Text>
-            </View>
-          </View>
-
-          <View style={styles.bannerRightRow}>
-            <Text style={styles.bannerTimer}>00:00</Text>
-            <Text style={styles.bannerStatusText}>{status}</Text>
-          </View>
-        </LinearGradient>
+      {/* Security Footer Notice */}
+      <View style={styles.securityFooter}>
+        <Icon name="lock" size={13} color="rgba(255, 255, 255, 0.4)" />
+        <Text style={styles.securityText}>End-to-end Encrypted • 100% Private</Text>
       </View>
     </LinearGradient>
   );
@@ -525,370 +525,243 @@ const OutGoing = () => {
 export default OutGoing;
 
 const styles = StyleSheet.create({
-  profileCard: {
+  screen: {
     flex: 1,
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  topBadgeContainer: {
     width: '100%',
-    paddingHorizontal: 16,
-    height: HP(6),
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: RF(15),
-    fontWeight: 'bold',
-  },
-  reportBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(217, 70, 239, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(217, 70, 239, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    marginTop: 8,
   },
-  reportText: {
-    color: '#d946ef',
-    fontSize: RF(10),
-    fontWeight: 'bold',
-  },
-  mainContent: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    width: "100%",
-  },
-  avatarRowContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    width: "100%",
-    marginBottom: HP(3),
-  },
-  equalizerWave: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 3,
-    width: WP(20),
-  },
-  equalizerBar: {
-    width: 2.5,
-    backgroundColor: "#d946ef",
-    borderRadius: 1.5,
-    opacity: 0.6,
-  },
-  avatarGlowContainer: {
-    shadowColor: "#03dcfe",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    elevation: 12,
-  },
-  avatarBorderOuter: {
-    height: 140,
-    width: 140,
-    borderRadius: 70,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderWidth: 2.5,
-    borderColor: "#03dcfe",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 6,
-  },
-  avatarImage: {
-    height: "100%",
-    width: "100%",
-    borderRadius: 65,
-  },
-  detailsContainer: {
-    alignItems: "center",
-    marginBottom: HP(3),
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  callerNameText: {
-    color: "#ffffff",
-    fontSize: RF(22),
-    fontWeight: "bold",
-    letterSpacing: 0.5,
-  },
-  genderBadge: {
-    backgroundColor: "#ec4899",
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  genderSymbol: {
-    color: "#fff",
-    fontSize: RF(10),
-    fontWeight: "bold",
-    marginTop: -1,
-  },
-  targetIdBadge: {
-    color: '#03dcfe',
-    fontSize: RF(13),
-    fontWeight: '700',
-    backgroundColor: 'rgba(3, 220, 254, 0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 3,
-    borderRadius: 12,
-    marginBottom: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(3, 220, 254, 0.25)',
-  },
-  myIdBadge: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: RF(11),
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: HP(1),
-  },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#10b981",
-  },
-  statusText: {
-    color: "#10b981",
-    fontSize: RF(12),
-    fontWeight: "600",
-  },
-  callStatusText: {
-    color: "rgba(255, 255, 255, 0.6)",
-    fontSize: RF(13),
-    fontWeight: "500",
-  },
-  panelCardContainer: {
-    width: WP(92),
-    marginBottom: HP(3),
-  },
-  panelCardBorder: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    overflow: 'hidden',
-  },
-  panelCard: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(10, 5, 28, 0.85)',
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  panelCol: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  panelDivider: {
-    width: 1,
-    height: HP(5),
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  panelLabel: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: RF(10),
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  panelValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  panelValueYellow: {
-    color: '#FFD700',
-    fontSize: RF(18),
-    fontWeight: 'bold',
-  },
-  panelValueWhite: {
-    color: '#fff',
-    fontSize: RF(18),
-    fontWeight: 'bold',
-  },
-  panelValueSub: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: RF(11),
-    fontWeight: '600',
-  },
-  addCoinsBtn: {
-    marginLeft: 4,
-  },
-  featureBadgesRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: WP(92),
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 14,
-    padding: 10,
-  },
-  featureBadge: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  badgeIconBg: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(3, 220, 254, 0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeTexts: {
-    justifyContent: 'center',
-  },
-  badgeTitle: {
-    color: '#fff',
-    fontSize: RF(9.5),
-    fontWeight: 'bold',
-  },
-  badgeSub: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: RF(7.5),
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  controlBar: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: WP(8),
-    width: '100%',
-    marginBottom: HP(3),
-  },
-  controlWrapper: {
-    alignItems: 'center',
-  },
-  controlButton: {
-    height: 52,
-    width: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  controlActive: {
-    backgroundColor: 'rgba(3, 220, 254, 0.2)',
-    borderWidth: 1.5,
-    borderColor: '#03dcfe',
-    shadowColor: '#03dcfe',
-  },
-  controlInactive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    shadowColor: '#000',
-  },
-  endCallButton: {
-    height: 64,
-    width: 64,
-    borderRadius: 32,
-    backgroundColor: '#e53935',
-    shadowColor: '#e53935',
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  controlLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: RF(11),
-    fontWeight: '600',
-    marginTop: HP(0.5),
-  },
-  bottomBannerContainer: {
-    width: WP(92),
-    marginBottom: HP(2),
-  },
-  bottomBanner: {
-    flexDirection: 'row',
-    borderRadius: 14,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(3, 220, 254, 0.15)',
-  },
-  bannerLeftRow: {
+  callTypePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  phoneIconBg: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(3, 220, 254, 0.15)',
+  callTypeText: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+
+  // Center Section
+  centerSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  avatarWrap: {
+    width: 170,
+    height: 170,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  avatarRadarRing: {
+    position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    borderWidth: 2,
+  },
+  avatarInnerBorder: {
+    width: 136,
+    height: 136,
+    borderRadius: 68,
+    padding: 3,
+    borderWidth: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 64,
+  },
+
+  infoBox: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  callerName: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '900',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  genderBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  bannerTexts: {
+  genderSymbol: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  idChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    marginBottom: 10,
+  },
+  idChipText: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  statusLiveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#22C55E',
+  },
+  statusLiveText: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // Cost Card
+  costCardContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: width - 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  costCardCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  costCardDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  costCardLabel: {
+    color: 'rgba(255, 255, 255, 0.55)',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  costValRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  costValNumber: {
+    color: '#FFD700',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  diamondIcon: {
+    width: 13,
+    height: 13,
+    marginHorizontal: 3,
+  },
+  costValUnit: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  rechargeChip: {
+    marginLeft: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: '#7C3AED',
+  },
+  rechargeChipText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+
+  // Bottom Controls Bar
+  bottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    width: '100%',
+    paddingHorizontal: 16,
+  },
+  controlItem: {
+    alignItems: 'center',
+  },
+  controlBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  bannerTitleText: {
-    color: '#fff',
-    fontSize: RF(10.5),
-    fontWeight: 'bold',
+  controlBtnActive: {
+    backgroundColor: 'rgba(56, 189, 248, 0.25)',
+    borderWidth: 1.5,
+    borderColor: '#38BDF8',
   },
-  bannerSubText: {
+  endCallBtn: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    overflow: 'hidden',
+    elevation: 10,
+    shadowColor: '#EF4444',
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+  },
+  endCallGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  controlLabel: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 7,
+  },
+
+  // Security Footer
+  securityFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
+  },
+  securityText: {
     color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: RF(8.5),
+    fontSize: 11,
     fontWeight: '600',
-    marginTop: 1,
-  },
-  bannerRightRow: {
-    alignItems: 'flex-end',
-  },
-  bannerTimer: {
-    color: '#03dcfe',
-    fontSize: RF(12),
-    fontWeight: 'bold',
-  },
-  bannerStatusText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: RF(8.5),
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  reportIcon: {
-    marginRight: 2,
-  },
-  panelValueIcon: {
-    marginLeft: 4,
-  },
-  diamondIconSmall: {
-    width: 14,
-    height: 14,
-    marginLeft: 4,
   },
 });

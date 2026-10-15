@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   ActivityIndicator,
   PermissionsAndroid,
   Platform,
+  FlatList,
+  Animated,
 } from 'react-native';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +27,8 @@ import {
   ChannelProfileType,
   ClientRoleType,
   RtcSurfaceView,
+  RtcTextureView,
+  RenderModeType,
   VideoSourceType,
 } from 'react-native-agora';
 import { AuthContext } from '../../context/AuthProvider';
@@ -35,15 +39,19 @@ import { getUserAvatar } from '../../utils/avatarUtil';
 import { getRoleAgoraCredentials } from '../../utils/callValidation';
 import { AlertService } from '../../utils/AlertService';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
+import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
+import GiftMedia from '../../components/GiftMedia';
 
 const { width, height } = Dimensions.get('window');
+const VideoRenderer = Platform.OS === 'android' ? RtcTextureView : RtcSurfaceView;
+const QUANTITIES = [1, 5, 10, 52, 99, 520];
 
 export default function VideoCallScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
-  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 28);
+  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
   const { user, fetchUserProfile } = useContext(AuthContext);
   const { clearCall } = useCall();
 
@@ -58,9 +66,16 @@ export default function VideoCallScreen() {
     maxMinutes = 15,
   } = route.params || {};
 
-  const partnerId = route.params?.hostId || route.params?.userId || route.params?.meethiId || route.params?.targetId || '';
+  const partnerId =
+    route.params?.hostId ||
+    route.params?.userId ||
+    route.params?.callerId ||
+    route.params?.host?._id ||
+    route.params?.meethiId ||
+    '';
   const myId = user?.userId || user?.meethiId || user?.id || '';
 
+  // Call States
   const [callDuration, setCallDuration] = useState(0);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
@@ -68,8 +83,20 @@ export default function VideoCallScreen() {
   const [isFrontCamera, setIsFrontCamera] = useState(true);
   const [remoteUid, setRemoteUid] = useState(null);
   const [isChannelJoined, setIsChannelJoined] = useState(false);
+  const [remoteVideoActive, setRemoteVideoActive] = useState(true);
 
-  // Safety controls
+  // Gift States
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [gifts, setGifts] = useState([]);
+  const [loadingGifts, setLoadingGifts] = useState(false);
+  const [activeTab, setActiveTab] = useState('All');
+  const [selectedGift, setSelectedGift] = useState(null);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [showQtyPicker, setShowQtyPicker] = useState(false);
+  const [sendingGift, setSendingGift] = useState(false);
+  const [activeGiftBanner, setActiveGiftBanner] = useState(null);
+
+  // Safety Controls
   const [safetyModalVisible, setSafetyModalVisible] = useState(false);
   const [reportReason, setReportReason] = useState('Inappropriate behavior');
   const [reportDetails, setReportDetails] = useState('');
@@ -78,8 +105,9 @@ export default function VideoCallScreen() {
   const agoraEngineRef = useRef(null);
   const timerRef = useRef(null);
   const isLeavingRef = useRef(false);
+  const giftBannerTimerRef = useRef(null);
 
-  // Timer counting - only starts when remoteUid connects!
+  // Timer: starts once remoteUid is connected
   useEffect(() => {
     if (!remoteUid) {
       if (timerRef.current) {
@@ -101,14 +129,13 @@ export default function VideoCallScreen() {
     };
   }, [remoteUid]);
 
-  // Format MM:SS
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  // Socket listener for remote hangup / call end
+  // Socket: remote call ended & incoming gifts during video call
   useEffect(() => {
     const sock = getSocket();
     if (!sock) return;
@@ -120,15 +147,145 @@ export default function VideoCallScreen() {
       }
     };
 
+    const onGiftReceived = (payload) => {
+      console.log('🎁 In-call gift received:', payload);
+      const giftData = payload?.gift || payload;
+      setActiveGiftBanner({
+        senderName: payload?.senderName || payload?.sender?.name || name || 'Partner',
+        giftName: giftData?.name || 'Gift',
+        giftImage: giftData?.image || giftData?.iconUrl || '',
+        quantity: payload?.quantity || 1,
+      });
+      if (giftBannerTimerRef.current) clearTimeout(giftBannerTimerRef.current);
+      giftBannerTimerRef.current = setTimeout(() => {
+        setActiveGiftBanner(null);
+      }, 3500);
+    };
+
     sock.on('callEnded', onCallEnded);
     sock.on('endCall', onCallEnded);
+    sock.on('giftReceived', onGiftReceived);
+    sock.on('callGift', onGiftReceived);
+
     return () => {
       sock.off('callEnded', onCallEnded);
       sock.off('endCall', onCallEnded);
+      sock.off('giftReceived', onGiftReceived);
+      sock.off('callGift', onGiftReceived);
     };
-  }, [transactionId]);
+  }, [transactionId, name]);
 
-  // Initialize Agora Video Engine with Android runtime permissions
+  // Dynamic Categories for Gifts
+  const categories = useMemo(() => {
+    const cats = gifts
+      .map((g) => (typeof g.category === 'string' ? g.category.trim() : g.category?.name?.trim()))
+      .filter(Boolean);
+    return ['All', ...Array.from(new Set(cats))];
+  }, [gifts]);
+
+  const filteredGifts = useMemo(() => {
+    if (activeTab.toLowerCase() === 'all') return gifts;
+    return gifts.filter((g) => {
+      const c = typeof g.category === 'string' ? g.category : g.category?.name || '';
+      return c.toLowerCase() === activeTab.toLowerCase();
+    });
+  }, [activeTab, gifts]);
+
+  const fetchGifts = async () => {
+    setLoadingGifts(true);
+    try {
+      const res = await apiUtil.get('/gifts');
+      if (res.data?.success) {
+        setGifts(Array.isArray(res.data.data) ? res.data.data : []);
+      } else {
+        setGifts([]);
+      }
+    } catch (err) {
+      console.log('Error fetching gifts:', err?.message);
+      setGifts([]);
+    } finally {
+      setLoadingGifts(false);
+    }
+  };
+
+  const openGiftModal = () => {
+    setSelectedGift(null);
+    setSelectedQuantity(1);
+    setShowQtyPicker(false);
+    setShowGiftModal(true);
+    if (!gifts.length) {
+      fetchGifts();
+    }
+  };
+
+  const handleSendGift = async () => {
+    if (!selectedGift) {
+      AlertService.show('Select a gift', 'Please tap on a gift to select it.', 'info');
+      return;
+    }
+    const costPerUnit = Number(selectedGift.price ?? selectedGift.cost ?? selectedGift.priceDiamonds ?? 0);
+    const totalCost = costPerUnit * selectedQuantity;
+    const balance = Number(user?.diamonds || 0);
+
+    if (balance < totalCost) {
+      Alert.alert(
+        'Insufficient Diamonds',
+        `You need ${totalCost.toLocaleString()} Diamonds to send this gift. Your balance is ${balance.toLocaleString()} Diamonds.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Recharge',
+            onPress: () => {
+              setShowGiftModal(false);
+              navigation.navigate('Recharge');
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    try {
+      setSendingGift(true);
+      const res = await apiUtil.post('/gifts/send', {
+        requestId: `vg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        giftId: selectedGift._id || selectedGift.id,
+        quantity: selectedQuantity,
+        receiverId: partnerId,
+        receiverIds: partnerId ? [partnerId] : [],
+        callId: transactionId,
+        currency: 'DIAMONDS',
+      });
+
+      if (res.data?.success) {
+        fetchUserProfile?.();
+        const visual = resolveGiftVisual(selectedGift);
+        setActiveGiftBanner({
+          senderName: 'You',
+          giftName: selectedGift.name,
+          giftImage: visual.giftImage,
+          giftIcon: visual.giftIcon,
+          quantity: selectedQuantity,
+        });
+        if (giftBannerTimerRef.current) clearTimeout(giftBannerTimerRef.current);
+        giftBannerTimerRef.current = setTimeout(() => {
+          setActiveGiftBanner(null);
+        }, 3500);
+
+        setShowGiftModal(false);
+        setSelectedGift(null);
+        setSelectedQuantity(1);
+      } else {
+        AlertService.show('Gift failed', res.data?.message || 'Could not send gift', 'error');
+      }
+    } catch (err) {
+      AlertService.show('Failed', err.response?.data?.message || err.message || 'Could not send gift', 'error');
+    } finally {
+      setSendingGift(false);
+    }
+  };
+
+  // Initialize Agora Video Engine
   useEffect(() => {
     let engine = null;
 
@@ -159,9 +316,11 @@ export default function VideoCallScreen() {
         engine = createAgoraRtcEngine();
         agoraEngineRef.current = engine;
 
-        engine.initialize({ appId, channelProfile: ChannelProfileType.ChannelProfileCommunication });
+        engine.initialize({ appId });
         engine.enableVideo();
         engine.enableAudio();
+        engine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
+        engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
         engine.enableLocalVideo(true);
         engine.enableLocalAudio(true);
         engine.startPreview();
@@ -171,12 +330,26 @@ export default function VideoCallScreen() {
             console.log('✅ Video call channel joined:', connection.channelId, 'uid:', connection.localUid);
             setIsChannelJoined(true);
           },
-          onUserJoined: (connection, uid, elapsed) => {
-            console.log('👤 Remote user joined video:', uid);
-            setRemoteUid(uid);
+          onUserJoined: (connection, u, elapsed) => {
+            console.log('👤 Remote user joined video:', u);
+            setRemoteUid(u);
+            setRemoteVideoActive(true);
           },
-          onUserOffline: (connection, uid, reason) => {
-            console.log('👤 Remote user offline:', uid);
+          onRemoteVideoStateChanged: (connection, u, state, reason, elapsed) => {
+            console.log('🎥 Remote video state changed:', u, 'state:', state);
+            if (state === 1 || state === 2) {
+              setRemoteUid(u);
+              setRemoteVideoActive(true);
+            } else if (state === 0 || state === 3) {
+              setRemoteVideoActive(false);
+            }
+          },
+          onUserMuteVideo: (connection, u, muted) => {
+            console.log('👤 Remote muted video:', u, muted);
+            setRemoteVideoActive(!muted);
+          },
+          onUserOffline: (connection, u, reason) => {
+            console.log('👤 Remote user offline:', u);
             setRemoteUid(null);
             handleEndCall();
           },
@@ -207,9 +380,7 @@ export default function VideoCallScreen() {
           engine.leaveChannel();
           engine.release();
         }
-      } catch (e) {
-        // ignore
-      }
+      } catch (_) {}
     };
   }, [agora, channelName, isCaller]);
 
@@ -248,6 +419,7 @@ export default function VideoCallScreen() {
 
     try {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (giftBannerTimerRef.current) clearTimeout(giftBannerTimerRef.current);
       InCallManager.stop();
       if (agoraEngineRef.current) {
         agoraEngineRef.current.stopPreview();
@@ -270,7 +442,7 @@ export default function VideoCallScreen() {
   };
 
   const handleBlockUser = () => {
-    const targetUserId = route.params?.hostId || route.params?.userId;
+    const targetUserId = partnerId || route.params?.hostId || route.params?.userId;
     if (!targetUserId) {
       handleEndCall();
       return;
@@ -299,7 +471,7 @@ export default function VideoCallScreen() {
   };
 
   const handleSubmitReport = async () => {
-    const targetUserId = route.params?.hostId || route.params?.userId;
+    const targetUserId = partnerId || route.params?.hostId || route.params?.userId;
     if (!targetUserId) return;
 
     try {
@@ -325,19 +497,26 @@ export default function VideoCallScreen() {
 
       {/* Main Remote Video or Fallback Avatar */}
       <View style={StyleSheet.absoluteFillObject}>
-        {remoteUid && agoraEngineRef.current ? (
-          <RtcSurfaceView
+        {remoteUid && remoteVideoActive && agoraEngineRef.current ? (
+          <VideoRenderer
             style={StyleSheet.absoluteFillObject}
-            canvas={{ uid: remoteUid, sourceType: VideoSourceType.VideoSourceRemote }}
+            canvas={{ uid: Number(remoteUid), renderMode: RenderModeType.RenderModeHidden }}
           />
         ) : (
           <View style={styles.remoteFallback}>
-            <Image
-              source={getUserAvatar({ image, gender: route.params?.gender }, route.params?.gender)}
-              style={styles.remoteAvatar}
+            <LinearGradient
+              colors={['#100624', '#1E0E3E', '#090314']}
+              style={StyleSheet.absoluteFillObject}
             />
+            <View style={styles.remoteAvatarGlow}>
+              <Image
+                source={getUserAvatar({ image, gender: route.params?.gender }, route.params?.gender)}
+                style={styles.remoteAvatar}
+              />
+            </View>
+            <Text style={styles.remotePartnerName}>{name}</Text>
             <Text style={styles.remoteConnectingText}>
-              {remoteUid ? `${name} (Video Muted)` : `Connecting with ${name}...`}
+              {remoteUid ? (remoteVideoActive ? 'Video Connected' : 'Camera Muted') : `Connecting with ${name}...`}
             </Text>
           </View>
         )}
@@ -350,82 +529,327 @@ export default function VideoCallScreen() {
             source={getUserAvatar({ image, gender: route.params?.gender }, route.params?.gender)}
             style={styles.metaAvatar}
           />
-          <View>
+          <View style={styles.metaInfoWrap}>
             <Text style={styles.metaName} numberOfLines={1}>
-              {name} {partnerId ? `(ID: ${partnerId})` : ''}
+              {name}
             </Text>
-            <Text style={styles.metaTimer}>
-              {remoteUid ? `⏱ ${formatTime(callDuration)}` : 'Connecting...'}
-            </Text>
+            <View style={styles.metaTimerRow}>
+              <View style={styles.liveGreenDot} />
+              <Text style={styles.metaTimer}>
+                {remoteUid ? formatTime(callDuration) : 'Connecting...'}
+              </Text>
+            </View>
           </View>
         </View>
-
-        {Boolean(myId) && (
-          <View style={styles.myIdPill}>
-            <Text style={styles.myIdText}>
-              {user?.role === 'host' ? 'Host' : 'You'}: {myId}
-            </Text>
-          </View>
-        )}
 
         <TouchableOpacity
           style={styles.safetyBtn}
           onPress={() => setSafetyModalVisible(true)}
+          activeOpacity={0.8}
         >
-          <Icon name="shield-outline" size={18} color="#FFFFFF" />
+          <Icon name="shield-checkmark-outline" size={19} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
+
+      {/* Floating Active Gift Animation Banner */}
+      {activeGiftBanner && (
+        <View style={styles.giftBannerFloating}>
+          <LinearGradient
+            colors={['rgba(255, 64, 129, 0.95)', 'rgba(124, 58, 237, 0.95)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.giftBannerGradient}
+          >
+            {activeGiftBanner.giftImage ? (
+              <Image source={{ uri: activeGiftBanner.giftImage }} style={styles.giftBannerImage} resizeMode="contain" />
+            ) : (
+              <Text style={styles.giftBannerEmoji}>{activeGiftBanner.giftIcon || '🎁'}</Text>
+            )}
+            <View style={styles.giftBannerTextWrap}>
+              <Text style={styles.giftBannerSender} numberOfLines={1}>
+                {activeGiftBanner.senderName} sent
+              </Text>
+              <Text style={styles.giftBannerName} numberOfLines={1}>
+                {activeGiftBanner.giftName} x{activeGiftBanner.quantity}
+              </Text>
+            </View>
+          </LinearGradient>
+        </View>
+      )}
 
       {/* Floating Picture-in-Picture Local Video View */}
       {isCameraOn && (
         <View style={styles.localPipCard}>
           {agoraEngineRef.current ? (
-            <RtcSurfaceView
+            <VideoRenderer
               style={StyleSheet.absoluteFillObject}
               zOrderMediaOverlay={true}
-              canvas={{ uid: 0, sourceType: VideoSourceType.VideoSourceCamera }}
+              canvas={{ uid: 0, renderMode: RenderModeType.RenderModeHidden }}
             />
           ) : (
             <View style={styles.localFallback}>
               <Icon name="person" size={24} color="#CBD5E1" />
             </View>
           )}
-          <TouchableOpacity style={styles.cameraFlipBtn} onPress={toggleSwitchCamera}>
-            <Icon name="camera-reverse" size={16} color="#FFFFFF" />
+          <TouchableOpacity style={styles.cameraFlipBtn} onPress={toggleSwitchCamera} activeOpacity={0.8}>
+            <Icon name="camera-reverse" size={17} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Bottom Floating Control Bar */}
+      {/* Bottom Floating Control Bar with GIFT Button */}
       <View style={[styles.bottomControlsBar, { paddingBottom: bottomPadding }]}>
-        <TouchableOpacity
-          style={[styles.controlCircle, !isCameraOn && styles.controlCircleOff]}
-          onPress={toggleCamera}
-        >
-          <Icon name={isCameraOn ? 'videocam' : 'videocam-off'} size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+        <View style={styles.controlsRow}>
+          {/* Camera Toggle */}
+          <TouchableOpacity
+            style={[styles.controlCircle, !isCameraOn && styles.controlCircleOff]}
+            onPress={toggleCamera}
+            activeOpacity={0.8}
+          >
+            <Icon name={isCameraOn ? 'videocam' : 'videocam-off'} size={22} color="#FFFFFF" />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.controlCircle, isMuted && styles.controlCircleOff]}
-          onPress={toggleMute}
-        >
-          <Icon name={isMuted ? 'mic-off' : 'mic'} size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+          {/* Mic Toggle */}
+          <TouchableOpacity
+            style={[styles.controlCircle, isMuted && styles.controlCircleOff]}
+            onPress={toggleMute}
+            activeOpacity={0.8}
+          >
+            <Icon name={isMuted ? 'mic-off' : 'mic'} size={22} color="#FFFFFF" />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.controlCircle, !isSpeakerOn && styles.controlCircleOff]}
-          onPress={toggleSpeaker}
-        >
-          <Icon name={isSpeakerOn ? 'volume-high' : 'volume-mute'} size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+          {/* GIFT BUTTON (Center Spotlight) */}
+          <TouchableOpacity
+            style={styles.giftSpotlightBtn}
+            onPress={openGiftModal}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#FF3366', '#FF007A', '#7928CA']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.giftBtnGradient}
+            >
+              <Icon name="gift" size={26} color="#FFFFFF" />
+            </LinearGradient>
+            <Text style={styles.giftBtnLabel}>Gift</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.endCallCircle}
-          onPress={handleEndCall}
-        >
-          <Icon name="call" size={26} color="#FFFFFF" style={{ transform: [{ rotate: '135deg' }] }} />
-        </TouchableOpacity>
+          {/* Speaker Toggle */}
+          <TouchableOpacity
+            style={[styles.controlCircle, !isSpeakerOn && styles.controlCircleOff]}
+            onPress={toggleSpeaker}
+            activeOpacity={0.8}
+          >
+            <Icon name={isSpeakerOn ? 'volume-high' : 'volume-mute'} size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          {/* End Call Button */}
+          <TouchableOpacity
+            style={styles.endCallCircle}
+            onPress={handleEndCall}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#EF4444', '#DC2626']}
+              style={styles.endCallGradient}
+            >
+              <Icon name="call" size={24} color="#FFFFFF" style={{ transform: [{ rotate: '135deg' }] }} />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* ROOM-STYLE FULL GIFT MODAL BOTTOM SHEET */}
+      <Modal
+        visible={showGiftModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowGiftModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.giftModalBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowGiftModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.giftModalSheet, { paddingBottom: Math.max(16, (insets.bottom || 0) + 12) }]}
+          >
+            <LinearGradient
+              colors={['#160832', '#0F0524']}
+              style={StyleSheet.absoluteFillObject}
+            />
+
+            {/* Modal Header */}
+            <View style={styles.giftModalHeader}>
+              <View style={styles.giftHeaderLeft}>
+                <Text style={styles.giftModalTitle}>Send Gift to {name}</Text>
+                <View style={styles.diamondBadge}>
+                  <Image
+                    source={require('../../assets/icons/diamond.png')}
+                    style={styles.diamondIconSmall}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.diamondBadgeText}>
+                    {Number(user?.diamonds || 0).toLocaleString()}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.giftHeaderRight}>
+                <TouchableOpacity
+                  style={styles.rechargeBtnSmall}
+                  onPress={() => {
+                    setShowGiftModal(false);
+                    navigation.navigate('Recharge');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient colors={['#9333EA', '#7C3AED']} style={styles.rechargeGradient}>
+                    <Text style={styles.rechargeTextSmall}>+ Recharge</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setShowGiftModal(false)}
+                  style={styles.giftCloseBtn}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="close" size={20} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Categories Navigation Bar */}
+            <View style={styles.giftCategoriesBar}>
+              {categories.map((tab) => {
+                const isActive = activeTab.toLowerCase() === tab.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={tab}
+                    style={[styles.catTab, isActive && styles.catTabActive]}
+                    onPress={() => {
+                      setActiveTab(tab);
+                      setSelectedGift(null);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.catTabText, isActive && styles.catTabTextActive]}>
+                      {tab}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Gifts Grid */}
+            {loadingGifts ? (
+              <ActivityIndicator size="large" color="#EC4899" style={{ marginVertical: 45 }} />
+            ) : filteredGifts.length === 0 ? (
+              <View style={styles.emptyGiftsWrap}>
+                <Icon name="gift-outline" size={40} color="rgba(255,255,255,0.25)" />
+                <Text style={styles.emptyGiftsText}>No gifts in this category</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={filteredGifts}
+                numColumns={4}
+                keyExtractor={(item) => String(item._id || item.id)}
+                contentContainerStyle={styles.giftsGridContent}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => {
+                  const isSelected = String(selectedGift?._id || selectedGift?.id) === String(item._id || item.id);
+                  const visual = resolveGiftVisual(item);
+                  const price = item.price ?? item.cost ?? item.priceDiamonds ?? 0;
+
+                  return (
+                    <TouchableOpacity
+                      style={[styles.giftCard, isSelected && styles.giftCardSelected]}
+                      onPress={() => setSelectedGift(item)}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.giftThumbWrap}>
+                        {visual.giftImage ? (
+                          <GiftMedia source={visual.giftImage} mediaType={item.mediaType} style={styles.giftThumb} />
+                        ) : (
+                          <Text style={styles.giftEmoji}>{visual.giftIcon || '🎁'}</Text>
+                        )}
+                      </View>
+                      <Text style={styles.giftItemName} numberOfLines={1}>{item.name}</Text>
+                      <View style={styles.giftPriceRow}>
+                        <Image
+                          source={require('../../assets/icons/diamond.png')}
+                          style={{ width: 11, height: 11, marginRight: 2 }}
+                          resizeMode="contain"
+                        />
+                        <Text style={styles.giftItemPrice}>{price}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+
+            {/* Modal Bottom Send Action Bar */}
+            <View style={styles.giftModalBottomRow}>
+              {/* Quantity Selector Button */}
+              <View style={styles.qtyContainer}>
+                <TouchableOpacity
+                  style={styles.qtyPickerBtn}
+                  onPress={() => setShowQtyPicker(!showQtyPicker)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.qtyPickerText}>x{selectedQuantity}</Text>
+                  <Icon name={showQtyPicker ? 'chevron-down' : 'chevron-up'} size={15} color="#fff" />
+                </TouchableOpacity>
+
+                {showQtyPicker && (
+                  <View style={styles.qtyMenu}>
+                    {QUANTITIES.map((qty) => (
+                      <TouchableOpacity
+                        key={qty}
+                        style={styles.qtyMenuItem}
+                        onPress={() => {
+                          setSelectedQuantity(qty);
+                          setShowQtyPicker(false);
+                        }}
+                      >
+                        <Text style={[styles.qtyMenuText, selectedQuantity === qty && styles.qtyMenuTextActive]}>
+                          x{qty}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* Main Send Button */}
+              <TouchableOpacity
+                style={[styles.sendGiftBtn, (!selectedGift || sendingGift) && styles.sendGiftBtnDisabled]}
+                disabled={!selectedGift || sendingGift}
+                onPress={handleSendGift}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={selectedGift ? ['#FF2E93', '#7928CA'] : ['#3A3050', '#251F35']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.sendGiftGradient}
+                >
+                  {sendingGift ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.sendGiftBtnText}>
+                      Send ({selectedGift ? Number(selectedGift.price ?? selectedGift.cost ?? selectedGift.priceDiamonds ?? 0) * selectedQuantity : 0})
+                    </Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Safety & UGC Moderation Modal */}
       <Modal
@@ -434,14 +858,18 @@ export default function VideoCallScreen() {
         animationType="slide"
         onRequestClose={() => setSafetyModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSafetyModalVisible(false)}
+        >
           <View style={styles.safetyDialog}>
             <View style={styles.safetyHeader}>
               <Icon name="shield-checkmark" size={24} color="#7C3AED" />
               <Text style={styles.safetyTitle}>Safety & Moderation</Text>
             </View>
 
-            <TouchableOpacity style={styles.dangerRow} onPress={handleBlockUser}>
+            <TouchableOpacity style={styles.dangerRow} onPress={handleBlockUser} activeOpacity={0.8}>
               <Icon name="hand-left-outline" size={20} color="#EF4444" />
               <Text style={styles.dangerText}>Block User & End Call</Text>
             </TouchableOpacity>
@@ -450,43 +878,50 @@ export default function VideoCallScreen() {
             {['Inappropriate content', 'Harassment', 'Spam/Scam', 'Underage user'].map((reason) => (
               <TouchableOpacity
                 key={reason}
-                style={[styles.reasonPill, reportReason === reason && styles.reasonPillActive]}
+                style={[styles.reasonOption, reportReason === reason && styles.reasonOptionActive]}
                 onPress={() => setReportReason(reason)}
+                activeOpacity={0.8}
               >
-                <Text style={[styles.reasonText, reportReason === reason && styles.reasonTextActive]}>
-                  {reason}
-                </Text>
+                <Icon
+                  name={reportReason === reason ? 'radio-button-on' : 'radio-button-off'}
+                  size={18}
+                  color={reportReason === reason ? '#7C3AED' : '#94A3B8'}
+                />
+                <Text style={styles.reasonText}>{reason}</Text>
               </TouchableOpacity>
             ))}
 
             <TextInput
               style={styles.reportInput}
-              placeholder="Additional details (optional)..."
+              placeholder="Provide more context (optional)..."
               placeholderTextColor="#94A3B8"
               value={reportDetails}
               onChangeText={setReportDetails}
+              multiline
+              maxLength={200}
             />
 
-            <View style={styles.safetyActionsRow}>
+            <View style={styles.reportActionsRow}>
               <TouchableOpacity
-                style={styles.safetyCancelBtn}
+                style={styles.cancelReportBtn}
                 onPress={() => setSafetyModalVisible(false)}
               >
-                <Text style={styles.safetyCancelText}>Dismiss</Text>
+                <Text style={styles.cancelReportText}>Cancel</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={styles.safetySubmitBtn}
+                style={styles.submitReportBtn}
                 onPress={handleSubmitReport}
                 disabled={submittingReport}
               >
-                <Text style={styles.safetySubmitText}>
-                  {submittingReport ? 'Submitting...' : 'Submit Report'}
-                </Text>
+                {submittingReport ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.submitReportText}>Submit Report</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -495,157 +930,491 @@ export default function VideoCallScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#090314',
   },
   remoteFallback: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0F172A',
+    alignItems: 'center',
+    paddingHorizontal: 24,
   },
-  remoteAvatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    borderColor: '#7C3AED',
+  remoteAvatarGlow: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    padding: 4,
+    backgroundColor: 'rgba(124, 58, 237, 0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
   },
+  remoteAvatar: {
+    width: 132,
+    height: 132,
+    borderRadius: 66,
+  },
+  remotePartnerName: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 6,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
   remoteConnectingText: {
-    fontSize: 16,
-    color: '#E2E8F0',
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 14,
     fontWeight: '600',
   },
+
+  // Top Header
   topHeader: {
     position: 'absolute',
+    left: 16,
+    right: 16,
     top: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    justifyContent: 'space-between',
     zIndex: 10,
   },
   callMetaCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    borderRadius: 24,
-    paddingVertical: 6,
     paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 24,
+    backgroundColor: 'rgba(15, 6, 32, 0.75)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
+    maxWidth: width * 0.72,
   },
   metaAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    marginRight: 9,
+    borderWidth: 1.5,
+    borderColor: '#7C3AED',
+  },
+  metaInfoWrap: {
+    flexShrink: 1,
   },
   metaName: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    maxWidth: 140,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  metaTimerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    gap: 5,
+  },
+  liveGreenDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#22C55E',
   },
   metaTimer: {
-    color: '#38BDF8',
+    color: 'rgba(255, 255, 255, 0.85)',
     fontSize: 11.5,
-    fontWeight: '600',
-  },
-  myIdPill: {
-    backgroundColor: 'rgba(124, 58, 237, 0.85)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
-  },
-  myIdText: {
-    color: '#FFFFFF',
-    fontSize: 11,
     fontWeight: '700',
   },
   safetyBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(15, 6, 32, 0.75)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
+
+  // Local PiP
   localPipCard: {
     position: 'absolute',
-    top: 100,
+    top: 96,
     right: 16,
-    width: 105,
-    height: 145,
+    width: 104,
+    height: 148,
     borderRadius: 18,
     overflow: 'hidden',
+    backgroundColor: '#1E1B4B',
     borderWidth: 2,
     borderColor: '#7C3AED',
     elevation: 8,
-    backgroundColor: '#1E293B',
+    zIndex: 15,
   },
   localFallback: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
   },
   cameraFlipBtn: {
     position: 'absolute',
-    bottom: 6,
-    right: 6,
+    top: 8,
+    right: 8,
     width: 28,
     height: 28,
     borderRadius: 14,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  bottomControlsBar: {
+
+  // Active Gift Banner
+  giftBannerFloating: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    top: 155,
+    left: 20,
+    zIndex: 25,
+    borderRadius: 24,
+    overflow: 'hidden',
+    elevation: 10,
+    maxWidth: width * 0.7,
+  },
+  giftBannerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
-    paddingTop: 16,
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 10,
+  },
+  giftBannerImage: {
+    width: 38,
+    height: 38,
+  },
+  giftBannerEmoji: {
+    fontSize: 28,
+  },
+  giftBannerTextWrap: {
+    flexShrink: 1,
+  },
+  giftBannerSender: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  giftBannerName: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+
+  // Bottom Controls
+  bottomControlsBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 36,
+    backgroundColor: 'rgba(15, 6, 34, 0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   controlCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   controlCircleOff: {
-    backgroundColor: 'rgba(239, 68, 68, 0.75)',
+    backgroundColor: 'rgba(239, 68, 68, 0.45)',
   },
-  endCallCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#EF4444',
+  giftSpotlightBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
   },
-  modalOverlay: {
+  giftBtnGradient: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#FF007A',
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+  },
+  giftBtnLabel: {
+    color: '#FF80BF',
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  endCallCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  endCallGradient: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Gift Modal
+  giftModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  giftModalSheet: {
+    backgroundColor: '#160832',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    maxHeight: height * 0.68,
+    overflow: 'hidden',
+  },
+  giftModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  giftHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  giftModalTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  diamondBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 215, 0, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  diamondIconSmall: {
+    width: 13,
+    height: 13,
+    marginRight: 4,
+  },
+  diamondBadgeText: {
+    color: '#FFD700',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  giftHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rechargeBtnSmall: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  rechargeGradient: {
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+  },
+  rechargeTextSmall: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  giftCloseBtn: {
+    padding: 4,
+  },
+
+  // Categories
+  giftCategoriesBar: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    paddingBottom: 8,
+  },
+  catTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  catTabActive: {
+    backgroundColor: '#7C3AED',
+  },
+  catTabText: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  catTabTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // Grid
+  giftsGridContent: {
+    paddingVertical: 4,
+  },
+  emptyGiftsWrap: {
+    height: 150,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyGiftsText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+    marginTop: 8,
+  },
+  giftCard: {
+    flex: 1 / 4,
+    margin: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+  },
+  giftCardSelected: {
+    borderColor: '#EC4899',
+    backgroundColor: 'rgba(236, 72, 153, 0.16)',
+  },
+  giftThumbWrap: {
+    width: 46,
+    height: 46,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  giftThumb: {
+    width: 44,
+    height: 44,
+  },
+  giftEmoji: {
+    fontSize: 28,
+  },
+  giftItemName: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  giftPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  giftItemPrice: {
+    color: '#FFD700',
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
+
+  // Bottom Send Row
+  giftModalBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  qtyContainer: {
+    position: 'relative',
+  },
+  qtyPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  qtyPickerText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  qtyMenu: {
+    position: 'absolute',
+    bottom: 42,
+    left: 0,
+    width: 80,
+    backgroundColor: '#241042',
+    borderRadius: 12,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    zIndex: 30,
+  },
+  qtyMenuItem: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  qtyMenuText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  qtyMenuTextActive: {
+    color: '#EC4899',
+    fontWeight: '900',
+  },
+  sendGiftBtn: {
+    flex: 1,
+    marginLeft: 12,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  sendGiftBtnDisabled: {
+    opacity: 0.5,
+  },
+  sendGiftGradient: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendGiftBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  // Safety Dialog
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
   safetyDialog: {
+    width: '100%',
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 24,
     padding: 20,
   },
   safetyHeader: {
@@ -655,92 +1424,87 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   safetyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: '#0F172A',
   },
   dangerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 14,
+    gap: 8,
     padding: 12,
-    gap: 10,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 14,
     marginBottom: 16,
   },
   dangerText: {
-    color: '#EF4444',
+    color: '#DC2626',
+    fontWeight: '800',
     fontSize: 14,
-    fontWeight: '700',
   },
   reportHeaderTitle: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#475569',
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#64748B',
     marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  reasonPill: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  reasonOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
     borderRadius: 10,
-    backgroundColor: '#F1F5F9',
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  reasonPillActive: {
+  reasonOptionActive: {
     backgroundColor: '#F3E8FF',
-    borderWidth: 1,
-    borderColor: '#7C3AED',
   },
   reasonText: {
-    fontSize: 13,
-    color: '#475569',
-  },
-  reasonTextActive: {
-    color: '#7C3AED',
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
   },
   reportInput: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
+    height: 70,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    borderRadius: 12,
     padding: 10,
     fontSize: 13,
-    color: '#0F172A',
-    marginVertical: 10,
-    minHeight: 46,
+    color: '#1E293B',
+    textAlignVertical: 'top',
+    marginTop: 8,
+    marginBottom: 14,
   },
-  safetyActionsRow: {
+  reportActionsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 8,
   },
-  safetyCancelBtn: {
+  cancelReportBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  safetyCancelText: {
-    fontSize: 13.5,
-    fontWeight: '600',
+  cancelReportText: {
     color: '#64748B',
+    fontWeight: '700',
+    fontSize: 14,
   },
-  safetySubmitBtn: {
+  submitReportBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
     backgroundColor: '#7C3AED',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  safetySubmitText: {
-    fontSize: 13.5,
-    fontWeight: '700',
+  submitReportText: {
     color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 14,
   },
 });

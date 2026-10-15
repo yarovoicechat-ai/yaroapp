@@ -257,6 +257,17 @@ export default function VoiceRoomScreen() {
   const joinBannerAnim = useRef(new Animated.Value(-width)).current;
   const joinBannerOpacity = useRef(new Animated.Value(0)).current;
 
+  // Handle Hardware Back Button to smoothly exit room and return to MainTabs
+  useEffect(() => {
+    const onBackPress = () => {
+      try { leaveRoom && leaveRoom(); } catch (e) {}
+      navigation.navigate('MainTabs');
+      return true;
+    };
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => backHandler.remove();
+  }, [navigation, leaveRoom]);
+
   // Modals for Tools, Music, Seat Layout, Themes & Seat Skins (Owner Tools)
   const [toolsModalVisible, setToolsModalVisible] = useState(false);
   const [musicModalVisible, setMusicModalVisible] = useState(false);
@@ -1467,7 +1478,10 @@ export default function VoiceRoomScreen() {
 
           <TouchableOpacity
             style={styles.headerIconBtn}
-            onPress={() => setExitModalVisible(true)}
+            onPress={() => {
+              try { leaveRoom && leaveRoom(); } catch (e) {}
+              navigation.navigate('MainTabs');
+            }}
             activeOpacity={0.8}
           >
             <MaterialCommunityIcons name="power" size={19} color="#FFF" />

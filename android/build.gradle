@@ -68,8 +68,6 @@ allprojects {
     }
 
     configurations.all {
-        exclude group: 'io.agora.rtc', module: 'agora-special-full'
         exclude group: 'io.agora.rtc', module: 'full-screen-sharing'
-        exclude group: 'io.agora.rtc', module: 'full-sdk'
     }
 }

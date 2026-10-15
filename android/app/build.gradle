@@ -119,10 +119,8 @@ android {
 
 dependencies {
     implementation("com.facebook.react:react-android")
-    // ✅ FORCE ONLY ONE AGORA SDK (IMPORTANT)
-    implementation('io.agora.rtc:voice-sdk:4.6.2')
-    // React Native Agora's Java bridge requires the standard Iris wrapper;
-    // the media engine itself remains the much smaller voice SDK above.
+    // Full Agora Video RTC SDK & Iris wrapper
+    implementation('io.agora.rtc:agora-special-full:4.6.2.70')
     implementation('io.agora.rtc:iris-rtc:4.6.2-build.1')
     implementation('com.gitee.hljdrl:svgaplayer-android:2.6.8.0')
 

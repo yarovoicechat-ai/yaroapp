@@ -1,4 +1,4 @@
-import React, { useState, useContext, useCallback } from 'react';
+import React, { useState, useContext, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthProvider';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
@@ -60,11 +60,38 @@ export default function MyItems() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const navigation = useNavigation();
+  const route = useRoute();
   const { user, equipCosmetic } = useContext(AuthContext);
 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [items, setItems] = useState([]);
   const [previewModalItem, setPreviewModalItem] = useState(null);
+
+  useEffect(() => {
+    if (route.params?.selectedCategory) {
+      const rawCat = String(route.params.selectedCategory).toLowerCase();
+      const matched = CATEGORIES.find(
+        (c) => c.toLowerCase() === rawCat || rawCat.includes(c.toLowerCase()) || c.toLowerCase().includes(rawCat)
+      );
+      if (matched) {
+        setSelectedCategory(matched);
+      }
+    }
+  }, [route.params?.selectedCategory]);
+
+  useEffect(() => {
+    if (route.params?.assetId && items.length > 0) {
+      const target = items.find(
+        (it) =>
+          String(it.id) === String(route.params.assetId) ||
+          String(it.itemId) === String(route.params.assetId) ||
+          String(it.uniqueId) === String(route.params.assetId)
+      );
+      if (target) {
+        setPreviewModalItem(target);
+      }
+    }
+  }, [route.params?.assetId, items]);
 
   const getEquippedName = useCallback(
     (type) => {
@@ -137,8 +164,15 @@ export default function MyItems() {
               category,
               type,
               validity: entry.expiresAt
-                ? `Until ${new Date(entry.expiresAt).toLocaleDateString()}`
+                ? (() => {
+                    const diffMs = new Date(entry.expiresAt).getTime() - Date.now();
+                    const days = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+                    if (days === 0) return 'Expires today';
+                    if (days === 1) return '1 day left';
+                    return `${days} days left`;
+                  })()
                 : catalog.validity || 'Permanent',
+              expiresAt: entry.expiresAt,
               inUse:
                 isIdEquipped ||
                 Boolean(

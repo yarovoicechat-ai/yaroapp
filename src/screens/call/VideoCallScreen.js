@@ -11,6 +11,7 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  Linking,
   PermissionsAndroid,
   Platform,
   FlatList,
@@ -43,7 +44,7 @@ import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import GiftMedia from '../../components/GiftMedia';
 
 const { width, height } = Dimensions.get('window');
-const VideoRenderer = Platform.OS === 'android' ? RtcTextureView : RtcSurfaceView;
+const VideoRenderer = RtcSurfaceView;
 const QUANTITIES = [1, 5, 10, 52, 99, 520];
 
 export default function VideoCallScreen() {
@@ -78,12 +79,14 @@ export default function VideoCallScreen() {
   // Call States
   const [callDuration, setCallDuration] = useState(0);
   const [isCameraOn, setIsCameraOn] = useState(true);
+  const [hasCameraPermission, setHasCameraPermission] = useState(Platform.OS !== 'android');
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [isFrontCamera, setIsFrontCamera] = useState(true);
   const [remoteUid, setRemoteUid] = useState(null);
   const [isChannelJoined, setIsChannelJoined] = useState(false);
   const [remoteVideoActive, setRemoteVideoActive] = useState(true);
+  const [isEngineReady, setIsEngineReady] = useState(false);
 
   // Gift States
   const [showGiftModal, setShowGiftModal] = useState(false);
@@ -291,15 +294,29 @@ export default function VideoCallScreen() {
 
     const setupVideoCall = async () => {
       try {
+        let cameraGranted = true;
         if (Platform.OS === 'android') {
           const granted = await PermissionsAndroid.requestMultiple([
             PermissionsAndroid.PERMISSIONS.CAMERA,
             PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
           ]);
-          const cameraGranted = granted[PermissionsAndroid.PERMISSIONS.CAMERA] === PermissionsAndroid.RESULTS.GRANTED;
+          cameraGranted = granted[PermissionsAndroid.PERMISSIONS.CAMERA] === PermissionsAndroid.RESULTS.GRANTED;
           const audioGranted = granted[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED;
-          if (!cameraGranted || !audioGranted) {
-            console.warn('⚠️ Camera or Audio permissions not granted:', granted);
+          setHasCameraPermission(cameraGranted);
+          if (!cameraGranted) {
+            setIsCameraOn(false);
+            console.warn('⚠️ Camera permission not granted:', granted);
+            Alert.alert(
+              'Camera Permission Needed',
+              'Allow camera access in Settings, then end and restart the call to enable video. Audio can continue meanwhile.',
+              [
+                { text: 'Continue Audio Call', style: 'cancel' },
+                { text: 'Open Settings', onPress: () => Linking.openSettings() },
+              ]
+            );
+          }
+          if (!audioGranted) {
+            console.warn('⚠️ Audio permission not granted:', granted);
           }
         }
 
@@ -321,14 +338,27 @@ export default function VideoCallScreen() {
         engine.enableAudio();
         engine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
         engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-        engine.enableLocalVideo(true);
+        engine.enableLocalVideo(cameraGranted);
         engine.enableLocalAudio(true);
-        engine.startPreview();
+        engine.muteLocalVideoStream(!cameraGranted);
+        engine.muteLocalAudioStream(false);
+        engine.muteAllRemoteVideoStreams(false);
+        engine.muteAllRemoteAudioStreams(false);
+        engine.setDefaultAudioRouteToSpeakerphone(true);
+        engine.setEnableSpeakerphone(true);
+        if (cameraGranted) {
+          engine.startPreview(VideoSourceType.VideoSourceCameraPrimary);
+        }
+        setIsEngineReady(true);
 
         engine.registerEventHandler({
           onJoinChannelSuccess: (connection, elapsed) => {
             console.log('✅ Video call channel joined:', connection.channelId, 'uid:', connection.localUid);
             setIsChannelJoined(true);
+            try {
+              engine.muteLocalVideoStream(!cameraGranted);
+              engine.muteAllRemoteVideoStreams(false);
+            } catch (_) {}
           },
           onUserJoined: (connection, u, elapsed) => {
             console.log('👤 Remote user joined video:', u);
@@ -336,11 +366,11 @@ export default function VideoCallScreen() {
             setRemoteVideoActive(true);
           },
           onRemoteVideoStateChanged: (connection, u, state, reason, elapsed) => {
-            console.log('🎥 Remote video state changed:', u, 'state:', state);
-            if (state === 1 || state === 2) {
+            console.log('🎥 Remote video state changed:', u, 'state:', state, 'reason:', reason);
+            if (state === 1 || state === 2 || state === 3) {
               setRemoteUid(u);
               setRemoteVideoActive(true);
-            } else if (state === 0 || state === 3) {
+            } else if (state === 0 && reason === 5) {
               setRemoteVideoActive(false);
             }
           },
@@ -360,7 +390,7 @@ export default function VideoCallScreen() {
 
         engine.joinChannel(token, channelName, uid, {
           clientRoleType: ClientRoleType.ClientRoleBroadcaster,
-          publishCameraTrack: true,
+          publishCameraTrack: cameraGranted,
           publishMicrophoneTrack: true,
           autoSubscribeAudio: true,
           autoSubscribeVideo: true,
@@ -381,14 +411,33 @@ export default function VideoCallScreen() {
           engine.release();
         }
       } catch (_) {}
+      setIsEngineReady(false);
     };
   }, [agora, channelName, isCaller]);
 
   const toggleCamera = () => {
+    if (!hasCameraPermission) {
+      Alert.alert(
+        'Camera Permission Needed',
+        'Allow camera access in Settings, then end and restart the call to enable video.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ]
+      );
+      return;
+    }
+
     const nextState = !isCameraOn;
     setIsCameraOn(nextState);
     if (agoraEngineRef.current) {
       agoraEngineRef.current.enableLocalVideo(nextState);
+      agoraEngineRef.current.muteLocalVideoStream(!nextState);
+      if (nextState) {
+        agoraEngineRef.current.startPreview();
+      } else {
+        agoraEngineRef.current.stopPreview();
+      }
     }
   };
 
@@ -411,6 +460,9 @@ export default function VideoCallScreen() {
     const nextSpeaker = !isSpeakerOn;
     setIsSpeakerOn(nextSpeaker);
     InCallManager.setSpeakerphoneOn(nextSpeaker);
+    if (agoraEngineRef.current) {
+      agoraEngineRef.current.setEnableSpeakerphone(nextSpeaker);
+    }
   };
 
   const handleEndCall = async () => {
@@ -497,10 +549,15 @@ export default function VideoCallScreen() {
 
       {/* Main Remote Video or Fallback Avatar */}
       <View style={StyleSheet.absoluteFillObject}>
-        {remoteUid && remoteVideoActive && agoraEngineRef.current ? (
+        {remoteUid && remoteVideoActive && isEngineReady ? (
           <VideoRenderer
             style={StyleSheet.absoluteFillObject}
-            canvas={{ uid: Number(remoteUid), renderMode: RenderModeType.RenderModeHidden }}
+            zOrderMediaOverlay={false}
+            canvas={{
+              uid: Number(remoteUid),
+              sourceType: VideoSourceType.VideoSourceRemote,
+              renderMode: RenderModeType.RenderModeHidden,
+            }}
           />
         ) : (
           <View style={styles.remoteFallback}>
@@ -580,11 +637,15 @@ export default function VideoCallScreen() {
       {/* Floating Picture-in-Picture Local Video View */}
       {isCameraOn && (
         <View style={styles.localPipCard}>
-          {agoraEngineRef.current ? (
+          {isEngineReady ? (
             <VideoRenderer
               style={StyleSheet.absoluteFillObject}
               zOrderMediaOverlay={true}
-              canvas={{ uid: 0, renderMode: RenderModeType.RenderModeHidden }}
+              canvas={{
+                uid: 0,
+                sourceType: VideoSourceType.VideoSourceCameraPrimary,
+                renderMode: RenderModeType.RenderModeHidden,
+              }}
             />
           ) : (
             <View style={styles.localFallback}>
@@ -1043,7 +1104,7 @@ const styles = StyleSheet.create({
     height: 148,
     borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: '#1E1B4B',
+    backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: '#7C3AED',
     elevation: 8,
@@ -1053,7 +1114,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#1E1B4B',
   },
   cameraFlipBtn: {
     position: 'absolute',

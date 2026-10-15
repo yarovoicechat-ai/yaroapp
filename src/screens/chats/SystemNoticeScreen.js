@@ -49,17 +49,21 @@ export default function SystemNoticeScreen() {
         const list = Array.isArray(payload.notifications) ? payload.notifications : [];
         if (isMounted) {
           setUnreadCount(Number(payload.unreadCount) || 0);
-          setNotices(list.map((notice) => ({
-            ...notice,
-            id: String(notice._id || notice.id),
-            title: notice.title || 'Notification',
-            subtitle: notice.message || notice.content || '',
-            badge: notice.isRead ? null : 'New',
-            time: notice.createdAt ? new Date(notice.createdAt).toLocaleString() : '',
-            icon: notice.type === 'transaction' ? 'gift-outline' : 'notifications-outline',
-            iconColor: notice.type === 'transaction' ? '#D97706' : '#6C5CE7',
-            iconBg: notice.type === 'transaction' ? '#FEF3C7' : '#F3E8FF',
-          })));
+          setNotices(list.map((notice) => {
+            const isAssetGrant = notice.data?.action === 'MyItems' || notice.data?.screen === 'MyItems';
+            return {
+              ...notice,
+              id: String(notice._id || notice.id),
+              title: notice.title || 'Notification',
+              subtitle: notice.message || notice.content || '',
+              badge: notice.isRead ? null : 'New',
+              time: notice.createdAt ? new Date(notice.createdAt).toLocaleString() : '',
+              icon: isAssetGrant ? 'gift-outline' : (notice.type === 'transaction' ? 'gift-outline' : 'notifications-outline'),
+              iconColor: isAssetGrant ? '#EC4899' : (notice.type === 'transaction' ? '#D97706' : '#6C5CE7'),
+              iconBg: isAssetGrant ? '#FDF2F8' : (notice.type === 'transaction' ? '#FEF3C7' : '#F3E8FF'),
+              data: notice.data || {},
+            };
+          }));
         }
       } catch (error) {
         if (isMounted) {
@@ -75,12 +79,11 @@ export default function SystemNoticeScreen() {
     return () => { isMounted = false; };
   }, []);
 
-  const renderSystemItem = ({ item }) => (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      style={styles.cardWrapper}
-      onPress={async () => {
-        if (item.isRead) return;
+  const renderSystemItem = ({ item }) => {
+    const isAssetGrant = item.data?.action === 'MyItems' || item.data?.screen === 'MyItems';
+
+    const handlePress = async () => {
+      if (!item.isRead) {
         try {
           await apiUtil.patch(`/notifications/${item.id}/read`);
           setNotices((current) => current.map((notice) => notice.id === item.id ? { ...notice, isRead: true, badge: null } : notice));
@@ -88,36 +91,66 @@ export default function SystemNoticeScreen() {
         } catch (error) {
           console.log('Could not mark notification read:', error?.message || error);
         }
-      }}
-    >
-      <View style={[styles.specialIconBox, { backgroundColor: item.iconBg }]}>
-        {item.icon === 'amber-coin' ? (
-          <Image source={coinIcon} style={{ width: 24, height: 24 }} />
-        ) : (
-          <Icon name={item.icon} size={22} color={item.iconColor} />
-        )}
-      </View>
+      }
+      if (isAssetGrant) {
+        navigation.navigate('MyItems', {
+          selectedCategory: item.data?.category,
+          assetId: item.data?.assetId || item.data?.uniqueId,
+        });
+      }
+    };
 
-      <View style={styles.cardMainContent}>
-        <View style={styles.nameAgeBadgeRow}>
-          <Text style={styles.userNameText}>{item.title}</Text>
-          {item.badge && (
-            <View style={styles.newPurpleTagBadge}>
-              <Text style={styles.newPurpleTagText}>{item.badge}</Text>
-            </View>
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={[styles.cardWrapper, isAssetGrant && styles.cardWrapperReward]}
+        onPress={handlePress}
+      >
+        <View style={[styles.specialIconBox, { backgroundColor: item.iconBg }]}>
+          {item.icon === 'amber-coin' ? (
+            <Image source={coinIcon} style={{ width: 24, height: 24 }} />
+          ) : (
+            <Icon name={item.icon} size={22} color={item.iconColor} />
           )}
         </View>
-        <Text style={styles.systemNoticeBodyText} numberOfLines={2}>
-          {item.subtitle}
-        </Text>
-      </View>
 
-      <View style={styles.cardRightMeta}>
-        <Text style={styles.timeAgoText}>{item.time}</Text>
-        <Icon name="chevron-forward" size={18} color="#CBD5E1" style={{ marginTop: 6 }} />
-      </View>
-    </TouchableOpacity>
-  );
+        <View style={styles.cardMainContent}>
+          <View style={styles.nameAgeBadgeRow}>
+            <Text style={styles.userNameText}>{item.title}</Text>
+            {item.badge && (
+              <View style={styles.newPurpleTagBadge}>
+                <Text style={styles.newPurpleTagText}>{item.badge}</Text>
+              </View>
+            )}
+            {isAssetGrant && (
+              <View style={styles.giftTagBadge}>
+                <Text style={styles.giftTagBadgeText}>🎁 REWARD</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.systemNoticeBodyText} numberOfLines={3}>
+            {item.subtitle}
+          </Text>
+
+          {isAssetGrant && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.viewItemsActionBtn}
+              onPress={handlePress}
+            >
+              <Text style={styles.viewItemsActionBtnText}>View in My Items</Text>
+              <Icon name="arrow-forward" size={13} color="#8B5CF6" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.cardRightMeta}>
+          <Text style={styles.timeAgoText}>{item.time}</Text>
+          <Icon name="chevron-forward" size={18} color="#CBD5E1" style={{ marginTop: 6 }} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
@@ -346,6 +379,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F1F5F9',
     elevation: 3,
+  },
+  cardWrapperReward: {
+    borderColor: '#FBCFE8',
+    backgroundColor: '#FFFDFE',
+    shadowColor: '#EC4899',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  giftTagBadge: {
+    backgroundColor: '#FCE7F3',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 4,
+    borderWidth: 1,
+    borderColor: '#F472B6',
+  },
+  giftTagBadgeText: { color: '#DB2777', fontSize: 9.5, fontWeight: '900' },
+  viewItemsActionBtn: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D8B4FE',
+  },
+  viewItemsActionBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#7C3AED',
   },
   specialIconBox: {
     width: 48,

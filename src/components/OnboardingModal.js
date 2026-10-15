@@ -27,6 +27,7 @@ const { width, height } = Dimensions.get('window');
 const diamondIcon = require('../assets/icons/diamond.png');
 
 const OnboardingModal = ({ visible }) => {
+  return null;
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);

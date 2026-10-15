@@ -29,7 +29,6 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getTabScreenBottomPadding } from '../../utils/safeAreaUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import OnboardingModal from '../../components/OnboardingModal';
 import { CALL_DIAMONDS_PER_MINUTE, hasCallStartIdentity } from '../../utils/callValidation';
 import { normalizeLanguages } from '../../utils/hostPresentation';
 import { getUserAvatar } from '../../utils/avatarUtil';
@@ -944,9 +943,6 @@ const CallAppUI = () => {
           </View>
         </View>
       </Modal>
-
-      {/* Mandatory Onboarding Modal for New Users */}
-      <OnboardingModal visible={Boolean(user && user.profileCompleted === false)} />
     </ScreenBackgroundView>
   );
 };

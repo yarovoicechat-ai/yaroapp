@@ -76,8 +76,20 @@ const CountrySelectionScreen = () => {
       navigation.replace('SelectLanguage', { ...route.params, onboarding: undefined, country });
       return;
     }
-    if (route.params?.onSelect) {
-      route.params.onSelect(country);
+    if (typeof route.params?.onSelect === 'function') {
+      try {
+        route.params.onSelect(country);
+      } catch (err) {
+        console.warn('Country onSelect callback error:', err);
+      }
+    }
+    if (route.params?.returnScreen) {
+      navigation.navigate({
+        name: route.params.returnScreen,
+        params: { selectedCountry: country },
+        merge: true,
+      });
+      return;
     }
     navigation.goBack();
   };

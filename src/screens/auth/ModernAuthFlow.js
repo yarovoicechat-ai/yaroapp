@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import DeviceInfo from 'react-native-device-info';
@@ -31,6 +31,19 @@ const WelcomeAvatars = [
   require('../../assets/girl.webp'),
 ];
 const DEFAULT_COUNTRY = { name: 'India', code: '+91', flag: '🇮🇳' };
+const POPULAR_COUNTRIES = [
+  { name: 'India', code: '+91', flag: '🇮🇳' },
+  { name: 'United States', code: '+1', flag: '🇺🇸' },
+  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+  { name: 'UAE', code: '+971', flag: '🇦🇪' },
+  { name: 'Saudi Arabia', code: '+966', flag: '🇸🇦' },
+  { name: 'Nepal', code: '+977', flag: '🇳🇵' },
+  { name: 'Bangladesh', code: '+880', flag: '🇧🇩' },
+];
+const MONTH_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
 
 const Eye = ({ shown, onPress }) => <TouchableOpacity onPress={onPress} style={s.eye}><Icon name={shown ? 'eye-outline' : 'eye-off-outline'} size={20} color="#7880A5" /></TouchableOpacity>;
 const FooterLink = ({ text, action, onPress }) => <View style={s.footer}><Text style={s.footerText}>{text} </Text><TouchableOpacity onPress={onPress}><Text style={s.link}>{action}</Text></TouchableOpacity></View>;
@@ -252,14 +265,61 @@ export function ProfileDetailsScreen() {
   const params = route.params || {};
   const { login } = useContext(AuthContext);
 
-  const [dob, setDob] = useState('15 Aug 1998');
+  const [displayName, setDisplayName] = useState(params.fullName || '');
+  const [dob, setDob] = useState('15 Aug 2000');
   const [gender, setGender] = useState('female');
-  const [country, setCountry] = useState(DEFAULT_COUNTRY);
+  const [country, setCountry] = useState(params.selectedCountry || DEFAULT_COUNTRY);
   const [language, setLanguage] = useState('English');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [avatarUri, setAvatarUri] = useState(null);
   const [age, setAge] = useState(26);
+
+  // Date of Birth interactive modal states
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDay, setTempDay] = useState(15);
+  const [tempMonth, setTempMonth] = useState(7); // Aug (0-indexed)
+  const [tempYear, setTempYear] = useState(2000);
+
+  // Sync selected country if returning from CountrySelection screen
+  useEffect(() => {
+    if (route.params?.selectedCountry) {
+      setCountry(route.params.selectedCountry);
+    }
+  }, [route.params?.selectedCountry]);
+
+  const calculateAgeFromDate = (d, mIndex, y) => {
+    const today = new Date();
+    let calculated = today.getFullYear() - y;
+    const monthDiff = today.getMonth() - mIndex;
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d)) {
+      calculated--;
+    }
+    return calculated;
+  };
+
+  const tempAge = calculateAgeFromDate(tempDay, tempMonth, tempYear);
+  const is18Plus = tempAge >= 18;
+
+  const currentYear = new Date().getFullYear();
+  const maxBirthYear = currentYear - 18; // At least 18 years old
+  const yearsList = Array.from({ length: maxBirthYear - 1945 + 1 }, (_, i) => maxBirthYear - i);
+  const daysList = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  const handleOpenDatePicker = () => {
+    setShowDatePicker(true);
+  };
+
+  const handleConfirmDate = () => {
+    if (tempAge < 18) {
+      AlertService.show('Age Restriction', 'You must be at least 18 years old to join Yaro.', 'warning');
+      return;
+    }
+    const formatted = `${tempDay} ${MONTH_NAMES[tempMonth]} ${tempYear}`;
+    setDob(formatted);
+    setAge(tempAge);
+    setShowDatePicker(false);
+  };
 
   const handlePickPhoto = async () => {
     try {
@@ -276,6 +336,7 @@ export function ProfileDetailsScreen() {
   const handleOpenCountrySelect = () => {
     navigation.navigate('CountrySelection', {
       selectedCountry: country,
+      returnScreen: 'ProfileDetails',
       onSelect: (selected) => {
         if (selected) setCountry(selected);
       },
@@ -293,6 +354,9 @@ export function ProfileDetailsScreen() {
         language: [language, 'Hindi'],
         country,
         age,
+        dob,
+        name: displayName.trim() || params.fullName || undefined,
+        avatar: avatarUri || undefined,
       };
 
       let url;
@@ -301,7 +365,7 @@ export function ProfileDetailsScreen() {
         payload.googleIdToken = params.idToken;
       } else {
         url = '/auth/user-signup';
-        payload.name = params.fullName;
+        payload.name = displayName.trim() || params.fullName;
         payload.phoneNumber = params.phoneNumber;
         payload.password = params.password;
         payload.firebaseIdToken = params.firebaseIdToken;
@@ -326,25 +390,33 @@ export function ProfileDetailsScreen() {
     }
   };
 
-  const Detail = ({ icon, label, value, onPress, chevron }) => (
+  const Detail = ({ icon, label, value, onPress, chevron, rightBadge, valueColor }) => (
     <TouchableOpacity style={s.detail} onPress={onPress} disabled={!onPress} activeOpacity={0.8}>
       <View style={s.detailIcon}>
         <Icon name={icon} size={20} color={AUTH_COLORS.purple} />
       </View>
       <View style={s.detailBody}>
         <Text style={s.detailLabel}>{label}</Text>
-        <Text style={s.detailValue}>{value}</Text>
+        <Text style={[s.detailValue, valueColor ? { color: valueColor, fontWeight: '700' } : null]}>{value}</Text>
       </View>
-      {chevron && <Icon name="chevron-down" size={19} color={AUTH_COLORS.ink} />}
+      {rightBadge && <View style={s.rightBadgeWrap}>{rightBadge}</View>}
+      {chevron && <Icon name="chevron-forward" size={18} color="#94A3B8" />}
     </TouchableOpacity>
   );
+
+  const PRESET_AVATARS = [
+    { id: 'f_default', uri: 'https://api.yaroapp.in/uploads/avatars/female_default.webp', source: require('../../assets/avatars/female_default.webp') },
+    { id: 'm_default', uri: 'https://api.yaroapp.in/uploads/avatars/male_default.webp', source: require('../../assets/avatars/male_default.webp') },
+    { id: 'girl_art', uri: 'https://api.yaroapp.in/uploads/avatars/default_1.webp', source: require('../../assets/girl.webp') },
+    { id: 'cool_art', uri: 'https://api.yaroapp.in/uploads/avatars/default_2.webp', source: require('../../assets/avtar.webp') },
+  ];
 
   return (
     <AuthScreen contentStyle={s.formContent}>
       <BackButton onPress={() => (step === 2 ? setStep(1) : navigation.goBack())} />
       <AuthHeader
         title={step === 1 ? 'Profile Details' : 'Almost Done!'}
-        subtitle={step === 1 ? 'Let others know you better.' : 'Add your avatar and finalize your profile.'}
+        subtitle={step === 1 ? 'Select your gender, date of birth and country.' : 'Add your avatar and finalize your profile.'}
       />
 
       {step === 1 ? (
@@ -381,25 +453,81 @@ export function ProfileDetailsScreen() {
             })}
           </View>
 
+          {/* Date of Birth Picker Button */}
           <Detail
             icon="calendar-outline"
             label="Date of Birth"
             value={dob}
             chevron
-            onPress={() => {
-              const years = ['15 Aug 1995', '22 Mar 1998', '10 Jun 2000', '05 Jan 2002'];
-              const next = years[(years.indexOf(dob) + 1) % years.length];
-              setDob(next);
-              setAge(2026 - parseInt(next.slice(-4), 10));
-            }}
+            rightBadge={
+              <View style={s.editBadge}>
+                <Text style={s.editBadgeText}>Change</Text>
+              </View>
+            }
+            onPress={handleOpenDatePicker}
           />
-          <Detail icon="hourglass-outline" label="Age" value={`${age} years`} />
-          <Detail icon="globe-outline" label="Country" value={`${country.flag} ${country.name}`} chevron onPress={handleOpenCountrySelect} />
-          <Detail icon="language-outline" label="Language" value={language} chevron onPress={() => setLanguage(language === 'English' ? 'Hindi' : 'English')} />
+
+          {/* Age Verification Display */}
+          <Detail
+            icon="shield-checkmark-outline"
+            label="Age Verification"
+            value={`✓ ${age} Years Old (18+ Verified)`}
+            valueColor="#10B981"
+          />
+
+          {/* Country Selection */}
+          <Detail
+            icon="globe-outline"
+            label="Country / Region"
+            value={`${country.flag} ${country.name} (${country.code})`}
+            chevron
+            onPress={handleOpenCountrySelect}
+          />
+
+          {/* Quick Country Chips */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={s.quickCountryScroll}
+          >
+            {POPULAR_COUNTRIES.map((c) => {
+              const isActive = country.code === c.code && country.name === c.name;
+              return (
+                <TouchableOpacity
+                  key={c.code + c.name}
+                  style={[s.countryChip, isActive && s.countryChipActive]}
+                  onPress={() => setCountry(c)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[s.countryChipText, isActive && s.countryChipTextActive]}>
+                    {c.flag} {c.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity
+              style={s.countryChip}
+              onPress={handleOpenCountrySelect}
+              activeOpacity={0.75}
+            >
+              <Text style={s.countryChipText}>🌍 More...</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {/* Preferred Language */}
+          <Detail
+            icon="language-outline"
+            label="Preferred Language"
+            value={language}
+            chevron
+            onPress={() => setLanguage(language === 'English' ? 'Hindi' : 'English')}
+          />
+
           <GradientButton title="Next" onPress={() => setStep(2)} />
         </>
       ) : (
         <>
+          {/* Avatar Upload / Preview */}
           <TouchableOpacity style={s.photo} onPress={handlePickPhoto} activeOpacity={0.85}>
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={{ width: 88, height: 88, borderRadius: 44 }} />
@@ -410,15 +538,163 @@ export function ProfileDetailsScreen() {
               <Icon name="camera" size={16} color="#FFF" />
             </View>
           </TouchableOpacity>
-          <Text style={{ textAlign: 'center', fontSize: 12.5, color: '#64748B', marginBottom: 20 }}>
-            {avatarUri ? 'Tap avatar to change' : 'Add a photo so friends recognize you'}
+          <Text style={{ textAlign: 'center', fontSize: 12.5, color: '#64748B', marginBottom: 12 }}>
+            {avatarUri ? 'Tap avatar to change from gallery' : 'Upload photo or choose an avatar below'}
           </Text>
 
+          {/* Preset Avatars Row */}
+          <View style={s.presetAvatarsRow}>
+            {PRESET_AVATARS.map((p) => {
+              const isSelected = avatarUri === p.uri;
+              return (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[s.presetAvatarBtn, isSelected && s.presetAvatarBtnActive]}
+                  onPress={() => setAvatarUri(p.uri)}
+                >
+                  <Image source={p.source} style={s.presetAvatarImg} resizeMode="cover" />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Display Name Input */}
+          <AuthField
+            icon="person-outline"
+            label="Display Name"
+            placeholder="Enter your name"
+            value={displayName}
+            onChangeText={setDisplayName}
+            maxLength={20}
+          />
+
           <Detail icon="person-outline" label="Selected Gender" value={gender.toUpperCase()} />
+          <Detail icon="calendar-outline" label="Date of Birth" value={`${dob} (${age} yrs)`} />
           <Detail icon="globe-outline" label="Country" value={`${country.flag} ${country.name}`} />
+
           <GradientButton title="Complete & Enter Yaro" onPress={submit} loading={loading} />
         </>
       )}
+
+      {/* Interactive Date of Birth Picker Modal */}
+      <Modal
+        visible={showDatePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <View style={s.modalOverlay}>
+          <View style={s.dateModalCard}>
+            {/* Modal Header */}
+            <View style={s.dateModalHeader}>
+              <View>
+                <Text style={s.dateModalTitle}>Select Date of Birth</Text>
+                <Text style={s.dateModalSubtitle}>You must be at least 18 years old to join Yaro</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)} style={s.dateModalClose}>
+                <Icon name="close" size={22} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Live Age Preview Card */}
+            <View style={[s.datePreviewBox, !is18Plus && s.datePreviewBoxWarn]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={s.datePreviewText}>
+                  📅 {tempDay} {MONTH_NAMES[tempMonth]} {tempYear}
+                </Text>
+                <View style={[s.agePill, is18Plus ? s.agePillSuccess : s.agePillWarn]}>
+                  <Text style={[s.agePillText, is18Plus ? s.agePillTextSuccess : s.agePillTextWarn]}>
+                    {is18Plus ? `✓ ${tempAge} yrs (18+ Eligible)` : `⚠ ${tempAge} yrs (Under 18)`}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* 3 Columns: Day, Month, Year */}
+            <View style={s.pickerColumnsRow}>
+              {/* Day Column */}
+              <View style={s.pickerCol}>
+                <Text style={s.pickerColHeader}>DAY</Text>
+                <ScrollView style={s.colScroll} showsVerticalScrollIndicator={false}>
+                  {daysList.map(d => {
+                    const isSelected = d === tempDay;
+                    return (
+                      <TouchableOpacity
+                        key={`day-${d}`}
+                        style={[s.pickerItem, isSelected && s.pickerItemActive]}
+                        onPress={() => setTempDay(d)}
+                      >
+                        <Text style={[s.pickerItemText, isSelected && s.pickerItemTextActive]}>
+                          {d}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Month Column */}
+              <View style={s.pickerCol}>
+                <Text style={s.pickerColHeader}>MONTH</Text>
+                <ScrollView style={s.colScroll} showsVerticalScrollIndicator={false}>
+                  {MONTH_NAMES.map((m, idx) => {
+                    const isSelected = idx === tempMonth;
+                    return (
+                      <TouchableOpacity
+                        key={`month-${m}`}
+                        style={[s.pickerItem, isSelected && s.pickerItemActive]}
+                        onPress={() => setTempMonth(idx)}
+                      >
+                        <Text style={[s.pickerItemText, isSelected && s.pickerItemTextActive]}>
+                          {m}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Year Column */}
+              <View style={s.pickerCol}>
+                <Text style={s.pickerColHeader}>YEAR</Text>
+                <ScrollView style={s.colScroll} showsVerticalScrollIndicator={false}>
+                  {yearsList.map(yr => {
+                    const isSelected = yr === tempYear;
+                    return (
+                      <TouchableOpacity
+                        key={`year-${yr}`}
+                        style={[s.pickerItem, isSelected && s.pickerItemActive]}
+                        onPress={() => setTempYear(yr)}
+                      >
+                        <Text style={[s.pickerItemText, isSelected && s.pickerItemTextActive]}>
+                          {yr}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={s.dateModalActions}>
+              <TouchableOpacity
+                style={s.dateCancelBtn}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Text style={s.dateCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.dateConfirmBtn, !is18Plus && s.dateConfirmBtnDisabled]}
+                onPress={handleConfirmDate}
+                disabled={!is18Plus}
+              >
+                <Text style={s.dateConfirmText}>Confirm Date</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </AuthScreen>
   );
 }
@@ -427,4 +703,47 @@ const s = StyleSheet.create({
   socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
   termsFooter: { marginBottom: 40 },
   full: { width: '100%' }, zeroTop: { marginTop: 0 }, formContent: { paddingHorizontal: 18 }, welcomeContent: { justifyContent: 'space-between', alignItems: 'center' }, skip: { position: 'absolute', top: 6, right: 8, padding: 14, zIndex: 3 }, brand: { alignItems: 'center', marginTop: 30 }, brandLine: { marginTop: -12, color: '#7430EA', fontSize: 12, fontWeight: '700' }, hero: { color: '#34406C', fontSize: 16, lineHeight: 23, textAlign: 'center', marginTop: 20 }, community: { alignItems: 'center', marginVertical: 8 }, avatarRow: { flexDirection: 'row' }, avatar: { width: 47, height: 47, borderRadius: 24, borderWidth: 3, borderColor: '#FFF', backgroundColor: '#F7E9F8', justifyContent: 'center', alignItems: 'center' }, avatarOverlap: { marginLeft: -9 }, userBadge: { backgroundColor: '#FFF', borderRadius: 16, marginTop: -4, paddingHorizontal: 14, paddingVertical: 7, elevation: 4 }, userBadgeText: { color: '#8A2AF0', fontSize: 12, fontWeight: '700' }, outlineButton: { height: 52, borderRadius: 13, borderWidth: 1.4, borderColor: '#7540F3', justifyContent: 'center', alignItems: 'center', marginTop: 10 }, outlineText: { color: '#5833EB', fontSize: 15, fontWeight: '700' }, socialButton: { height: 50, borderRadius: 13, borderWidth: 1, borderColor: '#DEE2ED', backgroundColor: '#FFF', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 10 }, socialText: { color: AUTH_COLORS.ink, fontSize: 14, fontWeight: '600', marginLeft: 11 }, googleIcon: { width: 22, height: 22 }, terms: { color: '#68719A', fontSize: 11, lineHeight: 17, textAlign: 'center' }, link: { color: AUTH_COLORS.purple, fontSize: 12, fontWeight: '700' }, footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 26 }, footerText: { color: '#70789A', fontSize: 12 }, eye: { padding: 8 }, optionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 1 }, checkRow: { flexDirection: 'row', alignItems: 'center' }, checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1, borderColor: '#AEB4CA', justifyContent: 'center', alignItems: 'center', marginRight: 7 }, checkboxOn: { backgroundColor: AUTH_COLORS.purple, borderColor: AUTH_COLORS.purple }, smallText: { color: '#6B7397', fontSize: 12 }, roundSocial: { width: 54, height: 54, borderRadius: 27, borderWidth: 1, borderColor: '#E1E4EF', alignSelf: 'center', justifyContent: 'center', alignItems: 'center' }, note: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F6F3FF', padding: 12, borderRadius: 12, marginBottom: 14 }, noteText: { color: '#66709A', fontSize: 12, marginLeft: 8 }, phoneStrong: { color: AUTH_COLORS.ink, fontWeight: '800' }, otpRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }, otpBox: { width: 48, height: 56, borderWidth: 1, borderColor: '#E0E4EF', borderRadius: 12, color: AUTH_COLORS.ink, backgroundColor: '#FFF', fontSize: 18, fontWeight: '700' }, otpBoxOn: { borderColor: AUTH_COLORS.purple, backgroundColor: '#FAF8FF' }, resendRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 }, muted: { color: '#9AA1B9' }, otpButton: { marginTop: 58 }, requirements: { backgroundColor: '#F6F5FA', borderRadius: 13, padding: 14, marginTop: 4 }, requirement: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 }, requirementText: { color: '#7B829F', fontSize: 12, marginLeft: 8 }, requirementMet: { color: '#38664F' }, successContent: { justifyContent: 'center', alignItems: 'center' }, successRing: { width: 134, height: 134, borderRadius: 67, backgroundColor: '#F0E5FF', borderWidth: 12, borderColor: '#F8F1FF', alignItems: 'center', justifyContent: 'center', marginBottom: 22 }, successCircle: { width: 82, height: 82, borderRadius: 41, backgroundColor: '#6B35EC', alignItems: 'center', justifyContent: 'center', elevation: 8 }, detail: { minHeight: 64, borderRadius: 15, borderWidth: 1, borderColor: '#E2E5F0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, marginBottom: 11, backgroundColor: '#FFF' }, detailIcon: { width: 35, height: 35, borderRadius: 11, backgroundColor: '#F4F0FF', alignItems: 'center', justifyContent: 'center', marginRight: 10 }, detailBody: { flex: 1 }, detailLabel: { color: '#7780A1', fontSize: 11 }, detailValue: { color: '#232846', fontSize: 14, marginTop: 2, fontWeight: '500' }, photo: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#F2E8FA', borderWidth: 4, borderColor: '#E8D3FA', alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginTop: -12, marginBottom: 18 }, camera: { position: 'absolute', right: -3, bottom: 4, width: 30, height: 30, borderRadius: 15, backgroundColor: AUTH_COLORS.purple, borderWidth: 3, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+
+  // Interactive DOB Modal & Country Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(5, 2, 18, 0.72)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  dateModalCard: { width: '100%', maxWidth: 380, backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 12 },
+  dateModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  dateModalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  dateModalSubtitle: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  dateModalClose: { padding: 4 },
+  datePreviewBox: { backgroundColor: '#FAF5FF', borderWidth: 1.5, borderColor: '#E9D5FF', borderRadius: 16, padding: 12, marginBottom: 16 },
+  datePreviewBoxWarn: { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' },
+  datePreviewText: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  agePill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  agePillSuccess: { backgroundColor: '#DCFCE7' },
+  agePillWarn: { backgroundColor: '#FEE2E2' },
+  agePillText: { fontSize: 11, fontWeight: '700' },
+  agePillTextSuccess: { color: '#15803D' },
+  agePillTextWarn: { color: '#B91C1C' },
+  pickerColumnsRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
+  pickerCol: { flex: 1, alignItems: 'center' },
+  pickerColHeader: { fontSize: 11, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.8, marginBottom: 8 },
+  colScroll: { height: 180, width: '100%', backgroundColor: '#F8FAFC', borderRadius: 14, padding: 4 },
+  pickerItem: { height: 38, justifyContent: 'center', alignItems: 'center', borderRadius: 10, marginVertical: 2 },
+  pickerItemActive: { backgroundColor: AUTH_COLORS.purple },
+  pickerItemText: { fontSize: 14, fontWeight: '600', color: '#334155' },
+  pickerItemTextActive: { color: '#FFFFFF', fontWeight: '800' },
+  dateModalActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  dateCancelBtn: { flex: 1, height: 48, borderRadius: 14, borderWidth: 1.5, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
+  dateCancelText: { fontSize: 14, fontWeight: '700', color: '#64748B' },
+  dateConfirmBtn: { flex: 1.6, height: 48, borderRadius: 14, backgroundColor: AUTH_COLORS.purple, justifyContent: 'center', alignItems: 'center' },
+  dateConfirmBtnDisabled: { opacity: 0.4 },
+  dateConfirmText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  editBadge: { backgroundColor: '#F3E8FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginRight: 6 },
+  editBadgeText: { fontSize: 11, fontWeight: '700', color: AUTH_COLORS.purple },
+  rightBadgeWrap: { marginRight: 6 },
+  quickCountryScroll: { flexDirection: 'row', marginBottom: 14, marginTop: -4 },
+  countryChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginRight: 8 },
+  countryChipActive: { borderColor: AUTH_COLORS.purple, backgroundColor: '#FAF5FF' },
+  countryChipText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  countryChipTextActive: { color: AUTH_COLORS.purple, fontWeight: '700' },
+  presetAvatarsRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginBottom: 18 },
+  presetAvatarBtn: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: '#E2E8F0', overflow: 'hidden' },
+  presetAvatarBtnActive: { borderColor: AUTH_COLORS.purple, borderWidth: 3 },
+  presetAvatarImg: { width: '100%', height: '100%' },
 });

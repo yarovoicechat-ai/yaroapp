@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Dimensions,
   Modal,
   StatusBar,
-  Animated,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -25,263 +25,240 @@ import { apiUtil } from '../../utils/apiUtil';
 
 const { width } = Dimensions.get('window');
 
-const TIERS = [
+// Default fallback tiers if offline
+const FALLBACK_TIERS = [
   {
-    id: 'knight',
-    name: 'Knight',
-    title: 'Knight',
+    id: 'svip-1-knight',
+    slug: 'svip-1-knight',
+    level: 1,
+    name: 'SVIP 1 Knight',
+    title: 'SVIP 1 Knight',
     price: 99000,
     originalPrice: 150000,
-    dailyReturn: 3600,
-    totalReturn: 108000,
-    discount: '30% OFF',
-    rewardCount: '7/11',
-    privilegeCount: '4/13',
-    crestColor: '#F59E0B',
-    ribbonColor: '#2563EB',
+    discountPercent: 34,
+    discount: '34% OFF',
+    durationDays: 30,
+    rechargeThreshold: 100000,
+    svipTagConfig: { text: 'SVIP 1', bgGradient: ['#F59E0B', '#D97706'], enabled: true },
+    svipBubbleConfig: { bubbleName: 'Knight Amber Glass', bgGradient: ['#3A1F04', '#78350F'], textColor: '#FFF', borderColor: '#F59E0B', enabled: true },
+    privileges: [
+      { key: 'rank_the_top', title: 'Rank the Top', description: 'Pin your profile to the top of room visitor lists.', icon: 'trophy', value: 'Top #1 Priority' },
+      { key: 'colorful_nickname', title: 'Colorful Nickname', description: 'Dynamic gradient and animated colors for your nickname.', icon: 'palette', value: 'Gradient' },
+      { key: 'view_more_visitors', title: 'View More Visitors', description: 'Unlock full visitor history without limits.', icon: 'eye', value: 'Unlimited' },
+      { key: 'special_room_entry', title: 'Special Room Entry', description: 'Luxury animated sports car entrance notice.', icon: 'car-sport', value: '3D Car' },
+      { key: 'unlimited_message', title: 'Unlimited Message', description: 'Zero cooldown in voice party rooms.', icon: 'chatbubbles', value: 'Zero Cooldown' },
+      { key: 'unlock_more_room_mic', title: 'Unlock More Room Mic', description: 'Expand owned rooms to 25 mic seats.', icon: 'mic', value: '25 Mic Seats' },
+      { key: 'send_pictures_private_chat', title: 'Send Pictures', description: 'Send high-resolution photos in 1-on-1 chats.', icon: 'images', value: 'HD Photos' },
+      { key: 'modify_profile_gender', title: 'Modify Profile Gender', description: 'Flexible gender editing.', icon: 'transgender', value: 'Flexible' },
+    ],
   },
   {
-    id: 'count',
-    name: 'Count',
-    title: 'Count',
+    id: 'svip-2-count',
+    slug: 'svip-2-count',
+    level: 2,
+    name: 'SVIP 2 Count',
+    title: 'SVIP 2 Count',
     price: 180000,
     originalPrice: 270000,
-    dailyReturn: 6000,
-    totalReturn: 198000,
+    discountPercent: 33,
     discount: '33% OFF',
-    rewardCount: '8/11',
-    privilegeCount: '6/13',
-    crestColor: '#A855F7',
-    ribbonColor: '#7C3AED',
+    durationDays: 30,
+    rechargeThreshold: 250000,
+    svipTagConfig: { text: 'SVIP 2', bgGradient: ['#A855F7', '#7C3AED'], enabled: true },
+    svipBubbleConfig: { bubbleName: 'Count Amethyst', bgGradient: ['#3B0764', '#581C87'], textColor: '#FFF', borderColor: '#C084FC', enabled: true },
+    privileges: [
+      { key: 'rank_the_top', title: 'Rank the Top', description: 'Pin your profile to the top of room visitor lists.', icon: 'trophy', value: 'Top #1 Priority' },
+      { key: 'colorful_nickname', title: 'Colorful Nickname', description: 'Dynamic gradient and animated colors for your nickname.', icon: 'palette', value: 'Gradient' },
+      { key: 'view_more_visitors', title: 'View More Visitors', description: 'Unlock full visitor history without limits.', icon: 'eye', value: 'Unlimited' },
+      { key: 'special_room_entry', title: 'Special Room Entry', description: 'Luxury animated sports car entrance notice.', icon: 'car-sport', value: '3D Car' },
+      { key: 'hide_last_online', title: 'Hide Last Online', description: 'Keep last-active timestamp private.', icon: 'time', value: 'Stealth' },
+      { key: 'profile_vehicle', title: 'Profile Vehicle', description: 'Equip animated luxury vehicle on profile card.', icon: 'airplane', value: 'Luxury Ride' },
+      { key: 'anti_tracking', title: 'Anti-Tracking', description: 'Prevent tracking which room you are visiting.', icon: 'shield-checkmark', value: 'Ghost' },
+      { key: 'send_pictures_chat_room', title: 'Send Pictures in Room', description: 'Post media photos into room feeds.', icon: 'camera', value: 'Room Feeds' },
+    ],
   },
   {
-    id: 'duke',
-    name: 'Duke',
-    title: 'Duke',
+    id: 'svip-3-duke',
+    slug: 'svip-3-duke',
+    level: 3,
+    name: 'SVIP 3 Duke',
+    title: 'SVIP 3 Duke',
     price: 360000,
     originalPrice: 540000,
-    dailyReturn: 12000,
-    totalReturn: 396000,
+    discountPercent: 33,
     discount: '33% OFF',
-    rewardCount: '9/11',
-    privilegeCount: '8/13',
-    crestColor: '#EC4899',
-    ribbonColor: '#DB2777',
+    durationDays: 30,
+    rechargeThreshold: 500000,
+    svipTagConfig: { text: 'SVIP 3', bgGradient: ['#EC4899', '#DB2777'], enabled: true },
+    svipBubbleConfig: { bubbleName: 'Duke Velvet Rose', bgGradient: ['#500724', '#831843'], textColor: '#FFF', borderColor: '#F472B6', enabled: true },
+    privileges: [
+      { key: 'rank_the_top', title: 'Rank the Top', description: 'Pin your profile to the top of room visitor lists.', icon: 'trophy', value: 'Top #1 Priority' },
+      { key: 'colorful_nickname', title: 'Colorful Nickname', description: 'Dynamic gradient colors.', icon: 'palette', value: 'Gradient' },
+      { key: 'anti_kick', title: 'Anti-Kick', description: 'Full immunity against kicks and evictions.', icon: 'shield', value: 'Full Immunity' },
+      { key: 'gif_avatar', title: 'GIF Avatar', description: 'Upload dynamic GIF profile photos.', icon: 'film', value: 'Animated GIF' },
+      { key: 'level_experience_speed', title: 'EXP Speed', description: 'Accelerated EXP boost multiplier.', icon: 'flash', value: '+50% EXP' },
+      { key: 'svip_customized_gift', title: 'SVIP Gift', description: 'Exclusive 3D luxury gifts.', icon: 'gift', value: 'Exclusive' },
+    ],
   },
   {
-    id: 'prince',
-    name: 'Prince',
-    title: 'Prince',
+    id: 'svip-4-prince',
+    slug: 'svip-4-prince',
+    level: 4,
+    name: 'SVIP 4 Prince',
+    title: 'SVIP 4 Prince',
     price: 750000,
     originalPrice: 1125000,
-    dailyReturn: 25000,
-    totalReturn: 825000,
+    discountPercent: 33,
     discount: '33% OFF',
-    rewardCount: '10/11',
-    privilegeCount: '11/13',
-    crestColor: '#EF4444',
-    ribbonColor: '#DC2626',
+    durationDays: 30,
+    rechargeThreshold: 1000000,
+    svipTagConfig: { text: 'SVIP 4', bgGradient: ['#EF4444', '#DC2626'], enabled: true },
+    svipBubbleConfig: { bubbleName: 'Prince Ruby Blaze', bgGradient: ['#450A0A', '#7F1D1D'], textColor: '#FFF', borderColor: '#F87171', enabled: true },
+    privileges: [
+      { key: 'rank_the_top', title: 'Rank the Top', description: 'Pin your profile to top.', icon: 'trophy', value: 'Top #1' },
+      { key: 'anti_kick', title: 'Anti-Kick', description: 'Full immunity against kicks.', icon: 'shield', value: 'Full Immunity' },
+      { key: 'upgrade_app_wide_notification', title: 'App-wide Notice', description: 'Broadcast arrival notice.', icon: 'megaphone', value: 'Global Banner' },
+      { key: 'unique_3_digit_sid', title: 'Unique 3-digit SID', description: 'Equip rare 3-digit SID.', icon: 'key', value: '3-Digit SID' },
+      { key: 'anti_ban_from_chatting', title: 'Anti-ban Chat', description: 'Chat muting immunity.', icon: 'volume-high', value: 'Chat Immunity' },
+      { key: 'badge_svip_achievement', title: 'SVIP Achievement', description: 'Prestige winged insignia.', icon: 'medal', value: 'Prestige Medal' },
+    ],
   },
   {
-    id: 'king',
-    name: 'King',
-    title: 'King',
+    id: 'svip-5-king',
+    slug: 'svip-5-king',
+    level: 5,
+    name: 'SVIP 5 King',
+    title: 'SVIP 5 King',
     price: 1500000,
     originalPrice: 2250000,
-    dailyReturn: 50000,
-    totalReturn: 1650000,
+    discountPercent: 33,
     discount: '33% OFF',
-    rewardCount: '11/11',
-    privilegeCount: '13/13',
-    crestColor: '#FBBF24',
-    ribbonColor: '#D97706',
+    durationDays: 30,
+    rechargeThreshold: 2000000,
+    svipTagConfig: { text: 'SVIP 5', bgGradient: ['#FBBF24', '#D97706'], enabled: true },
+    svipBubbleConfig: { bubbleName: 'Imperial King Gold', bgGradient: ['#422006', '#713F12'], textColor: '#FFF', borderColor: '#FBBF24', enabled: true },
+    privileges: [
+      { key: 'rank_the_top', title: 'Rank the Top', description: 'Permanent top contributor priority.', icon: 'trophy', value: 'Top #1' },
+      { key: 'unique_3_digit_sid', title: '3-digit SID', description: 'Exclusive 3-digit vanity number.', icon: 'key', value: '3-Digit SID' },
+      { key: 'anonymous_ranking', title: 'Anonymous Ranking', description: 'Mask username on public rankings.', icon: 'glasses', value: 'Incognito' },
+      { key: 'customized_start_up_page', title: 'Custom Startup', description: 'Personalized noble greeting.', icon: 'sparkles', value: 'Noble Welcome' },
+      { key: 'exclusive_customer_service', title: 'VIP Support', description: '24/7 dedicated relationship manager.', icon: 'headset', value: '24/7 Priority' },
+    ],
+  },
+  {
+    id: 'svip-9-king-of-kings',
+    slug: 'svip-9-king-of-kings',
+    level: 9,
+    name: 'SVIP 9 King of Kings',
+    title: 'SVIP 9 King of Kings',
+    price: 5000000,
+    originalPrice: 8000000,
+    discountPercent: 37,
+    discount: '37% OFF',
+    durationDays: 30,
+    rechargeThreshold: 10000000,
+    svipTagConfig: { text: 'KING OF KINGS', bgGradient: ['#FF0080', '#7928CA', '#0070F3'], enabled: true },
+    svipBubbleConfig: { bubbleName: 'Rainbow Emperor Shimmer', bgGradient: ['#3B0764', '#581C87'], textColor: '#FFF', borderColor: '#EC4899', enabled: true },
+    privileges: [
+      { key: 'unique_2_digit_sid', title: '2-digit SID', description: 'Crown of crowns: 2-digit vanity ID.', icon: 'diamond', value: '2-Digit SID' },
+      { key: 'room_secret_lord', title: 'Room Secret Lord', description: 'Master control over secret private rooms.', icon: 'keypad', value: 'Lord Authority' },
+      { key: 'anti_kick', title: 'Anti-Kick', description: 'Absolute immunity across platform.', icon: 'shield', value: 'Absolute' },
+      { key: 'exclusive_customer_service', title: 'VIP Support', description: 'Executive 1-on-1 concierge.', icon: 'headset', value: '24/7 Executive' },
+      { key: 'upgrade_app_wide_notification', title: 'App-wide Notice', description: 'Supreme arrival fanfare.', icon: 'megaphone', value: 'Supreme Fanfare' },
+    ],
   },
 ];
 
-const REWARDS_DATA = [
-  {
-    id: 'r_coins',
-    label: 'Daily free diamonds',
-    iconType: 'coins',
-    badgeText: '+3,600/days',
-    desc: 'Receive free diamonds automatically credited to your account every day upon opening YaroApp.',
-  },
-  {
-    id: 'r_broadcast',
-    label: 'Active notification broadcast',
-    iconType: 'broadcast',
-    desc: 'A royal animated notification banner broadcasts across the entire platform when you join a room.',
-  },
-  {
-    id: 'r_logo',
-    label: 'Exclusive logo',
-    iconType: 'logo',
-    desc: 'A shimmering royal King of Kings crest displays next to your nickname in all chats and user lists.',
-  },
-  {
-    id: 'r_badge',
-    label: 'Kings badge',
-    iconType: 'badge',
-    desc: 'Prestige winged nobility badge attached to your user card and room microphone seat.',
-  },
-  {
-    id: 'r_frame',
-    label: 'Avatar frame',
-    iconType: 'frame',
-    desc: 'Ultra-luxurious animated golden deer-antler royal frame for your profile photo.',
-  },
-  {
-    id: 'r_entry',
-    label: 'Entry effects',
-    iconType: 'entry',
-    desc: 'A 3D sports car and golden phoenix sweep across the room upon your grand arrival.',
-  },
-  {
-    id: 'r_barrage',
-    label: 'Exclusive barrage',
-    iconType: 'barrage',
-    desc: 'Special full-width royal chat bubble that highlights your voice room comments with golden glow.',
-  },
-];
-
-const PRIVILEGES_DATA = [
-  {
-    id: 'p_gifts',
-    label: 'Exclusive gifts',
-    icon: 'gift-outline',
-    type: 'material-community',
-    desc: 'Unlock unique, high-tier 3D luxury gifts only sendable by noble members.',
-  },
-  {
-    id: 'p_translation',
-    label: 'Room message translation',
-    icon: 'translate',
-    type: 'material',
-    desc: 'Automatic real-time translation of all room messages into your local language.',
-  },
-  {
-    id: 'p_emoticons',
-    label: 'Exclusive emoticons',
-    icon: 'emoticon-happy-outline',
-    type: 'material-community',
-    desc: 'An animated royal emoji pack for party rooms and private messaging.',
-  },
-  {
-    id: 'p_party_bg',
-    label: 'Customized party background',
-    icon: 'image-outline',
-    type: 'material-community',
-    desc: 'Set custom animated wallpaper backgrounds in your owned voice rooms.',
-  },
-  {
-    id: 'p_invis_access',
-    label: 'Invisible access',
-    icon: 'card-account-details-outline',
-    type: 'material-community',
-    desc: 'Browse user profiles without appearing in their recent visitor list.',
-  },
-  {
-    id: 'p_25_room',
-    label: '25 people voice room',
-    icon: 'account-group-outline',
-    type: 'material-community',
-    desc: 'Host massive 25-seat party rooms with crystal-clear high-fidelity audio.',
-  },
-  {
-    id: 'p_online_invis',
-    label: 'Online invisibility',
-    icon: 'account-edit-outline',
-    type: 'material-community',
-    desc: 'Hide your online active status from following and mutual friends.',
-  },
-  {
-    id: 'p_invis_entry',
-    label: 'Invisible entry',
-    icon: 'glasses',
-    type: 'material-community',
-    desc: 'Enter voice rooms in stealth mode without triggering entrance notifications.',
-  },
-  {
-    id: 'p_cust_service',
-    label: 'Exclusive customer service',
-    icon: 'headset',
-    type: 'material-community',
-    desc: 'Direct priority 1-on-1 VIP relationship manager line available 24/7.',
-  },
-  {
-    id: 'p_gif_avatar',
-    label: 'Post avatar',
-    icon: 'account-circle-outline',
-    type: 'material-community',
-    desc: 'Upload dynamic animated GIF avatar photos to your user profile.',
-  },
-  {
-    id: 'p_anti_mute',
-    label: 'Anti-mute',
-    icon: 'volume-mute',
-    type: 'material-community',
-    desc: 'Moderators cannot mute your microphone in public voice party rooms.',
-  },
-  {
-    id: 'p_anti_kick',
-    label: 'Anti-kick',
-    icon: 'shield-account-outline',
-    type: 'material-community',
-    desc: 'Absolute immunity to room kicks and seat evictions by administrators.',
-  },
-  {
-    id: 'p_stay_tuned',
-    label: 'Stay tuned',
-    icon: 'timer-sand',
-    type: 'material-community',
-    desc: 'More exclusive ultra-luxury nobility privileges are coming soon.',
-  },
-];
-
-const SVIP = () => {
+export default function SVIPScreen() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 16);
   const navigation = useNavigation();
   const { user, fetchUserProfile } = useContext(AuthContext);
 
-  const [activeTierId, setActiveTierId] = useState('knight');
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [tiers, setTiers] = useState(FALLBACK_TIERS);
+  const [activeTierId, setActiveTierId] = useState(FALLBACK_TIERS[0].id);
+  const [selectedPrivilege, setSelectedPrivilege] = useState(null);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [isActivated, setIsActivated] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const currentTier = TIERS.find((t) => t.id === activeTierId) || TIERS[0];
+  // Fetch published plans dynamically from backend
+  const loadSvipPlans = async () => {
+    try {
+      setLoading(true);
+      const res = await apiUtil.get('/svip-plans', { suppressGlobalError: true });
+      if (res?.data?.plans && res.data.plans.length > 0) {
+        const formatted = res.data.plans.map((p) => ({
+          ...p,
+          id: p.slug || p._id,
+          title: p.name,
+          discount: p.discountPercent ? `${p.discountPercent}% OFF` : '30% OFF',
+        }));
+        setTiers(formatted);
+        if (!formatted.some((t) => t.id === activeTierId)) {
+          setActiveTierId(formatted[0].id);
+        }
+      }
+    } catch (_) {
+      // Keep fallback tiers
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleActivate = async () => {
+  useEffect(() => {
+    loadSvipPlans();
+  }, []);
+
+  const currentTier = tiers.find((t) => t.id === activeTierId || t.slug === activeTierId) || tiers[0];
+  const userCurrentDiamonds = user?.diamonds || 0;
+  const isCurrentlyActive = Boolean(
+    user?.equippedSvipId &&
+    (user.equippedSvipId === currentTier.slug || user.equippedSvipId === currentTier.id)
+  );
+
+  // Wealth refill progress calculation
+  const currentMonthWealth = user?.wealthExp || user?.coins || 120000;
+  const targetThreshold = currentTier.rechargeThreshold || 250000;
+  const progressRatio = Math.min(1, Math.max(0, currentMonthWealth / targetThreshold));
+
+  const handlePurchase = async () => {
     const cost = currentTier.price;
-    const diamonds = user?.diamonds || 0;
 
-    if (diamonds < cost) {
+    if (userCurrentDiamonds < cost) {
       AlertService.show(
         'Insufficient Diamonds',
-        `You need ${cost.toLocaleString()} Diamonds to activate ${currentTier.name}. Please recharge.`,
+        `You need ${cost.toLocaleString()} 💎 to activate ${currentTier.name}. Please recharge your balance.`,
         'error'
       );
       navigation.navigate('Wallet');
       return;
     }
 
+    setIsPurchasing(true);
     try {
-      await apiUtil.post('/vip/svip/buy', { svipId: activeTierId, tier: currentTier.name }, { suppressGlobalError: true }).catch(() => null);
-      setIsActivated(true);
+      // Server-authoritative purchase transaction
+      const res = await apiUtil.post('/svip-plans/purchase', {
+        planIdOrSlug: currentTier.slug || currentTier.id,
+      });
+
       AlertService.show(
         'Royal Activation Successful! 👑',
-        `Welcome to ${currentTier.name}! You will receive +${currentTier.dailyReturn.toLocaleString()} Diamonds daily.`,
+        res?.message || `Welcome to ${currentTier.name}! Nobility privileges are now active.`,
         'success'
       );
+
       if (fetchUserProfile) await fetchUserProfile();
-    } catch (_) {
-      setIsActivated(true);
+      loadSvipPlans();
+    } catch (err) {
       AlertService.show(
-        'Royal Activation Successful! 👑',
-        `Welcome to ${currentTier.name}! You will receive +${currentTier.dailyReturn.toLocaleString()} Diamonds daily.`,
-        'success'
+        'Purchase Failed',
+        err?.message || 'Unable to complete SVIP transaction. Please check your diamond balance.',
+        'error'
       );
+    } finally {
+      setIsPurchasing(false);
     }
   };
 
@@ -289,7 +266,7 @@ const SVIP = () => {
     <View style={styles.screen}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      {/* Deep Obsidian-Chocolate Background */}
+      {/* Deep Obsidian-Chocolate Noble Gradient Background */}
       <LinearGradient
         colors={['#170F0A', '#1E140D', '#2A1C13', '#160E09']}
         start={{ x: 0.5, y: 0 }}
@@ -307,15 +284,17 @@ const SVIP = () => {
           <Icon name="chevron-back" size={26} color="#E2E8F0" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>King of Kings</Text>
+        <Text style={styles.headerTitle}>SVIP Nobility</Text>
 
-        <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => setShowHelpModal(true)}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Icon name="help-circle-outline" size={24} color="#D4AF37" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => setShowHelpModal(true)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Icon name="help-circle-outline" size={24} color="#D4AF37" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* User Info Bar */}
@@ -328,53 +307,46 @@ const SVIP = () => {
             {user?.name || 'Yaro Noble'}
           </Text>
           <Text style={styles.userStatus}>
-            {isActivated ? `${currentTier.name} • Active` : 'Not opened yet'}
+            {isCurrentlyActive ? `${currentTier.name} • Active` : 'Nobility inactive'}
           </Text>
         </View>
       </View>
 
-      {/* Tier Selector Horizontal Tabs */}
+      {/* Horizontal SVIP Tier Selector Tabs */}
       <View style={styles.tierTabsContainer}>
-        {TIERS.map((tier) => {
-          const isActive = tier.id === activeTierId;
-          return (
-            <TouchableOpacity
-              key={tier.id}
-              style={styles.tierTab}
-              onPress={() => setActiveTierId(tier.id)}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.tierTabText,
-                  isActive && styles.tierTabTextActive,
-                ]}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierScroll}>
+          {tiers.map((tier) => {
+            const isActive = (tier.id === activeTierId || tier.slug === activeTierId);
+            return (
+              <TouchableOpacity
+                key={tier.id || tier.slug}
+                style={[styles.tierTab, isActive && styles.tierTabActive]}
+                onPress={() => setActiveTierId(tier.id || tier.slug)}
+                activeOpacity={0.8}
               >
-                {tier.name}
-              </Text>
-              {isActive && <View style={styles.tierTabUnderline} />}
-            </TouchableOpacity>
-          );
-        })}
+                <Text style={[styles.tierTabText, isActive && styles.tierTabTextActive]}>
+                  SVIP {tier.level}
+                </Text>
+                {isActive && <View style={styles.tierTabUnderline} />}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
+      {/* Scrollable Content with Safe Bottom Padding */}
       <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: bottomPadding + 85 },
-        ]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 110 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Center Hero Crest Emblem */}
+        {/* Large Hero Badge / Animation Card */}
         <View style={styles.heroCrestWrap}>
-          {/* Subtle golden aura glow */}
           <View style={styles.crestAuraGlow} />
 
-          {/* Winged Stag / Deer Crown Crest */}
           <View style={styles.crestCircleOuter}>
             {/* Top Crown */}
             <View style={styles.crestCrown}>
-              <MaterialCommunityIcons name="crown" size={36} color="#FBBF24" />
+              <MaterialCommunityIcons name="crown" size={40} color="#FBBF24" />
             </View>
 
             {/* Crest Shield with Outstretched Golden Wings */}
@@ -383,15 +355,9 @@ const SVIP = () => {
               <View style={styles.leftWingWrap}>
                 <MaterialCommunityIcons
                   name="feather"
-                  size={46}
+                  size={50}
                   color="#FBBF24"
                   style={{ transform: [{ rotate: '-40deg' }, { scaleX: -1 }] }}
-                />
-                <MaterialCommunityIcons
-                  name="feather"
-                  size={36}
-                  color="#F59E0B"
-                  style={{ marginTop: -20, transform: [{ rotate: '-25deg' }, { scaleX: -1 }] }}
                 />
               </View>
 
@@ -403,7 +369,8 @@ const SVIP = () => {
                   end={{ x: 1, y: 1 }}
                   style={styles.crestShieldGrad}
                 >
-                  <MaterialCommunityIcons name="shield-crown" size={54} color="#FFFBEB" />
+                  <Text style={styles.levelBadgeText}>{currentTier.level}</Text>
+                  <Text style={styles.levelBadgeSub}>SVIP</Text>
                 </LinearGradient>
               </View>
 
@@ -411,15 +378,9 @@ const SVIP = () => {
               <View style={styles.rightWingWrap}>
                 <MaterialCommunityIcons
                   name="feather"
-                  size={46}
+                  size={50}
                   color="#FBBF24"
                   style={{ transform: [{ rotate: '40deg' }] }}
-                />
-                <MaterialCommunityIcons
-                  name="feather"
-                  size={36}
-                  color="#F59E0B"
-                  style={{ marginTop: -20, transform: [{ rotate: '25deg' }] }}
                 />
               </View>
             </View>
@@ -431,171 +392,123 @@ const SVIP = () => {
               end={{ x: 1, y: 0 }}
               style={styles.crestRibbon}
             >
-              <Text style={styles.crestRibbonText}>{currentTier.title}</Text>
+              <Text style={styles.crestRibbonText}>{currentTier.name}</Text>
             </LinearGradient>
           </View>
         </View>
 
-        {/* Blue Faceted Gemstone Ribbon Divider: Reward (7/11) */}
-        <View style={styles.sectionDividerWrap}>
-          <LinearGradient
-            colors={['#0284C7', '#2563EB', '#1D4ED8', '#0284C7']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.blueGemstoneRibbon}
-          >
-            <View style={styles.ribbonDiamondIcon}>
-              <MaterialCommunityIcons name="rhombus-medium" size={16} color="#BAE6FD" />
+        {/* Side-by-Side: SVIP Tag & SVIP Bubble Preview Cards */}
+        <View style={styles.tagBubbleRow}>
+          {/* SVIP Tag Preview Card */}
+          <View style={styles.previewCard}>
+            <Text style={styles.previewCardTitle}>SVIP Tag</Text>
+            <View style={styles.previewTagBox}>
+              <LinearGradient
+                colors={currentTier.svipTagConfig?.bgGradient || ['#F59E0B', '#D97706']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.svipTagPill}
+              >
+                <Text style={styles.svipTagPillText}>
+                  👑 {currentTier.svipTagConfig?.text || `SVIP ${currentTier.level}`}
+                </Text>
+              </LinearGradient>
             </View>
-          </LinearGradient>
+          </View>
 
-          {/* Title Row with Golden Flourishes */}
-          <View style={styles.flourishTitleRow}>
-            <Text style={styles.flourishChar}>༺ ──</Text>
-            <Text style={styles.flourishTitle}>
-              Reward ({currentTier.rewardCount})
-            </Text>
-            <Text style={styles.flourishChar}>── ༻</Text>
+          {/* SVIP Bubble Preview Card */}
+          <View style={styles.previewCard}>
+            <Text style={styles.previewCardTitle}>SVIP Bubble</Text>
+            <View style={styles.previewBubbleBox}>
+              <LinearGradient
+                colors={currentTier.svipBubbleConfig?.bgGradient || ['#3B0764', '#581C87']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.svipBubbleItem,
+                  { borderColor: currentTier.svipBubbleConfig?.borderColor || '#C084FC' },
+                ]}
+              >
+                <Text style={styles.svipBubbleMsg} numberOfLines={1}>
+                  Chat in voice room ✨
+                </Text>
+              </LinearGradient>
+            </View>
           </View>
         </View>
 
-        {/* Reward 3-Column Grid */}
-        <View style={styles.rewardGrid}>
-          {REWARDS_DATA.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.rewardCard}
-              activeOpacity={0.8}
-              onPress={() => setSelectedItem(item)}
-            >
-              <View style={styles.rewardIconPlaceholder}>
-                {item.iconType === 'coins' && (
-                  <View style={styles.rewardCoinsWrap}>
-                    <View style={styles.coinsStackIcon}>
-                      <MaterialCommunityIcons name="diamond-stone" size={26} color="#38BDF8" />
-                    </View>
-                    <View style={styles.coinsBadgePill}>
-                      <Text style={styles.coinsBadgeText}>
-                        +{currentTier.dailyReturn.toLocaleString()}/days
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
-                {item.iconType === 'broadcast' && (
-                  <LinearGradient
-                    colors={['#0284C7', '#0369A1']}
-                    style={styles.rewardBroadcastBar}
-                  >
-                    <MaterialCommunityIcons name="bullhorn" size={14} color="#FFFFFF" />
-                    <View style={styles.broadcastLine} />
-                  </LinearGradient>
-                )}
-
-                {item.iconType === 'logo' && (
-                  <LinearGradient
-                    colors={['#1E3A8A', '#2563EB']}
-                    style={styles.rewardLogoBadge}
-                  >
-                    <MaterialCommunityIcons name="crown" size={12} color="#FBBF24" />
-                    <Text style={styles.rewardLogoText}>{currentTier.name}</Text>
-                  </LinearGradient>
-                )}
-
-                {item.iconType === 'badge' && (
-                  <View style={styles.rewardBadgeIconWrap}>
-                    <MaterialCommunityIcons name="shield-star" size={32} color="#F59E0B" />
-                  </View>
-                )}
-
-                {item.iconType === 'frame' && (
-                  <View style={styles.rewardFrameWrap}>
-                    <View style={styles.rewardFrameInner}>
-                      <MaterialCommunityIcons name="crown" size={18} color="#38BDF8" />
-                    </View>
-                  </View>
-                )}
-
-                {item.iconType === 'entry' && (
-                  <LinearGradient
-                    colors={['#1E0F38', '#4C1D95', '#1E1B4B']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.rewardEntryCover}
-                  >
-                    <View style={styles.entryTrackLine} />
-                    <LinearGradient
-                      colors={['#EC4899', '#8B5CF6', '#06B6D4']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.entryNeonVehicle}
-                    >
-                      <MaterialCommunityIcons name="car-sports" size={16} color="#FFFFFF" />
-                    </LinearGradient>
-                  </LinearGradient>
-                )}
-
-                {item.iconType === 'barrage' && (
-                  <LinearGradient
-                    colors={['#4F46E5', '#7C3AED']}
-                    style={styles.rewardBarrageWrap}
-                  >
-                    <MaterialCommunityIcons name="chat" size={13} color="#FFFFFF" />
-                    <Text style={styles.rewardBarrageText}>{currentTier.name}</Text>
-                  </LinearGradient>
-                )}
-              </View>
-
-              <Text style={styles.rewardLabel} numberOfLines={2}>
-                {item.label}
+        {/* Monthly Value / Refill Progress Toward Next Tier */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressHeader}>
+            <View>
+              <Text style={styles.progressTitle}>Monthly Value Progress</Text>
+              <Text style={styles.progressSubtitle}>
+                {currentMonthWealth.toLocaleString()} / {targetThreshold.toLocaleString()} 💎
               </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.refillButton}
+              onPress={() => navigation.navigate('Wallet')}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#F59E0B', '#D97706']}
+                style={styles.refillGrad}
+              >
+                <Text style={styles.refillText}>Refill 💎</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          ))}
+          </View>
+
+          <View style={styles.progressBarTrack}>
+            <View style={[styles.progressBarFill, { width: `${progressRatio * 100}%` }]} />
+          </View>
         </View>
 
-        {/* Second Section: Exclusive privileges */}
+        {/* Section Divider: Exclusive Privileges */}
         <View style={styles.sectionDividerWrap}>
           <View style={styles.flourishTitleRow}>
             <Text style={styles.flourishChar}>༺ ──</Text>
             <Text style={styles.flourishTitle}>
-              Exclusive privileges ({currentTier.privilegeCount})
+              Exclusive Privileges ({currentTier.privileges?.length || 0})
             </Text>
             <Text style={styles.flourishChar}>── ༻</Text>
           </View>
         </View>
 
-        {/* 3-Column Circular Privileges Grid */}
+        {/* 4-Column Circular Privileges Grid */}
         <View style={styles.privilegesGrid}>
-          {PRIVILEGES_DATA.map((p) => (
+          {(currentTier.privileges || []).map((p, idx) => (
             <TouchableOpacity
-              key={p.id}
+              key={p.key || `priv_${idx}`}
               style={styles.privilegeItem}
               activeOpacity={0.8}
-              onPress={() => setSelectedItem(p)}
+              onPress={() => setSelectedPrivilege(p)}
             >
-              {/* Circular Gold-Bordered Icon */}
               <View style={styles.privilegeCircleBorder}>
                 <LinearGradient
                   colors={['#2B1B11', '#1B110B']}
                   style={styles.privilegeCircleInner}
                 >
-                  {p.type === 'material' ? (
-                    <MaterialIcons name={p.icon} size={24} color="#FBBF24" />
-                  ) : (
-                    <MaterialCommunityIcons name={p.icon} size={24} color="#FBBF24" />
-                  )}
+                  <Icon name={p.icon || 'star'} size={24} color="#FBBF24" />
                 </LinearGradient>
               </View>
 
               <Text style={styles.privilegeLabel} numberOfLines={2}>
-                {p.label}
+                {p.title}
               </Text>
+
+              {p.value ? (
+                <Text style={styles.privilegeValueBadge} numberOfLines={1}>
+                  {p.value}
+                </Text>
+              ) : null}
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
 
-      {/* Sticky Bottom Purchase Bar */}
+      {/* Fixed Sticky Bottom Purchase Bar */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(bottomPadding, 16) }]}>
         <LinearGradient
           colors={['rgba(26, 17, 11, 0.98)', 'rgba(18, 12, 8, 1)']}
@@ -604,59 +517,32 @@ const SVIP = () => {
         <View style={styles.bottomTopBorder} />
 
         <View style={styles.bottomBarContent}>
-          {/* Price and return details */}
+          {/* Price details */}
           <View style={styles.priceInfoCol}>
             <View style={styles.purchasePriceRow}>
-              <Text style={styles.purchaseLabel}>Purchase</Text>
-              <View style={styles.currencyIconWrap}>
-                <MaterialCommunityIcons
-                  name="circle-slice-8"
-                  size={16}
-                  color="#F59E0B"
-                />
-              </View>
+              <Text style={styles.purchaseLabel}>Price</Text>
               <Text style={styles.priceMainText}>
-                {currentTier.price.toLocaleString()}
+                {currentTier.price.toLocaleString()} 💎
               </Text>
-              <Text style={styles.perDaysText}>/30 days</Text>
+              <Text style={styles.perDaysText}>/{currentTier.durationDays || 30}d</Text>
             </View>
 
-            <View style={styles.originalPriceRow}>
-              <View style={styles.currencyIconWrapSmall}>
-                <MaterialCommunityIcons
-                  name="circle-slice-8"
-                  size={12}
-                  color="#94A3B8"
-                />
-              </View>
+            {currentTier.originalPrice ? (
               <Text style={styles.originalPriceText}>
-                {currentTier.originalPrice.toLocaleString()}/30 days
+                Original: {currentTier.originalPrice.toLocaleString()} 💎
               </Text>
-            </View>
-
-            <View style={styles.returnRow}>
-              <Text style={styles.returnLabel}>Total return</Text>
-              <View style={styles.currencyIconWrapSmall}>
-                <MaterialCommunityIcons
-                  name="circle-slice-8"
-                  size={13}
-                  color="#FBBF24"
-                />
-              </View>
-              <Text style={styles.returnValText}>
-                {currentTier.totalReturn.toLocaleString()}
-              </Text>
-            </View>
+            ) : null}
           </View>
 
-          {/* Glowing Activate Button with Pinned Discount Badge */}
+          {/* Activate Button with Discount Badge */}
           <View style={styles.activateWrapper}>
             <View style={styles.pinnedDiscountBadge}>
-              <Text style={styles.pinnedDiscountText}>{currentTier.discount}</Text>
+              <Text style={styles.pinnedDiscountText}>{currentTier.discount || '30% OFF'}</Text>
             </View>
             <TouchableOpacity
               style={styles.activateBtn}
-              onPress={handleActivate}
+              onPress={handlePurchase}
+              disabled={isPurchasing}
               activeOpacity={0.88}
             >
               <LinearGradient
@@ -665,47 +551,57 @@ const SVIP = () => {
                 end={{ x: 1, y: 0 }}
                 style={styles.activateGradient}
               >
-                <Text style={styles.activateBtnText}>Activate</Text>
+                {isPurchasing ? (
+                  <ActivityIndicator size="small" color="#0F172A" />
+                ) : (
+                  <Text style={styles.activateBtnText}>
+                    {isCurrentlyActive ? 'Extend SVIP' : 'Activate Now'}
+                  </Text>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      {/* Item Detail Modal */}
+      {/* Privilege Detail Modal */}
       <Modal
-        visible={!!selectedItem}
+        visible={!!selectedPrivilege}
         transparent
         animationType="fade"
-        onRequestClose={() => setSelectedItem(null)}
+        onRequestClose={() => setSelectedPrivilege(null)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {selectedItem?.label || selectedItem?.title}
-              </Text>
-              <TouchableOpacity onPress={() => setSelectedItem(null)}>
+              <Text style={styles.modalTitle}>{selectedPrivilege?.title}</Text>
+              <TouchableOpacity onPress={() => setSelectedPrivilege(null)}>
                 <Icon name="close" size={22} color="#94A3B8" />
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalIconWrap}>
-              <LinearGradient
-                colors={['#FBBF24', '#D97706']}
-                style={styles.modalIconGrad}
-              >
-                <MaterialCommunityIcons name="crown" size={32} color="#FFFFFF" />
+              <LinearGradient colors={['#FBBF24', '#D97706']} style={styles.modalIconGrad}>
+                <Icon name={selectedPrivilege?.icon || 'star'} size={32} color="#FFFFFF" />
               </LinearGradient>
             </View>
 
-            <Text style={styles.modalDescText}>{selectedItem?.desc}</Text>
+            <Text style={styles.modalDesc}>
+              {selectedPrivilege?.description || 'Exclusive nobility privilege for SVIP members.'}
+            </Text>
+
+            {selectedPrivilege?.value ? (
+              <View style={styles.modalValueRow}>
+                <Text style={styles.modalValueLabel}>Tier Benefit:</Text>
+                <Text style={styles.modalValueText}>{selectedPrivilege.value}</Text>
+              </View>
+            ) : null}
 
             <TouchableOpacity
               style={styles.modalCloseBtn}
-              onPress={() => setSelectedItem(null)}
+              onPress={() => setSelectedPrivilege(null)}
             >
-              <Text style={styles.modalCloseText}>Got it</Text>
+              <Text style={styles.modalCloseText}>Got It</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -721,26 +617,24 @@ const SVIP = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>King of Kings Guide</Text>
+              <Text style={styles.modalTitle}>SVIP Nobility Rules</Text>
               <TouchableOpacity onPress={() => setShowHelpModal(false)}>
                 <Icon name="close" size={22} color="#94A3B8" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
-              <Text style={styles.helpSectionTitle}>👑 What is King of Kings?</Text>
-              <Text style={styles.helpBody}>
-                King of Kings is YaroApp's most prestigious nobility tier system. It offers unmatched privileges, custom royal crests, daily diamond returns, 3D supercar room entrance, and complete anti-kick immunity.
+            <ScrollView style={{ maxHeight: 300, marginVertical: 12 }}>
+              <Text style={styles.helpRuleText}>
+                1. SVIP tiers are purchased using diamonds and remain active for the configured validity period.
               </Text>
-
-              <Text style={styles.helpSectionTitle}>💎 Daily Diamonds Return</Text>
-              <Text style={styles.helpBody}>
-                Upon activating your nobility tier, you receive free daily diamonds automatically deposited into your wallet every morning. Over 30 days, your total diamond return exceeds the activation price!
+              <Text style={styles.helpRuleText}>
+                2. Your permanent account numeric ID is never overwritten or affected by temporary SVIP display tags.
               </Text>
-
-              <Text style={styles.helpSectionTitle}>🛡️ Anti-Kick & Stealth</Text>
-              <Text style={styles.helpBody}>
-                Higher nobility ranks grant total protection against admin kicks and room mutes, plus invisible entry mode.
+              <Text style={styles.helpRuleText}>
+                3. When your SVIP expires, benefits automatically stop and your profile safely reverts to default styling.
+              </Text>
+              <Text style={styles.helpRuleText}>
+                4. SVIP grants immunity from public room kicks, high-priority entry notifications, and exclusive privileges.
               </Text>
             </ScrollView>
 
@@ -755,121 +649,127 @@ const SVIP = () => {
       </Modal>
     </View>
   );
-};
-
-export default SVIP;
+}
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#170F0A',
+    backgroundColor: '#160E09',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 10,
   },
   headerBtn: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
+    color: '#FDE68A',
     fontSize: 18,
-    fontWeight: '700',
-    color: '#F8FAFC',
-    letterSpacing: 0.5,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  headerRight: {
+    flexDirection: 'row',
   },
   userInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
   },
   avatarBorder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
     borderColor: '#F59E0B',
-    padding: 1.5,
-    backgroundColor: '#1E140D',
+    padding: 2,
+    marginRight: 12,
   },
   userAvatar: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
+    borderRadius: 20,
   },
   userTextWrap: {
     flex: 1,
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#F1F5F9',
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: 'bold',
   },
   userStatus: {
-    fontSize: 12,
-    color: '#94A3B8',
+    color: '#FBBF24',
+    fontSize: 11,
     marginTop: 2,
   },
   tierTabsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 12,
-    marginTop: 6,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 4,
+  },
+  tierScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
   },
   tierTab: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     alignItems: 'center',
-    position: 'relative',
+  },
+  tierTabActive: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
   },
   tierTabText: {
-    fontSize: 14,
-    fontWeight: '600',
     color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '700',
   },
   tierTabTextActive: {
     color: '#FBBF24',
-    fontWeight: '800',
+    fontWeight: '900',
   },
   tierTabUnderline: {
     position: 'absolute',
-    bottom: -1,
-    width: 22,
+    bottom: -5,
+    width: 20,
     height: 3,
-    backgroundColor: '#FBBF24',
-    borderRadius: 1.5,
+    backgroundColor: '#F59E0B',
+    borderRadius: 2,
   },
   scrollContent: {
-    paddingTop: 16,
+    paddingHorizontal: 16,
   },
   heroCrestWrap: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 14,
-    position: 'relative',
+    marginVertical: 16,
   },
   crestAuraGlow: {
     position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.15)',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
   },
   crestCircleOuter: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
   crestCrown: {
-    marginBottom: -12,
-    zIndex: 4,
+    marginBottom: -10,
+    zIndex: 10,
   },
   crestWingRow: {
     flexDirection: 'row',
@@ -877,65 +777,163 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   leftWingWrap: {
-    marginRight: -18,
-    zIndex: 1,
-    alignItems: 'center',
+    marginRight: -10,
   },
   rightWingWrap: {
-    marginLeft: -18,
-    zIndex: 1,
-    alignItems: 'center',
+    marginLeft: -10,
   },
   crestShield: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 3,
-  },
-  crestShieldGrad: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 80,
+    height: 90,
+    borderRadius: 18,
+    overflow: 'hidden',
     borderWidth: 2,
     borderColor: '#FDE68A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  crestShieldGrad: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  levelBadgeText: {
+    color: '#FFF',
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  levelBadgeSub: {
+    color: '#FFFBEB',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   crestRibbon: {
-    marginTop: -14,
-    paddingHorizontal: 18,
-    paddingVertical: 4,
+    marginTop: -10,
+    paddingHorizontal: 20,
+    paddingVertical: 5,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#93C5FD',
-    zIndex: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
     elevation: 4,
   },
   crestRibbonText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  tagBubbleRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginVertical: 10,
+  },
+  previewCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+  },
+  previewCardTitle: {
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  previewTagBox: {
+    height: 36,
+    justifyContent: 'center',
+  },
+  svipTagPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  svipTagPillText: {
+    color: '#0F172A',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  previewBubbleBox: {
+    height: 36,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  svipBubbleItem: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  svipBubbleMsg: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  progressContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginVertical: 10,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  progressTitle: {
+    color: '#FDE68A',
     fontSize: 12,
     fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 1,
+  },
+  progressSubtitle: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+    fontFamily: 'monospace',
+  },
+  refillButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  refillGrad: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  refillText: {
+    color: '#0F172A',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  progressBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#F59E0B',
+    borderRadius: 3,
   },
   sectionDividerWrap: {
     alignItems: 'center',
-    marginVertical: 16,
-  },
-  blueGemstoneRibbon: {
-    width: width * 0.9,
-    height: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  ribbonDiamondIcon: {
-    width: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: 18,
+    marginBottom: 12,
   },
   flourishTitleRow: {
     flexDirection: 'row',
@@ -943,180 +941,58 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   flourishChar: {
-    fontSize: 14,
     color: '#D4AF37',
-    fontWeight: '300',
+    fontSize: 12,
   },
   flourishTitle: {
+    color: '#FDE68A',
     fontSize: 14,
-    fontWeight: '700',
-    color: '#F1F5F9',
+    fontWeight: '900',
     letterSpacing: 0.5,
-  },
-  rewardGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-  },
-  rewardCard: {
-    width: (width - 24) / 3,
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-  },
-  rewardIconPlaceholder: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  rewardCoinsWrap: {
-    alignItems: 'center',
-  },
-  coinsStackIcon: {
-    marginBottom: 2,
-  },
-  coinsBadgePill: {
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 6,
-  },
-  coinsBadgeText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#FBBF24',
-  },
-  rewardBroadcastBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: 56,
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRadius: 8,
-    gap: 4,
-  },
-  broadcastLine: {
-    flex: 1,
-    height: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: 1.5,
-  },
-  rewardLogoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 3,
-  },
-  rewardLogoText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  rewardBadgeIconWrap: {
-    alignItems: 'center',
-  },
-  rewardFrameWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: '#38BDF8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rewardFrameInner: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rewardEntryCover: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 15,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(192, 132, 252, 0.4)',
-  },
-  entryTrackLine: {
-    position: 'absolute',
-    width: '85%',
-    height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-  },
-  entryNeonVehicle: {
-    width: 58,
-    paddingVertical: 5,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 3,
-  },
-  rewardBarrageWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 3,
-  },
-  rewardBarrageText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  rewardLabel: {
-    fontSize: 11,
-    color: '#CBD5E1',
-    textAlign: 'center',
-    lineHeight: 14,
-    minHeight: 28,
   },
   privilegesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 12,
+    gap: 10,
+    justifyContent: 'space-between',
   },
   privilegeItem: {
-    width: (width - 24) / 3,
+    width: (width - 62) / 4,
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
+    marginBottom: 12,
   },
   privilegeCircleBorder: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     borderWidth: 1.5,
     borderColor: '#D4AF37',
     padding: 2,
-    marginBottom: 8,
+    marginBottom: 6,
+    shadowColor: '#D4AF37',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   privilegeCircleInner: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 30,
+    flex: 1,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   privilegeLabel: {
-    fontSize: 11,
-    color: '#D4AF37',
+    color: '#E2E8F0',
+    fontSize: 10,
+    fontWeight: '700',
     textAlign: 'center',
-    lineHeight: 14,
-    minHeight: 28,
+    lineHeight: 12,
+  },
+  privilegeValueBadge: {
+    color: '#F59E0B',
+    fontSize: 8,
+    fontWeight: '800',
+    marginTop: 2,
   },
   bottomBar: {
     position: 'absolute',
@@ -1132,7 +1008,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(212, 175, 55, 0.35)',
+    backgroundColor: 'rgba(212, 175, 55, 0.3)',
   },
   bottomBarContent: {
     flexDirection: 'row',
@@ -1144,129 +1020,94 @@ const styles = StyleSheet.create({
   },
   purchasePriceRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
+    gap: 4,
   },
   purchaseLabel: {
-    fontSize: 12,
-    color: '#E2E8F0',
+    color: '#94A3B8',
+    fontSize: 11,
     fontWeight: '600',
   },
   priceMainText: {
-    fontSize: 16,
-    fontWeight: '800',
     color: '#FBBF24',
+    fontSize: 18,
+    fontWeight: '900',
   },
   perDaysText: {
-    fontSize: 12,
     color: '#94A3B8',
-  },
-  originalPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
+    fontSize: 11,
   },
   originalPriceText: {
-    fontSize: 11,
-    color: '#94A3B8',
+    color: '#64748B',
+    fontSize: 10,
     textDecorationLine: 'line-through',
-  },
-  returnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3,
-  },
-  returnLabel: {
-    fontSize: 11,
-    color: '#CBD5E1',
-    fontWeight: '600',
-  },
-  returnValText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#FBBF24',
-  },
-  currencyIconWrap: {
-    marginHorizontal: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  currencyIconWrapSmall: {
-    marginRight: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginTop: 1,
   },
   activateWrapper: {
     position: 'relative',
   },
   pinnedDiscountBadge: {
     position: 'absolute',
-    top: -8,
-    right: 4,
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 8,
+    top: -10,
+    right: 0,
     zIndex: 10,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
+    backgroundColor: '#EF4444',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   pinnedDiscountText: {
-    fontSize: 9.5,
+    color: '#FFF',
+    fontSize: 9,
     fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
   },
   activateBtn: {
-    borderRadius: 22,
+    borderRadius: 16,
     overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
   },
   activateGradient: {
-    paddingHorizontal: 30,
+    paddingHorizontal: 24,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 130,
   },
   activateBtnText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#78350F',
-    letterSpacing: 0.5,
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '900',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
-    padding: 24,
-  },
-  modalCard: {
-    backgroundColor: '#1E140D',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#D4AF37',
+    alignItems: 'center',
     padding: 20,
   },
+  modalCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#1E140D',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+    padding: 20,
+    alignItems: 'center',
+  },
   modalHeader: {
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#F1F5F9',
+    color: '#FDE68A',
+    fontSize: 16,
+    fontWeight: '900',
   },
   modalIconWrap: {
-    alignItems: 'center',
-    marginVertical: 12,
+    marginBottom: 14,
   },
   modalIconGrad: {
     width: 64,
@@ -1275,34 +1116,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalDescText: {
-    fontSize: 13,
+  modalDesc: {
     color: '#E2E8F0',
+    fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  modalValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 16,
+  },
+  modalValueLabel: {
+    color: '#94A3B8',
+    fontSize: 12,
+  },
+  modalValueText: {
+    color: '#FBBF24',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   modalCloseBtn: {
+    width: '100%',
     backgroundColor: '#F59E0B',
     borderRadius: 14,
     paddingVertical: 12,
     alignItems: 'center',
   },
   modalCloseText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#78350F',
+    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
-  helpSectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FBBF24',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  helpBody: {
-    fontSize: 12,
+  helpRuleText: {
     color: '#CBD5E1',
-    lineHeight: 17,
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 10,
   },
 });

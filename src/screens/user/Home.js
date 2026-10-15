@@ -209,13 +209,24 @@ const CallAppUI = () => {
     }
   }, [navigation]);
 
+  const filterVoiceHosts = useCallback((list) => {
+    if (!Array.isArray(list)) return [];
+    return list.filter((h) => {
+      if (h.canVoiceCall === false) return false;
+      if (Array.isArray(h.hostTypes) && h.hostTypes.length > 0) {
+        return h.hostTypes.includes('voice');
+      }
+      return true;
+    });
+  }, []);
+
   const fetchHostsApi = useCallback(async () => {
     try {
-      const res = await apiUtil.get('/user/hosts?limit=50');
+      const res = await apiUtil.get('/user/hosts?limit=50&type=voice');
       if (res.data?.success) {
         const fetchedData = res.data.data?.hostsData || res.data.data;
         const hostList = fetchedData?.hosts || (Array.isArray(fetchedData) ? fetchedData : []);
-        setHosts(Array.isArray(hostList) ? hostList : []);
+        setHosts(filterVoiceHosts(hostList));
         return;
       }
       setHosts((prev) => (Array.isArray(prev) ? prev : []));
@@ -223,7 +234,7 @@ const CallAppUI = () => {
       console.log('Failed to fetch hosts via API fallback:', err?.message);
       setHosts((prev) => (Array.isArray(prev) ? prev : []));
     }
-  }, [setHosts]);
+  }, [setHosts, filterVoiceHosts]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -234,6 +245,7 @@ const CallAppUI = () => {
         socket.emit('requestHostsList', {
           tab: selectedTab,
           language: filterLanguage === 'All' ? undefined : filterLanguage,
+          type: 'voice',
         });
       }
     } finally {
@@ -386,15 +398,15 @@ const CallAppUI = () => {
 
       const handleHostsList = data => {
         const hostList = data?.hosts || data;
-        if (Array.isArray(hostList) && hostList.length > 0) {
-          setHosts(hostList);
+        if (Array.isArray(hostList)) {
+          setHosts(filterVoiceHosts(hostList));
         }
       };
 
       const handleHostsUpdated = data => {
         const hostList = data?.hosts || data;
-        if (Array.isArray(hostList) && hostList.length > 0) {
-          setHosts(hostList);
+        if (Array.isArray(hostList)) {
+          setHosts(filterVoiceHosts(hostList));
         }
       };
 
@@ -413,6 +425,7 @@ const CallAppUI = () => {
       socket.emit('requestHostsList', {
         tab: selectedTab,
         language: filterLanguage === 'All' ? undefined : filterLanguage,
+        type: 'voice',
       });
 
       cleanupFn = () => {
@@ -424,7 +437,7 @@ const CallAppUI = () => {
 
     setupSocketListeners();
     return () => cleanupFn && cleanupFn();
-  }, [user, selectedTab, filterLanguage, setHosts, fetchUnreadNotifications, fetchHostsApi]);
+  }, [user, selectedTab, filterLanguage, setHosts, fetchUnreadNotifications, fetchHostsApi, filterVoiceHosts]);
 
   useEffect(() => {
     let bannerRefreshInterval = null;

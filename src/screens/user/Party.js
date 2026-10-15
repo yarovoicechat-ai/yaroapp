@@ -161,6 +161,18 @@ export default function PartyScreen() {
 
   // First time room create, then direct room opening!
   const handleOpenGoLive = async () => {
+    if (user?.role === 'host') {
+      const canRoom = user?.canRoomHost !== false && (!Array.isArray(user?.hostTypes) || user.hostTypes.length === 0 || user.hostTypes.includes('room'));
+      if (!canRoom) {
+        AlertService.show(
+          'Room Hosting Not Enabled',
+          'Your host account is configured for 1-on-1 calls only. Please contact admin to enable Room Hosting permissions.',
+          'info'
+        );
+        return;
+      }
+    }
+
     const myUserId = String(user?.userId || user?.meethiId || user?._id || user?.id || '');
     if (!myUserId) {
       AlertService.show('Room unavailable', 'Could not identify your account.', 'error');

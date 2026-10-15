@@ -234,6 +234,25 @@ export default function StoreScreen() {
   const renderLivePreview = () => {
     const item = selectedItem || items[0];
 
+    if (!item) {
+      return (
+        <LinearGradient
+          colors={['#1E1B4B', '#312E81', '#4338CA']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.previewCard}
+        >
+          <View style={styles.emptyPreviewWrapper}>
+            <MaterialCommunityIcons name="storefront-outline" size={32} color="#A5B4FC" style={{ marginBottom: 6 }} />
+            <Text style={styles.previewTitle}>Yaro Store</Text>
+            <Text style={styles.previewSub}>
+              {`No active ${activeCategory} items currently. Items managed via Admin Panel will appear here.`}
+            </Text>
+          </View>
+        </LinearGradient>
+      );
+    }
+
     // 1. UNIQUE ID PREVIEW
     if (activeCategory === 'Unique ID') {
       return (
@@ -256,7 +275,7 @@ export default function StoreScreen() {
 
             <View style={styles.idNumberRow}>
               <Text style={styles.idNumberLabel}>ID:</Text>
-              <Text style={styles.idNumberDigits}>{item?.number || '88888'}</Text>
+              <Text style={styles.idNumberDigits}>{item?.number || '—'}</Text>
               <MaterialIcons name="verified" size={18} color="#6EE7B7" style={{ marginLeft: 6 }} />
             </View>
 
@@ -613,8 +632,19 @@ export default function StoreScreen() {
         contentContainerStyle={[styles.gridContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.itemsGrid}>
-          {items.map((item) => {
+        {items.length === 0 ? (
+          <View style={styles.emptyStateBox}>
+            <View style={styles.emptyIconCircle}>
+              <Icon name="sparkles-outline" size={36} color="#94A3B8" />
+            </View>
+            <Text style={styles.emptyStateTitle}>No {activeCategory} Items</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              Exclusive {activeCategory} items added or updated from the Admin Panel will appear here.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.itemsGrid}>
+            {items.map((item) => {
             const isSelected = selectedItem?.id === item.id;
             const isUniqueId = activeCategory === 'Unique ID';
 
@@ -736,7 +766,8 @@ export default function StoreScreen() {
               </TouchableOpacity>
             );
           })}
-        </View>
+          </View>
+        )}
       </ScrollView>
 
       {/* Frame & Item Interactive Preview Popup Modal */}

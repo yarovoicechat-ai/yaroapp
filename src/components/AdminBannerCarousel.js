@@ -62,15 +62,19 @@ export default function AdminBannerCarousel({ placement }) {
 
       const payload = response.data?.data;
       const items = Array.isArray(payload) ? payload : (payload?.banners || response.data?.banners || []);
-      const selected = items
+      const allActive = items.filter(item => item?.isActive !== false).map(normalizeBanner).filter(Boolean);
+      let selected = items
         .filter(item => {
           const itemPlacements = Array.isArray(item?.placements) && item.placements.length
             ? item.placements
             : [item?.placement || 'home'];
-          return itemPlacements.includes(placement) && item?.isActive !== false;
+          return (itemPlacements.includes(placement) || itemPlacements.includes('all')) && item?.isActive !== false;
         })
         .map(normalizeBanner)
         .filter(Boolean);
+      if (selected.length === 0 && allActive.length > 0) {
+        selected = allActive;
+      }
       setBanners(selected);
       setActiveIndex(0);
       activeIndexRef.current = 0;
@@ -179,28 +183,28 @@ export default function AdminBannerCarousel({ placement }) {
 }
 
 const styles = StyleSheet.create({
-  container: { marginHorizontal: 16, marginTop: 12, marginBottom: 10 },
+  container: { marginHorizontal: 16, marginTop: 8, marginBottom: 6 },
   card: {
     width: CARD_WIDTH,
-    height: 148,
-    borderRadius: 18,
+    height: 146,
+    borderRadius: 22,
     overflow: 'hidden',
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#4C1D95',
   },
   image: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   title: {
     position: 'absolute',
-    left: 14,
-    right: 14,
+    left: 16,
+    right: 16,
     bottom: 14,
     color: '#FFFFFF',
-    fontSize: 15,
-    lineHeight: 19,
+    fontSize: 17,
     fontWeight: '900',
-    textShadowColor: 'rgba(0,0,0,0.65)',
-    textShadowRadius: 5,
+    textShadowColor: 'rgba(0, 0, 0, 0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  dots: { flexDirection: 'row', alignSelf: 'center', gap: 6, paddingTop: 9 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#C4B5FD' },
-  activeDot: { width: 18, backgroundColor: '#7C3AED' },
+  dots: { flexDirection: 'row', alignSelf: 'center', gap: 6, paddingTop: 8 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(196, 181, 253, 0.5)' },
+  activeDot: { width: 18, backgroundColor: '#6C5CE7' },
 });

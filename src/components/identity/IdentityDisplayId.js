@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ToastAndroid, Image } from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
+import { View, Text, StyleSheet, TouchableOpacity, ToastAndroid, Image, Clipboard } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 

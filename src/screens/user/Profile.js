@@ -20,6 +20,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
+import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
 
 const { width } = Dimensions.get('window');
 
@@ -38,6 +39,11 @@ export default function ProfileScreen() {
   const topSafeInset = getAppTopSafeInset(insets.top);
   const navigation = useNavigation();
   const { user, fetchUserProfile, equippedFrame, equippedMicWave } = useContext(AuthContext);
+  const identity = user?.effectiveIdentity || {};
+  const displayId = user?.displayId || identity.displayId || user?.equippedCustomId || user?.userId || user?._id?.slice(-8) || '---';
+  const idBadgeUrl = user?.uniqueIdBadge?.badgeIconUrl || identity.uniqueIdBadge?.badgeIconUrl ||
+    user?.officialBadge?.badgeUrl || identity.officialBadge?.badgeUrl || null;
+  const isOfficialId = Boolean(user?.isOfficial || identity.isOfficial);
   const [activeTab, setActiveTab] = useState('About'); // 'About' | 'Honor'
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
@@ -57,9 +63,9 @@ export default function ProfileScreen() {
   }, [fetchUserProfile]);
 
   const handleCopyId = () => {
-    if (user?.userId) {
-      Clipboard.setString(String(user.userId));
-      AlertService.show('Success', 'User ID copied to clipboard!', 'success');
+    if (displayId) {
+      Clipboard.setString(String(displayId));
+      AlertService.show('Success', 'ID copied to clipboard!', 'success');
     }
   };
 
@@ -198,13 +204,20 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.userIdText}>
-                YARO ID: {user?.userId || user?._id?.slice(-8) || '---'}
+                YARO ID:
               </Text>
-              {Boolean(user?.equippedCustomId) && (
-                <View style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, marginLeft: 6, borderWidth: 0.8, borderColor: '#F59E0B' }}>
-                  <Text style={{ color: '#D97706', fontSize: 10, fontWeight: '800' }}>⭐ {String(user.equippedCustomId)}</Text>
-                </View>
-              )}
+              <IdentityDisplayId
+                userId={user?.userId || user?._id?.slice(-8)}
+                officialDisplayId={displayId}
+                customDisplayId={user?.customDisplayId || identity.customDisplayId}
+                isOfficial={isOfficialId}
+                badgeUrl={idBadgeUrl}
+                badgeText={user?.uniqueIdBadge?.badgeName || identity.uniqueIdBadge?.badgeName || 'VIP'}
+                showBadge={Boolean(idBadgeUrl)}
+                showCopy={false}
+                fontSize={12}
+                textColor="#64748B"
+              />
               <Ionicons
                 name="copy-outline"
                 size={14}
@@ -644,10 +657,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
   },
   userIdText: {
     fontSize: 12,

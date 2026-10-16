@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import AvatarWithFrame from '../AvatarWithFrame';
 import IdentityDisplayId from '../identity/IdentityDisplayId';
 import { AuthContext } from '../../context/AuthProvider';
 import { getUserAvatar } from '../../utils/avatarUtil';
+import { apiUtil } from '../../utils/apiUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -60,13 +61,40 @@ export default function RoomUserProfileModal({
   bottomSafePadding = 16,
 }) {
   const { user: authUser, equippedFrame } = useContext(AuthContext) || {};
+  const [resolvedProfile, setResolvedProfile] = useState(null);
+  const targetUserId = String(user?.userId || user?.id || user?._id || '');
+
+  useEffect(() => {
+    if (!visible || !targetUserId) {
+      setResolvedProfile(null);
+      return undefined;
+    }
+
+    let current = true;
+    setResolvedProfile(null);
+    apiUtil.get(`/user/profile/${encodeURIComponent(targetUserId)}`)
+      .then((response) => {
+        const profile = response.data?.user || response.data?.data?.user || response.data?.data;
+        if (current && profile && typeof profile === 'object') setResolvedProfile(profile);
+      })
+      .catch(() => {});
+
+    return () => { current = false; };
+  }, [visible, targetUserId]);
+
   if (!user && !visible) return null;
 
   const targetName = user?.name || user?.username || 'User';
   const targetGender = user?.gender?.toLowerCase() || 'female';
   const targetAge = user?.age || 24;
   const followersCount = user?.followersCount ?? user?.followers ?? 987;
-  const targetUserId = String(user?.userId || user?.id || user?._id || '');
+  const identityProfile = resolvedProfile || user || {};
+  const effectiveIdentity = identityProfile.effectiveIdentity || user?.effectiveIdentity || {};
+  const uniqueIdBadge = identityProfile.uniqueIdBadge || user?.uniqueIdBadge || effectiveIdentity.uniqueIdBadge || {};
+  const officialBadge = identityProfile.officialBadge || user?.officialBadge || effectiveIdentity.officialBadge || {};
+  const displayId = identityProfile.displayId || user?.displayId || effectiveIdentity.displayId || user?.equippedCustomId || targetUserId;
+  const badgeUrl = uniqueIdBadge.badgeIconUrl || officialBadge.badgeUrl || null;
+  const isOfficialId = Boolean(identityProfile.isOfficial || user?.isOfficial || effectiveIdentity.isOfficial);
 
   const svipLevel = Number(user?.svipLevel || user?.svip || (user?.isSvip ? 3 : 0));
   const wealthLevel = Number(user?.wealthLevel || user?.level || 35);
@@ -257,11 +285,15 @@ export default function RoomUserProfileModal({
             {/* Golden Animated Vanity / Official ID */}
             <IdentityDisplayId
               userId={targetUserId}
-              officialDisplayId={user?.displayId || user?.equippedCustomId || (svipLevel >= 3 ? '600002' : null)}
-              isOfficial={Boolean(user?.isOfficial || user?.equippedCustomId || svipLevel >= 3)}
-              showBadge={true}
+              officialDisplayId={displayId || (svipLevel >= 3 ? '600002' : null)}
+              customDisplayId={identityProfile.customDisplayId || user?.customDisplayId || effectiveIdentity.customDisplayId}
+              isOfficial={isOfficialId}
+              badgeUrl={badgeUrl}
+              badgeText={uniqueIdBadge.badgeName || officialBadge.badgeText || 'VIP'}
+              showBadge={Boolean(badgeUrl)}
               showCopy={true}
               fontSize={14}
+              textColor="#D97706"
             />
 
             {/* Followers Count */}

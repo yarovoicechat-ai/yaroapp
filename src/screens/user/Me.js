@@ -26,6 +26,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import DeviceInfo from 'react-native-device-info';
 import { apiUtil } from '../../utils/apiUtil';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
+import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +48,11 @@ export default function MeScreen() {
   const { t } = useTranslation();
   const { user, fetchUserProfile, logout, loading, equippedFrame } = useContext(AuthContext);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const identity = user?.effectiveIdentity || {};
+  const displayId = user?.displayId || identity.displayId || user?.equippedCustomId || user?.userId || user?._id?.slice(-8) || '---';
+  const idBadgeUrl = user?.uniqueIdBadge?.badgeIconUrl || identity.uniqueIdBadge?.badgeIconUrl ||
+    user?.officialBadge?.badgeUrl || identity.officialBadge?.badgeUrl || null;
+  const isOfficialId = Boolean(user?.isOfficial || identity.isOfficial);
 
   useFocusEffect(
     useCallback(() => {
@@ -59,9 +65,9 @@ export default function MeScreen() {
   }, [fetchUserProfile]);
 
   const handleCopyId = () => {
-    if (user?.userId) {
-      Clipboard.setString(String(user.userId));
-      AlertService.show('Success', 'User ID copied to clipboard!', 'success');
+    if (displayId) {
+      Clipboard.setString(String(displayId));
+      AlertService.show('Success', 'ID copied to clipboard!', 'success');
     }
   };
 
@@ -447,7 +453,19 @@ export default function MeScreen() {
                 onPress={handleCopyId}
                 activeOpacity={0.7}
               >
-                <Text style={styles.userIdText}>YARO ID: {user?.userId || user?._id?.slice(-8) || '---'}</Text>
+                <Text style={styles.userIdText}>YARO ID:</Text>
+                <IdentityDisplayId
+                  userId={user?.userId || user?._id?.slice(-8)}
+                  officialDisplayId={displayId}
+                  customDisplayId={user?.customDisplayId || identity.customDisplayId}
+                  isOfficial={isOfficialId}
+                  badgeUrl={idBadgeUrl}
+                  badgeText={user?.uniqueIdBadge?.badgeName || identity.uniqueIdBadge?.badgeName || 'VIP'}
+                  showBadge={Boolean(idBadgeUrl)}
+                  showCopy={false}
+                  fontSize={12}
+                  textColor="#64748B"
+                />
                 <Ionicons
                   name="copy-outline"
                   size={13}

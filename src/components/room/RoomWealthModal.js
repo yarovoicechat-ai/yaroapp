@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 export default function RoomWealthModal({
   visible,
@@ -85,11 +86,11 @@ export default function RoomWealthModal({
                     )}
                   </View>
                   <Text style={styles.userSub}>
-                    Level {member.level ?? '—'} • {member.points.toLocaleString()} pts
+                    Level {member.level ?? '—'} • {formatCompactBalance(member.points)} pts
                   </Text>
                 </View>
                 <View style={styles.pointsPill}>
-                  <Text style={styles.pointsText}>{member.points.toLocaleString()}</Text>
+                  <Text style={styles.pointsText}>{formatCompactBalance(member.points)}</Text>
                 </View>
               </TouchableOpacity>
             ))}

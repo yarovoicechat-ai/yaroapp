@@ -23,6 +23,7 @@ import GiftConfirmationModal from './GiftConfirmationModal';
 import GiftHistoryModal from './GiftHistoryModal';
 import InsufficientBalanceModal from './InsufficientBalanceModal';
 import { AlertService } from '../../utils/AlertService';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width, height } = Dimensions.get('window');
 const SHEET_HEIGHT = Math.min(height * 0.84, 660);
@@ -400,7 +401,7 @@ export default function GiftPanel({
             >
               <Text style={styles.diamondEmoji}>💎</Text>
               <Text style={styles.balanceNum}>
-                {activeBalance.toLocaleString()}
+                {formatCompactBalance(activeBalance)}
               </Text>
               <MaterialCommunityIcons name="chevron-right" size={16} color="#94A3B8" />
             </TouchableOpacity>

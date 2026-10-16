@@ -22,6 +22,7 @@ import { AuthContext } from '../../context/AuthProvider';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -210,8 +211,9 @@ export default function SVIPScreen() {
     try {
       setLoading(true);
       const res = await apiUtil.get('/svip-plans', { suppressGlobalError: true });
-      if (res?.data?.plans && res.data.plans.length > 0) {
-        const formatted = res.data.plans.map((p) => ({
+      const plans = res?.data?.data?.plans || res?.data?.plans;
+      if (Array.isArray(plans) && plans.length > 0) {
+        const formatted = plans.map((p) => ({
           ...p,
           id: p.slug || p._id,
           title: p.name,
@@ -251,7 +253,7 @@ export default function SVIPScreen() {
     if (userCurrentDiamonds < cost) {
       AlertService.show(
         'Insufficient Diamonds',
-        `You need ${cost.toLocaleString()} 💎 to activate ${currentTier.name}. Please recharge your balance.`,
+        `You need ${formatCompactBalance(cost)} 💎 to activate ${currentTier.name}. Please recharge your balance.`,
         'error'
       );
       navigation.navigate('Wallet');
@@ -552,14 +554,14 @@ export default function SVIPScreen() {
             <View style={styles.purchasePriceRow}>
               <Text style={styles.purchaseLabel}>Price</Text>
               <Text style={styles.priceMainText}>
-                {currentTier.price.toLocaleString()} 💎
+                {formatCompactBalance(currentTier.price)} 💎
               </Text>
               <Text style={styles.perDaysText}>/{currentTier.durationDays || 30}d</Text>
             </View>
 
             {currentTier.originalPrice ? (
               <Text style={styles.originalPriceText}>
-                Original: {currentTier.originalPrice.toLocaleString()} 💎
+                Original: {formatCompactBalance(currentTier.originalPrice)} 💎
               </Text>
             ) : null}
           </View>

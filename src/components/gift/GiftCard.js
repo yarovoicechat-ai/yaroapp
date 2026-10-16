@@ -11,6 +11,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import GiftMedia from '../GiftMedia';
 import { resolveGiftVisual } from './giftMediaUtils';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 const H_PADDING = 12;
@@ -161,7 +162,7 @@ export default function GiftCard({ gift, isSelected = false, onSelect }) {
           <View style={[styles.priceRow, isSelectedBool && styles.priceRowSelected]}>
             <Text style={styles.diamondEmoji}>💎</Text>
             <Text style={[styles.priceText, isSelectedBool && styles.priceTextSelected]}>
-              {price.toLocaleString()}
+              {formatCompactBalance(price)}
             </Text>
           </View>
         </View>

@@ -24,6 +24,7 @@ import { apiUtil, apiPublic } from '../../utils/apiUtil';
 import { useTranslation } from 'react-i18next';
 import AnimatedTitleLine from '../../components/AnimatedTitleLine';
 import { AlertService } from '../../utils/AlertService';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 const COIN_TO_INR_RATIO = 20;
@@ -274,7 +275,7 @@ const Withdrawal = () => {
             <View style={styles.coinContent}>
               <View>
                 <Text style={styles.totalCoinsText}>{t('home.total_coins') || 'Total Balance'}</Text>
-                <Text style={styles.coinAmount}>{user?.coins || 0}</Text>
+                <Text style={styles.coinAmount}>{formatCompactBalance(user?.coins || 0)}</Text>
               </View>
               <View style={styles.coinIconContainer}>
                 <Image

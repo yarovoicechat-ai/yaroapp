@@ -17,6 +17,7 @@ import { exchangeCoins } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width, height } = Dimensions.get('window');
 const RF = (size) => Math.sqrt(width * width + height * height) * (size / 1000);
@@ -102,7 +103,7 @@ const ExchangeCoins = () => {
             <View style={styles.balanceHeaderRow}>
               <View style={styles.balanceLabelCol}>
                 <Text style={styles.balanceLabel}>My Beans</Text>
-                <Text style={styles.balanceCount}>{(user?.coins || 0).toLocaleString()}</Text>
+                <Text style={styles.balanceCount}>{formatCompactBalance(user?.coins || 0)}</Text>
               </View>
               <View style={styles.logoWrapper}>
                 <LinearGradient
@@ -163,7 +164,7 @@ const ExchangeCoins = () => {
                 {/* Bean item count */}
                 <View style={styles.valueRow}>
                   <Icon name="grain" size={14} color="#10B981" style={styles.itemIcon} />
-                  <Text style={styles.valueText} numberOfLines={1}>{pack.coins.toLocaleString()}</Text>
+                  <Text style={styles.valueText} numberOfLines={1}>{formatCompactBalance(pack.coins)}</Text>
                 </View>
                 <Text style={styles.valueSub}>Beans</Text>
 
@@ -174,7 +175,7 @@ const ExchangeCoins = () => {
                 <View style={styles.valueRow}>
                   <Icon name="diamond" size={12} color="#03dcfe" style={styles.itemIcon} />
                   <Text style={styles.valueTextCyan} numberOfLines={1}>
-                    {pack.diamonds.toLocaleString()}
+                    {formatCompactBalance(pack.diamonds)}
                   </Text>
                 </View>
                 <Text style={styles.valueSub}>Diamonds</Text>

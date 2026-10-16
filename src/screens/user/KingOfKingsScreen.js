@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthProvider';
 import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -257,10 +258,11 @@ export default function KingOfKingsScreen() {
     try {
       setLoading(true);
       const res = await apiUtil.get('/king-plans', { suppressGlobalError: true });
-      if (res?.data?.success && res.data.plans && res.data.plans.length > 0) {
-        setTiers(res.data.plans);
-        if (!res.data.plans.some((t) => t.tierKey === activeTierKey)) {
-          setActiveTierKey(res.data.plans[0].tierKey);
+      const payload = res?.data?.data || res?.data;
+      if (res?.data?.success && Array.isArray(payload?.plans) && payload.plans.length > 0) {
+        setTiers(payload.plans);
+        if (!payload.plans.some((t) => t.tierKey === activeTierKey)) {
+          setActiveTierKey(payload.plans[0].tierKey);
         }
       }
     } catch (_) {
@@ -425,7 +427,7 @@ export default function KingOfKingsScreen() {
 
             <Text style={styles.heroTierTitle}>{currentTier.title}</Text>
             <Text style={styles.heroTierSubtitle}>
-              Daily {currentTier.dailyRewardCoins?.toLocaleString()} Coins • {currentTier.privilegeCount || currentTier.privileges?.filter(p => p.unlocked)?.length || 4} Unlocked Powers
+              Daily {formatCompactBalance(currentTier.dailyRewardCoins)} Coins • {currentTier.privilegeCount || currentTier.privileges?.filter(p => p.unlocked)?.length || 4} Unlocked Powers
             </Text>
           </View>
         </View>
@@ -570,11 +572,11 @@ export default function KingOfKingsScreen() {
         <View style={styles.bottomPriceCol}>
           <View style={styles.priceRow}>
             <Text style={styles.coinSymbol}>🪙</Text>
-            <Text style={styles.priceText}>{currentTier.coinsPrice?.toLocaleString()}</Text>
+            <Text style={styles.priceText}>{formatCompactBalance(currentTier.coinsPrice)}</Text>
             <Text style={styles.priceDuration}>/ 30 days</Text>
           </View>
           <Text style={styles.balanceText}>
-            Your Balance: 🪙 {userCoins?.toLocaleString()}
+            Your Balance: 🪙 {formatCompactBalance(userCoins)}
           </Text>
         </View>
 

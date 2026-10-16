@@ -23,6 +23,7 @@ import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/saf
 import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil, exchangeCoins } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
+import { formatCompactBalance } from '../../utils/numberUtil';
 import BillingService from '../../services/BillingService';
 import { GOOGLE_PLAY_PRODUCTS } from '../../constants/googlePlayProducts';
 import DeviceInfo from 'react-native-device-info';
@@ -436,10 +437,13 @@ const Wallet = () => {
                   <View style={styles.balanceLabelCol}>
                     <Text style={styles.balanceLabel}>My Diamonds</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={styles.balanceCount}>{(user?.diamonds || 0).toLocaleString()}</Text>
+                      <Text style={styles.balanceCount}>{formatCompactBalance(user?.diamonds || 0)}</Text>
                       <Image source={diamondIcon} style={{ width: 24, height: 24, marginLeft: 6 }} resizeMode="contain" />
                     </View>
-                    <Text style={styles.balanceValue}>≈ ₹{((user?.diamonds || 0) / 10).toFixed(2)}</Text>
+                    <Text style={styles.balanceValue}>
+                      ≈ ₹{formatCompactBalance((user?.diamonds || 0) / 10)}
+                      {Number(user?.diamonds || 0) >= 1000000 ? ` (${(user?.diamonds || 0).toLocaleString()} 💎)` : ''}
+                    </Text>
                   </View>
                 </View>
 
@@ -552,10 +556,13 @@ const Wallet = () => {
                   <View style={styles.balanceLabelCol}>
                     <Text style={[styles.balanceLabel, { color: '#065F46' }]}>My Beans</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={[styles.balanceCount, { color: '#047857' }]}>{(user?.coins || 0).toLocaleString()}</Text>
+                      <Text style={[styles.balanceCount, { color: '#047857' }]}>{formatCompactBalance(user?.coins || 0)}</Text>
                       <Icon name="stars" size={24} color="#10B981" style={styles.balanceIcon} />
                     </View>
-                    <Text style={[styles.balanceValue, { color: '#059669' }]}>≈ ₹{((user?.coins || 0) / 20).toFixed(2)}</Text>
+                    <Text style={[styles.balanceValue, { color: '#059669' }]}>
+                      ≈ ₹{formatCompactBalance((user?.coins || 0) / 20)}
+                      {Number(user?.coins || 0) >= 1000000 ? ` (${(user?.coins || 0).toLocaleString()} 🌟)` : ''}
+                    </Text>
                   </View>
 
                   {/* Gorgeous Pedestal */}

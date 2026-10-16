@@ -23,6 +23,7 @@ import { apiUtil } from '../../utils/apiUtil';
 import AnimatedTitleLine from '../../components/AnimatedTitleLine';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 const COIN_TO_INR_RATIO = 20;
@@ -97,7 +98,7 @@ const Earning = () => {
               style={styles.smallCoinIcon}
               resizeMode="contain"
             />
-            <Text style={styles.earningCoins}>+{item.commission || 0}</Text>
+            <Text style={styles.earningCoins}>+{formatCompactBalance(item.commission || 0)}</Text>
           </View>
         </View>
         
@@ -179,11 +180,11 @@ const Earning = () => {
                   style={styles.largeCoinIcon}
                   resizeMode="contain"
                 />
-                <Text style={styles.coinBalance}>{user?.coins || 0}</Text>
+                <Text style={styles.coinBalance}>{formatCompactBalance(user?.coins || 0)}</Text>
               </View>
               <View style={styles.conversionRow}>
                 <Text style={styles.conversionLabel}>Estimated Value:</Text>
-                <Text style={styles.conversionValue}>₹ {getEstimatedINR()}</Text>
+                <Text style={styles.conversionValue}>₹ {formatCompactBalance((user?.coins || 0) / COIN_TO_INR_RATIO)}</Text>
               </View>
             </View>
           </LinearGradient>

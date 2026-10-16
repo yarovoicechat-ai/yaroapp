@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 export default function InsufficientBalanceModal({
   visible,
@@ -40,18 +41,18 @@ export default function InsufficientBalanceModal({
 
             <Text style={styles.title}>Not Enough Diamonds</Text>
             <Text style={styles.subtitle}>
-              You need {shortage.toLocaleString()} more Diamonds to send this gift.
+              You need {formatCompactBalance(shortage)} more Diamonds to send this gift.
             </Text>
 
             <View style={styles.statsCard}>
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Required:</Text>
-                <Text style={styles.statRequired}>{req.toLocaleString()} 💎</Text>
+                <Text style={styles.statRequired}>{formatCompactBalance(req)} 💎</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Available:</Text>
-                <Text style={styles.statAvailable}>{avail.toLocaleString()} 💎</Text>
+                <Text style={styles.statAvailable}>{formatCompactBalance(avail)} 💎</Text>
               </View>
             </View>
 

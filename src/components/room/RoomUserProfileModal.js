@@ -19,6 +19,7 @@ import IdentityDisplayId from '../identity/IdentityDisplayId';
 import { AuthContext } from '../../context/AuthProvider';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { apiUtil } from '../../utils/apiUtil';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -350,7 +351,7 @@ export default function RoomUserProfileModal({
               <View style={styles.followerIconBox}>
                 <MaterialCommunityIcons name="account-group" size={12} color="#FFFFFF" />
               </View>
-              <Text style={styles.followersText}>{followersCount.toLocaleString()} Followers</Text>
+              <Text style={styles.followersText}>{formatCompactBalance(followersCount)} Followers</Text>
             </View>
           </View>
 

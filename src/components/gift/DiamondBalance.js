@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 export default function DiamondBalance({
   balance = 0,
@@ -44,7 +45,7 @@ export default function DiamondBalance({
       <View style={styles.balanceCol}>
         <View style={styles.balanceRow}>
           <Text style={styles.diamondIcon}>💎</Text>
-          <Text style={styles.balanceValue}>{balance.toLocaleString()}</Text>
+          <Text style={styles.balanceValue}>{formatCompactBalance(balance)}</Text>
           <Text style={styles.balanceLabel}>Diamonds</Text>
 
           {/* Floating -X Diamonds indicator */}
@@ -58,7 +59,7 @@ export default function DiamondBalance({
                 },
               ]}
             >
-              <Text style={styles.deductionText}>-{lastDeduction}</Text>
+              <Text style={styles.deductionText}>-{formatCompactBalance(lastDeduction)}</Text>
             </Animated.View>
           )}
         </View>
@@ -67,7 +68,7 @@ export default function DiamondBalance({
           <View style={styles.insufficientRow}>
             <Icon name="alert-circle" size={11} color="#EF4444" />
             <Text style={styles.insufficientText}>
-              Need {requiredAmount.toLocaleString()} Diamonds
+              Need {formatCompactBalance(requiredAmount)} Diamonds
             </Text>
           </View>
         )}

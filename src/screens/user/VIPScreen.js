@@ -21,6 +21,7 @@ import { AuthContext } from '../../context/AuthProvider';
 import { AlertService } from '../../utils/AlertService';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { apiUtil } from '../../utils/apiUtil';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -280,7 +281,7 @@ const VIPScreen = () => {
                   <Text style={styles.pkgTitle}>{pkg.title}</Text>
                   <View style={styles.pkgPriceRow}>
                     <MaterialCommunityIcons name="diamond-stone" size={16} color="#0284C7" />
-                    <Text style={styles.pkgPriceText}>{pkg.diamonds}</Text>
+                    <Text style={styles.pkgPriceText}>{formatCompactBalance(pkg.diamonds)}</Text>
                   </View>
                 </TouchableOpacity>
               );
@@ -333,7 +334,7 @@ const VIPScreen = () => {
               <Text style={styles.modalCostLabel}>Total Price:</Text>
               <View style={styles.modalCostVal}>
                 <MaterialCommunityIcons name="diamond-stone" size={18} color="#0284C7" />
-                <Text style={styles.modalCostText}>{pkgData.diamonds} Diamonds</Text>
+                <Text style={styles.modalCostText}>{formatCompactBalance(pkgData.diamonds)} Diamonds</Text>
               </View>
             </View>
 

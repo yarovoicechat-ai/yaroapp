@@ -15,6 +15,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { apiUtil } from '../../utils/apiUtil';
 import { resolveGiftVisual } from './giftMediaUtils';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { height } = Dimensions.get('window');
 
@@ -107,7 +108,7 @@ export default function GiftHistoryModal({ visible, onClose }) {
         <View style={styles.rightCol}>
           <Text style={[styles.diamondsAmount, isSent ? styles.diamondsSpent : styles.diamondsEarned]}>
             {isSent ? '-' : '+'}
-            {(item.totalDiamonds ?? item.totalPrice ?? 0)?.toLocaleString()}
+            {formatCompactBalance(item.totalDiamonds ?? item.totalPrice ?? 0)}
           </Text>
           <Text style={styles.diamondsUnit}>💎 Diamonds</Text>
         </View>

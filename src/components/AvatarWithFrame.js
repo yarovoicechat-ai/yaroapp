@@ -184,7 +184,16 @@ export default function AvatarWithFrame({
     );
   };
 
-  const frameSize = Math.round(size * 1.25);
+  // Frame art is always laid out against the avatar's logical size, not the
+  // uploaded file's pixel dimensions. `contain` in SvgaView then preserves the
+  // source aspect ratio for square, wide, or tall PNG/GIF/WebP/SVGA assets.
+  const requestedFrameScale = Number(
+    uploadedFrame?.frameScale || uploadedFrame?.metadata?.frameScale || resolvedFrame?.frameScale || 1.42,
+  );
+  const frameScale = Number.isFinite(requestedFrameScale)
+    ? Math.min(1.8, Math.max(1.2, requestedFrameScale))
+    : 1.42;
+  const frameSize = Math.round(size * frameScale);
 
   const getFrameColor = () => {
     if (frameName.includes('rose') || frameName.includes('sakura') || frameName.includes('pink')) return '#EC4899';
@@ -196,7 +205,7 @@ export default function AvatarWithFrame({
   };
 
   return (
-    <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
+    <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }, style]}>
       {/* Inner Avatar Image - Pure Borderless Circle */}
       <View
         style={[
@@ -258,6 +267,7 @@ export default function AvatarWithFrame({
             source={uploadedFrame.animationUrl}
             style={StyleSheet.absoluteFillObject}
             loops={0}
+            resizeMode="contain"
           />
         </View>
       ) : null}

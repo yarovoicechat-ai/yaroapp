@@ -23,6 +23,7 @@ import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/saf
 import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
 import SvgaView from '../../components/SvgaView';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - 48) / 2;
@@ -113,6 +114,9 @@ export default function StoreScreen() {
         if (isMounted && Array.isArray(payload.items)) {
           const liveCatalog = createEmptyCatalog();
           payload.items.map(normalizeStoreItem).forEach((item) => {
+            // Keep employee-only items out of the public app even when an
+            // older backend response has not applied the catalog filter yet.
+            if (item.isStaffOnly || String(item.audience || '').toLowerCase() === 'employee') return;
             const rawCat = String(item.category || '').trim();
             const cat = (rawCat === 'Frame' || rawCat === 'Frames') ? 'Frames'
               : (rawCat === 'Entry' || rawCat === 'Entry Effect' || rawCat === 'Entry Effects' || rawCat === 'Entrance') ? 'Entry'
@@ -594,7 +598,7 @@ export default function StoreScreen() {
           activeOpacity={0.8}
         >
           <Icon name="diamond" size={14} color="#06B6D4" />
-          <Text style={styles.balanceText}>{currentDiamonds.toLocaleString()}</Text>
+          <Text style={styles.balanceText}>{formatCompactBalance(currentDiamonds)}</Text>
           <View style={styles.addIconWrap}>
             <Icon name="add" size={10} color="#FFFFFF" />
           </View>
@@ -762,7 +766,7 @@ export default function StoreScreen() {
                   <Text style={styles.buyBtnText}>
                     {isFreeStoreItem(item)
                       ? 'FREE'
-                      : `From ${Math.min(...getPriceOptions(item).map(option => option.diamonds)).toLocaleString()}`}
+                      : `From ${formatCompactBalance(Math.min(...getPriceOptions(item).map(option => option.diamonds)))}`}
                   </Text>
                 </TouchableOpacity>
               </TouchableOpacity>
@@ -883,7 +887,7 @@ export default function StoreScreen() {
                     <View style={styles.durationDiamondRow}>
                       <Icon name="diamond" size={11} color={active ? '#FFFFFF' : '#0891B2'} />
                       <Text style={[styles.durationPriceText, active && styles.durationPriceTextActive]}>
-                        {option.diamonds.toLocaleString()}
+                        {formatCompactBalance(option.diamonds)}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -898,14 +902,14 @@ export default function StoreScreen() {
                 <View style={styles.previewPriceValueWrap}>
                   <Icon name="diamond" size={14} color="#06B6D4" style={{ marginRight: 4 }} />
                   <Text style={styles.previewPriceValueText}>
-                    {selectedPrice === 0 ? 'FREE' : `${selectedPrice.toLocaleString()} Diamonds`}
+                    {selectedPrice === 0 ? 'FREE' : `${formatCompactBalance(selectedPrice)} Diamonds`}
                   </Text>
                 </View>
               </View>
               <View style={styles.previewBalanceCol}>
                 <Text style={styles.previewBalanceLabel}>My Balance:</Text>
                 <Text style={styles.previewBalanceValueText}>
-                  {currentDiamonds.toLocaleString()} 💎
+                  {formatCompactBalance(currentDiamonds)} 💎
                 </Text>
               </View>
             </View>
@@ -926,7 +930,7 @@ export default function StoreScreen() {
                 >
                   <Icon name="bag-check" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
                   <Text style={styles.previewActionBtnText}>
-                    {purchasing ? 'Unlocking Item...' : selectedPrice === 0 ? 'Unlock Free' : `Unlock for ${selectedPrice.toLocaleString()} Diamonds`}
+                    {purchasing ? 'Unlocking Item...' : selectedPrice === 0 ? 'Unlock Free' : `Unlock for ${formatCompactBalance(selectedPrice)} Diamonds`}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>

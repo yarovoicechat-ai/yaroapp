@@ -24,18 +24,9 @@ import { AlertService } from '../../utils/AlertService';
 import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
 import SvgaView from '../../components/SvgaView';
 import { apiUtil } from '../../utils/apiUtil';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
-
-const formatCompactBalance = (value) => {
-  const amount = Number(value) || 0;
-  if (amount < 1000) return amount.toLocaleString('en-IN');
-  if (amount < 100000) return (amount / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  const divisor = amount >= 1000000 ? 1000000 : 1000;
-  const suffix = amount >= 1000000 ? 'M' : 'K';
-  const compact = amount / divisor;
-  return `${compact >= 100 ? compact.toFixed(0) : compact.toFixed(1).replace(/\.0$/, '')}${suffix}`;
-};
 
 export default function UserProfileScreen() {
   const navigation = useNavigation();

@@ -11,6 +11,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { resolveGiftVisual } from './giftMediaUtils';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 export default function GiftConfirmationModal({
   visible,
@@ -66,7 +67,7 @@ export default function GiftConfirmationModal({
               <View style={styles.giftDetails}>
                 <Text style={styles.giftName}>{gift.name}</Text>
                 <Text style={styles.giftPrice}>
-                  💎 {singlePrice.toLocaleString()} Diamonds each
+                  💎 {formatCompactBalance(singlePrice)} Diamonds each
                 </Text>
               </View>
             </View>
@@ -86,7 +87,7 @@ export default function GiftConfirmationModal({
               <View style={[styles.row, styles.highlightRow]}>
                 <Text style={styles.highlightLabel}>Total Cost:</Text>
                 <Text style={styles.highlightValue}>
-                  💎 {cost.toLocaleString()} Diamonds
+                  💎 {formatCompactBalance(cost)} Diamonds
                 </Text>
               </View>
 
@@ -94,13 +95,13 @@ export default function GiftConfirmationModal({
 
               <View style={styles.row}>
                 <Text style={styles.subLabel}>Current Balance:</Text>
-                <Text style={styles.subValue}>💎 {currentBalance.toLocaleString()} Diamonds</Text>
+                <Text style={styles.subValue}>💎 {formatCompactBalance(currentBalance)} Diamonds</Text>
               </View>
 
               <View style={styles.row}>
                 <Text style={styles.subLabel}>Remaining Balance:</Text>
                 <Text style={[styles.subValue, { color: '#10B981' }]}>
-                  💎 {remaining.toLocaleString()} Diamonds
+                  💎 {formatCompactBalance(remaining)} Diamonds
                 </Text>
               </View>
             </View>

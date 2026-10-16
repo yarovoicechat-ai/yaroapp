@@ -22,6 +22,7 @@ import { AuthContext } from '../../context/AuthProvider';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { apiUtil } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
+import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -218,11 +219,7 @@ export default function Ranking() {
   }, [activePeriod]);
 
   const formatScore = (num) => {
-    if (!num) return '0';
-    if (typeof num === 'string') return num;
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1).replace('.0', '') + 'K';
-    return String(num);
+    return formatCompactBalance(num);
   };
 
   // Top 3 for podium

@@ -58,9 +58,9 @@ export default function SystemNoticeScreen() {
               subtitle: notice.message || notice.content || '',
               badge: notice.isRead ? null : 'New',
               time: notice.createdAt ? new Date(notice.createdAt).toLocaleString() : '',
-              icon: isAssetGrant ? 'gift-outline' : (notice.type === 'transaction' ? 'gift-outline' : 'notifications-outline'),
-              iconColor: isAssetGrant ? '#EC4899' : (notice.type === 'transaction' ? '#D97706' : '#6C5CE7'),
-              iconBg: isAssetGrant ? '#FDF2F8' : (notice.type === 'transaction' ? '#FEF3C7' : '#F3E8FF'),
+              icon: isAssetGrant ? 'gift-outline' : (notice.type === 'transaction' ? 'gift-outline' : (notice.type === 'follow' ? 'person-add-outline' : 'notifications-outline')),
+              iconColor: isAssetGrant ? '#EC4899' : (notice.type === 'transaction' ? '#D97706' : (notice.type === 'follow' ? '#EC4899' : '#6C5CE7')),
+              iconBg: isAssetGrant ? '#FDF2F8' : (notice.type === 'transaction' ? '#FEF3C7' : (notice.type === 'follow' ? '#FDF2F8' : '#F3E8FF')),
               data: notice.data || {},
             };
           }));
@@ -97,6 +97,8 @@ export default function SystemNoticeScreen() {
           selectedCategory: item.data?.category,
           assetId: item.data?.assetId || item.data?.uniqueId,
         });
+      } else if (item.type === 'follow') {
+        navigation.navigate('Followers', { initialTab: 'followers' });
       }
     };
 

@@ -63,6 +63,9 @@ export default function RoomUserProfileModal({
   const { user: authUser, equippedFrame } = useContext(AuthContext) || {};
   const [resolvedProfile, setResolvedProfile] = useState(null);
   const targetUserId = String(user?.userId || user?.id || user?._id || '');
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [currentFollowersCount, setCurrentFollowersCount] = useState(0);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     if (!visible || !targetUserId) {
@@ -72,22 +75,72 @@ export default function RoomUserProfileModal({
 
     let current = true;
     setResolvedProfile(null);
+
+    // Record profile visit in the background
+    apiUtil.post(`/user/visit/${encodeURIComponent(targetUserId)}`).catch(() => {});
+
     apiUtil.get(`/user/profile/${encodeURIComponent(targetUserId)}`)
       .then((response) => {
         const profile = response.data?.user || response.data?.data?.user || response.data?.data;
-        if (current && profile && typeof profile === 'object') setResolvedProfile(profile);
+        if (current && profile && typeof profile === 'object') {
+          setResolvedProfile(profile);
+          setIsFollowing(Boolean(profile.isFollowing));
+          setCurrentFollowersCount(
+            Number(profile.followersCount ?? (Array.isArray(profile.followers) ? profile.followers.length : 0))
+          );
+        }
       })
       .catch(() => {});
 
     return () => { current = false; };
   }, [visible, targetUserId]);
 
+  useEffect(() => {
+    const initialFollowing = Boolean(resolvedProfile?.isFollowing || user?.isFollowing);
+    setIsFollowing(initialFollowing);
+    const initialCount = Number(
+      resolvedProfile?.followersCount ??
+      user?.followersCount ??
+      (Array.isArray(user?.followers) ? user.followers.length : 0)
+    );
+    setCurrentFollowersCount(initialCount);
+  }, [user, resolvedProfile]);
+
+  const handleToggleFollow = async () => {
+    if (followLoading || !targetUserId) return;
+    setFollowLoading(true);
+    const nextFollowing = !isFollowing;
+    setIsFollowing(nextFollowing);
+    setCurrentFollowersCount(prev => Math.max(0, prev + (nextFollowing ? 1 : -1)));
+
+    try {
+      const res = await apiUtil.post(`/user/follow/${encodeURIComponent(targetUserId)}`);
+      if (res.data?.success) {
+        if (res.data?.data?.followersCount !== undefined) {
+          setCurrentFollowersCount(res.data.data.followersCount);
+        }
+        AlertService.show(
+          nextFollowing ? 'Followed' : 'Unfollowed',
+          nextFollowing ? `You are now following ${targetName}!` : `Unfollowed ${targetName}.`,
+          'success'
+        );
+        if (onFollow) onFollow(user);
+      }
+    } catch (err) {
+      setIsFollowing(!nextFollowing);
+      setCurrentFollowersCount(prev => Math.max(0, prev + (nextFollowing ? -1 : 1)));
+      AlertService.show('Notice', err.response?.data?.message || 'Could not update follow status', 'error');
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
   if (!user && !visible) return null;
 
   const targetName = user?.name || user?.username || 'User';
   const targetGender = user?.gender?.toLowerCase() || 'female';
   const targetAge = user?.age || 24;
-  const followersCount = user?.followersCount ?? user?.followers ?? 987;
+  const followersCount = currentFollowersCount;
   const identityProfile = resolvedProfile || user || {};
   const effectiveIdentity = identityProfile.effectiveIdentity || user?.effectiveIdentity || {};
   const uniqueIdBadge = identityProfile.uniqueIdBadge || user?.uniqueIdBadge || effectiveIdentity.uniqueIdBadge || {};
@@ -96,9 +149,9 @@ export default function RoomUserProfileModal({
   const badgeUrl = uniqueIdBadge.badgeIconUrl || officialBadge.badgeUrl || null;
   const isOfficialId = Boolean(identityProfile.isOfficial || user?.isOfficial || effectiveIdentity.isOfficial);
 
-  const svipLevel = Number(user?.svipLevel || user?.svip || (user?.isSvip ? 3 : 0));
-  const wealthLevel = Number(user?.wealthLevel || user?.level || 35);
-  const charmLevel = Number(user?.charmLevel || 36);
+  const svipLevel = Number(user?.svipLevel || user?.svip || (user?.isSvip ? 1 : 0));
+  const wealthLevel = Number(identityProfile.wealthLevel || user?.wealthLevel || identityProfile.level || user?.level || 1);
+  const charmLevel = Number(identityProfile.charmLevel || user?.charmLevel || 1);
 
   const isTargetOwner = Boolean(
     user?.isOwner ||
@@ -121,14 +174,10 @@ export default function RoomUserProfileModal({
 
   const canModerate = (isHostOrAdmin || isRoomOwner) && !isTargetOwner && !isSelf;
 
-  // Partner CP Info if available
-  const cpPartner = user?.cpPartner || user?.cpInfo || (svipLevel >= 3 ? {
-    name: 'JAFAR',
-    level: 6,
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop',
-  } : null);
+  // Partner CP Info if available (no dummy fallback)
+  const cpPartner = identityProfile.cpPartner || user?.cpPartner || null;
 
-  const userBio = user?.bio || user?.about || '^мy нusвαηd 💫 JAFAR 💫 🧿❤️\nDon\'t touch my id...';
+  const userBio = identityProfile.bio || user?.bio || identityProfile.about || user?.about || 'No bio available yet.';
 
   return (
     <Modal
@@ -285,12 +334,12 @@ export default function RoomUserProfileModal({
             {/* Golden Animated Vanity / Official ID */}
             <IdentityDisplayId
               userId={targetUserId}
-              officialDisplayId={displayId || (svipLevel >= 3 ? '600002' : null)}
+              officialDisplayId={displayId}
               customDisplayId={identityProfile.customDisplayId || user?.customDisplayId || effectiveIdentity.customDisplayId}
               isOfficial={isOfficialId}
               badgeUrl={badgeUrl}
               badgeText={uniqueIdBadge.badgeName || officialBadge.badgeText || 'VIP'}
-              showBadge={Boolean(badgeUrl)}
+              showBadge={true}
               showCopy={true}
               fontSize={14}
               textColor="#D97706"
@@ -373,14 +422,14 @@ export default function RoomUserProfileModal({
           {!isSelf && (
             <View style={styles.bottomButtonsRow}>
               <TouchableOpacity
-                style={styles.followButton}
-                onPress={() => {
-                  onFollow && onFollow(user);
-                  AlertService.show('Followed', `You are now following ${targetName}!`, 'success');
-                }}
+                style={[styles.followButton, isFollowing && styles.followingButton]}
+                onPress={handleToggleFollow}
                 activeOpacity={0.85}
+                disabled={followLoading}
               >
-                <Text style={styles.followBtnText}>Follow</Text>
+                <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
+                  {isFollowing ? 'Following' : 'Follow'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -689,10 +738,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  followingButton: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#CBD5E1',
+  },
   followBtnText: {
     color: '#0F172A',
     fontSize: 15,
     fontWeight: '700',
+  },
+  followingBtnText: {
+    color: '#64748B',
+    fontWeight: '600',
   },
   sendGiftButton: {
     flex: 1,

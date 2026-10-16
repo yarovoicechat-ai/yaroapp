@@ -30,6 +30,24 @@ const TABS = [
   { id: 'visitors', label: 'Visitors' },
 ];
 
+const formatTimeAgo = (dateInput) => {
+  if (!dateInput) return 'Recently';
+  const now = new Date();
+  const past = new Date(dateInput);
+  const diffMs = Math.max(0, now - past);
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin} minutes ago`;
+  if (diffHours < 24) return `${diffHours} hours ago`;
+  if (diffDays === 1) return '1 day ago';
+  if (diffDays < 365) return `${diffDays} days ago`;
+  return `${Math.floor(diffDays / 365)} years ago`;
+};
+
 export default function FollowersScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -38,40 +56,65 @@ export default function FollowersScreen() {
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
   const { user } = useContext(AuthContext);
 
-  const initialTab = route.params?.initialTab || 'following';
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const rawInitial = route.params?.initialTab || 'following';
+  const initialTab = String(rawInitial).toLowerCase();
+  const [activeTab, setActiveTab] = useState(
+    ['following', 'followers', 'visitors'].includes(initialTab) ? initialTab : 'following'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [usersList, setUsersList] = useState([]);
+  const [totalVisitors, setTotalVisitors] = useState(0);
+  const [canViewAllVisitors, setCanViewAllVisitors] = useState(false);
   const [followedSet, setFollowedSet] = useState(new Set());
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch hosts / users list from backend API
-      const res = await apiUtil.get('/user/hosts?limit=40');
-      if (res.data?.success) {
-        const payload = res.data.data?.hostsData || res.data.data;
-        const hosts = payload?.hosts || (Array.isArray(payload) ? payload : []);
-        setUsersList(hosts);
-
-        // Pre-populate followedSet from user.following if available
-        const initialFollowed = new Set((user?.following || []).map(id => String(id._id || id)));
-        setFollowedSet(initialFollowed);
+      if (activeTab === 'visitors') {
+        const res = await apiUtil.get('/user/visitors');
+        if (res.data?.success) {
+          const data = res.data.data || {};
+          setUsersList(Array.isArray(data.visitors) ? data.visitors : []);
+          setTotalVisitors(data.totalVisitors || 0);
+          setCanViewAllVisitors(Boolean(data.canViewAll));
+        } else {
+          setUsersList([]);
+          setTotalVisitors(0);
+          setCanViewAllVisitors(false);
+        }
+      } else if (activeTab === 'following') {
+        const res = await apiUtil.get('/user/following');
+        if (res.data?.success) {
+          const list = res.data.data?.users || res.data.data || [];
+          setUsersList(Array.isArray(list) ? list : []);
+          // Everyone in following is followed
+          const ids = new Set((Array.isArray(list) ? list : []).map(u => String(u._id || u.id || u.userId)));
+          setFollowedSet(ids);
+        } else {
+          setUsersList([]);
+        }
       } else {
-        setUsersList([]);
+        // activeTab === 'followers'
+        const res = await apiUtil.get('/user/followers');
+        if (res.data?.success) {
+          const list = res.data.data?.users || res.data.data || [];
+          setUsersList(Array.isArray(list) ? list : []);
+        } else {
+          setUsersList([]);
+        }
       }
     } catch (err) {
-      console.log('Error fetching followers list:', err?.message);
+      console.log('Error fetching list:', err?.message);
       setUsersList([]);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [activeTab]);
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers, activeTab]);
+  }, [fetchUsers]);
 
   const toggleFollow = async (targetUser) => {
     const targetId = String(targetUser._id || targetUser.id || targetUser.userId);
@@ -86,24 +129,73 @@ export default function FollowersScreen() {
     });
 
     try {
-      // Toggle follow API if endpoint exists, or log notice
-      const res = await apiUtil.post(`/user/follow/${targetId}`).catch(() => null);
+      const res = await apiUtil.post(`/user/follow/${targetId}`);
       if (res?.data?.success) {
-        AlertService.show('Success', isCurrentlyFollowed ? 'Unfollowed user.' : 'Now following user!', 'info');
+        AlertService.show(
+          'Success',
+          isCurrentlyFollowed ? 'Unfollowed user.' : 'Now following user!',
+          'success'
+        );
       }
     } catch (e) {
-      // silently keep optimistic state
+      // Revert on error
+      setFollowedSet(prev => {
+        const next = new Set(prev);
+        if (isCurrentlyFollowed) next.add(targetId);
+        else next.delete(targetId);
+        return next;
+      });
+      AlertService.show('Notice', e.response?.data?.message || 'Could not update follow status', 'error');
     }
   };
 
-  const filteredUsers = usersList.filter(item => {
+  const filteredList = usersList.filter(item => {
     if (!searchQuery.trim()) return true;
-    const name = (item.name || '').toLowerCase();
-    const id = String(item.userId || item.id || '');
+    const targetObj = activeTab === 'visitors' ? (item.visitor || {}) : item;
+    const name = (targetObj.name || '').toLowerCase();
+    const id = String(targetObj.userId || targetObj.id || '');
     return name.includes(searchQuery.toLowerCase()) || id.includes(searchQuery);
   });
 
-  const renderItem = ({ item }) => {
+  const renderVisitorRow = ({ item }) => {
+    const visitorUser = item.visitor || {};
+    const timeAgo = formatTimeAgo(item.lastVisitedAt);
+    const visitCount = item.visitCount || 1;
+
+    return (
+      <TouchableOpacity
+        style={styles.visitorRow}
+        activeOpacity={0.8}
+        onPress={() => {
+          const targetId = visitorUser.userId || visitorUser._id;
+          if (targetId) {
+            navigation.navigate('UserProfile', {
+              userId: targetId,
+              user: visitorUser,
+            });
+          }
+        }}
+      >
+        <View style={styles.avatarWrap}>
+          <Image source={getUserAvatar(visitorUser)} style={styles.avatar} />
+          {visitorUser.isOnline && <View style={styles.onlineDot} />}
+        </View>
+
+        <View style={styles.infoWrap}>
+          <Text style={styles.visitorName} numberOfLines={1}>
+            {visitorUser.name || 'User'}
+          </Text>
+          <Text style={styles.subText} numberOfLines={1}>
+            {timeAgo}· visit{' '}
+            <Text style={styles.visitCountHighlight}>{visitCount}</Text>
+            {' times'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderUserCard = ({ item }) => {
     const targetId = String(item._id || item.id || item.userId);
     const isFollowing = followedSet.has(targetId);
 
@@ -112,7 +204,7 @@ export default function FollowersScreen() {
         <TouchableOpacity
           style={styles.userInfoRow}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate('HostProfile', { host: item })}
+          onPress={() => navigation.navigate('UserProfile', { userId: item.userId || item._id, user: item })}
         >
           <View style={styles.avatarWrap}>
             <Image source={getUserAvatar(item)} style={styles.avatar} />
@@ -127,7 +219,7 @@ export default function FollowersScreen() {
               )}
             </View>
             <Text style={styles.subText} numberOfLines={1}>
-              YARO ID: {item.userId || item.id || 'N/A'} • {item.gender || 'User'}
+              ID: {item.userId || item.id || 'N/A'} • {item.gender || 'User'}
             </Text>
           </View>
         </TouchableOpacity>
@@ -141,6 +233,73 @@ export default function FollowersScreen() {
             {isFollowing ? 'Following' : '+ Follow'}
           </Text>
         </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderVisitorFooter = () => {
+    if (activeTab !== 'visitors' || (usersList.length === 0 && !loading)) return null;
+
+    const displayTotal = totalVisitors || usersList.length;
+
+    return (
+      <View style={styles.footerWrap}>
+        {/* Total Separator Strip */}
+        <View style={styles.totalStrip}>
+          <Text style={styles.totalStripText}>
+            {displayTotal} Visitors in total
+          </Text>
+        </View>
+
+        {/* Non-SVIP Gate Card */}
+        {!canViewAllVisitors && (
+          <View style={styles.svipGateContainer}>
+            <View style={styles.overlappingCirclesRow}>
+              <View style={[styles.overlapCircle, styles.circle1]}>
+                <Image
+                  source={require('../../assets/avtar.webp')}
+                  style={styles.circleAvatarImg}
+                />
+              </View>
+              <View style={[styles.overlapCircle, styles.circle2]}>
+                <Image
+                  source={require('../../assets/avtar.webp')}
+                  style={styles.circleAvatarImg}
+                />
+              </View>
+              <View style={[styles.overlapCircle, styles.circle3]}>
+                <LinearGradient
+                  colors={['#4D423F', '#2A2422']}
+                  style={styles.circleCountGradient}
+                >
+                  <Text style={styles.circleCountText}>
+                    {displayTotal > 5 ? `${displayTotal}` : '5+'}
+                  </Text>
+                </LinearGradient>
+              </View>
+            </View>
+
+            <Text style={styles.gateNoticeText}>Can only view 5 visitors</Text>
+            <Text style={styles.gateUpgradePrompt}>
+              You can view more when you get SVIP
+            </Text>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.getSvipButton}
+              onPress={() => navigation.navigate('KingOfKings')}
+            >
+              <LinearGradient
+                colors={['#FFE259', '#FFA751']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.getSvipGrad}
+              >
+                <Text style={styles.getSvipBtnText}>Get SVIP</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     );
   };
@@ -164,9 +323,11 @@ export default function FollowersScreen() {
           style={styles.backBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Icon name="chevron-back" size={24} color="#1E293B" />
+          <Icon name="chevron-back" size={26} color="#1E293B" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Friends & Followers</Text>
+        <Text style={styles.headerTitle}>
+          {activeTab === 'visitors' ? 'Visitors' : 'Friends & Followers'}
+        </Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -189,40 +350,46 @@ export default function FollowersScreen() {
         })}
       </View>
 
-      {/* Search Filter */}
-      <View style={styles.searchBar}>
-        <Icon name="search-outline" size={17} color="#94A3B8" style={{ marginRight: 8 }} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder={`Search ${activeTab}...`}
-          placeholderTextColor="#94A3B8"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Icon name="close-circle" size={16} color="#94A3B8" />
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* Search Filter (only for following and followers) */}
+      {activeTab !== 'visitors' && (
+        <View style={styles.searchBar}>
+          <Icon name="search-outline" size={17} color="#94A3B8" style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={`Search ${activeTab}...`}
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Icon name="close-circle" size={16} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Content */}
       {loading ? (
         <View style={{ padding: 16 }}>
-          <SkeletonLoader width="100%" height={68} borderRadius={16} style={{ marginBottom: 10 }} />
-          <SkeletonLoader width="100%" height={68} borderRadius={16} style={{ marginBottom: 10 }} />
-          <SkeletonLoader width="100%" height={68} borderRadius={16} style={{ marginBottom: 10 }} />
+          <SkeletonLoader width="100%" height={64} borderRadius={16} style={{ marginBottom: 10 }} />
+          <SkeletonLoader width="100%" height={64} borderRadius={16} style={{ marginBottom: 10 }} />
+          <SkeletonLoader width="100%" height={64} borderRadius={16} style={{ marginBottom: 10 }} />
         </View>
       ) : (
         <FlatList
-          data={filteredUsers}
-          keyExtractor={(item, index) => item.id || item._id || String(index)}
-          renderItem={renderItem}
-          contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}
+          data={filteredList}
+          keyExtractor={(item, index) => item._id || item.id || String(index)}
+          renderItem={activeTab === 'visitors' ? renderVisitorRow : renderUserCard}
+          contentContainerStyle={{
+            paddingBottom: bottomPadding + 30,
+            ...(activeTab !== 'visitors' ? { paddingHorizontal: 16, paddingTop: 10 } : {}),
+          }}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={renderVisitorFooter}
           ListEmptyComponent={
             <EmptyStateView
-              icon="people-outline"
+              icon={activeTab === 'visitors' ? 'footsteps-outline' : 'people-outline'}
               title={emptyInfo.title}
               subtitle={emptyInfo.sub}
               actionText="Discover People"
@@ -238,7 +405,7 @@ export default function FollowersScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -251,10 +418,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F1F5F9',
   },
   backBtn: {
-    padding: 4,
+    padding: 2,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 17.5,
     fontWeight: '700',
     color: '#0F172A',
   },
@@ -330,6 +497,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
+    backgroundColor: '#F1F5F9',
   },
   onlineDot: {
     position: 'absolute',
@@ -379,5 +547,131 @@ const styles = StyleSheet.create({
   },
   followingBtnText: {
     color: '#64748B',
+  },
+  visitorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
+  },
+  infoWrap: {
+    flex: 1,
+    marginLeft: 14,
+    justifyContent: 'center',
+  },
+  visitorName: {
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  visitCountHighlight: {
+    color: '#F59E0B',
+    fontWeight: '700',
+  },
+  footerWrap: {
+    marginTop: 10,
+    width: '100%',
+  },
+  totalStrip: {
+    width: '100%',
+    paddingVertical: 9,
+    backgroundColor: '#F8F8F8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  totalStripText: {
+    fontSize: 13,
+    color: '#888888',
+    fontWeight: '500',
+  },
+  svipGateContainer: {
+    alignItems: 'center',
+    paddingVertical: 36,
+    paddingHorizontal: 24,
+  },
+  overlappingCirclesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  overlapCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  circle1: {
+    backgroundColor: '#3E3A39',
+    zIndex: 1,
+  },
+  circle2: {
+    backgroundColor: '#433E20',
+    marginLeft: -16,
+    zIndex: 2,
+  },
+  circle3: {
+    backgroundColor: '#4D423F',
+    marginLeft: -16,
+    zIndex: 3,
+  },
+  circleAvatarImg: {
+    width: '100%',
+    height: '100%',
+    opacity: 0.45,
+  },
+  circleCountGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleCountText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  gateNoticeText: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginBottom: 6,
+    fontWeight: '500',
+  },
+  gateUpgradePrompt: {
+    fontSize: 14,
+    color: '#D97706',
+    fontWeight: '700',
+    marginBottom: 20,
+  },
+  getSvipButton: {
+    width: width * 0.85,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+  },
+  getSvipGrad: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  getSvipBtnText: {
+    color: '#1E293B',
+    fontSize: 15.5,
+    fontWeight: '800',
   },
 });

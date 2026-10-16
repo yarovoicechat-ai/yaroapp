@@ -53,10 +53,17 @@ export default function UserProfileScreen() {
     const fetchUserById = async () => {
       const uid = route.params?.userId || route.params?.id;
       if (uid) {
+        // Record profile visit
+        apiUtil.post(`/user/visit/${encodeURIComponent(uid)}`).catch(() => {});
+
         try {
           const res = await apiUtil.get(`/user/profile/${uid}`);
           if (res.data?.success && (res.data?.user || res.data?.data)) {
-            setFetchedUser(res.data.user || res.data.data);
+            const profile = res.data.user || res.data.data;
+            setFetchedUser(profile);
+            if (profile.isFollowing !== undefined) {
+              setIsFollowing(Boolean(profile.isFollowing));
+            }
           }
         } catch (err) {
           console.log('[UserProfile] Profile fetch notice:', err.message);
@@ -136,16 +143,23 @@ export default function UserProfileScreen() {
   };
 
   const handleToggleFollow = async () => {
+    if (followLoading) return;
     setFollowLoading(true);
+    const nextState = !isFollowing;
+    setIsFollowing(nextState);
     try {
-      setIsFollowing((prev) => !prev);
-      AlertService.show(
-        isFollowing ? 'Unfollowed' : 'Following',
-        isFollowing ? `You unfollowed ${targetUser.name}` : `You are now following ${targetUser.name}!`,
-        'success'
-      );
+      const targetId = targetUser.userId || targetUser._id;
+      const res = await apiUtil.post(`/user/follow/${encodeURIComponent(targetId)}`);
+      if (res.data?.success) {
+        AlertService.show(
+          nextState ? 'Following' : 'Unfollowed',
+          nextState ? `You are now following ${targetUser.name}!` : `You unfollowed ${targetUser.name}`,
+          'success'
+        );
+      }
     } catch (err) {
-      console.log('Follow error:', err.message);
+      setIsFollowing(!nextState);
+      AlertService.show('Notice', err.response?.data?.message || 'Could not update follow status', 'error');
     } finally {
       setFollowLoading(false);
     }

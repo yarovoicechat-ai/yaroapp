@@ -72,6 +72,7 @@ import ShortsFeedScreen from "../screens/user/ShortsFeedScreen";
 import UploadShortScreen from "../screens/user/UploadShortScreen";
 import StoreScreen from "../screens/user/StoreScreen";
 import FollowersScreen from "../screens/user/FollowersScreen";
+import VisitorsScreen from "../screens/user/VisitorsScreen";
 import TasksScreen from "../screens/user/TasksScreen";
 import FanClubScreen from "../screens/user/FanClubScreen";
 import VIPScreen from "../screens/user/VIPScreen";
@@ -168,6 +169,7 @@ export default function AppStack() {
       <Stack.Screen name="UploadShort" component={UploadShortScreen} />
       <Stack.Screen name="Store" component={StoreScreen} />
       <Stack.Screen name="Followers" component={FollowersScreen} />
+      <Stack.Screen name="Visitors" component={VisitorsScreen} />
       <Stack.Screen name="LinkPhone" component={MobileVerification} />
       <Stack.Screen name="Tasks" component={TasksScreen} />
       <Stack.Screen name="FanClub" component={FanClubScreen} />

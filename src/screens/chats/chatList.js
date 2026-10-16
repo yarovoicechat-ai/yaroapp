@@ -149,13 +149,26 @@ export default function ChatListScreen() {
       const notices = response.data?.data?.notifications || [];
       const mapped = Array.isArray(notices) ? notices.map((notice) => ({
         id: String(notice._id || notice.id),
+        type: notice.type,
         title: notice.title || 'Notification',
         badge: notice.isRead ? null : 'New',
         subtitle: notice.message || notice.content || '',
         time: notice.createdAt ? new Date(notice.createdAt).toLocaleString() : '',
-        icon: notice.type === 'transaction' ? 'gift-outline' : 'notifications-outline',
-        iconColor: notice.type === 'transaction' ? '#D97706' : '#6C5CE7',
-        iconBg: notice.type === 'transaction' ? '#FEF3C7' : '#F3E8FF',
+        icon: notice.type === 'transaction'
+          ? 'gift-outline'
+          : notice.type === 'follow'
+          ? 'person-add-outline'
+          : 'notifications-outline',
+        iconColor: notice.type === 'transaction'
+          ? '#D97706'
+          : notice.type === 'follow'
+          ? '#EC4899'
+          : '#6C5CE7',
+        iconBg: notice.type === 'transaction'
+          ? '#FEF3C7'
+          : notice.type === 'follow'
+          ? '#FDF2F8'
+          : '#F3E8FF',
       })) : [];
       setSystemNotices(mapped);
     } catch (error) {
@@ -343,7 +356,15 @@ export default function ChatListScreen() {
   // Render system notice card
   const renderSystemCard = ({ item }) => {
     return (
-      <View style={styles.cardWrapper}>
+      <TouchableOpacity
+        style={styles.cardWrapper}
+        activeOpacity={0.8}
+        onPress={() => {
+          if (item.type === 'follow') {
+            navigation.navigate('Followers', { initialTab: 'followers' });
+          }
+        }}
+      >
         <View style={[styles.specialIconBox, { backgroundColor: item.iconBg }]}>
           <Icon name={item.icon} size={22} color={item.iconColor} />
         </View>
@@ -366,7 +387,7 @@ export default function ChatListScreen() {
           <Text style={styles.timeAgoText}>{item.time}</Text>
           <Icon name="chevron-forward" size={16} color="#CBD5E1" />
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 

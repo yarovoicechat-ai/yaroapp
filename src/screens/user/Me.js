@@ -453,7 +453,6 @@ export default function MeScreen() {
                 onPress={handleCopyId}
                 activeOpacity={0.7}
               >
-                <Text style={styles.userIdText}>YARO ID:</Text>
                 <IdentityDisplayId
                   userId={user?.userId || user?._id?.slice(-8)}
                   officialDisplayId={displayId}
@@ -461,16 +460,11 @@ export default function MeScreen() {
                   isOfficial={isOfficialId}
                   badgeUrl={idBadgeUrl}
                   badgeText={user?.uniqueIdBadge?.badgeName || identity.uniqueIdBadge?.badgeName || 'VIP'}
-                  showBadge={Boolean(idBadgeUrl)}
-                  showCopy={false}
+                  showBadge={true}
+                  showPrefix={true}
+                  showCopy={true}
                   fontSize={12}
                   textColor="#64748B"
-                />
-                <Ionicons
-                  name="copy-outline"
-                  size={13}
-                  color="#6B7280"
-                  style={{ marginLeft: 5 }}
                 />
               </TouchableOpacity>
 
@@ -538,7 +532,7 @@ export default function MeScreen() {
 
           <TouchableOpacity
             style={styles.statCol}
-            onPress={() => navigation.navigate('Followers', { initialTab: 'Visitors' })}
+            onPress={() => navigation.navigate('Visitors')}
             activeOpacity={0.7}
           >
             <Text style={styles.statValue}>{formatCompactBalance(user?.visitorsCount ?? 0)}</Text>

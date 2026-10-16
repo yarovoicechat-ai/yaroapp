@@ -444,7 +444,7 @@ const EditProfile = () => {
                 textAlignVertical="top"
                 placeholder="Share a short bio with friends..."
                 placeholderTextColor="#94A3B8"
-                editable={user?.role !== 'host'}
+                editable={true}
               />
             </View>
 

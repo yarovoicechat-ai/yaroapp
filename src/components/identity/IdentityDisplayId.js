@@ -109,7 +109,7 @@ export default function IdentityDisplayId({
         ) : showBadge && badgeText ? (
           <MaterialCommunityIcons
             name="crown"
-            size={Math.max(14, fontSize)}
+            size={Math.max(18, fontSize + 4)}
             color="#D4AF37"
             style={styles.vipIconWrap}
           />
@@ -118,7 +118,7 @@ export default function IdentityDisplayId({
         <Animated.Text
           style={[
             styles.vipIdText,
-            { fontSize: Math.max(12, fontSize), color: animatedIdColor },
+            { fontSize: Math.max(14, fontSize + 2), color: animatedIdColor },
           ]}
           numberOfLines={1}
         >
@@ -132,7 +132,7 @@ export default function IdentityDisplayId({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={styles.copyButton}
           >
-            <Icon name="copy-outline" size={Math.max(13, fontSize)} color="#F59E0B" />
+            <Icon name="copy-outline" size={Math.max(15, fontSize + 2)} color="#F59E0B" />
           </TouchableOpacity>
         )}
       </View>
@@ -167,7 +167,7 @@ export default function IdentityDisplayId({
         style={[
           styles.regularIdText,
           textColor ? { color: textColor } : null,
-          { fontSize },
+          { fontSize: fontSize + 1 },
         ]}
         numberOfLines={1}
       >
@@ -180,7 +180,7 @@ export default function IdentityDisplayId({
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={styles.copyButton}
         >
-          <Icon name="copy-outline" size={Math.max(13, fontSize)} color="#94A3B8" />
+          <Icon name="copy-outline" size={Math.max(15, fontSize + 2)} color="#94A3B8" />
         </TouchableOpacity>
       )}
     </View>
@@ -206,8 +206,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   customBadgeImg: {
-    width: 20,
-    height: 20,
+    width: 28,
+    height: 28,
   },
   vipIdText: {
     fontWeight: '900',
@@ -220,15 +220,15 @@ const styles = StyleSheet.create({
     marginRight: 5,
   },
   regularSealCircle: {
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   regularSealText: {
     color: '#F8FAFC',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
   },
   regularIdText: {

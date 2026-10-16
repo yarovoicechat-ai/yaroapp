@@ -22,6 +22,7 @@ import { getUserAvatar } from '../../utils/avatarUtil';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import EmptyStateView from '../../components/EmptyStateView';
 import SkeletonLoader from '../../components/SkeletonLoader';
+import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
 
 const { width } = Dimensions.get('window');
 const RECENT_SEARCHES_KEY = '@yaro_recent_searches';
@@ -228,6 +229,7 @@ export default function SearchScreen() {
   const renderUserItem = ({ item }) => {
     const isHost = item.role === 'host' || item.isHost;
     const displayId = item.displayId || item.userId || item.meethiId || item.id || 'N/A';
+    const idBadgeUrl = item.uniqueIdBadge?.badgeIconUrl || item.officialBadge?.badgeUrl || null;
 
     return (
       <TouchableOpacity
@@ -259,11 +261,28 @@ export default function SearchScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.userSub} numberOfLines={1}>
-            YARO ID: <Text style={styles.idHighlight}>{displayId}</Text>
-            {item.userName && String(item.userName) !== String(displayId) ? ` • @${item.userName}` : ''}
-            {item.gender ? ` • ${item.gender}` : ''}
-          </Text>
+          <View style={{ marginTop: 2 }}>
+            <IdentityDisplayId
+              userId={item.userId || item.meethiId || item.id}
+              officialDisplayId={displayId}
+              customDisplayId={item.customDisplayId}
+              isOfficial={Boolean(item.isOfficial)}
+              badgeUrl={idBadgeUrl}
+              badgeText={item.uniqueIdBadge?.badgeName || item.officialBadge?.badgeText || null}
+              showBadge={Boolean(idBadgeUrl)}
+              showCopy={false}
+              showPrefix={true}
+              fontSize={12}
+              textColor="#64748B"
+            />
+            {(item.userName && String(item.userName) !== String(displayId)) || item.gender ? (
+              <Text style={styles.userSub} numberOfLines={1}>
+                {item.userName && String(item.userName) !== String(displayId) ? `@${item.userName}` : ''}
+                {item.userName && String(item.userName) !== String(displayId) && item.gender ? ' • ' : ''}
+                {item.gender || ''}
+              </Text>
+            ) : null}
+          </View>
         </View>
 
         <TouchableOpacity

@@ -214,7 +214,9 @@ export default function StoreScreen() {
 
       AlertService.show(
         'Purchase Successful 🎉',
-        isFreeStoreItem(selectedItem)
+        selectedItem.category === 'Unique ID'
+          ? `Unique ID ${selectedItem.number || selectedItem.metadata?.number || ''} is in My Items. Activate it there when you are ready to display it.`
+          : isFreeStoreItem(selectedItem)
           ? `${selectedItem.name} is now unlocked and available in your Profile / My Items.`
           : `You purchased ${selectedItem.name} for ${selectedDurationDays} days. It is now equipped and available in your Profile / My Items.`,
         'success',

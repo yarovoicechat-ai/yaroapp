@@ -150,11 +150,15 @@ export default function MyItems() {
                                   : category;
             const metadata = catalog.metadata || entry.metadata || {};
             const itemId = String(catalog._id || catalog.id || entry.itemId || entry._id);
-            const name = catalog.name || entry.name || 'Item';
+            const uniqueDisplayId = String(metadata.uniqueDisplayId || metadata.displayId || metadata.number || '').trim();
+            const name = type === 'Unique ID'
+              ? uniqueDisplayId || catalog.name || entry.name || 'Unique ID'
+              : catalog.name || entry.name || 'Item';
             const equippedName = getEquippedName(type);
             const isIdEquipped =
               (type === 'VIP' || type === 'Theme') &&
               String(equippedName || '') === itemId;
+            const isUniqueIdEquipped = type === 'Unique ID' && Boolean(entry.isEquippedUniqueId);
             return {
               ...catalog,
               ...entry,
@@ -171,10 +175,13 @@ export default function MyItems() {
                     if (days === 1) return '1 day left';
                     return `${days} days left`;
                   })()
-                : catalog.validity || 'Permanent',
+                : type === 'Unique ID'
+                  ? `${Number(entry.durationDays || metadata.activationDurationDays) || 30} days after activation`
+                  : catalog.validity || 'Permanent',
               expiresAt: entry.expiresAt,
               inUse:
                 isIdEquipped ||
+                isUniqueIdEquipped ||
                 Boolean(
                   equippedName &&
                     String(name).toLowerCase() === String(equippedName).toLowerCase(),

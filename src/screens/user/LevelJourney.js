@@ -188,23 +188,27 @@ export default function LevelJourney() {
 
   // Filtered Wealth Rewards based on active category
   const filteredWealthRewards = useMemo(() => {
-    if (activeCategory === 'All') return WEALTH_REWARDS;
-    return WEALTH_REWARDS.filter((r) => {
+    const rewards = [...WEALTH_REWARDS, ...(serverStatus?.wealth?.uniqueIdRewards || [])];
+    if (activeCategory === 'All') return rewards;
+    return rewards.filter((r) => {
       if (activeCategory === 'Badge') return r.type === 'badge';
       if (activeCategory === 'Frame') return r.type === 'frame';
       if (activeCategory === 'Vehicle') return r.type === 'vehicle';
-      if (activeCategory === 'Custom ID') return r.type === 'custom_id';
+      if (activeCategory === 'Custom ID' || activeCategory === 'Unique ID') return r.type === 'custom_id';
       if (activeCategory === 'Entrance') return r.type === 'entrance';
       if (activeCategory === 'Profile Border') return r.type === 'profile_border';
       if (activeCategory === 'Custom Theme') return r.type === 'theme';
       return true;
     });
-  }, [activeCategory]);
+  }, [activeCategory, serverStatus?.wealth?.uniqueIdRewards]);
 
   // Charm Rewards for selected milestone
   const charmPackageRewards = useMemo(() => {
-    return CHARM_PACKAGES[selectedCharmMilestone] || [];
-  }, [selectedCharmMilestone]);
+    return [
+      ...(CHARM_PACKAGES[selectedCharmMilestone] || []),
+      ...(serverStatus?.charm?.uniqueIdRewards || []).filter((reward) => Number(reward.requiredLevel) === Number(selectedCharmMilestone)),
+    ];
+  }, [selectedCharmMilestone, serverStatus?.charm?.uniqueIdRewards]);
 
   // Reward Status Helper: 'LOCKED' | 'UNLOCKED' | 'CLAIMED' | 'EQUIPPED'
   const getRewardState = useCallback(
@@ -219,6 +223,9 @@ export default function LevelJourney() {
       const isClaimed = claimedList.includes(grantKey) || claimedList.includes(item.id);
 
       if (!isClaimed) return 'UNLOCKED'; // Unlocked but not yet claimed
+      // Unique IDs are activated or removed from My Items, so keep the
+      // inventory-only item out of the legacy level-reward equip state.
+      if (item.uniqueIdInventoryOnly) return 'CLAIMED';
 
       // Check if equipped
       const equippedFrame = user?.equippedFrame;
@@ -286,6 +293,11 @@ export default function LevelJourney() {
   // Equip / Unequip Reward Handler
   const handleEquipReward = async (item, shouldEquip = true) => {
     if (!item) return;
+    if (item.uniqueIdInventoryOnly) {
+      setPreviewItem(null);
+      navigation.navigate('MyItems', { selectedCategory: 'Unique ID' });
+      return;
+    }
     setClaimLoading(true);
     try {
       const res = await apiUtil.post('/level/equip', {
@@ -688,7 +700,7 @@ export default function LevelJourney() {
                 'Badge',
                 'Frame',
                 'Vehicle',
-                'Custom ID',
+                'Unique ID',
                 'Entrance',
                 'Profile Border',
                 'Custom Theme',
@@ -767,7 +779,7 @@ export default function LevelJourney() {
                           onPress={() => handleEquipReward(item, true)}
                           disabled={claimLoading}
                         >
-                          <Text style={styles.rewardActionEquipText}>Equip</Text>
+                          <Text style={styles.rewardActionEquipText}>{item.uniqueIdInventoryOnly ? 'My Items' : 'Equip'}</Text>
                         </TouchableOpacity>
                       )}
                       {state === 'EQUIPPED' && (
@@ -905,7 +917,7 @@ export default function LevelJourney() {
                           onPress={() => handleEquipReward(reward, true)}
                           disabled={claimLoading}
                         >
-                          <Text style={[styles.rewardActionEquipText, { color: '#F472B6' }]}>Equip</Text>
+                          <Text style={[styles.rewardActionEquipText, { color: '#F472B6' }]}>{reward.uniqueIdInventoryOnly ? 'My Items' : 'Equip'}</Text>
                         </TouchableOpacity>
                       )}
                       {state === 'EQUIPPED' && (
@@ -1038,7 +1050,7 @@ export default function LevelJourney() {
                   {claimLoading ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.modalPrimaryBtnText}>Equip Now</Text>
+                    <Text style={styles.modalPrimaryBtnText}>{previewItem.uniqueIdInventoryOnly ? 'Open My Items' : 'Equip Now'}</Text>
                   )}
                 </TouchableOpacity>
               )}

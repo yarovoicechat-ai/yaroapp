@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ToastAndroid, Image, Clipboard } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
+import SvgaView from '../SvgaView';
 
 /**
  * Identity Display ID Presentation Component
@@ -52,7 +53,7 @@ export default function IdentityDisplayId({
       {showBadge && (
         <View style={styles.badgeWrapper}>
           {badgeUrl ? (
-            <Image source={{ uri: badgeUrl }} style={styles.customBadgeImg} resizeMode="contain" />
+            <SvgaView source={badgeUrl} style={styles.customBadgeImg} resizeMode="contain" />
           ) : (
             <LinearGradient
               colors={isVanity ? ['#FDE047', '#EAB308', '#CA8A04', '#A16207'] : ['#475569', '#334155']}

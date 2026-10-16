@@ -227,7 +227,7 @@ export default function SearchScreen() {
 
   const renderUserItem = ({ item }) => {
     const isHost = item.role === 'host' || item.isHost;
-    const displayId = item.userId || item.meethiId || item.id || 'N/A';
+    const displayId = item.displayId || item.userId || item.meethiId || item.id || 'N/A';
 
     return (
       <TouchableOpacity

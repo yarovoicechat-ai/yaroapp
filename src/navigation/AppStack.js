@@ -54,6 +54,7 @@ import AgencyDashboard from "../screens/user/AgencyDashboard";
 import VoiceRoom from "../screens/user/VoiceRoom";
 import BDDashboard from "../screens/user/BDDashboard";
 import SVIP from "../screens/user/SVIP";
+import KingOfKingsScreen from "../screens/user/KingOfKingsScreen";
 import MyItems from "../screens/user/MyItems";
 import Medal from "../screens/user/Medal";
 import UserProfile from "../screens/user/UserProfile";
@@ -152,6 +153,7 @@ export default function AppStack() {
       <Stack.Screen name="VoiceRoom" component={VoiceRoom} />
       <Stack.Screen name="BDDashboard" component={BDDashboard} />
       <Stack.Screen name="SVIP" component={SVIP} />
+      <Stack.Screen name="KingOfKings" component={KingOfKingsScreen} />
       <Stack.Screen name="MyItems" component={MyItems} />
       <Stack.Screen name="Medal" component={Medal} />
 

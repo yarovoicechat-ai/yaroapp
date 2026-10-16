@@ -28,6 +28,28 @@ const { width } = Dimensions.get('window');
 // Default fallback tiers if offline
 const FALLBACK_TIERS = [
   {
+    id: 'vip-plus',
+    slug: 'vip-plus',
+    level: 0,
+    name: 'VIP+',
+    title: 'VIP+ Lynx',
+    price: 49000,
+    originalPrice: 75000,
+    discountPercent: 35,
+    discount: '35% OFF',
+    durationDays: 30,
+    rechargeThreshold: 50000,
+    svipTagConfig: { text: 'VIP+', bgGradient: ['#3B82F6', '#1D4ED8'], enabled: true },
+    svipBubbleConfig: { bubbleName: 'VIP+ Frost Blue', bgGradient: ['#1E3A8A', '#1E40AF'], textColor: '#FFF', borderColor: '#60A5FA', enabled: true },
+    privileges: [
+      { key: 'rank_the_top', title: 'Rank the Top', description: 'Pin your profile to the top of room visitor lists.', icon: 'trophy', value: 'Top #1 Priority' },
+      { key: 'colorful_nickname', title: 'Colorful Nickname', description: 'Dynamic gradient and animated colors for your nickname.', icon: 'palette', value: 'Gradient' },
+      { key: 'view_more_visitors', title: 'View More Visitors', description: 'Unlock full visitor history without limits.', icon: 'eye', value: 'Unlimited' },
+      { key: 'special_room_entry', title: 'Special Room Entry', description: 'Luxury animated sports car entrance notice.', icon: 'car-sport', value: '3D Car' },
+      { key: 'unlimited_message', title: 'Unlimited Message', description: 'Zero cooldown in voice party rooms.', icon: 'chatbubbles', value: 'Zero Cooldown' },
+    ],
+  },
+  {
     id: 'svip-1-knight',
     slug: 'svip-1-knight',
     level: 1,
@@ -325,7 +347,7 @@ export default function SVIPScreen() {
                 activeOpacity={0.8}
               >
                 <Text style={[styles.tierTabText, isActive && styles.tierTabTextActive]}>
-                  SVIP {tier.level}
+                  {tier.level === 0 ? 'VIP+' : `SVIP ${tier.level}`}
                 </Text>
                 {isActive && <View style={styles.tierTabUnderline} />}
               </TouchableOpacity>
@@ -361,17 +383,25 @@ export default function SVIPScreen() {
                 />
               </View>
 
-              {/* Center Stag Shield */}
+              {/* Center Stag Shield / Uploaded Hero Badge */}
               <View style={styles.crestShield}>
-                <LinearGradient
-                  colors={['#FDE68A', '#F59E0B', '#B45309', '#78350F']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.crestShieldGrad}
-                >
-                  <Text style={styles.levelBadgeText}>{currentTier.level}</Text>
-                  <Text style={styles.levelBadgeSub}>SVIP</Text>
-                </LinearGradient>
+                {currentTier.heroBadgeUrl ? (
+                  <Image
+                    source={{ uri: currentTier.heroBadgeUrl }}
+                    style={{ width: 56, height: 56 }}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <LinearGradient
+                    colors={['#FDE68A', '#F59E0B', '#B45309', '#78350F']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.crestShieldGrad}
+                  >
+                    <Text style={styles.levelBadgeText}>{currentTier.level === 0 ? '+' : currentTier.level}</Text>
+                    <Text style={styles.levelBadgeSub}>{currentTier.level === 0 ? 'VIP' : 'SVIP'}</Text>
+                  </LinearGradient>
+                )}
               </View>
 
               {/* Right Wing */}

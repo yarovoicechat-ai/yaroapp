@@ -554,7 +554,7 @@ export default function MeScreen() {
 
           <TouchableOpacity
             activeOpacity={0.9}
-            onPress={() => navigation.navigate('SVIP')}
+            onPress={() => navigation.navigate('KingOfKings')}
             style={styles.vipHalfCard}
           >
             <LinearGradient

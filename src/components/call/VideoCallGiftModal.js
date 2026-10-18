@@ -130,7 +130,7 @@ export default function VideoCallGiftModal({
               onPress={onSend}
               activeOpacity={0.85}
             >
-              <LinearGradient colors={selectedGift ? ['#FF2E93', '#7928CA'] : ['#3A3050', '#251F35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.sendGiftGradient}>
+              <LinearGradient colors={selectedGift ? ['#EC4899', '#A855F7', '#38BDF8'] : ['#3A2050', '#201035']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.sendGiftGradient}>
                 {sending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (

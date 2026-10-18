@@ -452,8 +452,8 @@ export default function GiftPanel({
                 <LinearGradient
                   colors={
                     isAffordable
-                      ? (comboCount > 1 ? ['#FF007A', '#F59E0B'] : ['#FDE047', '#EAB308'])
-                      : ['#475569', '#334155']
+                      ? (comboCount > 1 ? ['#FF007A', '#F59E0B'] : ['#EC4899', '#A855F7', '#38BDF8'])
+                      : ['#332154', '#1E1438']
                   }
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -520,29 +520,29 @@ const styles = StyleSheet.create({
   },
   sheetContainer: {
     width: '100%',
-    backgroundColor: '#0A0F1D',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#0E0824',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     maxHeight: SHEET_HEIGHT,
     minHeight: 520,
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000000',
+    borderColor: 'rgba(168, 85, 247, 0.28)',
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
     elevation: 20,
   },
   handleContainer: {
     width: '100%',
-    paddingVertical: 7,
+    paddingVertical: 8,
     alignItems: 'center',
   },
   sheetHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#475569',
+    width: 44,
+    height: 4.5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(168, 85, 247, 0.5)',
   },
   recipientPromptBox: {
     flexDirection: 'row',
@@ -651,35 +651,35 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-    backgroundColor: 'rgba(10, 15, 29, 0.95)',
+    borderTopColor: 'rgba(168, 85, 247, 0.18)',
+    backgroundColor: 'rgba(12, 6, 30, 0.98)',
   },
   balancePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(30, 41, 59, 0.75)',
-    paddingHorizontal: 10,
+    backgroundColor: 'rgba(28, 14, 62, 0.85)',
+    paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(234, 179, 8, 0.35)',
     gap: 4,
   },
   diamondEmoji: {
     fontSize: 12,
   },
   balanceNum: {
-    color: '#F8FAFC',
+    color: '#FDE047',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   quantityStepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    backgroundColor: 'rgba(28, 14, 62, 0.85)',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(168, 85, 247, 0.3)',
     overflow: 'hidden',
   },
   stepperBtn: {
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 7,
     gap: 3,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(18, 9, 42, 0.7)',
   },
   stepperPillText: {
     color: '#F8FAFC',
@@ -706,11 +706,11 @@ const styles = StyleSheet.create({
   sendButton: {
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#FACC15',
+    shadowColor: '#EC4899',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 6,
   },
   sendButtonDisabled: {
     shadowOpacity: 0,
@@ -721,10 +721,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8.5,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 76,
+    minWidth: 80,
   },
   sendButtonText: {
-    color: '#0F172A',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.5,

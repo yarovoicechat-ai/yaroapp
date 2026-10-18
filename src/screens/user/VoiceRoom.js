@@ -2315,6 +2315,15 @@ export default function VoiceRoomScreen() {
             navigation.navigate('UserProfile', { userId: targetId, user: target });
           }
         }}
+        onOpenChat={(target) => {
+          setProfileModalVisible(false);
+          const targetId = target?.userId || target?.id || target?._id;
+          navigation.navigate('Chat', {
+            user: target,
+            otherUser: target,
+            conversationId: `conv_${targetId}`,
+          });
+        }}
         onMention={handleMentionUser}
         onGift={(u) => {
           giftHook.setSelectedReceivers([

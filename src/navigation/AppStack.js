@@ -119,6 +119,7 @@ export default function AppStack() {
       <Stack.Screen name="RefundPolicy" component={RefundPolicy} />
       <Stack.Screen name="TermOfUse" component={TermOfUse} />
       <Stack.Screen name="Chat" component={Message} />
+      <Stack.Screen name="Message" component={Message} />
       <Stack.Screen name="Incomming" component={Incoming} options={{ animation: "none", gestureEnabled: false }} />
       <Stack.Screen name="OutGoing" component={OutGoing} options={{ animation: "none", gestureEnabled: false }} />
       <Stack.Screen
@@ -173,7 +174,7 @@ export default function AppStack() {
       <Stack.Screen name="LinkPhone" component={MobileVerification} />
       <Stack.Screen name="Tasks" component={TasksScreen} />
       <Stack.Screen name="FanClub" component={FanClubScreen} />
-      <Stack.Screen name="VIP" component={VIPScreen} />
+      <Stack.Screen name="VIP" component={SVIP} />
       <Stack.Screen name="BeansHistory" component={CoinHistory} />
       <Stack.Screen name="DataCenter" component={DataCenter} />
     </Stack.Navigator>

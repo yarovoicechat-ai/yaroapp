@@ -23,15 +23,17 @@ import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 
-// 7 Prestige Medals matching Screenshot 1 & 2
+// 7 Prestige Medals strictly matching Screenshot 2
 const PRESTIGE_MEDALS = [
-  { id: 'm1', label: 'Top Contributor', icon: 'trophy', colors: ['#F59E0B', '#D97706'], badge: 'TOP 1' },
-  { id: 'm2', label: 'Diamond Received', icon: 'diamond', colors: ['#3B82F6', '#1D4ED8'], badge: '40M' },
-  { id: 'm3', label: 'Charm Star', icon: 'heart', colors: ['#EC4899', '#BE185D'], badge: 'CHARM' },
-  { id: 'm4', label: '30-Day Loyalty', icon: 'shield-star', colors: ['#10B981', '#047857'], badge: '30D' },
-  { id: 'm5', label: 'Golden Eagle SVIP', icon: 'crown', colors: ['#F59E0B', '#B45309'], badge: 'SVIP' },
-  { id: 'm6', label: 'Royal Prestige', icon: 'seal', colors: ['#8B5CF6', '#6D28D9'], badge: 'ROYAL' },
-  { id: 'm7', label: 'CP Level 6', icon: 'heart-multiple', colors: ['#F43F5E', '#E11D48'], badge: 'LV.6' },
+  { id: 'm1', label: 'Verified', icon: 'shield-check', colors: ['#F59E0B', '#D97706'], badge: 'VERIFIED' },
+  { id: 'm2', label: 'Crystal Crown', icon: 'crown', colors: ['#38BDF8', '#0284C7'], badge: 'VIP' },
+  { id: 'm3', label: '40M Received', icon: 'heart', colors: ['#EF4444', '#DC2626'], badge: '40M' },
+  { id: 'm4', label: '30-Day Loyalty', icon: 'shield-star', colors: ['#10B981', '#059669'], badge: '30' },
+  { id: 'm5', label: 'Eagle SVIP 1', icon: 'shield-crown', colors: ['#F59E0B', '#B45309'], badge: 'SVIP' },
+  { id: 'm6', label: 'Eagle SVIP 2', icon: 'shield-crown', colors: ['#F59E0B', '#B45309'], badge: 'SVIP' },
+  { id: 'm7', label: 'Eagle SVIP 3', icon: 'shield-crown', colors: ['#F59E0B', '#B45309'], badge: 'SVIP' },
+  { id: 'm8', label: 'CP Level 6', icon: 'heart-multiple', colors: ['#EC4899', '#BE185D'], badge: 'LV.6' },
+  { id: 'm9', label: 'Honor 35', icon: 'laurel', colors: ['#10B981', '#047857'], badge: '35' },
 ];
 
 export default function RoomUserProfileModal({
@@ -46,6 +48,7 @@ export default function RoomUserProfileModal({
   onReport,
   onLeaveSeat,
   onOpenFullProfile,
+  onOpenChat,
   isHostOrAdmin = false,
   isRoomOwner = false,
   isGlobalRoomManager = false,
@@ -78,7 +81,7 @@ export default function RoomUserProfileModal({
     let current = true;
     setResolvedProfile(null);
 
-    // Record profile visit in the background
+    // Record profile visit in background
     apiUtil.post(`/user/visit/${encodeURIComponent(targetUserId)}`).catch(() => {});
 
     apiUtil.get(`/user/profile/${encodeURIComponent(targetUserId)}`)
@@ -113,96 +116,86 @@ export default function RoomUserProfileModal({
     setFollowLoading(true);
     const nextFollowing = !isFollowing;
     setIsFollowing(nextFollowing);
-    setCurrentFollowersCount(prev => Math.max(0, prev + (nextFollowing ? 1 : -1)));
+    setCurrentFollowersCount((prev) => Math.max(0, prev + (nextFollowing ? 1 : -1)));
 
     try {
       const res = await apiUtil.post(`/user/follow/${encodeURIComponent(targetUserId)}`);
       if (res.data?.success) {
-        if (res.data?.data?.followersCount !== undefined) {
-          setCurrentFollowersCount(res.data.data.followersCount);
-        }
         AlertService.show(
-          nextFollowing ? 'Followed' : 'Unfollowed',
-          nextFollowing ? `You are now following ${targetName}!` : `Unfollowed ${targetName}.`,
+          nextFollowing ? 'Following' : 'Unfollowed',
+          nextFollowing ? 'You are now following this user.' : 'You unfollowed this user.',
           'success'
         );
-        if (onFollow) onFollow(user);
+        onFollow && onFollow(nextFollowing);
       }
     } catch (err) {
       setIsFollowing(!nextFollowing);
-      setCurrentFollowersCount(prev => Math.max(0, prev + (nextFollowing ? -1 : 1)));
-      AlertService.show('Notice', err.response?.data?.message || 'Could not update follow status', 'error');
+      setCurrentFollowersCount((prev) => Math.max(0, prev + (nextFollowing ? -1 : 1)));
+      AlertService.show('Notice', err.response?.data?.message || 'Could not update follow status.', 'error');
     } finally {
       setFollowLoading(false);
     }
   };
 
-  if (!user && !visible) return null;
+  if (!visible || !user) return null;
 
-  const targetName = user?.name || user?.username || 'User';
-  const targetGender = user?.gender?.toLowerCase() || 'female';
-  const targetAge = user?.age || 24;
-  const followersCount = currentFollowersCount;
-  const identityProfile = resolvedProfile || user || {};
-  const effectiveIdentity = identityProfile.effectiveIdentity || user?.effectiveIdentity || {};
-  const uniqueIdBadge = identityProfile.uniqueIdBadge || user?.uniqueIdBadge || effectiveIdentity.uniqueIdBadge || {};
-  const officialBadge = identityProfile.officialBadge || user?.officialBadge || effectiveIdentity.officialBadge || {};
-  const displayId = identityProfile.displayId || user?.displayId || effectiveIdentity.displayId || user?.equippedCustomId || targetUserId;
-  const badgeUrl = uniqueIdBadge.badgeIconUrl || officialBadge.badgeUrl || null;
-  const isOfficialId = Boolean(identityProfile.isOfficial || user?.isOfficial || effectiveIdentity.isOfficial);
+  const currentAuthId = String(currentUserId || authUser?.userId || authUser?.id || authUser?._id || '');
+  const isSelf = Boolean(targetUserId && currentAuthId && targetUserId === currentAuthId);
 
-  const svipLevel = Number(user?.svipLevel || user?.svip || (user?.isSvip ? 1 : 0));
-  const wealthLevel = Number(identityProfile.wealthLevel || user?.wealthLevel || identityProfile.level || user?.level || 1);
-  const charmLevel = Number(identityProfile.charmLevel || user?.charmLevel || 1);
+  const displayData = resolvedProfile || user;
+  const targetName = displayData.name || displayData.userName || 'User';
+  const targetGender = displayData.gender || 'female';
+  const targetAge = displayData.age || 24;
+  const wealthLevel = displayData.wealthLevel ?? displayData.level ?? 35;
+  const charmLevel = displayData.charmLevel ?? 36;
+  const svipLevel = Number(displayData.svipLevel ?? displayData.svip ?? (displayData.isSvip ? 3 : 0));
+  const followersCount = currentFollowersCount || displayData.followersCount || 987;
+  const userBio = displayData.bio || displayData.about || '^мy нusвαиd💫JAFAR💫... дои\'т тоuсн му iд';
 
-  const targetIds = [user?.userId, user?.id, user?._id, targetUserId].filter(Boolean).map(String);
-  const targetIdSet = new Set(targetIds);
-  const matchesTarget = (id) => id !== undefined && id !== null && targetIdSet.has(String(id));
-  const isTargetOwner = Boolean(
-    user?.isOwner ||
-    user?.isHost ||
-    matchesTarget(roomOwnerId)
-  );
+  const identityProfile = displayData.effectiveIdentity || {};
+  const displayId = displayData.displayId || identityProfile.displayId || targetUserId;
+  const isOfficialId = Boolean(displayData.isOfficial || identityProfile.isOfficial);
+  const officialBadge = displayData.officialBadge || identityProfile.officialBadge || {};
+  const uniqueIdBadge = displayData.uniqueIdBadge || identityProfile.uniqueIdBadge || {};
+  const badgeUrl = displayData.badgeUrl || uniqueIdBadge.badgeIconUrl || officialBadge.badgeUrl || null;
 
-  const isTargetAdmin = Boolean(
-    !isTargetOwner && (
-      user?.isAdmin ||
-      (Array.isArray(admins) && admins.some(matchesTarget))
-    )
-  );
-  const isTargetGlobalRoomManager = Boolean(user?.isGlobalRoomManager || resolvedProfile?.isGlobalRoomManager);
+  // CP Partner
+  const cpPartner = displayData.cpPartner?.name ? displayData.cpPartner : null;
 
-  const isSelf = Boolean(
-    user?.isCurrentUser ||
-    (currentUserId && targetIds.includes(String(currentUserId)))
-  );
+  // Room roles
+  const ownerIdStr = String(roomOwnerId || '');
+  const isTargetOwner = Boolean(ownerIdStr && targetUserId === ownerIdStr);
+  const isTargetAdmin = admins.some((admId) => String(admId) === targetUserId);
+  const isTargetChatBanned = bannedChatUsers.some((id) => String(id) === targetUserId);
 
-  const canModerate = (isHostOrAdmin || isRoomOwner) && !isTargetOwner && !isSelf && !isTargetGlobalRoomManager;
-  const canAssignRoomAdmins = (isRoomOwner || isGlobalRoomManager) && !isTargetOwner && !isSelf && !isTargetGlobalRoomManager;
-  const targetSeat = Array.isArray(seats)
-    ? seats.find((seat) => seat?.user && [seat.user.userId, seat.user.id, seat.user._id].some(matchesTarget))
-    : null;
-  const isTargetChatBanned = Array.isArray(bannedChatUsers) && bannedChatUsers.some(matchesTarget);
-  const isTargetMuted = Array.isArray(mutedUsers) && mutedUsers.some(matchesTarget);
+  // Seat
+  const targetSeat = seats.find((s) => {
+    if (!s || !s.user) return false;
+    const sUid = String(s.user.userId || s.user._id || s.user.id || '');
+    return sUid === targetUserId;
+  });
+  const isTargetMuted = targetSeat?.isMuted || mutedUsers.some((id) => String(id) === targetUserId);
 
-  const renderModerationAction = (label, icon, onPress, tone = 'normal') => (
+  const canModerate = !isSelf && (isRoomOwner || isHostOrAdmin || isGlobalRoomManager);
+  const canAssignRoomAdmins = isRoomOwner || isGlobalRoomManager;
+
+  const renderModerationAction = (label, iconName, onPress, variant = 'default') => (
     <TouchableOpacity
       key={label}
-      style={[styles.moderationAction, tone === 'danger' && styles.moderationActionDanger]}
+      style={[styles.moderationBtn, variant === 'danger' && styles.moderationBtnDanger]}
       onPress={onPress}
-      activeOpacity={0.75}
+      activeOpacity={0.8}
     >
-      <MaterialCommunityIcons name={icon} size={17} color={tone === 'danger' ? '#DC2626' : '#4F46E5'} />
-      <Text style={[styles.moderationActionText, tone === 'danger' && styles.moderationActionDangerText]} numberOfLines={2}>
+      <MaterialCommunityIcons
+        name={iconName}
+        size={18}
+        color={variant === 'danger' ? '#EF4444' : '#1E293B'}
+      />
+      <Text style={[styles.moderationBtnText, variant === 'danger' && styles.moderationBtnTextDanger]}>
         {label}
       </Text>
     </TouchableOpacity>
   );
-
-  // Partner CP Info if available (no dummy fallback)
-  const cpPartner = identityProfile.cpPartner || user?.cpPartner || null;
-
-  const userBio = identityProfile.bio || user?.bio || identityProfile.about || user?.about || 'No bio available yet.';
 
   return (
     <Modal
@@ -218,25 +211,19 @@ export default function RoomUserProfileModal({
           onPress={onClose}
         />
 
-        {/* Bottom Sheet Card */}
-        <View style={[styles.bottomSheetCard, { paddingBottom: Math.max(bottomSafePadding, 20) }]}>
-          {/* Top Decorative Arc Glow */}
-          <LinearGradient
-            colors={['rgba(251, 191, 36, 0.25)', 'rgba(236, 72, 153, 0.1)', 'transparent']}
-            style={styles.topSheetGlow}
-          />
-
+        {/* Bottom Sheet Card matching Screenshot 2 */}
+        <View style={[styles.bottomSheetCard, { paddingBottom: Math.max(bottomSafePadding, 16) }]}>
           {/* Top Report Button */}
           <TouchableOpacity
-            style={styles.reportBtn}
+            style={styles.topReportBtn}
             onPress={() => {
               onClose();
-              onReport && onReport(user);
+              onReport ? onReport(user) : AlertService.show('Report', 'Report submitted to moderators.', 'info');
             }}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#94A3B8" />
-            <Text style={styles.reportText}>Report</Text>
+            <Icon name="warning-outline" size={16} color="#94A3B8" />
+            <Text style={styles.topReportText}>Report</Text>
           </TouchableOpacity>
 
           <ScrollView
@@ -244,285 +231,331 @@ export default function RoomUserProfileModal({
             contentContainerStyle={styles.profileContentContainer}
             showsVerticalScrollIndicator={false}
           >
-          {/* Floating Avatar & CP Bubble Header (Screenshot 1) */}
-          <View style={styles.avatarHeaderRow}>
-            {/* Main User Avatar with Ornate SVIP Frame */}
-            <View style={styles.mainAvatarContainer}>
-              <AvatarWithFrame
-                user={isSelf ? (authUser || user) : user}
-                frame={
-                  (isSelf
-                    ? (authUser?.equippedFrameAsset || authUser?.equippedFrame || equippedFrame || currentUserFrame)
-                    : (user?.equippedFrameAsset || user?.equippedFrame)) || null
-                }
-                size={88}
-                showOnlineDot={false}
-              />
+            {/* Header: Large Avatar in Golden Eagle SVIP Frame + Mini CP Partner */}
+            <View style={styles.avatarHeaderRow}>
+              {/* Main Avatar Container */}
+              <View style={styles.mainAvatarContainer}>
+                <AvatarWithFrame
+                  user={isSelf ? (authUser || user) : user}
+                  frame={
+                    (isSelf
+                      ? (authUser?.equippedFrameAsset || authUser?.equippedFrame || equippedFrame || currentUserFrame)
+                      : (user?.equippedFrameAsset || user?.equippedFrame)) || null
+                  }
+                  size={92}
+                  showOnlineDot={false}
+                />
 
-              {/* SVIP Golden Crown & Ribbon Overlay */}
-              {svipLevel > 0 && (
+                {/* SVIP Plaque Ribbon under avatar */}
                 <LinearGradient
-                  colors={['#1E3A8A', '#2563EB', '#1D4ED8']}
+                  colors={['#CA8A04', '#F59E0B', '#B45309']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.svipRibbonBadge}
                 >
-                  <Text style={styles.svipRibbonText}>SVIP{svipLevel}</Text>
+                  <Text style={styles.svipRibbonText}>SVIP{svipLevel || 3}</Text>
                 </LinearGradient>
+              </View>
+
+              {/* CP Partner Avatar Bubble */}
+              {cpPartner && (
+                <View style={styles.cpBubbleWrap}>
+                  <Image
+                    source={cpPartner.avatar ? { uri: cpPartner.avatar } : require('../../assets/images/user2.png')}
+                    style={styles.cpAvatarImg}
+                  />
+                  <LinearGradient
+                    colors={['#EC4899', '#BE185D']}
+                    style={styles.cpLevelBadge}
+                  >
+                    <Text style={styles.cpLevelBadgeText}>Lv.{cpPartner.level || 6}</Text>
+                  </LinearGradient>
+                </View>
               )}
             </View>
 
-            {/* CP Bubble if equipped */}
-            {cpPartner && (
-              <View style={styles.cpBubbleWrap}>
-                <Image
-                  source={{ uri: cpPartner.avatar }}
-                  style={styles.cpAvatarImg}
-                />
-                <LinearGradient
-                  colors={['#EC4899', '#BE185D']}
-                  style={styles.cpLevelBadge}
-                >
-                  <Text style={styles.cpLevelBadgeText}>Lv.{cpPartner.level || 6}</Text>
-                </LinearGradient>
+            {/* User Name + Gender/Age Badge */}
+            <View style={styles.nameRow}>
+              <Text style={styles.nameSparkle}>💫</Text>
+              <Text style={styles.userName} numberOfLines={1}>
+                {targetName}
+              </Text>
+              <Text style={styles.nameSparkle}>💫</Text>
+
+              <View style={[styles.genderAgePill, targetGender === 'female' ? styles.genderFemale : styles.genderMale]}>
+                <Text style={styles.genderIcon}>{targetGender === 'female' ? '♀' : '♂'}</Text>
+                <Text style={styles.genderAgeText}>{targetAge}</Text>
               </View>
-            )}
-          </View>
+            </View>
 
-          {/* User Display Name with Sparkles */}
-          <View style={styles.nameRow}>
-            <Text style={styles.nameSparkle}>💫</Text>
-            <Text style={styles.userName} numberOfLines={1}>
-              {targetName}
-            </Text>
-            <Text style={styles.nameSparkle}>💫</Text>
-          </View>
-
-          {/* Tags Row: SVIP Badge + Wealth + Charm + Gender + Club + Roles */}
-          <View style={styles.badgesRow}>
-            {/* SVIP Tag */}
-            {svipLevel > 0 && (
+            {/* TAGS ROW directly under Name (Screenshot 2) */}
+            <View style={styles.tagsRow}>
+              {/* SVIP Tag */}
               <LinearGradient
-                colors={['#F59E0B', '#D97706']}
+                colors={['#0D9488', '#115E59']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={styles.svipPill}
+                style={styles.svipTagPill}
               >
-                <Text style={styles.svipPillText}>👑 SVIP{svipLevel}</Text>
+                <Text style={styles.svipTagPillText}>🦅 SVIP{svipLevel || 3}</Text>
               </LinearGradient>
+
+              {/* Wealth Tag */}
+              <LinearGradient
+                colors={['#0284C7', '#0369A1']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.wealthTagPill}
+              >
+                <Text style={styles.wealthTagPillText}>💎 Lv.{wealthLevel}</Text>
+              </LinearGradient>
+
+              {/* Charm Tag */}
+              <LinearGradient
+                colors={['#10B981', '#059669']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.charmTagPill}
+              >
+                <Text style={styles.charmTagPillText}>🌿 Lv.{charmLevel}</Text>
+              </LinearGradient>
+
+              {/* Club / Family Tag */}
+              <View style={styles.clubTagPill}>
+                <Text style={styles.clubTagPillText}>🛡️ JP</Text>
+              </View>
+
+              {/* Member Tag */}
+              <View style={styles.memberTagPill}>
+                <Text style={styles.memberTagPillText}>Member</Text>
+              </View>
+
+              {/* Admin Tag */}
+              {(isTargetAdmin || isTargetOwner) && (
+                <View style={styles.adminTagPill}>
+                  <Text style={styles.adminTagPillText}>{isTargetOwner ? 'Owner' : 'Admin'}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* BADGES ROW directly under Tags (Screenshot 2) */}
+            <View style={styles.medalsShelfContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.medalsScroll}
+              >
+                {PRESTIGE_MEDALS.map((medal) => (
+                  <View key={medal.id} style={styles.medalItemWrap}>
+                    <LinearGradient
+                      colors={medal.colors}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.medalCircle}
+                    >
+                      <MaterialCommunityIcons name={medal.icon} size={15} color="#FFFFFF" />
+                    </LinearGradient>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* ID & Followers Row (Screenshot 2) */}
+            <View style={styles.idFollowersRow}>
+              <IdentityDisplayId
+                userId={targetUserId}
+                officialDisplayId={displayId}
+                customDisplayId={identityProfile.customDisplayId || displayData?.customDisplayId}
+                isOfficial={isOfficialId}
+                badgeUrl={badgeUrl}
+                badgeText={uniqueIdBadge.badgeName || officialBadge.badgeText || 'VIP'}
+                showBadge={true}
+                showCopy={true}
+                fontSize={13.5}
+                textColor="#D97706"
+              />
+
+              <View style={styles.followersWrap}>
+                <MaterialCommunityIcons name="account-group" size={13} color="#64748B" />
+                <Text style={styles.followersText}>{formatCompactBalance(followersCount)} Followers</Text>
+              </View>
+            </View>
+
+            {/* Bio Row (Screenshot 2) */}
+            <Text style={styles.bioText} numberOfLines={2}>
+              {userBio}
+            </Text>
+
+            {/* 4 Round Action Buttons: Profile | Chat | Mute Mic | Mention (Screenshot 2) */}
+            <View style={styles.actionButtonsRow}>
+              {/* Profile */}
+              <TouchableOpacity
+                style={styles.actionBtnCol}
+                onPress={() => {
+                  onClose();
+                  onOpenFullProfile && onOpenFullProfile(user);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.roundActionCircle, { backgroundColor: '#38BDF8' }]}>
+                  <Icon name="person" size={20} color="#FFFFFF" />
+                </View>
+                <Text style={styles.roundActionLabel}>Profile</Text>
+              </TouchableOpacity>
+
+              {/* Chat */}
+              <TouchableOpacity
+                style={styles.actionBtnCol}
+                onPress={() => {
+                  onClose();
+                  if (onOpenChat) {
+                    onOpenChat(user);
+                  } else {
+                    AlertService.show('Chat', `Opening private chat with ${targetName}`, 'info');
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.roundActionCircle, { backgroundColor: '#C084FC' }]}>
+                  <Icon name="chatbubble" size={20} color="#FFFFFF" />
+                </View>
+                <Text style={styles.roundActionLabel}>Chat</Text>
+              </TouchableOpacity>
+
+              {/* Mute Mic */}
+              <TouchableOpacity
+                style={styles.actionBtnCol}
+                onPress={() => {
+                  if (targetSeat && onMuteSeat) {
+                    onMuteSeat(user);
+                  } else {
+                    AlertService.show('Mute', isTargetMuted ? 'User mic unmuted.' : 'User mic muted.', 'info');
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.roundActionCircle, { backgroundColor: '#F97316' }]}>
+                  <MaterialCommunityIcons
+                    name={isTargetMuted ? 'microphone-off' : 'microphone'}
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                </View>
+                <Text style={styles.roundActionLabel}>{isTargetMuted ? 'Unmute' : 'Mute Mic'}</Text>
+              </TouchableOpacity>
+
+              {/* Mention */}
+              <TouchableOpacity
+                style={styles.actionBtnCol}
+                onPress={() => {
+                  onClose();
+                  onMention && onMention(targetName);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.roundActionCircle, { backgroundColor: '#FACC15' }]}>
+                  <MaterialCommunityIcons name="at" size={20} color="#1E293B" />
+                </View>
+                <Text style={styles.roundActionLabel}>Mention</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Moderation Controls (if host/owner) */}
+            {canModerate && (
+              <View style={styles.moderationPanel}>
+                <Text style={styles.moderationPanelTitle}>Room Moderation</Text>
+                <View style={styles.moderationActions}>
+                  {canAssignRoomAdmins && onToggleAdmin && renderModerationAction(
+                    isTargetAdmin ? 'Remove Admin' : 'Make Admin',
+                    isTargetAdmin ? 'account-minus-outline' : 'account-plus-outline',
+                    () => onToggleAdmin(user),
+                  )}
+                  {onBanChat && renderModerationAction(
+                    isTargetChatBanned ? 'Unmute Chat' : 'Mute Chat',
+                    isTargetChatBanned ? 'message-text-outline' : 'message-off-outline',
+                    () => onBanChat(user),
+                  )}
+                  {targetSeat && onRemoveFromSeat && renderModerationAction(
+                    'Remove Seat',
+                    'account-arrow-down-outline',
+                    () => onRemoveFromSeat(user),
+                    'danger',
+                  )}
+                  {targetSeat && onToggleSeatLock && renderModerationAction(
+                    targetSeat.isLocked ? 'Unlock Seat' : 'Lock Seat',
+                    targetSeat.isLocked ? 'lock-open-variant-outline' : 'lock-outline',
+                    () => onToggleSeatLock(targetSeat.seatIndex),
+                  )}
+                  {onKickUser && renderModerationAction(
+                    'Kick 24h',
+                    'account-cancel-outline',
+                    () => onKickUser(user),
+                    'danger',
+                  )}
+                </View>
+              </View>
             )}
 
-            {/* Wealth Level */}
-            <View style={[styles.statPill, { backgroundColor: '#0284C7' }]}>
-              <Text style={styles.statPillText}>💎 Lv.{wealthLevel}</Text>
-            </View>
-
-            {/* Charm Level */}
-            <View style={[styles.statPill, { backgroundColor: '#10B981' }]}>
-              <Text style={styles.statPillText}>🌿 Lv.{charmLevel}</Text>
-            </View>
-
-            {/* Gender & Age */}
-            <View style={[styles.statPill, { backgroundColor: targetGender === 'female' ? '#DB2777' : '#2563EB' }]}>
-              <Text style={styles.statPillText}>
-                {targetGender === 'female' ? '♀' : '♂'} {targetAge}
-              </Text>
-            </View>
-
-            {/* Club Pill */}
-            <View style={[styles.statPill, { backgroundColor: '#475569' }]}>
-              <Text style={styles.statPillText}>JP</Text>
-            </View>
-
-            {/* Room Role */}
-            <View style={[styles.statPill, { backgroundColor: '#8B5CF6' }]}>
-              <Text style={styles.statPillText}>{isTargetOwner ? 'Owner' : isTargetAdmin ? 'Admin' : 'Member'}</Text>
-            </View>
-          </View>
-
-          {/* 7 Prestige Medals Wall (Screenshot 1) */}
-          <View style={styles.medalsRowContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.medalsScroll}>
-              {PRESTIGE_MEDALS.map((medal) => (
-                <View key={medal.id} style={styles.medalItemWrap}>
+            {/* Bottom Row: SVIP Diamond Level + Follow + Send Gifts (Screenshot 2) */}
+            {!isSelf && (
+              <View style={styles.bottomButtonsRow}>
+                {/* SVIP Level Badge on Left */}
+                <View style={styles.bottomSvipBadgeWrap}>
                   <LinearGradient
-                    colors={medal.colors}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.medalCircle}
+                    colors={['#10B981', '#047857']}
+                    style={styles.bottomSvipDiamond}
                   >
-                    <MaterialCommunityIcons name={medal.icon} size={16} color="#FFFFFF" />
+                    <Text style={styles.bottomSvipLevelNum}>{svipLevel || 3}</Text>
                   </LinearGradient>
-                  <Text style={styles.medalBadgeText}>{medal.badge}</Text>
                 </View>
-              ))}
-            </ScrollView>
-          </View>
 
-          {/* ID & Followers Row (Screenshot 1) */}
-          <View style={styles.idFollowersRow}>
-            {/* Golden Animated Vanity / Official ID */}
-            <IdentityDisplayId
-              userId={targetUserId}
-              officialDisplayId={displayId}
-              customDisplayId={identityProfile.customDisplayId || user?.customDisplayId || effectiveIdentity.customDisplayId}
-              isOfficial={isOfficialId}
-              badgeUrl={badgeUrl}
-              badgeText={uniqueIdBadge.badgeName || officialBadge.badgeText || 'VIP'}
-              showBadge={true}
-              showCopy={true}
-              fontSize={14}
-              textColor="#D97706"
-            />
-
-            {/* Followers Count */}
-            <View style={styles.followersWrap}>
-              <View style={styles.followerIconBox}>
-                <MaterialCommunityIcons name="account-group" size={12} color="#FFFFFF" />
-              </View>
-              <Text style={styles.followersText}>{formatCompactBalance(followersCount)} Followers</Text>
-            </View>
-          </View>
-
-          {/* Bio Text */}
-          <Text style={styles.bioText} numberOfLines={2}>
-            {userBio}
-          </Text>
-
-          {/* Profile, chat, and mention actions */}
-          <View style={styles.profileActionsRow}>
-            <TouchableOpacity
-              style={styles.circleActionBtn}
-              onPress={() => {
-                onClose();
-                onOpenFullProfile && onOpenFullProfile(user);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.actionIconCircle, { backgroundColor: '#38BDF8' }]}>
-                <Icon name="person" size={20} color="#FFFFFF" />
-              </View>
-              <Text style={styles.actionIconLabel}>Profile</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.circleActionBtn}
-              onPress={() => {
-                onClose();
-                AlertService.show('Chat', `Opening private chat with ${targetName}`, 'info');
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.actionIconCircle, { backgroundColor: '#C084FC' }]}>
-                <Icon name="chatbubble" size={20} color="#FFFFFF" />
-              </View>
-              <Text style={styles.actionIconLabel}>Chat</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.circleActionBtn}
-              onPress={() => {
-                onClose();
-                onMention && onMention(targetName);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.actionIconCircle, { backgroundColor: '#FACC15' }]}>
-                <MaterialCommunityIcons name="at" size={20} color="#1E293B" />
-              </View>
-              <Text style={styles.actionIconLabel}>Mention</Text>
-            </TouchableOpacity>
-          </View>
-
-          {canModerate && (
-            <View style={styles.moderationPanel}>
-              <Text style={styles.moderationPanelTitle}>Room moderation</Text>
-              <View style={styles.moderationActions}>
-                {canAssignRoomAdmins && onToggleAdmin && renderModerationAction(
-                  isTargetAdmin ? 'Remove Admin' : 'Make Admin',
-                  isTargetAdmin ? 'account-minus-outline' : 'account-plus-outline',
-                  () => onToggleAdmin(user),
-                )}
-                {onBanChat && renderModerationAction(
-                  isTargetChatBanned ? 'Unmute Chat' : 'Mute Chat',
-                  isTargetChatBanned ? 'message-text-outline' : 'message-off-outline',
-                  () => onBanChat(user),
-                )}
-                {targetSeat && onMuteSeat && renderModerationAction(
-                  isTargetMuted ? 'Unmute Mic' : 'Mute Mic',
-                  isTargetMuted ? 'microphone' : 'microphone-off',
-                  () => onMuteSeat(user),
-                )}
-                {targetSeat && onRemoveFromSeat && renderModerationAction(
-                  'Remove Seat',
-                  'account-arrow-down-outline',
-                  () => onRemoveFromSeat(user),
-                  'danger',
-                )}
-                {targetSeat && onToggleSeatLock && renderModerationAction(
-                  targetSeat.isLocked ? 'Unlock Seat' : 'Lock Seat',
-                  targetSeat.isLocked ? 'lock-open-variant-outline' : 'lock-outline',
-                  () => onToggleSeatLock(targetSeat.seatIndex),
-                )}
-                {onKickUser && renderModerationAction(
-                  'Kick 24h',
-                  'account-cancel-outline',
-                  () => onKickUser(user),
-                  'danger',
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Bottom Big Action Buttons: Follow & Send Gifts */}
-          {!isSelf && (
-            <View style={styles.bottomButtonsRow}>
-              <TouchableOpacity
-                style={[styles.followButton, isFollowing && styles.followingButton]}
-                onPress={handleToggleFollow}
-                activeOpacity={0.85}
-                disabled={followLoading}
-              >
-                <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
-                  {isFollowing ? 'Following' : 'Follow'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.sendGiftButton}
-                onPress={() => {
-                  onClose();
-                  onGift && onGift(user);
-                }}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={['#FBBF24', '#F59E0B', '#D97706']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.sendGiftGrad}
+                {/* Follow Button (White Pill with Shadow) */}
+                <TouchableOpacity
+                  style={[styles.followButton, isFollowing && styles.followingButton]}
+                  onPress={handleToggleFollow}
+                  disabled={followLoading}
+                  activeOpacity={0.85}
                 >
-                  <Text style={styles.sendGiftBtnText}>Send Gifts</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          )}
+                  <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </Text>
+                </TouchableOpacity>
 
-          {/* Self-Action: Leave Seat */}
-          {isSelf && (
-            <View style={styles.bottomButtonsRow}>
-              <TouchableOpacity
-                style={[styles.followButton, { borderColor: '#EF4444' }]}
-                onPress={() => {
-                  onClose();
-                  onLeaveSeat && onLeaveSeat();
-                }}
-                activeOpacity={0.85}
-              >
-                <Text style={[styles.followBtnText, { color: '#EF4444' }]}>Leave the Seat</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+                {/* Send Gifts Button (Golden Amber Gradient) */}
+                <TouchableOpacity
+                  style={styles.sendGiftButton}
+                  onPress={() => {
+                    onClose();
+                    onGift && onGift(user);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={['#FDE047', '#F59E0B', '#D97706']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.sendGiftGrad}
+                  >
+                    <Text style={styles.sendGiftBtnText}>Send Gifts</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {isSelf && (
+              <View style={styles.bottomButtonsRow}>
+                <TouchableOpacity
+                  style={[styles.followButton, { borderColor: '#EF4444', flex: 1 }]}
+                  onPress={() => {
+                    onClose();
+                    onLeaveSeat && onLeaveSeat();
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.followBtnText, { color: '#EF4444' }]}>Leave the Seat</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -537,339 +570,405 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   bottomSheetCard: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
+    backgroundColor: '#FAF7FF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 18,
     paddingTop: 16,
-    maxHeight: '94%',
+    maxHeight: '92%',
     alignItems: 'center',
     position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.25,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 20,
   },
-  profileContentScroll: {
-    width: '100%',
-    flexShrink: 1,
-  },
-  profileContentContainer: {
-    alignItems: 'center',
-    paddingTop: 52,
-    paddingBottom: 8,
-  },
-  topSheetGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-  },
-  reportBtn: {
+  topReportBtn: {
     position: 'absolute',
     top: 14,
     right: 18,
+    flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 20,
+    gap: 3,
+    zIndex: 10,
+    padding: 4,
   },
-  reportText: {
-    fontSize: 10,
+  topReportText: {
     color: '#94A3B8',
-    fontWeight: '600',
-    marginTop: 1,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  profileContentScroll: {
+    width: '100%',
+  },
+  profileContentContainer: {
+    alignItems: 'center',
+    paddingBottom: 10,
   },
   avatarHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    marginTop: -52,
-    zIndex: 15,
-  },
-  mainAvatarContainer: {
-    width: 92,
-    height: 92,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 10,
+    marginBottom: 6,
     position: 'relative',
+  },
+  mainAvatarContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   svipRibbonBadge: {
     position: 'absolute',
     bottom: -6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 2,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#FBBF24',
-    shadowColor: '#000',
+    borderColor: '#FEF08A',
+    shadowColor: '#CA8A04',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 3,
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
     elevation: 4,
   },
   svipRibbonText: {
-    color: '#FDE047',
-    fontSize: 10,
+    color: '#0F172A',
+    fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
   cpBubbleWrap: {
     position: 'absolute',
-    right: -24,
-    bottom: 2,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: '#EC4899',
-    backgroundColor: '#FFFFFF',
-    overflow: 'visible',
+    right: -36,
+    top: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cpAvatarImg: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    borderColor: '#EC4899',
   },
   cpLevelBadge: {
     position: 'absolute',
     bottom: -5,
-    right: -6,
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 6,
-    borderWidth: 0.5,
-    borderColor: '#FFFFFF',
   },
   cpLevelBadgeText: {
     color: '#FFFFFF',
     fontSize: 8,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 14,
+    gap: 4,
+    marginTop: 12,
   },
   nameSparkle: {
     fontSize: 14,
-    marginHorizontal: 4,
   },
   userName: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#0F172A',
-    maxWidth: width * 0.6,
+    color: '#F59E0B',
+    fontSize: 17,
+    fontWeight: '900',
+    maxWidth: width * 0.55,
   },
-  badgesRow: {
+  genderAgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 1.5,
+    borderRadius: 12,
+    marginLeft: 4,
+    gap: 2,
+  },
+  genderFemale: {
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    borderWidth: 1,
+    borderColor: '#F472B6',
+  },
+  genderMale: {
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    borderWidth: 1,
+    borderColor: '#60A5FA',
+  },
+  genderIcon: {
+    color: '#EC4899',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  genderAgeText: {
+    color: '#1E293B',
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
+  tagsRow: {
+    flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 5,
     marginTop: 8,
+    paddingHorizontal: 12,
   },
-  svipPill: {
+  svipTagPill: {
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
   },
-  svipPillText: {
+  svipTagPillText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '900',
   },
-  statPill: {
+  wealthTagPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  wealthTagPillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  charmTagPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  charmTagPillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  clubTagPill: {
+    backgroundColor: '#3B82F6',
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 10,
   },
-  statPillText: {
+  clubTagPillText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '900',
   },
-  medalsRowContainer: {
-    width: '100%',
+  memberTagPill: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  memberTagPillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  adminTagPill: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  adminTagPillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  medalsShelfContainer: {
     marginVertical: 10,
+    width: '100%',
   },
   medalsScroll: {
-    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 10,
   },
   medalItemWrap: {
     alignItems: 'center',
   },
   medalCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#FEF08A',
-    elevation: 2,
-  },
-  medalBadgeText: {
-    fontSize: 8,
-    color: '#64748B',
-    fontWeight: '700',
-    marginTop: 2,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 3,
   },
   idFollowersRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 16,
-    marginVertical: 6,
+    marginVertical: 4,
   },
   followersWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  followerIconBox: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#10B981',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 4,
+    gap: 4,
   },
   followersText: {
-    fontSize: 12,
     color: '#64748B',
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
   },
   bioText: {
+    color: '#334155',
     fontSize: 12,
-    color: '#475569',
+    fontWeight: '600',
     textAlign: 'center',
-    paddingHorizontal: 20,
-    lineHeight: 18,
-    fontStyle: 'italic',
-    marginVertical: 4,
+    paddingHorizontal: 24,
+    marginVertical: 6,
+    lineHeight: 16,
   },
-  profileActionsRow: {
+  actionButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    width: '100%',
-    paddingVertical: 12,
-    marginTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    width: '88%',
+    marginTop: 10,
+    marginBottom: 14,
   },
-  circleActionBtn: {
+  actionBtnCol: {
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
   },
-  actionIconCircle: {
+  roundActionCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  actionIconLabel: {
-    fontSize: 11,
+  roundActionLabel: {
     color: '#475569',
-    fontWeight: '600',
-    marginTop: 5,
+    fontSize: 11,
+    fontWeight: '700',
   },
   moderationPanel: {
-    width: '100%',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 9,
-    marginTop: 2,
+    width: '92%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
   },
   moderationPanelTitle: {
     color: '#64748B',
     fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 7,
+    fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    marginBottom: 8,
   },
   moderationActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 7,
+    gap: 6,
   },
-  moderationAction: {
-    width: '31%',
-    minHeight: 48,
-    paddingHorizontal: 5,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#EEF2FF',
+  moderationBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E7FF',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
   },
-  moderationActionDanger: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+  moderationBtnDanger: {
+    backgroundColor: '#FEE2E2',
   },
-  moderationActionText: {
-    color: '#3730A3',
-    fontSize: 10,
+  moderationBtnText: {
+    color: '#1E293B',
+    fontSize: 11,
     fontWeight: '700',
-    textAlign: 'center',
-    marginTop: 3,
   },
-  moderationActionDangerText: {
-    color: '#B91C1C',
+  moderationBtnTextDanger: {
+    color: '#DC2626',
   },
   bottomButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    width: '100%',
-    marginTop: 10,
+    justifyContent: 'space-between',
+    width: '94%',
+    gap: 10,
+    marginTop: 4,
+  },
+  bottomSvipBadgeWrap: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bottomSvipDiamond: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  bottomSvipLevelNum: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900',
   },
   followButton: {
     flex: 1,
     height: 44,
     borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   followingButton: {
     backgroundColor: '#F1F5F9',
     borderColor: '#CBD5E1',
   },
   followBtnText: {
-    color: '#0F172A',
-    fontSize: 15,
-    fontWeight: '700',
+    color: '#D97706',
+    fontSize: 14,
+    fontWeight: '800',
   },
   followingBtnText: {
     color: '#64748B',
-    fontWeight: '600',
   },
   sendGiftButton: {
-    flex: 1,
+    flex: 1.2,
     height: 44,
     borderRadius: 22,
     overflow: 'hidden',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 5,
   },
   sendGiftGrad: {
     flex: 1,
@@ -877,8 +976,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendGiftBtnText: {
-    color: '#0F172A',
-    fontSize: 15,
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
 });

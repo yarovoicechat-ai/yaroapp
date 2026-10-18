@@ -15,7 +15,7 @@ import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 const H_PADDING = 12;
-const GAP = 6;
+const GAP = 7;
 // Exactly 4 columns per row
 export const CARD_WIDTH = Math.floor((width - H_PADDING * 2 - GAP * 3) / 4);
 
@@ -23,51 +23,59 @@ export default function GiftCard({ gift, isSelected = false, onSelect }) {
   const isSelectedBool = Boolean(isSelected);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const imageBounce = useRef(new Animated.Value(1)).current;
-  const glowOpacity = useRef(new Animated.Value(0)).current;
+  const pulseBorder = useRef(new Animated.Value(0.8)).current;
 
   useEffect(() => {
     if (isSelectedBool) {
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1.05,
-          duration: 120,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1.0,
-          friction: 4,
-          tension: 80,
-          useNativeDriver: true,
-        }),
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.06,
+            duration: 110,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scaleAnim, {
+            toValue: 1.0,
+            friction: 4,
+            tension: 90,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.timing(imageBounce, {
+            toValue: 1.18,
+            duration: 120,
+            useNativeDriver: true,
+          }),
+          Animated.spring(imageBounce, {
+            toValue: 1.0,
+            friction: 3.5,
+            tension: 80,
+            useNativeDriver: true,
+          }),
+        ]),
       ]).start();
 
-      Animated.sequence([
-        Animated.timing(imageBounce, {
-          toValue: 1.15,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.spring(imageBounce, {
-          toValue: 1.0,
-          friction: 3,
-          tension: 70,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      Animated.timing(glowOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseBorder, {
+            toValue: 1,
+            duration: 700,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseBorder, {
+            toValue: 0.75,
+            duration: 700,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
     } else {
-      Animated.timing(glowOpacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }).start();
+      pulseBorder.setValue(0.8);
     }
-  }, [isSelectedBool]);
+  }, [isSelectedBool, scaleAnim, imageBounce, pulseBorder]);
 
   const price = Number(
     gift.price !== undefined
@@ -80,6 +88,10 @@ export default function GiftCard({ gift, isSelected = false, onSelect }) {
     (gift.isVip ? 'VIP' : (gift.isLimited ? 'LIMITED' : ((gift.isNew || gift.isNewItem) ? 'NEW' : (gift.isHot ? 'HOT' : (gift.category === 'Event' ? 'EVENT' : null)))));
   const giftVisual = resolveGiftVisual(gift);
 
+  // Dynamic Neon Accent per category / rarity
+  const isLuxury = gift.category === 'Luxury' || gift.isVip || badgeText === 'VIP';
+  const isRomantic = gift.category === 'Romantic' || badgeText === 'HOT';
+
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
@@ -90,82 +102,117 @@ export default function GiftCard({ gift, isSelected = false, onSelect }) {
         onPress={() => onSelect(gift)}
         activeOpacity={0.85}
       >
-        {/* Selected Glowing Gold Border */}
-        {isSelectedBool && (
-          <LinearGradient
-            colors={['#FDE047', '#EAB308', '#CA8A04']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.selectedBorder}
-          />
+        {/* Animated Neon Aurora Border when selected */}
+        {isSelectedBool ? (
+          <Animated.View style={[styles.borderWrapper, { opacity: pulseBorder }]}>
+            <LinearGradient
+              colors={['#EC4899', '#A855F7', '#06B6D4', '#F59E0B']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+          </Animated.View>
+        ) : (
+          <View style={styles.unselectedBorder} />
         )}
 
-        <View style={[styles.cardInner, isSelectedBool && styles.cardInnerSelected]}>
-          {/* Header Row: Badge */}
+        {/* Card Body with Deep Royal Velvet Gradient */}
+        <LinearGradient
+          colors={
+            isSelectedBool
+              ? ['#2C1254', '#180B3B', '#110629']
+              : isLuxury
+              ? ['#1F1340', '#120A2B', '#0A051A']
+              : isRomantic
+              ? ['#241033', '#150A24', '#0A0514']
+              : ['#171038', '#0F0927', '#0A061B']
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={[styles.cardInner, isSelectedBool && styles.cardInnerSelected]}
+        >
+          {/* Header Row: Badge & Check */}
           <View style={styles.badgeRow}>
             {badgeText ? (
               <LinearGradient
                 colors={
                   badgeText === 'VIP' || badgeText === 'SVIP'
-                    ? ['#F59E0B', '#B45309']
+                    ? ['#F59E0B', '#D97706', '#92400E']
                     : badgeText === 'NEW'
-                    ? ['#10B981', '#059669']
+                    ? ['#06B6D4', '#0284C7', '#0369A1']
                     : badgeText === 'LIMITED'
-                    ? ['#8B5CF6', '#6D28D9']
+                    ? ['#A855F7', '#7C3AED', '#581C87']
                     : badgeText === 'EVENT'
-                    ? ['#EC4899', '#BE185D']
-                    : ['#EF4444', '#DC2626']
+                    ? ['#F43F5E', '#BE123C', '#881337']
+                    : ['#EF4444', '#DC2626', '#991B1B']
                 }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
                 style={styles.badgePill}
               >
                 <Text style={styles.badgeText}>{badgeText}</Text>
               </LinearGradient>
             ) : (
               <View style={styles.badgePlaceholder}>
-                <Text style={{ fontSize: 9 }}>🎁</Text>
+                <View style={[styles.microGlowDot, isLuxury && { backgroundColor: '#F59E0B' }]} />
               </View>
             )}
 
             {/* Check Indicator when selected */}
             {isSelectedBool && (
-              <View style={styles.selectedRadio}>
-                <MaterialCommunityIcons name="check" size={10} color="#0F172A" />
-              </View>
+              <LinearGradient
+                colors={['#06B6D4', '#3B82F6']}
+                style={styles.selectedRadio}
+              >
+                <MaterialCommunityIcons name="check-bold" size={9} color="#FFFFFF" />
+              </LinearGradient>
             )}
           </View>
 
-          {/* Centered Gift Media or Icon */}
-          <Animated.View
-            style={[
-              styles.mediaContainer,
-              { transform: [{ scale: imageBounce }] },
-            ]}
-          >
-            {gift.animationUrl || giftVisual.giftImage ? (
-              <GiftMedia
-                source={gift.animationUrl || giftVisual.giftImage}
-                mediaType={gift.mediaType || 'image'}
-                style={styles.media}
-                resizeMode="contain"
-              />
-            ) : (
-              <Text style={styles.emojiIcon}>{giftVisual.giftIcon || gift.icon || '🎁'}</Text>
-            )}
-          </Animated.View>
+          {/* Centered Gift Media on Glowing Halo Pedestal */}
+          <View style={styles.mediaWrapper}>
+            <View
+              style={[
+                styles.pedestalGlow,
+                isSelectedBool && styles.pedestalGlowSelected,
+                isLuxury && styles.pedestalGlowLuxury,
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.mediaContainer,
+                { transform: [{ scale: imageBounce }] },
+              ]}
+            >
+              {gift.animationUrl || giftVisual.giftImage ? (
+                <GiftMedia
+                  source={gift.animationUrl || giftVisual.giftImage}
+                  mediaType={gift.mediaType || 'image'}
+                  style={styles.media}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={styles.emojiIcon}>{giftVisual.giftIcon || gift.icon || '🎁'}</Text>
+              )}
+            </Animated.View>
+          </View>
 
           {/* Gift Name */}
-          <Text style={[styles.giftName, isSelectedBool && styles.giftNameSelected]} numberOfLines={1}>
+          <Text
+            style={[styles.giftName, isSelectedBool && styles.giftNameSelected]}
+            numberOfLines={1}
+          >
             {gift.name}
           </Text>
 
-          {/* Price with Diamond 💎 */}
+          {/* Price with Glowing Diamond */}
           <View style={[styles.priceRow, isSelectedBool && styles.priceRowSelected]}>
             <Text style={styles.diamondEmoji}>💎</Text>
             <Text style={[styles.priceText, isSelectedBool && styles.priceTextSelected]}>
               {formatCompactBalance(price)}
             </Text>
           </View>
-        </View>
+        </LinearGradient>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -174,38 +221,41 @@ export default function GiftCard({ gift, isSelected = false, onSelect }) {
 const styles = StyleSheet.create({
   container: {
     width: CARD_WIDTH,
-    height: 110,
-    borderRadius: 14,
-    backgroundColor: 'rgba(30, 41, 59, 0.75)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
+    height: 114,
+    borderRadius: 16,
     overflow: 'hidden',
     position: 'relative',
     marginBottom: GAP,
   },
   containerSelected: {
-    borderColor: '#FBBF24',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowColor: '#D946EF',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.85,
+    shadowRadius: 10,
+    elevation: 10,
   },
-  selectedBorder: {
+  borderWrapper: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 14,
+    borderRadius: 16,
+  },
+  unselectedBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: 'rgba(168, 85, 247, 0.22)',
   },
   cardInner: {
     flex: 1,
     margin: 1.5,
-    backgroundColor: '#0F172A',
-    borderRadius: 12.5,
-    padding: 4,
+    borderRadius: 14.5,
+    paddingHorizontal: 4,
+    paddingVertical: 5,
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   cardInnerSelected: {
-    backgroundColor: '#111827',
+    margin: 2,
+    borderRadius: 14,
   },
   badgeRow: {
     width: '100%',
@@ -216,26 +266,65 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   badgePill: {
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
   },
   badgeText: {
     color: '#FFFFFF',
     fontSize: 7.5,
     fontWeight: '900',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   badgePlaceholder: {
-    opacity: 0.8,
+    minWidth: 12,
+    height: 12,
+    justifyContent: 'center',
+  },
+  microGlowDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(168, 85, 247, 0.6)',
   },
   selectedRadio: {
-    width: 13,
-    height: 13,
-    borderRadius: 6.5,
-    backgroundColor: '#FDE047',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#06B6D4',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.8,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  mediaWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 1,
+  },
+  pedestalGlow: {
+    position: 'absolute',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(168, 85, 247, 0.15)',
+  },
+  pedestalGlowSelected: {
+    backgroundColor: 'rgba(236, 72, 153, 0.28)',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+  pedestalGlowLuxury: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
   },
   mediaContainer: {
     width: 44,
@@ -253,36 +342,47 @@ const styles = StyleSheet.create({
   giftName: {
     color: '#E2E8F0',
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
-    maxWidth: '92%',
+    maxWidth: '94%',
+    letterSpacing: 0.1,
   },
   giftNameSelected: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '900',
+    textShadowColor: 'rgba(236, 72, 153, 0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
-    paddingHorizontal: 6,
+    backgroundColor: 'rgba(10, 6, 27, 0.85)',
+    borderWidth: 0.8,
+    borderColor: 'rgba(234, 179, 8, 0.25)',
+    paddingHorizontal: 7,
     paddingVertical: 1.5,
-    borderRadius: 9,
-    gap: 2,
+    borderRadius: 10,
+    gap: 2.5,
   },
   priceRowSelected: {
-    backgroundColor: 'rgba(234, 179, 8, 0.2)',
+    backgroundColor: 'rgba(234, 179, 8, 0.18)',
+    borderColor: '#FDE047',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
   },
   diamondEmoji: {
     fontSize: 9.5,
   },
   priceText: {
-    color: '#FBBF24',
+    color: '#FDE047',
     fontSize: 9.5,
     fontWeight: '800',
   },
   priceTextSelected: {
-    color: '#FDE047',
+    color: '#FEF08A',
     fontWeight: '900',
   },
 });

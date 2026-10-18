@@ -6,6 +6,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 
 export default function GiftCategoryTabs({
   categories = [],
@@ -27,14 +28,34 @@ export default function GiftCategoryTabs({
           return (
             <TouchableOpacity
               key={cat.id || cat._id || cat.slug || cat.name}
-              style={[styles.tabButton, isActive && styles.tabButtonActive]}
+              style={styles.tabButton}
               onPress={() => onSelectCategory(cat.name)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {cat.name}
-              </Text>
-              {isActive && <View style={styles.activeIndicator} />}
+              {isActive ? (
+                <LinearGradient
+                  colors={['rgba(236, 72, 153, 0.25)', 'rgba(168, 85, 247, 0.3)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.activeCapsule}
+                >
+                  <Text style={styles.tabTextActive}>
+                    {cat.name}
+                  </Text>
+                  <LinearGradient
+                    colors={['#EC4899', '#A855F7', '#38BDF8']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.activeIndicator}
+                  />
+                </LinearGradient>
+              ) : (
+                <View style={styles.inactiveCapsule}>
+                  <Text style={styles.tabText}>
+                    {cat.name}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -46,36 +67,55 @@ export default function GiftCategoryTabs({
 const styles = StyleSheet.create({
   wrapper: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-    paddingVertical: 4,
+    borderBottomColor: 'rgba(168, 85, 247, 0.15)',
+    paddingVertical: 5,
+    backgroundColor: 'rgba(12, 7, 28, 0.6)',
   },
   scrollContent: {
     paddingHorizontal: 12,
-    gap: 16,
+    gap: 10,
     alignItems: 'center',
   },
   tabButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 2,
     position: 'relative',
     alignItems: 'center',
   },
-  tabButtonActive: {},
+  activeCapsule: {
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(236, 72, 153, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inactiveCapsule: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tabText: {
     color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12.5,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   tabTextActive: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontSize: 12.5,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(236, 72, 153, 0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
   },
   activeIndicator: {
     position: 'absolute',
-    bottom: -4,
-    width: 20,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#FACC15',
+    bottom: -1,
+    width: 22,
+    height: 2.5,
+    borderRadius: 2,
   },
 });

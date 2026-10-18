@@ -38,7 +38,7 @@ export default function OngoingCallGiftModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <LinearGradient
-          colors={['#11052C', '#0E093D']}
+          colors={['#180A3E', '#0B041E']}
           style={[styles.modalContent, { paddingBottom: bottomPadding }]}
         >
           <View style={styles.modalHeader}>
@@ -140,7 +140,7 @@ export default function OngoingCallGiftModal({
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={selectedGift ? ['#FF3366', '#CB11F5'] : ['#4A4A6A', '#2E2E48']}
+                colors={selectedGift ? ['#EC4899', '#A855F7', '#38BDF8'] : ['#332154', '#1E1438']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.modalSendBtnGradient}

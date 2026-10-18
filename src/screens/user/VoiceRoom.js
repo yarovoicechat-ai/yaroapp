@@ -33,6 +33,7 @@ import { AlertService } from '../../utils/AlertService';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { apiUtil } from '../../utils/apiUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
+import { getSocket } from '../../sockets';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RoomUserProfileModal from '../../components/room/RoomUserProfileModal';
 import RoomDetailsModal from '../../components/room/RoomDetailsModal';
@@ -574,6 +575,41 @@ export default function VoiceRoomScreen() {
     stopMusicMixingRef.current();
   }, [isCurrentUserAdmin]);
 
+  // Stealth Mode & Official Moderation
+  const isEffectiveGlobalRoomManager = Boolean(
+    contextIsGlobalRoomManager ||
+    user?.isGlobalRoomManager ||
+    user?.role === 'admin' ||
+    user?.role === 'superAdmin'
+  );
+  const [isStealthMode, setIsStealthMode] = useState(false);
+
+  const handleOfficialBanRoom = () => {
+    Alert.alert(
+      'Terminate & Ban Room 🚫',
+      'Are you sure you want to ban and terminate this voice room? All users will be immediately ejected from the room.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Ban',
+          style: 'destructive',
+          onPress: () => {
+            const sock = getSocket();
+            const targetRoomId = room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
+            if (sock && targetRoomId) {
+              sock.emit('voice_room:ban_room', {
+                roomId: targetRoomId,
+                reason: 'Terminated and banned by Official Room Manager.',
+              });
+              AlertService.show('Room Banned', 'Voice room has been terminated.', 'success');
+              handleLeaveCompletely();
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Balance & Chat
   const [inputText, setInputText] = useState('');
   const chatListRef = useRef(null);
@@ -1019,7 +1055,12 @@ export default function VoiceRoomScreen() {
   };
 
   const persistRoomSettings = async (settings) => {
-    const response = await apiUtil.post('/voice-room/create-or-update', settings);
+    const targetRoomId = room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
+    const response = await apiUtil.post('/voice-room/create-or-update', {
+      ...settings,
+      roomId: targetRoomId,
+      channelName: targetRoomId,
+    });
     if (!response.data?.success) {
       throw new Error(response.data?.message || 'Room settings save nahi ho sakin.');
     }
@@ -2134,7 +2175,35 @@ export default function VoiceRoomScreen() {
           );
         }}
         seatCount={seatCount}
-        isHost={isRoomOwner || isContextOwnerMatch || isCurrentUserAdmin}
+        isHost={isRoomOwner || isContextOwnerMatch || isCurrentUserAdmin || isEffectiveGlobalRoomManager}
+        isGlobalRoomManager={isEffectiveGlobalRoomManager}
+        isStealthActive={isStealthMode}
+        onToggleStealth={() => {
+          const next = !isStealthMode;
+          setIsStealthMode(next);
+          const sock = getSocket();
+          const targetRoomId = room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
+          if (sock && targetRoomId) {
+            sock.emit('voice_room:join', {
+              roomId: targetRoomId,
+              user: {
+                id: user?._id || user?.id || '',
+                userId: user?.userId || currentUserId,
+                name: user?.name || 'Manager',
+                avatar: user?.avatar || user?.image || '',
+              },
+              stealth: next,
+            });
+          }
+          AlertService.show(
+            next ? 'Stealth Mode Active 🕵️' : 'Stealth Mode Off',
+            next
+              ? 'Aap room me hide ho chuke hain (invisible in audience & entry suppressed).'
+              : 'Aap ab normally visible hain.',
+            'info'
+          );
+        }}
+        onBanRoom={handleOfficialBanRoom}
         onOpenRoomTasks={() => setRoomTasksVisible(true)}
         onOpenRoomSupport={() => setRoomSupportVisible(true)}
         bottomSafePadding={bottomSafePadding}

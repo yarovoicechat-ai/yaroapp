@@ -27,6 +27,10 @@ export default function RoomToolsModal({
   onToggleSeatCharm,
   seatCount = 8,
   isHost,
+  isGlobalRoomManager = false,
+  isStealthActive = false,
+  onToggleStealth,
+  onBanRoom,
   onOpenRoomTasks,
   onOpenRoomSupport,
   bottomSafePadding = 16,
@@ -307,6 +311,41 @@ export default function RoomToolsModal({
                   </View>
                   <Text style={styles.toolLabel}>Seat Skin</Text>
                 </TouchableOpacity>
+
+                {/* 3. Global Controller: Stealth Mode */}
+                {isGlobalRoomManager && (
+                  <TouchableOpacity
+                    style={styles.toolCol}
+                    onPress={() => {
+                      onToggleStealth && onToggleStealth();
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.toolCircle, isStealthActive ? { borderColor: '#A855F7', backgroundColor: 'rgba(168, 85, 247, 0.25)' } : { borderColor: '#A855F7' }]}>
+                      <MaterialCommunityIcons name={isStealthActive ? 'eye-off' : 'eye-off-outline'} size={22} color="#A855F7" />
+                    </View>
+                    <Text style={[styles.toolLabel, isStealthActive && { color: '#C084FC', fontWeight: 'bold' }]}>
+                      {isStealthActive ? 'Stealth ON' : 'Stealth OFF'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* 4. Global Controller: Ban Room */}
+                {isGlobalRoomManager && (
+                  <TouchableOpacity
+                    style={styles.toolCol}
+                    onPress={() => {
+                      onClose();
+                      onBanRoom && onBanRoom();
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.toolCircle, { borderColor: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                      <MaterialCommunityIcons name="cancel" size={22} color="#EF4444" />
+                    </View>
+                    <Text style={[styles.toolLabel, { color: '#F87171' }]}>Ban Room 🚫</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}

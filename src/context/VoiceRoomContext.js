@@ -11,7 +11,8 @@ import {
   ClientRoleType,
 } from 'react-native-agora';
 import InCallManager from 'react-native-incall-manager';
-import { generateAgoraRtcToken, AGORA_APP_ID, AGORA_APP_CERTIFICATE, AGORA_SECONDARY_CERTIFICATE } from '../utils/agoraTokenUtil';
+import { AgoraClientService } from '../services/agoraService';
+import { AGORA_APP_ID } from '../utils/agoraTokenUtil';
 
 const normalizeRoomId = (id) => {
   const clean = String(id || '').trim();
@@ -170,38 +171,25 @@ export const VoiceRoomProvider = ({ children }) => {
       }
       if (!isCurrentSession()) return;
 
-      const appId = creds?.appId || AGORA_APP_ID;
+      const appId = creds?.appId || AgoraClientService.getAppId();
       const channelName = creds?.channelName || `voiceroom_${roomId}`;
       const uid = creds?.agoraUid || (currentUserId ? (parseInt(String(currentUserId).replace(/\D/g, '').slice(-8), 10) || 1000) : (Math.floor(Math.random() * 1e8) + 1000));
       currentLocalUidRef.current = uid;
       
-      let token = creds?.token || '';
+      const token = creds?.token || '';
       if (!token) {
-        token = generateAgoraRtcToken({ appId, appCertificate: AGORA_APP_CERTIFICATE, channelName, uid });
-        console.warn('🎙️ [VoiceRoom] Generated local signed Agora RTC token for channel:', channelName, 'UID:', uid);
+        console.warn('🎙️ [VoiceRoom] Server token not provided for channel:', channelName, 'UID:', uid);
       }
 
-      let engine = agoraEngineRef.current;
-      if (!engine) {
-        engine = createAgoraRtcEngine();
-        agoraEngineRef.current = engine;
-        engine.initialize({ appId });
-        engine.enableAudio();
-        engine.enableLocalAudio(true);
-        engine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
-        engine.setDefaultAudioRouteToSpeakerphone(speakerphoneEnabled);
-        engine.setEnableSpeakerphone(speakerphoneEnabled);
-        engine.enableAudioVolumeIndication(200, 3, true);
-      } else {
-        engine.enableAudio();
-        engine.enableLocalAudio(true);
-        engine.setDefaultAudioRouteToSpeakerphone(speakerphoneEnabled);
-        engine.setEnableSpeakerphone(speakerphoneEnabled);
-        engine.enableAudioVolumeIndication(200, 3, true);
-      }
-
+      const { engine } = AgoraClientService.prepareEngineForAppId(appId, createAgoraRtcEngine);
+      agoraEngineRef.current = engine;
+      engine.initialize({ appId });
+      engine.enableAudio();
+      engine.enableLocalAudio(true);
+      engine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
       engine.setDefaultAudioRouteToSpeakerphone(speakerphoneEnabled);
       engine.setEnableSpeakerphone(speakerphoneEnabled);
+      engine.enableAudioVolumeIndication(200, 3, true);
 
       engine.registerEventHandler({
         onJoinChannelSuccess: (conn) => {

@@ -39,6 +39,7 @@ import { getSocket } from '../../sockets';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { getRoleAgoraCredentials } from '../../utils/callValidation';
 import { AlertService } from '../../utils/AlertService';
+import { AgoraClientService } from '../../services/agoraService';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import GiftMedia from '../../components/GiftMedia';
@@ -324,13 +325,14 @@ export default function VideoCallScreen() {
         InCallManager.setSpeakerphoneOn(true);
 
         const creds = getRoleAgoraCredentials(agora, isCaller);
-        const appId = creds?.appId || agora?.appId || 'd23c897f9305450faa7809ffcf666e57';
+        const appId = creds?.appId || agora?.appId || AgoraClientService.getAppId();
         const token = creds?.token || (isCaller ? agora?.callerToken : agora?.hostToken) || agora?.token || '';
         const uid = creds?.uid !== undefined ? creds.uid : (isCaller ? agora?.callerAgoraUid : agora?.hostAgoraUid) || 0;
 
         console.log('🎥 Initializing Agora Video:', { appId, channelName, uid, hasToken: !!token });
 
-        engine = createAgoraRtcEngine();
+        const prep = AgoraClientService.prepareEngineForAppId(appId, createAgoraRtcEngine);
+        engine = prep.engine;
         agoraEngineRef.current = engine;
 
         engine.initialize({ appId });

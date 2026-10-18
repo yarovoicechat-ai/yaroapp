@@ -46,6 +46,7 @@ import {
 import InCallManager from 'react-native-incall-manager';
 import { FloatingCallBridge } from '../../services/FloatingCallBridge';
 import { getRoleAgoraCredentials } from '../../utils/callValidation';
+import { AgoraClientService } from '../../services/agoraService';
 
 const { width, height } = Dimensions.get('window');
 const { CallPip } = NativeModules;
@@ -541,9 +542,11 @@ const OnGoing = ({ route, navigation }) => {
         return;
       }
 
+      const agoraAppId = credentials.appId || AgoraClientService.getAppId();
       let engine;
       try {
-        engine = createAgoraRtcEngine();
+        const prep = AgoraClientService.prepareEngineForAppId(agoraAppId, createAgoraRtcEngine);
+        engine = prep.engine;
         agoraEngineRef.current = engine;
         if (globalAgoraEngineRef) globalAgoraEngineRef.current = engine;
       } catch (engineCreateErr) {
@@ -553,7 +556,6 @@ const OnGoing = ({ route, navigation }) => {
         return;
       }
 
-      const agoraAppId = credentials.appId;
       try {
         engine.initialize({ appId: agoraAppId });
         console.log('[CALL] AGORA INITIALIZED WITH APP ID:', agoraAppId);

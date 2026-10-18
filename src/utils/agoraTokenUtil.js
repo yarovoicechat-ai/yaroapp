@@ -188,16 +188,22 @@ function base64Encode(bytes) {
 }
 
 export const AGORA_APP_ID = 'd23c897f9305450faa7809ffcf666e57';
-export const AGORA_APP_CERTIFICATE = '1b562d3ec8134249bda984e72d02213c';
-export const AGORA_SECONDARY_CERTIFICATE = 'a293c89838a747b7a97f56768eeb7f0a';
 
+/**
+ * Notice: Agora RTC tokens must be generated on the secure backend (YaroServer).
+ * Storing App Certificates in mobile client APKs is strictly prohibited for security.
+ */
 export const generateAgoraRtcToken = ({
   appId = AGORA_APP_ID,
-  appCertificate = AGORA_APP_CERTIFICATE,
+  appCertificate = '',
   channelName,
   uid,
   expireSeconds = 86400,
 }) => {
+  if (!appCertificate) {
+    console.warn('⚠️ [AgoraToken] Tokens must be securely fetched from YaroServer token endpoint.');
+    return '';
+  }
   try {
     const now = Math.floor(Date.now() / 1000);
     const actualTs = now + expireSeconds;

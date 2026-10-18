@@ -579,10 +579,14 @@ export default function VoiceRoomScreen() {
   const isEffectiveGlobalRoomManager = Boolean(
     contextIsGlobalRoomManager ||
     user?.isGlobalRoomManager ||
+    user?.officialPowers?.isGlobalRoomManager ||
+    user?.officialPowers?.canBanRoom ||
+    user?.officialPowers?.canBanUser ||
+    user?.officialPowers?.canGhostEntry ||
     user?.role === 'admin' ||
     user?.role === 'superAdmin'
   );
-  const [isStealthMode, setIsStealthMode] = useState(false);
+  const [isStealthMode, setIsStealthMode] = useState(Boolean(user?.officialPowers?.canGhostEntry));
 
   const handleOfficialBanRoom = () => {
     Alert.alert(
@@ -603,6 +607,37 @@ export default function VoiceRoomScreen() {
               });
               AlertService.show('Room Banned', 'Voice room has been terminated.', 'success');
               handleLeaveCompletely();
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleOfficialBanUser = (targetUser) => {
+    const targetUserId = String(targetUser?.userId || targetUser?.id || targetUser?._id || '');
+    const targetName = targetUser?.name || targetUser?.userName || `User #${targetUserId}`;
+    if (!targetUserId) return;
+
+    Alert.alert(
+      'Permanent User Ban 🚫',
+      `Are you sure you want to permanently ban ${targetName} (ID: ${targetUserId})? Their account will be blocked and they will be immediately ejected from the platform.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Ban',
+          style: 'destructive',
+          onPress: () => {
+            const sock = getSocket();
+            const targetRoomId = room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
+            if (sock) {
+              sock.emit('voice_room:ban_user', {
+                roomId: targetRoomId,
+                targetUserId,
+                reason: 'Officially banned via Mobile App Official Manager Power.',
+              });
+              setProfileModalVisible(false);
+              AlertService.show('User Banned', `${targetName} has been banned and ejected.`, 'success');
             }
           },
         },
@@ -2345,13 +2380,15 @@ export default function VoiceRoomScreen() {
         }}
         isHostOrAdmin={isCurrentUserAdmin}
         isRoomOwner={isRoomOwner}
-        isGlobalRoomManager={contextIsGlobalRoomManager}
+        isGlobalRoomManager={isEffectiveGlobalRoomManager}
         roomOwnerId={room.hostId || room.creatorId || room.ownerId || (isContextOwnerMatch ? user?.userId : null)}
         admins={admins}
         seats={seats}
         onToggleAdmin={(u) => toggleAdmin(String(u?.userId || u?.id || u?._id), u?.name)}
         onBanChat={(u) => toggleChatBan(String(u?.userId || u?.id || u?._id), u?.name)}
         onKickUser={(u) => kickFromRoom24h(String(u?.userId || u?.id || u?._id), u?.name)}
+        onBanUser={handleOfficialBanUser}
+        canBanUser={Boolean(user?.officialPowers?.canBanUser || isEffectiveGlobalRoomManager)}
         onRemoveFromSeat={(u) => removeFromSeat(String(u?.userId || u?.id || u?._id), u?.name)}
         onToggleSeatLock={(seatIdx) => toggleSeatLock(seatIdx)}
         onMuteSeat={(u) => toggleMuteUser(String(u?.userId || u?.id || u?._id), u?.name)}

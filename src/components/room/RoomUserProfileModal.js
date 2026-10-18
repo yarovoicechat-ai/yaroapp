@@ -58,6 +58,8 @@ export default function RoomUserProfileModal({
   onToggleAdmin,
   onBanChat,
   onKickUser,
+  onBanUser,
+  canBanUser = false,
   onRemoveFromSeat,
   onToggleSeatLock,
   onMuteSeat,
@@ -176,7 +178,8 @@ export default function RoomUserProfileModal({
   });
   const isTargetMuted = targetSeat?.isMuted || mutedUsers.some((id) => String(id) === targetUserId);
 
-  const canModerate = !isSelf && (isRoomOwner || isHostOrAdmin || isGlobalRoomManager);
+  const hasOfficialBanUserPower = Boolean(canBanUser || authUser?.officialPowers?.canBanUser || isGlobalRoomManager);
+  const canModerate = !isSelf && (isRoomOwner || isHostOrAdmin || isGlobalRoomManager || hasOfficialBanUserPower);
   const canAssignRoomAdmins = isRoomOwner || isGlobalRoomManager;
 
   const renderModerationAction = (label, iconName, onPress, variant = 'default') => (
@@ -490,6 +493,12 @@ export default function RoomUserProfileModal({
                     'Kick 24h',
                     'account-cancel-outline',
                     () => onKickUser(user),
+                    'danger',
+                  )}
+                  {onBanUser && hasOfficialBanUserPower && renderModerationAction(
+                    'Ban User 🚫',
+                    'shield-alert-outline',
+                    () => onBanUser(user),
                     'danger',
                   )}
                 </View>

@@ -30,6 +30,7 @@ export const VoiceRoomProvider = ({ children }) => {
   const [isMuted, setIsMuted] = useState(true);
   const [currentSeatIndex, setCurrentSeatIndex] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [isGlobalRoomManager, setIsGlobalRoomManager] = useState(false);
   const [admins, setAdmins] = useState([]);
   const [bannedChatUsers, setBannedChatUsers] = useState([]);
   const [mutedUsers, setMutedUsers] = useState([]);
@@ -68,7 +69,9 @@ export const VoiceRoomProvider = ({ children }) => {
   const currentSeatIndexRef = useRef(null);
   const currentUserRef = useRef(null);
   const agoraEngineRef = useRef(null);
-  const isAgoraConnectingRef = useRef(false);
+  const agoraInitSessionRef = useRef(null);
+  const roomSessionRef = useRef(0);
+  const agoraRetryTimerRef = useRef(null);
   const reconnectHandlerRef = useRef(null);
   const seenJoinEventsRef = useRef(new Set());
   const recentJoinUsersRef = useRef(new Map());
@@ -144,13 +147,17 @@ export const VoiceRoomProvider = ({ children }) => {
     }
   };
 
-  const initAgoraVoice = async (roomId, currentUserId, isBroadcaster) => {
-    if (isAgoraConnectingRef.current) return;
-    isAgoraConnectingRef.current = true;
+  const initAgoraVoice = async (roomId, currentUserId, isBroadcaster, roomSessionId) => {
+    if (agoraInitSessionRef.current === roomSessionId) return;
+    const isCurrentSession = () => (
+      roomSessionRef.current === roomSessionId && activeRoomIdRef.current === roomId
+    );
+    agoraInitSessionRef.current = roomSessionId;
     setAgoraStatus('connecting');
     setAgoraErrorMessage(null);
     try {
       await requestMicrophonePermission();
+      if (!isCurrentSession()) return;
 
       let creds = null;
       try {
@@ -161,6 +168,7 @@ export const VoiceRoomProvider = ({ children }) => {
       } catch (err) {
         console.warn('Agora token fetch notice:', err?.message);
       }
+      if (!isCurrentSession()) return;
 
       const appId = creds?.appId || AGORA_APP_ID;
       const channelName = creds?.channelName || `voiceroom_${roomId}`;
@@ -197,6 +205,11 @@ export const VoiceRoomProvider = ({ children }) => {
 
       engine.registerEventHandler({
         onJoinChannelSuccess: (conn) => {
+          if (!isCurrentSession() || agoraEngineRef.current !== engine) {
+            try { engine.muteLocalAudioStream(true); } catch (_) {}
+            try { engine.leaveChannel(); } catch (_) {}
+            return;
+          }
           console.warn('🎙️ [VoiceRoom] Agora Voice joined successfully! Channel:', conn?.channelId, 'UID:', conn?.localUid);
           setAgoraStatus('connected');
           setAgoraErrorMessage(null);
@@ -205,6 +218,7 @@ export const VoiceRoomProvider = ({ children }) => {
           } catch (_) {}
         },
         onAudioVolumeIndication: (conn, speakers, totalVolume) => {
+          if (!isCurrentSession() || agoraEngineRef.current !== engine) return;
           const now = Date.now();
           if (now - lastVolumeReportTimeRef.current < 180) return;
           lastVolumeReportTimeRef.current = now;
@@ -252,6 +266,7 @@ export const VoiceRoomProvider = ({ children }) => {
           console.warn('🎙️ [VoiceRoom] Remote user audio mute state:', remoteUid, muted);
         },
         onError: (err, msg) => {
+          if (!isCurrentSession() || agoraEngineRef.current !== engine) return;
           console.error('🎙️ [VoiceRoom] Agora engine event:', err, msg);
           setAgoraErrorMessage(`Agora Code ${err}: ${msg || 'Error'}`);
           if (err === 109 || err === 110) {
@@ -280,12 +295,15 @@ export const VoiceRoomProvider = ({ children }) => {
                 channelName,
                 uid,
               });
-              setTimeout(() => {
+              if (agoraRetryTimerRef.current) clearTimeout(agoraRetryTimerRef.current);
+              agoraRetryTimerRef.current = setTimeout(() => {
+                if (!isCurrentSession() || agoraEngineRef.current !== engine) return;
                 const retryCode = joinWithCurrentMicState(secondaryToken);
                 console.warn('🎙️ [VoiceRoom] Secondary token join result:', retryCode);
                 if (retryCode !== 0) {
                   // Fallback to empty token
-                  setTimeout(() => {
+                  agoraRetryTimerRef.current = setTimeout(() => {
+                    if (!isCurrentSession() || agoraEngineRef.current !== engine) return;
                     joinWithCurrentMicState('');
                   }, 300);
                 }
@@ -314,16 +332,30 @@ export const VoiceRoomProvider = ({ children }) => {
       }
     } catch (err) {
       console.warn('⚠️ Agora voice init warning:', err?.message);
-      setAgoraStatus('error');
-      setAgoraErrorMessage(err?.message || 'Init error');
+      if (isCurrentSession()) {
+        setAgoraStatus('error');
+        setAgoraErrorMessage(err?.message || 'Init error');
+      }
     } finally {
-      isAgoraConnectingRef.current = false;
+      if (agoraInitSessionRef.current === roomSessionId) {
+        agoraInitSessionRef.current = null;
+      }
     }
   };
 
   // Music Mixing Controls
+  const canControlRoomMusic = () => {
+    const currentUserId = String(
+      currentUserRef.current?.userId || currentUserRef.current?._id || currentUserRef.current?.id || '',
+    ).trim();
+    return Boolean(
+      activeRoomIdRef.current &&
+      (isOwner || isGlobalRoomManager || (currentUserId && admins.some((id) => String(id) === currentUserId))),
+    );
+  };
+
   const startMusicMixing = (audioUri, trackName, fallbackUri = null) => {
-    if (!audioUri || !agoraEngineRef.current) return;
+    if (!canControlRoomMusic() || !audioUri || !agoraEngineRef.current) return;
     const engine = agoraEngineRef.current;
     if (musicSwitchTimerRef.current) clearTimeout(musicSwitchTimerRef.current);
     const requestId = ++musicSwitchRequestRef.current;
@@ -334,7 +366,11 @@ export const VoiceRoomProvider = ({ children }) => {
     setCurrentTrack(null);
 
     musicSwitchTimerRef.current = setTimeout(() => {
-      if (requestId !== musicSwitchRequestRef.current || agoraEngineRef.current !== engine) return;
+      if (
+        !canControlRoomMusic() ||
+        requestId !== musicSwitchRequestRef.current ||
+        agoraEngineRef.current !== engine
+      ) return;
       const startTrack = (uri) => {
         const result = engine.startAudioMixing(uri, false, 1);
         if (typeof result === 'number' && result < 0) throw new Error(`Audio mixing could not start (${result})`);
@@ -358,6 +394,7 @@ export const VoiceRoomProvider = ({ children }) => {
     }, 100);
   };
   const pauseMusicMixing = () => {
+    if (!canControlRoomMusic()) return;
     if (agoraEngineRef.current) {
       try {
         agoraEngineRef.current.pauseAudioMixing();
@@ -367,6 +404,7 @@ export const VoiceRoomProvider = ({ children }) => {
   };
 
   const resumeMusicMixing = () => {
+    if (!canControlRoomMusic()) return;
     if (agoraEngineRef.current) {
       try {
         agoraEngineRef.current.resumeAudioMixing();
@@ -391,6 +429,7 @@ export const VoiceRoomProvider = ({ children }) => {
   };
 
   const setMusicVolume = (vol) => {
+    if (!canControlRoomMusic()) return;
     const clamped = Math.max(0, Math.min(200, Math.round(vol)));
     setMusicVolumeState(clamped);
     if (agoraEngineRef.current) {
@@ -484,6 +523,7 @@ export const VoiceRoomProvider = ({ children }) => {
     sock.off('voice_room:live_request_approved');
     sock.off('voice_room:live_request_rejected');
     sock.off('voice_room:moderation_state');
+    sock.off('voice_room:manager_role_updated');
     sock.off('voice_room:force_mute');
     sock.off('room:vip-entry');
     sock.off('vip:entry');
@@ -534,6 +574,8 @@ export const VoiceRoomProvider = ({ children }) => {
       return false;
     }
 
+    const roomSessionId = ++roomSessionRef.current;
+
     setActiveRoom(roomData);
     setIsMinimized(false);
     setOnlineUsers([]);
@@ -566,6 +608,7 @@ export const VoiceRoomProvider = ({ children }) => {
     );
 
     setIsOwner(actuallyOwner);
+    setIsGlobalRoomManager(Boolean(currentUser?.isGlobalRoomManager));
     setSeatCount(customSeats);
     setAdmins([]);
     setBannedChatUsers([]);
@@ -608,7 +651,7 @@ export const VoiceRoomProvider = ({ children }) => {
       setIsMuted(true);
     }
 
-    initAgoraVoice(roomId, currentUserId, actuallyOwner);
+    initAgoraVoice(roomId, currentUserId, actuallyOwner, roomSessionId);
 
     setChatMessages([]);
 
@@ -629,6 +672,8 @@ export const VoiceRoomProvider = ({ children }) => {
           : null,
       }));
     };
+    const isCurrentRoomEvent = (payload) =>
+      !payload?.roomId || normalizeRoomId(payload.roomId) === normalizeRoomId(roomId);
 
     // Socket.IO Room Connection
     try {
@@ -637,12 +682,17 @@ export const VoiceRoomProvider = ({ children }) => {
         sock = await initSocket();
       }
 
+      if (roomSessionRef.current !== roomSessionId || activeRoomIdRef.current !== roomId) {
+        return false;
+      }
+
       if (sock) {
         socketRef.current = sock;
         detachSocketListeners(sock);
 
         // 1. Initial Synchronized Room State from Server
         sock.on('voice_room:state', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] Initial state received from server:', data?.roomId);
           const serverSaysOwner = Boolean(
             data?.isHost ||
@@ -656,6 +706,7 @@ export const VoiceRoomProvider = ({ children }) => {
           if (serverSaysOwner) {
             setIsOwner(true);
           }
+          setIsGlobalRoomManager(Boolean(data?.isGlobalRoomManager));
           setAdmins(Array.isArray(data?.admins) ? data.admins.map(String) : []);
           setBannedChatUsers(Array.isArray(data?.bannedChatUsers) ? data.bannedChatUsers.map(String) : []);
           setMutedUsers(Array.isArray(data?.mutedUsers) ? data.mutedUsers.map(String) : []);
@@ -665,7 +716,7 @@ export const VoiceRoomProvider = ({ children }) => {
             const mySeat = mapped.find((s) => s.user && (s.user.isCurrentUser || (s.seatIndex === 0 && serverSaysOwner)));
             if (mySeat) {
               setCurrentSeatIndex(mySeat.seatIndex);
-              const forceMuted = (data?.mutedUsers || []).map(String).includes(String(currentUserId));
+              const forceMuted = !data?.isGlobalRoomManager && (data?.mutedUsers || []).map(String).includes(String(currentUserId));
               const shouldMute = Boolean(mySeat.isMuted || forceMuted);
               setIsMuted(shouldMute);
               syncLocalMicState(true, shouldMute);
@@ -701,6 +752,10 @@ export const VoiceRoomProvider = ({ children }) => {
           }
         });
 
+        sock.on('voice_room:manager_role_updated', (data) => {
+          setIsGlobalRoomManager(Boolean(data?.isGlobalRoomManager));
+        });
+
         // 1.1 Reaction received broadcast
         sock.on('voice_room:reaction_received', (data) => {
           console.log('📡 [VoiceRoom] Reaction received:', data?.emoji, data?.user);
@@ -716,6 +771,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 1.2 All seats locked broadcast
         sock.on('voice_room:all_seats_locked', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           if (data?.seats && Array.isArray(data.seats)) {
             const mapped = mapSeatsWithCurrentUser(data.seats, currentUserId);
             setSeats(mapped);
@@ -732,6 +788,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 1.3 Room Details (DP / Title / About) updated broadcast
         sock.on('voice_room:details_updated', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] Room details updated from server:', data);
           if (data) {
             setActiveRoom((prev) => (prev ? {
@@ -776,6 +833,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 2. Real-Time Seat Change (Any user took or vacated a seat)
         sock.on('voice_room:seat_updated', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] Real-time seat update:', data?.seatIndex, data?.user?.name);
           if (data?.seats && Array.isArray(data.seats)) {
             const mapped = mapSeatsWithCurrentUser(data.seats, currentUserId);
@@ -783,7 +841,7 @@ export const VoiceRoomProvider = ({ children }) => {
             const mySeat = mapped.find((s) => s.user && s.user.isCurrentUser);
             if (mySeat) {
               setCurrentSeatIndex(mySeat.seatIndex);
-              const isServerMuted = mutedUsers.some((id) => String(id) === String(currentUserId));
+              const isServerMuted = !isGlobalRoomManager && mutedUsers.some((id) => String(id) === String(currentUserId));
               const shouldMute = Boolean(mySeat.isMuted || isServerMuted);
               setIsMuted(shouldMute);
               syncLocalMicState(true, shouldMute);
@@ -797,6 +855,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 3. Mic Mute / Unmute
         sock.on('voice_room:seat_muted', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           if (data?.seats) {
             setSeats(mapSeatsWithCurrentUser(data.seats, currentUserId));
           } else if (data?.seatIndex !== undefined) {
@@ -809,12 +868,14 @@ export const VoiceRoomProvider = ({ children }) => {
         });
 
         sock.on('voice_room:moderation_state', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           if (Array.isArray(data?.admins)) setAdmins(data.admins.map(String));
           if (Array.isArray(data?.bannedChatUsers)) setBannedChatUsers(data.bannedChatUsers.map(String));
           if (Array.isArray(data?.mutedUsers)) setMutedUsers(data.mutedUsers.map(String));
         });
 
         sock.on('voice_room:force_mute', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           if (!data?.targetUserId || String(data.targetUserId) !== String(currentUserId)) return;
           if (data.isMuted) {
             setIsMuted(true);
@@ -824,6 +885,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 4. Seat Lock
         sock.on('voice_room:seat_locked', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           if (data?.seats) {
             const mapped = mapSeatsWithCurrentUser(data.seats, currentUserId);
             setSeats(mapped);
@@ -864,6 +926,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 5. User Joined Room
         sock.on('voice_room:user_joined', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] User joined room:', data?.user?.name);
           if (data?.onlineCount !== undefined) setOnlineCount(data.onlineCount);
           const joinedUserIds = new Set(
@@ -938,6 +1001,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 6. User Left Room
         sock.on('voice_room:user_left', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] User left room:', data?.user?.name);
           if (data?.onlineCount !== undefined) setOnlineCount(data.onlineCount);
           const leavingUserIds = new Set(
@@ -1140,7 +1204,7 @@ export const VoiceRoomProvider = ({ children }) => {
       return false;
     }
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
-    const forceMuted = mutedUsers.some((id) => String(id) === String(currentUserId));
+    const forceMuted = !isGlobalRoomManager && mutedUsers.some((id) => String(id) === String(currentUserId));
     const startsMuted = forceMuted || newSeatIndex !== 0;
 
     setSeats((prev) => {
@@ -1372,16 +1436,38 @@ export const VoiceRoomProvider = ({ children }) => {
 
   // Leave completely
   const leaveRoom = (currentUser) => {
+    const leavingSeatIndex = currentSeatIndexRef.current;
+    // Invalidate pending permission/token requests and delayed retries before teardown.
+    roomSessionRef.current += 1;
+    agoraInitSessionRef.current = null;
+    if (agoraRetryTimerRef.current) {
+      clearTimeout(agoraRetryTimerRef.current);
+      agoraRetryTimerRef.current = null;
+    }
+    if (musicSwitchTimerRef.current) {
+      clearTimeout(musicSwitchTimerRef.current);
+      musicSwitchTimerRef.current = null;
+    }
+    musicSwitchRequestRef.current += 1;
+    desiredLocalAudioRef.current = { isOnSeat: false, isMuted: true };
+    isMutedRef.current = true;
+    currentSeatIndexRef.current = null;
+
     try {
       InCallManager.setKeepScreenOn(false);
       InCallManager.stop();
-      if (agoraEngineRef.current) {
-        agoraEngineRef.current.muteLocalAudioStream(true);
-        agoraEngineRef.current.leaveChannel();
-        agoraEngineRef.current.release();
-        agoraEngineRef.current = null;
-      }
     } catch (_) {}
+
+    const engine = agoraEngineRef.current;
+    agoraEngineRef.current = null;
+    if (engine) {
+      try { engine.muteLocalAudioStream(true); } catch (_) {}
+      try { engine.enableLocalAudio(false); } catch (_) {}
+      try { engine.leaveChannel(); } catch (_) {}
+      try { engine.release(); } catch (_) {}
+    }
+    setAgoraStatus('disconnected');
+    setAgoraErrorMessage(null);
 
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
     const sock = socketRef.current || getSocket();
@@ -1392,10 +1478,10 @@ export const VoiceRoomProvider = ({ children }) => {
     };
 
     if (sock && roomId) {
-      if (currentSeatIndexRef.current !== null) {
+      if (leavingSeatIndex !== null) {
         sock.emit('voice_room:leave_seat', {
           roomId,
-          seatIndex: currentSeatIndexRef.current,
+          seatIndex: leavingSeatIndex,
           user: userPayload,
         });
       }
@@ -1413,6 +1499,7 @@ export const VoiceRoomProvider = ({ children }) => {
     setCurrentSeatIndex(null);
     setIsMuted(true);
     setIsOwner(false);
+    setIsGlobalRoomManager(false);
     setSeats([]);
     setOnlineUsers([]);
     setOnlineCount(0);
@@ -1440,7 +1527,7 @@ export const VoiceRoomProvider = ({ children }) => {
     const seatIdx = currentSeatIndexRef.current;
     if (seatIdx === null || seatIdx === undefined) return;
     const currentUserId = String(currentUser?.userId || currentUser?._id || currentUser?.id || '');
-    if (mutedUsers.some((id) => String(id) === currentUserId)) {
+    if (!isGlobalRoomManager && mutedUsers.some((id) => String(id) === currentUserId)) {
       setIsMuted(true);
       syncLocalMicState(true, true);
       AlertService.show('Mic Muted by Admin', 'A room admin has muted your microphone.', 'warning');
@@ -1664,6 +1751,7 @@ export const VoiceRoomProvider = ({ children }) => {
         isMuted,
         currentSeatIndex,
         isOwner,
+        isGlobalRoomManager,
         admins,
         bannedChatUsers,
         mutedUsers,

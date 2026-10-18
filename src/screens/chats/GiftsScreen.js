@@ -54,8 +54,10 @@ export default function GiftsScreen() {
         const response = await apiUtil.get(`/gifts/${activeFilter}`, { params: { limit: 100 } });
         rows = response.data?.data?.transactions || [];
       } else {
-        const response = await apiUtil.get('/notifications', { params: { limit: 100 } });
-        rows = response.data?.data?.notifications || [];
+        const response = await apiUtil.get('/notifications', { params: { limit: 100, type: 'system' } });
+        rows = (response.data?.data?.notifications || []).filter(
+          (notification) => String(notification?.type || '').toLowerCase() === 'system',
+        );
       }
 
       const formatted = (Array.isArray(rows) ? rows : []).map((row) => {

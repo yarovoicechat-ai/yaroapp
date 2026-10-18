@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Modal,
   StatusBar,
   ActivityIndicator,
   RefreshControl,
@@ -25,7 +24,9 @@ import { AuthContext } from '../../context/AuthProvider';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { AlertService } from '../../utils/AlertService';
-import SvgaView from '../../components/SvgaView';
+import LevelRewardThumbnail from '../../components/levels/LevelRewardThumbnail';
+import RewardPreviewModal from '../../components/levels/RewardPreviewModal';
+import UpgradeGuideModal from '../../components/levels/UpgradeGuideModal';
 import {
   calculateWealthLevel,
   calculateWealthProgress,
@@ -45,60 +46,6 @@ const { width } = Dimensions.get('window');
 const CARD_GAP = 10;
 const HORIZONTAL_PADDING = 16;
 const CARD_WIDTH = (width - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
-
-// Reward Icon / Artwork Component
-const RewardThumbnail = ({ item, size = 60 }) => {
-  const imageUrl = item?.imageUrl || item?.image;
-  const animationUrl = item?.animationUrl;
-
-  if (animationUrl || imageUrl) {
-    return (
-      <SvgaView
-        source={animationUrl || imageUrl}
-        style={{ width: size, height: size }}
-        resizeMode="contain"
-        fallbackImage={imageUrl}
-      />
-    );
-  }
-
-  // Fallback icon based on type
-  let iconName = 'star-shooting';
-  let iconColor = '#F59E0B';
-  if (item?.type === 'frame') {
-    iconName = 'circle-double';
-    iconColor = '#EC4899';
-  } else if (item?.type === 'badge') {
-    iconName = 'shield-star';
-    iconColor = '#F59E0B';
-  } else if (item?.type === 'vehicle') {
-    iconName = 'car-sports';
-    iconColor = '#06B6D4';
-  } else if (item?.type === 'custom_id') {
-    iconName = 'card-account-details-star';
-    iconColor = '#8B5CF6';
-  } else if (item?.type === 'entrance') {
-    iconName = 'weather-night';
-    iconColor = '#EAB308';
-  } else if (item?.type === 'profile_border') {
-    iconName = 'border-outside';
-    iconColor = '#10B981';
-  } else if (item?.type === 'theme') {
-    iconName = 'palette';
-    iconColor = '#6366F1';
-  } else if (item?.type === 'mic') {
-    iconName = 'microphone-variant';
-    iconColor = '#F43F5E';
-  } else if (item?.type === 'room_skin') {
-    iconName = 'home-modern';
-    iconColor = '#A855F7';
-  } else if (item?.type === 'party_set') {
-    iconName = 'cake-variant';
-    iconColor = '#EC4899';
-  }
-
-  return <MaterialCommunityIcons name={iconName} size={size * 0.7} color={iconColor} />;
-};
 
 export default function LevelJourney() {
   const navigation = useNavigation();
@@ -634,7 +581,7 @@ export default function LevelJourney() {
                     )}
 
                     <View style={styles.badgeArtworkBox}>
-                      <RewardThumbnail item={badge} size={54} />
+                      <LevelRewardThumbnail item={badge} size={54} />
                     </View>
 
                     <Text style={styles.badgeLevelText}>Lv.{badge.requiredLevel}</Text>
@@ -745,7 +692,7 @@ export default function LevelJourney() {
 
                     {/* Preview Artwork */}
                     <View style={styles.rewardArtContainer}>
-                      <RewardThumbnail item={item} size={64} />
+                      <LevelRewardThumbnail item={item} size={64} />
                     </View>
 
                     {/* Meta */}
@@ -885,7 +832,7 @@ export default function LevelJourney() {
                     </View>
 
                     <View style={styles.rewardArtContainer}>
-                      <RewardThumbnail item={reward} size={64} />
+                      <LevelRewardThumbnail item={reward} size={64} />
                     </View>
 
                     <Text style={styles.rewardItemName} numberOfLines={1}>
@@ -939,371 +886,24 @@ export default function LevelJourney() {
         )}
       </ScrollView>
 
-      {/* MODAL 1: PREVIEW & EQUIP DETAIL MODAL */}
-      <Modal
-        visible={Boolean(previewItem)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPreviewItem(null)}
-      >
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setPreviewItem(null)}
-          />
-          <View style={styles.previewCard}>
-            <TouchableOpacity
-              onPress={() => setPreviewItem(null)}
-              style={styles.modalCloseBtn}
-              activeOpacity={0.7}
-            >
-              <Icon name="close" size={22} color="#94A3B8" />
-            </TouchableOpacity>
+      <RewardPreviewModal
+        item={previewItem}
+        onClose={() => setPreviewItem(null)}
+        isWealth={isWealth}
+        getRewardState={getRewardState}
+        claimLoading={claimLoading}
+        onClaim={handleClaimReward}
+        onEquip={handleEquipReward}
+        styles={styles}
+      />
 
-            <Text style={styles.previewModalKicker}>
-              {isWealth ? 'WEALTH' : 'CHARM'} LEVEL REWARD PREVIEW
-            </Text>
-
-            {/* Enlarged Artwork Container */}
-            <View style={styles.enlargedArtworkBox}>
-              <RewardThumbnail item={previewItem} size={110} />
-            </View>
-
-            <Text style={styles.previewTitleText}>{previewItem?.name}</Text>
-            <Text style={styles.previewCategoryText}>
-              {previewItem?.categoryName} •{' '}
-              {previewItem?.durationDays === 0
-                ? 'Permanent Reward'
-                : `${previewItem?.durationDays} Days Duration`}
-            </Text>
-
-            {Boolean(previewItem?.description) && (
-              <Text style={styles.previewDescText}>{previewItem?.description}</Text>
-            )}
-
-            {/* Requirement Status Box */}
-            <View
-              style={[
-                styles.previewStatusBanner,
-                getRewardState(previewItem) === 'LOCKED'
-                  ? styles.previewStatusBannerLocked
-                  : styles.previewStatusBannerUnlocked,
-              ]}
-            >
-              <Icon
-                name={
-                  getRewardState(previewItem) === 'LOCKED'
-                    ? 'lock-closed'
-                    : 'checkmark-circle'
-                }
-                size={18}
-                color={
-                  getRewardState(previewItem) === 'LOCKED' ? '#94A3B8' : '#10B981'
-                }
-              />
-              <Text
-                style={[
-                  styles.previewStatusBannerText,
-                  {
-                    color:
-                      getRewardState(previewItem) === 'LOCKED'
-                        ? '#CBD5E1'
-                        : '#34D399',
-                  },
-                ]}
-              >
-                {getRewardState(previewItem) === 'LOCKED'
-                  ? `Reach ${isWealth ? 'Wealth' : 'Charm'} Lv.${previewItem?.requiredLevel} to unlock this exclusive perk.`
-                  : 'Reward is Unlocked and ready to use!'}
-              </Text>
-            </View>
-
-            {/* CTA Actions */}
-            <View style={styles.modalCtaRow}>
-              {getRewardState(previewItem) === 'UNLOCKED' && (
-                <TouchableOpacity
-                  style={[
-                    styles.modalPrimaryBtn,
-                    { backgroundColor: isWealth ? '#F59E0B' : '#EC4899' },
-                  ]}
-                  onPress={() => handleClaimReward(previewItem)}
-                  disabled={claimLoading}
-                >
-                  {claimLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.modalPrimaryBtnText}>Claim Reward</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-
-              {getRewardState(previewItem) === 'CLAIMED' && (
-                <TouchableOpacity
-                  style={[
-                    styles.modalPrimaryBtn,
-                    { backgroundColor: isWealth ? '#F59E0B' : '#EC4899' },
-                  ]}
-                  onPress={() => handleEquipReward(previewItem, true)}
-                  disabled={claimLoading}
-                >
-                  {claimLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.modalPrimaryBtnText}>{previewItem.uniqueIdInventoryOnly ? 'Open My Items' : 'Equip Now'}</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-
-              {getRewardState(previewItem) === 'EQUIPPED' && (
-                <TouchableOpacity
-                  style={styles.modalUnequipBtn}
-                  onPress={() => handleEquipReward(previewItem, false)}
-                  disabled={claimLoading}
-                >
-                  <Text style={styles.modalUnequipBtnText}>Unequip</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* MODAL 2: "HOW TO UPGRADE?" EXPLANATION MODAL (Matching Image 1 & 2) */}
-      <Modal
+      <UpgradeGuideModal
         visible={showHowToUpgrade}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowHowToUpgrade(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setShowHowToUpgrade(false)}
-          />
-
-          <View
-            style={[
-              styles.upgradeGuideCard,
-              {
-                backgroundColor: isWealth ? '#F7E7CE' : '#EFE4FD',
-                borderColor: isWealth ? '#E2B887' : '#D4B8F6',
-              },
-            ]}
-          >
-            {/* Floating Top Badge (Crown for Wealth, Star for Charm) */}
-            <View style={styles.guideFloatingBadgeWrap}>
-              <LinearGradient
-                colors={isWealth ? ['#F59E0B', '#D97706', '#92400E'] : ['#E2E8F0', '#94A3B8', '#475569']}
-                style={styles.guideFloatingBadgeGrad}
-              >
-                <Text style={{ fontSize: 24 }}>{isWealth ? '👑' : '⭐'}</Text>
-                <View style={[styles.guideFloatingBadgeRibbon, { backgroundColor: isWealth ? '#F59E0B' : '#64748B' }]}>
-                  <Text style={styles.guideFloatingBadgeRibbonText}>
-                    {isWealth ? `Lv.${currentLevel}` : `${currentLevel}`}
-                  </Text>
-                </View>
-              </LinearGradient>
-            </View>
-
-            {/* Top Close Button (top-right X) */}
-            <TouchableOpacity
-              onPress={() => setShowHowToUpgrade(false)}
-              style={styles.guideTopCloseBtn}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Icon name="close" size={22} color={isWealth ? '#78350F' : '#4C1D95'} />
-            </TouchableOpacity>
-
-            {/* Title */}
-            <Text
-              style={[
-                styles.guideMainTitle,
-                { color: isWealth ? '#78350F' : '#3B0764' },
-              ]}
-            >
-              How to upgrade?
-            </Text>
-
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
-              {isWealth ? (
-                /* WEALTH UPGRADE RULES (Matching 1st Image) */
-                <View style={styles.guideContentList}>
-                  {/* 1. Give a diamond gift */}
-                  <View style={styles.guideRuleItem}>
-                    <View style={styles.guideRuleHeader}>
-                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
-                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
-                        Give a diamond gift
-                      </Text>
-                    </View>
-                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
-                      1 Diamond = 1 EXP
-                    </Text>
-
-                    {/* SVIP Privilege Boxes */}
-                    <View style={styles.svipListCol}>
-                      {[
-                        { svip: 'SVIP 6', exp: '1.1' },
-                        { svip: 'SVIP 7', exp: '1.2' },
-                        { svip: 'SVIP 8', exp: '1.3' },
-                        { svip: 'SVIP 9', exp: '1.4' },
-                        { svip: 'SVIP 10', exp: '1.5' },
-                      ].map((item) => (
-                        <View key={item.svip} style={styles.svipPrivilegePill}>
-                          <Text style={styles.svipPrivilegeText}>
-                            {item.svip} privilege: 1 Diamond = {item.exp} EXP
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  <View style={styles.guideDivider} />
-
-                  {/* 2. Shop for diamond items */}
-                  <View style={styles.guideRuleItem}>
-                    <View style={styles.guideRuleHeader}>
-                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
-                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
-                        Shop for diamond items
-                      </Text>
-                    </View>
-                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
-                      1 Diamond = 1 EXP
-                    </Text>
-                  </View>
-
-                  <View style={styles.guideDivider} />
-
-                  {/* 3. Enter the room */}
-                  <View style={styles.guideRuleItem}>
-                    <View style={styles.guideRuleHeader}>
-                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
-                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
-                        Enter the room
-                      </Text>
-                    </View>
-                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
-                      200 EXP/day
-                    </Text>
-                  </View>
-
-                  <View style={styles.guideDivider} />
-
-                  {/* 4. Share the room */}
-                  <View style={styles.guideRuleItem}>
-                    <View style={styles.guideRuleHeader}>
-                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
-                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
-                        Share the room
-                      </Text>
-                    </View>
-                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
-                      200 EXP/day
-                    </Text>
-                  </View>
-
-                  <View style={styles.guideDivider} />
-
-                  {/* 5. Stay in your own room */}
-                  <View style={styles.guideRuleItem}>
-                    <View style={styles.guideRuleHeader}>
-                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
-                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
-                        Stay in your own room (Limited Time)
-                      </Text>
-                    </View>
-                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
-                      10 min = 100 EXP,  500 EXP/day
-                    </Text>
-                  </View>
-
-                  <View style={styles.guideDivider} />
-
-                  {/* 6. Stay on other rooms */}
-                  <View style={styles.guideRuleItem}>
-                    <View style={styles.guideRuleHeader}>
-                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
-                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
-                        Stay on other rooms (Limited Time)
-                      </Text>
-                    </View>
-                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
-                      10 min = 100 EXP,  1000 EXP/day
-                    </Text>
-                  </View>
-
-                  <View style={styles.guideDivider} />
-
-                  {/* 7. Participate in activities */}
-                  <View style={styles.guideRuleItem}>
-                    <View style={styles.guideRuleHeader}>
-                      <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
-                      <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
-                        Participate in activities
-                      </Text>
-                    </View>
-                    <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
-                      Speed up upgrade
-                    </Text>
-                  </View>
-                </View>
-              ) : (
-                /* CHARM UPGRADE RULES (Matching 2nd Image) */
-                <View style={styles.guideContentList}>
-                  {/* 1. Receive Diamond Gifts */}
-                  <View style={styles.guideRuleItem}>
-                    <View style={styles.guideRuleHeader}>
-                      <View style={[styles.guideBulletDot, { backgroundColor: '#6B21A8' }]} />
-                      <Text style={[styles.guideRuleTitle, { color: '#3B0764' }]}>
-                        Receive Diamond Gifts
-                      </Text>
-                    </View>
-                    <Text style={[styles.guideRuleSub, { color: '#6B21A8' }]}>
-                      1 Diamond = 1 EXP
-                    </Text>
-                  </View>
-
-                  <View style={[styles.guideDivider, { backgroundColor: 'rgba(107, 33, 168, 0.12)' }]} />
-
-                  {/* 2. Receive Lucky Gifts */}
-                  <View style={styles.guideRuleItem}>
-                    <View style={styles.guideRuleHeader}>
-                      <View style={[styles.guideBulletDot, { backgroundColor: '#6B21A8' }]} />
-                      <Text style={[styles.guideRuleTitle, { color: '#3B0764' }]}>
-                        Receive Lucky Gifts
-                      </Text>
-                    </View>
-                    <Text style={[styles.guideRuleSub, { color: '#6B21A8' }]}>
-                      10 Diamond = 2 EXP
-                    </Text>
-                  </View>
-
-                  <View style={[styles.guideDivider, { backgroundColor: 'rgba(107, 33, 168, 0.12)' }]} />
-
-                  {/* 3. On-Mic Experience(Limited Time) */}
-                  <View style={styles.guideRuleItem}>
-                    <View style={styles.guideRuleHeader}>
-                      <View style={[styles.guideBulletDot, { backgroundColor: '#6B21A8' }]} />
-                      <Text style={[styles.guideRuleTitle, { color: '#3B0764' }]}>
-                        On-Mic Experience(Limited Time)
-                      </Text>
-                    </View>
-                    <Text style={[styles.guideRuleSub, { color: '#6B21A8' }]}>
-                      1 minute = 50 EXP, 6000 EXP/day
-                    </Text>
-                    <Text style={[styles.guideRuleNote, { color: '#7E22CE' }]}>
-                      Note: The EXP is counted only when you are on mic for at least 1 minute in an unlocked room with active mic status
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowHowToUpgrade(false)}
+        isWealth={isWealth}
+        currentLevel={currentLevel}
+        styles={styles}
+      />
     </View>
   );
 }

@@ -101,22 +101,24 @@ export default function RoomToolsModal({
               <Text style={styles.toolLabel}>Mute</Text>
             </TouchableOpacity>
 
-            {/* Music Player */}
-            <TouchableOpacity
-              style={styles.toolCol}
-              onPress={() => {
-                onClose();
-                setTimeout(() => {
-                  onOpenMusic && onOpenMusic();
-                }, 450);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.toolCircle, { borderColor: '#C084FC' }]}>
-                <MaterialCommunityIcons name="music" size={22} color="#C084FC" />
-              </View>
-              <Text style={styles.toolLabel}>Music 🎵</Text>
-            </TouchableOpacity>
+            {/* Room music is controlled by the host and room admins. */}
+            {isHost && (
+              <TouchableOpacity
+                style={styles.toolCol}
+                onPress={() => {
+                  onClose();
+                  setTimeout(() => {
+                    onOpenMusic && onOpenMusic();
+                  }, 450);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.toolCircle, { borderColor: '#C084FC' }]}>
+                  <MaterialCommunityIcons name="music" size={22} color="#C084FC" />
+                </View>
+                <Text style={styles.toolLabel}>Music 🎵</Text>
+              </TouchableOpacity>
+            )}
 
             {/* Broadcast */}
             <TouchableOpacity

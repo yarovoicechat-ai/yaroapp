@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Modal,
   View as ScreenBackgroundView,
   StatusBar as ScreenBackgroundStatusBar,
   StyleSheet as ScreenBackgroundStyleSheet
@@ -28,6 +27,8 @@ import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
+import ChatGiftModal from '../../components/chat/ChatGiftModal';
+import ChatSafetyMenu from '../../components/chat/ChatSafetyMenu';
 
 const { width } = Dimensions.get('window');
 const SCREEN_WIDTH = width;
@@ -811,175 +812,36 @@ const Massage = ({ route }) => {
           </View>
         </View>
 
-        <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
-          <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
-            <View style={[styles.chatMenu, { top: topSafeInset + 70 }]}>
-              <TouchableOpacity style={styles.chatMenuItem} onPress={handleReportUser}>
-                <Icon name="flag" size={20} color="#facc15" />
-                <Text style={styles.chatMenuText}>Report user</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.chatMenuItem} onPress={() => { setMenuVisible(false); handleBlockUser(); }}>
-                <Icon name="block" size={20} color="#ff3b30" />
-                <Text style={styles.chatMenuText}>Block user</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </Modal>
+        <ChatSafetyMenu
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
+          top={topSafeInset + 70}
+          onReport={handleReportUser}
+          onBlock={() => { setMenuVisible(false); handleBlockUser(); }}
+          styles={styles}
+        />
 
-        {/* Gift Selection Popup Modal */}
-        <Modal
+        <ChatGiftModal
           visible={showGiftModal}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowGiftModal(false)}
-        >
-          <TouchableOpacity
-            style={styles.giftModalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowGiftModal(false)}
-          >
-            <View
-              style={[styles.giftModalContainer, { paddingBottom: Math.max(16, (insets.bottom || 0) + 12) }]}
-              onStartShouldSetResponder={() => true}
-            >
-              <View style={styles.giftModalHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Icon name="card-giftcard" size={22} color="#fbbf24" style={{ marginRight: 6 }} />
-                  <Text style={styles.giftModalTitle}>Send Gift to {otherUser?.name || 'User'}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setShowGiftModal(false)}>
-                  <Icon name="close" size={22} color="#fff" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Balance Bar - ONLY DIAMONDS + RECHARGE PLUS ICON */}
-              <View style={styles.giftBalanceRow}>
-                <View style={styles.giftBalancePill}>
-                  <Image source={require('../../assets/icons/diamond.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
-                  <Text style={styles.giftBalanceText}>{user?.diamonds || 0} Diamonds</Text>
-                  <TouchableOpacity
-                    style={styles.rechargePlusBtn}
-                    onPress={() => { setShowGiftModal(false); navigation.navigate('Recharge'); }}
-                  >
-                    <Icon name="add-circle" size={18} color="#03dcfe" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Category Tabs */}
-              <View style={styles.categoryTabsContainer}>
-                {categories.map((cat) => {
-                  const isActive = activeTab.toLowerCase() === cat.toLowerCase();
-                  return (
-                    <TouchableOpacity
-                      key={cat}
-                      style={[styles.categoryTab, isActive && styles.activeCategoryTab]}
-                      onPress={() => setActiveTab(cat)}
-                    >
-                      <Text style={[styles.categoryTabText, isActive && styles.activeCategoryTabText]}>
-                        {cat}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Gifts Grid (4 per row) */}
-              <ScrollView contentContainerStyle={styles.giftsGridContainer} showsVerticalScrollIndicator={false}>
-                {loadingGifts ? (
-                  <ActivityIndicator size="large" color="#03dcfe" style={{ marginVertical: 20, width: '100%' }} />
-                ) : getFilteredGifts().length === 0 ? (
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginVertical: 20, width: '100%' }}>
-                    No gifts in this category
-                  </Text>
-                ) : (
-                  getFilteredGifts().map(g => {
-                    const isSelected = selectedGift?._id === g._id;
-                    const giftVisual = resolveGiftVisual(g);
-                    return (
-                      <TouchableOpacity
-                        key={g._id}
-                        style={[styles.giftGridCard, isSelected && styles.selectedGiftCard]}
-                        activeOpacity={0.8}
-                        disabled={sendingGift}
-                        onPress={() => setSelectedGift(g)}
-                      >
-                        <LinearGradient
-                          colors={isSelected ? ['rgba(3, 220, 254, 0.35)', 'rgba(251, 191, 36, 0.2)'] : ['rgba(251, 191, 36, 0.12)', 'rgba(3, 220, 254, 0.05)']}
-                          style={styles.giftGridCardGradient}
-                        >
-                          {g.animationUrl || giftVisual.giftImage ? (
-                            <GiftMedia
-                              source={g.animationUrl || giftVisual.giftImage}
-                              mediaType={g.mediaType}
-                              style={styles.giftIconMedia}
-                              resizeMode="contain"
-                            />
-                          ) : giftVisual.giftIcon ? (
-                            <Text style={{ fontSize: 30, marginBottom: 4 }}>{giftVisual.giftIcon}</Text>
-                          ) : (
-                            <Icon name="card-giftcard" size={30} color="#FBBF24" style={{ marginBottom: 4 }} />
-                          )}
-                          <Text style={styles.giftCardName} numberOfLines={1}>{g.name}</Text>
-                          <View style={styles.giftCostTag}>
-                            <Image source={require('../../assets/icons/diamond.png')} style={{ width: 10, height: 10, marginRight: 2 }} resizeMode="contain" />
-                            <Text style={styles.giftCostTagText}>{g.cost}</Text>
-                          </View>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    );
-                  })
-                )}
-              </ScrollView>
-
-              {/* Combo Quantity Selector & Send Button Bar */}
-              {selectedGift && (
-                <View style={styles.giftFooterBar}>
-                  <View style={styles.comboPillsContainer}>
-                    {comboQuantities.map((q) => {
-                      const isSelected = selectedQuantity === q;
-                      return (
-                        <TouchableOpacity
-                          key={q}
-                          style={[styles.comboPill, isSelected && styles.activeComboPill]}
-                          onPress={() => setSelectedQuantity(q)}
-                        >
-                          <Text style={[styles.comboPillText, isSelected && styles.activeComboPillText]}>
-                            x{q}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.sendGiftActionBtn}
-                    onPress={() => handleSendGiftChat(selectedGift, selectedQuantity)}
-                    disabled={sendingGift}
-                  >
-                    <LinearGradient
-                      colors={['#2911fe', '#03dcfe']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.sendGiftGradient}
-                    >
-                      <Text style={styles.sendGiftBtnText}>
-                        Send ({Number(selectedGift.price ?? selectedGift.cost ?? selectedGift.priceDiamonds ?? 0) * selectedQuantity} diamonds)
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {sendingGift && (
-                <View style={styles.sendingGiftOverlay}>
-                  <ActivityIndicator size="large" color="#03dcfe" />
-                  <Text style={{ color: '#fff', marginTop: 8, fontWeight: 'bold' }}>Sending Gift...</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        </Modal>
+          onClose={() => setShowGiftModal(false)}
+          onRecharge={() => { setShowGiftModal(false); navigation.navigate('Recharge'); }}
+          bottomInset={insets.bottom}
+          user={user}
+          otherUser={otherUser}
+          categories={categories}
+          activeTab={activeTab}
+          onSelectTab={setActiveTab}
+          loading={loadingGifts}
+          gifts={getFilteredGifts()}
+          selectedGift={selectedGift}
+          onSelectGift={setSelectedGift}
+          quantities={comboQuantities}
+          selectedQuantity={selectedQuantity}
+          onSelectQuantity={setSelectedQuantity}
+          sending={sendingGift}
+          onSend={() => handleSendGiftChat(selectedGift, selectedQuantity)}
+          styles={styles}
+        />
       </KeyboardAvoidingView>
     </ScreenBackgroundView>
   );

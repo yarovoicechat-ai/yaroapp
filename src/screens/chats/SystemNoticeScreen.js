@@ -44,12 +44,13 @@ export default function SystemNoticeScreen() {
     const fetchNotices = async () => {
       try {
         setLoading(true);
-        const response = await apiUtil.get('/notifications', { params: { limit: 100 } });
+        const response = await apiUtil.get('/notifications', { params: { limit: 100, type: 'system' } });
         const payload = response.data?.data || {};
         const list = Array.isArray(payload.notifications) ? payload.notifications : [];
         if (isMounted) {
-          setUnreadCount(Number(payload.unreadCount) || 0);
-          setNotices(list.map((notice) => {
+          const systemMessages = list.filter((notice) => String(notice?.type || '').toLowerCase() === 'system');
+          setUnreadCount(Number(payload.unreadCount) || systemMessages.filter((notice) => !notice.isRead).length);
+          setNotices(systemMessages.map((notice) => {
             const isAssetGrant = notice.data?.action === 'MyItems' || notice.data?.screen === 'MyItems';
             return {
               ...notice,

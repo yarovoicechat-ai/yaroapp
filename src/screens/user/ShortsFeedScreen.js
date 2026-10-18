@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Dimensions,
   StatusBar,
-  Modal,
   TextInput,
   Share,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import ShortsCommentsModal from '../../components/shorts/ShortsCommentsModal';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import EmptyStateView from '../../components/EmptyStateView';
 
@@ -170,54 +170,15 @@ export default function ShortsFeedScreen() {
         }
       />
 
-      {/* Comments Modal */}
-      <Modal
+      <ShortsCommentsModal
         visible={commentsVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setCommentsVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setCommentsVisible(false)}
-        >
-          <View style={styles.commentSheet}>
-            <View style={styles.commentHeader}>
-              <Text style={styles.commentTitle}>Comments ({commentsList.length})</Text>
-              <TouchableOpacity onPress={() => setCommentsVisible(false)}>
-                <Icon name="close" size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={commentsList}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.commentItem}>
-                  <Text style={styles.commentAuthor}>{item.user}</Text>
-                  <Text style={styles.commentBody}>{item.text}</Text>
-                </View>
-              )}
-              style={{ maxHeight: 250 }}
-            />
-
-            <View style={styles.commentInputRow}>
-              <TextInput
-                style={styles.commentInput}
-                placeholder="Add a comment..."
-                placeholderTextColor="#94A3B8"
-                value={commentInput}
-                onChangeText={setCommentInput}
-                onSubmitEditing={handleAddComment}
-              />
-              <TouchableOpacity onPress={handleAddComment} style={styles.commentPostBtn}>
-                <Text style={styles.commentPostText}>Post</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setCommentsVisible(false)}
+        comments={commentsList}
+        value={commentInput}
+        onChange={setCommentInput}
+        onSubmit={handleAddComment}
+        styles={styles}
+      />
     </View>
   );
 }

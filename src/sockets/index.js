@@ -31,8 +31,10 @@ const refreshTokenGenerate = async (body) => {
 // 🚀 Init Socket
 // --------------------
 export const initSocket = async () => {
-  let token = await AsyncStorage.getItem("accessToken");
-  const refreshToken = await AsyncStorage.getItem("refreshToken");
+  let [token, refreshToken] = await Promise.all([
+    AsyncStorage.getItem("accessToken"),
+    AsyncStorage.getItem("refreshToken"),
+  ]);
 
   if (!token || !refreshToken) {
     console.log("⚠️ No tokens found, cannot connect socket");

@@ -7,7 +7,6 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  Modal,
   StatusBar,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -21,37 +20,14 @@ import { getUserAvatar } from '../../utils/avatarUtil';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
 import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
-import SvgaView from '../../components/SvgaView';
+import CosmeticAsset from '../../components/cosmetics/CosmeticAsset';
+import CosmeticFormatBadge from '../../components/cosmetics/CosmeticFormatBadge';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
 
-const ItemAsset = ({ item, style, resizeMode = 'contain' }) => {
-  const animationUrl = item?.animationUrl;
-  const imageUrl = item?.imageUrl || item?.image;
-  const source = animationUrl || imageUrl;
-  if (!source) return null;
+const ItemAsset = CosmeticAsset;
 
-  return (
-    <SvgaView
-      source={source}
-      style={style}
-      resizeMode={resizeMode}
-      loops={0}
-      fallbackImage={imageUrl}
-    />
-  );
-};
-
-const getFormatBadge = (item) => {
-  const anim = String(item?.animationUrl || '').toLowerCase();
-  const img = String(item?.imageUrl || item?.image || '').toLowerCase();
-  if (anim.includes('.svga')) return { label: '✨ SVGA Animation', color: '#8B5CF6', bg: '#F5F3FF' };
-  if (anim.includes('.gif') || img.includes('.gif')) return { label: '✨ Animated GIF', color: '#EC4899', bg: '#FDF2F8' };
-  if (anim.includes('.webp') || img.includes('.webp')) return { label: '✨ Animated WebP', color: '#06B6D4', bg: '#ECFEFF' };
-  if (img.includes('.png') || img.includes('.jpg') || img.includes('.jpeg')) return { label: '✨ HD Frame', color: '#10B981', bg: '#ECFDF5' };
-  return { label: '✨ Exclusive Item', color: '#F59E0B', bg: '#FFFBEB' };
-};
 
 const CATEGORIES = ['All', 'Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'Tag', 'Theme', 'Seat Skin', 'Unique ID', 'Profile Border', 'VIP', 'King of Kings', 'Chat Bubble', 'Tassel'];
 const EQUIPPABLE_TYPES = ['Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'VIP', 'Chat Bubble', 'Tassel', 'Theme', 'Profile Border', 'Unique ID'];
@@ -640,78 +616,15 @@ export default function MyItems() {
       </ScrollView>
 
       {/* 4. Item Detail & Preview Modal */}
-      <Modal
+      <InventoryItemPreviewModal
         visible={!!previewModalItem}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPreviewModalItem(null)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setPreviewModalItem(null)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={styles.modalContent}
-            onPress={(e) => e?.stopPropagation?.()}
-          >
-            {previewModalItem && (
-              <>
-                <View style={styles.modalHeader}>
-                  <View style={[styles.previewFormatTag, { backgroundColor: getFormatBadge(previewModalItem).bg }]}>
-                    <Text style={[styles.previewFormatTagText, { color: getFormatBadge(previewModalItem).color }]}>
-                      {getFormatBadge(previewModalItem).label}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => setPreviewModalItem(null)}
-                    style={styles.modalCloseBtn}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Icon name="close" size={20} color="#64748B" />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.modalVisualCenter}>
-                  {renderModalShowcase(previewModalItem)}
-                </View>
-
-                <Text style={styles.modalTitle}>{previewModalItem.name}</Text>
-
-                <View style={styles.modalBadgeRow}>
-                  <View style={styles.typeTag}>
-                    <Text style={styles.typeTagText}>{previewModalItem.type}</Text>
-                  </View>
-                  <View style={styles.validityTag}>
-                    <Icon name="time-outline" size={13} color="#D97706" style={{ marginRight: 3 }} />
-                    <Text style={styles.validityTagText}>{previewModalItem.validity}</Text>
-                  </View>
-                </View>
-
-                <Text style={styles.modalDescription}>
-                  {previewModalItem.description}
-                </Text>
-
-                {EQUIPPABLE_TYPES.includes(previewModalItem.type) && (
-                  <TouchableOpacity
-                    activeOpacity={0.88}
-                    style={[
-                      styles.modalActionBtn,
-                      previewModalItem.inUse ? styles.modalActionBtnInUse : styles.modalActionBtnUse,
-                    ]}
-                    onPress={() => handleToggleUse(previewModalItem)}
-                  >
-                    <Text style={styles.modalActionBtnText}>
-                      {previewModalItem.inUse ? 'Currently Active on Profile' : 'Equip This Item'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setPreviewModalItem(null)}
+        item={previewModalItem}
+        renderShowcase={renderModalShowcase}
+        equippableTypes={EQUIPPABLE_TYPES}
+        onToggleUse={handleToggleUse}
+        styles={styles}
+      />
     </View>
   );
 }
@@ -1077,15 +990,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  previewFormatTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  previewFormatTagText: {
-    fontSize: 11,
-    fontWeight: '800',
   },
   modalVisualCenter: {
     width: 170,

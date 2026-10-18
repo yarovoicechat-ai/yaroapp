@@ -32,7 +32,7 @@ const Notifications = () => {
 
     const fetchNotifications = useCallback(async () => {
         try {
-            const res = await apiUtil.get('/notifications');
+            const res = await apiUtil.get('/notifications?excludeSystem=true');
             if (res.data?.success && res.data?.data) {
                 const list = Array.isArray(res.data.data.notifications)
                     ? res.data.data.notifications
@@ -40,7 +40,8 @@ const Notifications = () => {
                     ? res.data.data
                     : [];
 
-                const formattedData = list.map((item, idx) => ({
+                const activityItems = list.filter((item) => String(item?.type || 'system').toLowerCase() !== 'system');
+                const formattedData = activityItems.map((item, idx) => ({
                     id: String(item?._id || item?.id || idx),
                     title: item?.title || 'Notification',
                     body: item?.message || item?.body || '',
@@ -51,10 +52,15 @@ const Notifications = () => {
                 }));
                 setMessages(formattedData);
 
-                const unreadCount = Number(res.data.data.unreadCount || 0);
-                if (unreadCount > 0) {
-                    apiUtil.patch('/notifications/read-all').catch(err => {
-                        console.log('Read all patch notice:', err?.message);
+                const unreadIds = activityItems
+                    .filter((item) => !item?.isRead)
+                    .map((item) => item?._id || item?.id)
+                    .filter(Boolean);
+                if (unreadIds.length > 0) {
+                    unreadIds.forEach((id) => {
+                        apiUtil.patch(`/notifications/${id}/read`).catch((err) => {
+                            console.log('Mark activity notification read notice:', err?.message);
+                        });
                     });
                     setMessages(current => current.map(item => ({ ...item, isRead: true })));
                 }

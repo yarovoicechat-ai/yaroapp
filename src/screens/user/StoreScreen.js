@@ -7,7 +7,6 @@ import {
   Image,
   StyleSheet,
   Dimensions,
-  Modal,
   StatusBar,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -22,8 +21,13 @@ import AvatarWithFrame from '../../components/AvatarWithFrame';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
-import SvgaView from '../../components/SvgaView';
 import { formatCompactBalance } from '../../utils/numberUtil';
+import StoreItemPreviewModal from '../../components/cosmetics/StoreItemPreviewModal';
+import StoreBundleDetailModal from '../../components/cosmetics/StoreBundleDetailModal';
+import StorePurchaseConfirmModal from '../../components/cosmetics/StorePurchaseConfirmModal';
+import CosmeticAsset from '../../components/cosmetics/CosmeticAsset';
+import CosmeticFormatBadge from '../../components/cosmetics/CosmeticFormatBadge';
+import DurationPicker from '../../components/cosmetics/DurationPicker';
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - 48) / 2;
@@ -56,32 +60,8 @@ const normalizeStoreItem = (item) => ({
   priceOptions: getPriceOptions(item),
 });
 
-const StoreAsset = ({ item, style, resizeMode = 'contain' }) => {
-  const animationUrl = item?.animationUrl;
-  const imageUrl = item?.coverImageUrl || item?.imageUrl || item?.image;
-  const source = animationUrl || imageUrl;
-  if (!source) return null;
+const StoreAsset = CosmeticAsset;
 
-  return (
-    <SvgaView
-      source={source}
-      style={style}
-      resizeMode={resizeMode}
-      loops={0}
-      fallbackImage={imageUrl}
-    />
-  );
-};
-
-const getFormatBadge = (item) => {
-  const anim = String(item?.animationUrl || '').toLowerCase();
-  const img = String(item?.imageUrl || item?.image || '').toLowerCase();
-  if (anim.includes('.svga')) return { label: '✨ SVGA Animation', color: '#8B5CF6', bg: '#F5F3FF' };
-  if (anim.includes('.gif') || img.includes('.gif')) return { label: '✨ Animated GIF', color: '#EC4899', bg: '#FDF2F8' };
-  if (anim.includes('.webp') || img.includes('.webp')) return { label: '✨ Animated WebP', color: '#06B6D4', bg: '#ECFEFF' };
-  if (img.includes('.png') || img.includes('.jpg') || img.includes('.jpeg')) return { label: '✨ HD Frame', color: '#10B981', bg: '#ECFDF5' };
-  return { label: '✨ Exclusive Item', color: '#F59E0B', bg: '#FFFBEB' };
-};
 
 // Store categories: Unique ID, Frames, Chat Bubble, Theme, Tassel, Entry, Mic Wave, Profile Card, Room Card, Profile Entry, VIP, King of Kings, Badge, Tag
 const STORE_CATEGORIES = ['Unique ID', 'Frames', 'Chat Bubble', 'Theme', 'Seat Skin', 'Tassel', 'Entry', 'Mic Wave', 'Profile Card', 'Room Card', 'Profile Entry', 'VIP', 'King of Kings', 'Badge', 'Tag'];
@@ -777,300 +757,47 @@ export default function StoreScreen() {
       </ScrollView>
 
       {/* Frame & Item Interactive Preview Popup Modal */}
-      <Modal
+      <StoreItemPreviewModal
         visible={previewModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPreviewModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.previewModalDialog}>
-            {/* Modal Header */}
-            <View style={styles.previewModalHeader}>
-              <View style={[styles.previewFormatTag, { backgroundColor: getFormatBadge(selectedItem).bg }]}>
-                <Text style={[styles.previewFormatTagText, { color: getFormatBadge(selectedItem).color }]}>
-                  {getFormatBadge(selectedItem).label}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setPreviewModalVisible(false)}
-                style={styles.previewModalCloseBtn}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Icon name="close" size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Central Animated Preview Box */}
-            <View style={styles.previewShowcaseBox}>
-              {activeCategory === 'Frames' ? (
-                <View style={styles.popupFrameWrap}>
-                  {(selectedItem?.animationUrl || !(selectedItem?.coverImageUrl || selectedItem?.imageUrl || selectedItem?.image)) ? (
-                    <AvatarWithFrame
-                      user={user}
-                      frame={selectedItem}
-                      size={110}
-                      showOnlineDot={false}
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: selectedItem.coverImageUrl || selectedItem.imageUrl || selectedItem.image }}
-                      style={styles.popupGenericAsset}
-                      resizeMode="contain"
-                    />
-                  )}
-                </View>
-              ) : activeCategory === 'Entry' ? (
-                <LinearGradient
-                  colors={['#0F0C20', '#1E1435', '#2E1065']}
-                  style={styles.popupEntryBox}
-                >
-                  <StoreAsset item={selectedItem} style={styles.popupEntryAsset} />
-                </LinearGradient>
-              ) : activeCategory === 'Mic Wave' ? (
-                <View style={styles.popupMicBox}>
-                  <View style={[styles.popupMicRingOuter, { borderColor: `${selectedItem?.previewColor || '#F59E0B'}50` }]}>
-                    <View style={[styles.popupMicRingInner, { borderColor: `${selectedItem?.previewColor || '#F59E0B'}80` }]}>
-                      <Image source={getUserAvatar(user)} style={styles.popupMicAvatar} />
-                    </View>
-                  </View>
-                  <View style={[styles.popupMicIconBadge, { backgroundColor: selectedItem?.previewColor || '#F59E0B' }]}>
-                    <MaterialCommunityIcons name="microphone" size={16} color="#FFFFFF" />
-                  </View>
-                </View>
-              ) : activeCategory === 'Chat Bubble' ? (
-                <View style={styles.popupBubbleBox}>
-                  <Image source={getUserAvatar(user)} style={styles.popupBubbleAvatar} />
-                  <View style={[styles.popupBubbleMsg, { backgroundColor: selectedItem?.bgColor || '#4F46E5' }]}>
-                    <Text style={[styles.popupBubbleMsgText, { color: selectedItem?.textColor || '#FFFFFF' }]}>
-                      Hello from Yaro Voice Club! ✨
-                    </Text>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.popupGenericBox}>
-                  <StoreAsset item={selectedItem} style={styles.popupGenericAsset} />
-                </View>
-              )}
-            </View>
-
-            {/* Item Title & Tag */}
-            <View style={styles.previewTitleRow}>
-              <Text style={styles.previewModalItemTitle} numberOfLines={1}>{selectedItem?.name}</Text>
-              {selectedItem?.tag ? (
-                <View style={styles.previewCategoryBadge}>
-                  <Text style={styles.previewCategoryBadgeText}>{selectedItem.tag}</Text>
-                </View>
-              ) : null}
-            </View>
-
-            {/* Description */}
-            <Text style={styles.previewModalItemDesc} numberOfLines={2}>
-              {selectedItem?.desc || 'Exclusive store item for your profile and party voice rooms.'}
-            </Text>
-
-            {/* Duration Selector */}
-            <Text style={styles.previewDurationLabel}>SELECT DURATION</Text>
-            <View style={styles.durationOptionsRow}>
-              {selectedPriceOptions.map(option => {
-                const active = selectedDurationDays === option.days;
-                return (
-                  <TouchableOpacity
-                    key={option.days}
-                    style={[styles.durationOption, active && styles.durationOptionActive]}
-                    onPress={() => setSelectedDurationDays(option.days)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.durationDaysText, active && styles.durationDaysTextActive]}>
-                      {option.days} Days
-                    </Text>
-                    <View style={styles.durationDiamondRow}>
-                      <Icon name="diamond" size={11} color={active ? '#FFFFFF' : '#0891B2'} />
-                      <Text style={[styles.durationPriceText, active && styles.durationPriceTextActive]}>
-                        {formatCompactBalance(option.diamonds)}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Price & Balance Row */}
-            <View style={styles.previewBalanceRow}>
-              <View style={styles.previewPriceCol}>
-                <Text style={styles.previewPriceLabel}>Cost:</Text>
-                <View style={styles.previewPriceValueWrap}>
-                  <Icon name="diamond" size={14} color="#06B6D4" style={{ marginRight: 4 }} />
-                  <Text style={styles.previewPriceValueText}>
-                    {selectedPrice === 0 ? 'FREE' : `${formatCompactBalance(selectedPrice)} Diamonds`}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.previewBalanceCol}>
-                <Text style={styles.previewBalanceLabel}>My Balance:</Text>
-                <Text style={styles.previewBalanceValueText}>
-                  {formatCompactBalance(currentDiamonds)} 💎
-                </Text>
-              </View>
-            </View>
-
-            {/* Buy / Recharge Action Button */}
-            {currentDiamonds >= selectedPrice ? (
-              <TouchableOpacity
-                style={styles.previewActionBtn}
-                onPress={handleConfirmPurchase}
-                disabled={purchasing}
-                activeOpacity={0.88}
-              >
-                <LinearGradient
-                  colors={['#7C3AED', '#EC4899']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.previewActionGradient}
-                >
-                  <Icon name="bag-check" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.previewActionBtnText}>
-                    {purchasing ? 'Unlocking Item...' : selectedPrice === 0 ? 'Unlock Free' : `Unlock for ${formatCompactBalance(selectedPrice)} Diamonds`}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.previewActionBtn}
-                onPress={() => {
-                  setPreviewModalVisible(false);
-                  navigation.navigate('Recharge');
-                }}
-                activeOpacity={0.88}
-              >
-                <LinearGradient
-                  colors={['#F59E0B', '#EF4444']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.previewActionGradient}
-                >
-                  <Icon name="wallet" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.previewActionBtnText}>
-                    Recharge Diamonds (Need {(selectedPrice - currentDiamonds).toLocaleString()} more)
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setPreviewModalVisible(false)}
+        onRecharge={() => { setPreviewModalVisible(false); navigation.navigate('Recharge'); }}
+        item={selectedItem}
+        activeCategory={activeCategory}
+        user={user}
+        priceOptions={selectedPriceOptions}
+        selectedDurationDays={selectedDurationDays}
+        onSelectDuration={setSelectedDurationDays}
+        price={selectedPrice}
+        diamonds={currentDiamonds}
+        onConfirmPurchase={handleConfirmPurchase}
+        purchasing={purchasing}
+        styles={styles}
+      />
 
       {/* VIP and King of Kings included items */}
-      <Modal visible={detailModalVisible} transparent animationType="fade" onRequestClose={() => setDetailModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalDialog}>
-            <TouchableOpacity onPress={() => setDetailModalVisible(false)} style={styles.detailClose}>
-              <Icon name="close" size={22} color="#64748B" />
-            </TouchableOpacity>
-            <View style={styles.detailPreview}>
-              {selectedItem?.animationUrl || selectedItem?.imageUrl ? (
-                <StoreAsset item={selectedItem} style={styles.detailAsset} />
-              ) : (
-                <MaterialCommunityIcons name="crown" size={58} color={selectedItem?.previewColor || '#F59E0B'} />
-              )}
-            </View>
-            <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
-            <Text style={styles.modalSub}>{selectedItem?.desc}</Text>
-            <Text style={styles.detailHeading}>Included with this {activeCategory} item</Text>
-            {(selectedItem?.benefits?.length ? selectedItem.benefits : [selectedItem?.desc || 'Premium membership']).map((benefit, index) => (
-              <View key={`${index}-${benefit}`} style={styles.detailBenefitRow}>
-                <Icon name="checkmark-circle" size={17} color="#10B981" />
-                <Text style={styles.detailBenefitText}>{benefit}</Text>
-              </View>
-            ))}
-            <TouchableOpacity style={styles.detailBuyButton} onPress={() => {
-              setDetailModalVisible(false);
-              handleOpenPurchase(selectedItem);
-            }}>
-              <Text style={styles.modalConfirmText}>{isFreeStoreItem(selectedItem) ? 'Unlock Free' : 'Choose Duration & Buy'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <StoreBundleDetailModal
+        visible={detailModalVisible}
+        onClose={() => setDetailModalVisible(false)}
+        item={selectedItem}
+        category={activeCategory}
+        isFreeItem={isFreeStoreItem}
+        onOpenPurchase={handleOpenPurchase}
+        styles={styles}
+      />
 
       {/* Purchase Confirmation Modal */}
-      <Modal
+      <StorePurchaseConfirmModal
         visible={confirmModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setConfirmModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalDialog}>
-            <View style={[styles.modalVisualWrap, { backgroundColor: `${selectedItem?.previewColor}20` }]}>
-              {selectedItem?.animationUrl || selectedItem?.imageUrl ? (
-                <StoreAsset item={selectedItem} style={styles.modalAsset} />
-              ) : (
-                <MaterialCommunityIcons name={selectedItem?.icon || 'gift'} size={46} color={selectedItem?.previewColor || '#7C3AED'} />
-              )}
-            </View>
-
-            <Text style={styles.modalTitle}>Confirm Purchase</Text>
-            <Text style={styles.modalSub}>
-              Choose how long you want to unlock <Text style={{ fontWeight: '700', color: '#0F172A' }}>{selectedItem?.name}</Text>.
-            </Text>
-
-            <View style={styles.durationOptionsRow}>
-              {selectedPriceOptions.map(option => {
-                const active = selectedDurationDays === option.days;
-                return (
-                  <TouchableOpacity
-                    key={option.days}
-                    style={[styles.durationOption, active && styles.durationOptionActive]}
-                    onPress={() => setSelectedDurationDays(option.days)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.durationDaysText, active && styles.durationDaysTextActive]}>{option.days} Days</Text>
-                    <View style={styles.durationDiamondRow}>
-                      <Icon name="diamond" size={11} color={active ? '#FFFFFF' : '#0891B2'} />
-                      <Text style={[styles.durationPriceText, active && styles.durationPriceTextActive]}>{option.diamonds.toLocaleString()}</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={styles.modalPriceRow}>
-              <Text style={styles.modalPriceLabel}>Cost:</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Icon name="diamond" size={16} color="#06B6D4" style={{ marginRight: 4 }} />
-                <Text style={styles.modalPriceValue}>
-                  {selectedPrice === 0 ? 'FREE' : `${selectedPrice.toLocaleString()} Diamonds`}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setConfirmModalVisible(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalConfirmBtn}
-                onPress={handleConfirmPurchase}
-                disabled={purchasing}
-              >
-                <LinearGradient
-                  colors={['#7C3AED', '#6D28D9']}
-                  style={styles.modalConfirmGradient}
-                >
-                  <Text style={styles.modalConfirmText}>
-                    {purchasing ? 'Purchasing...' : 'Confirm & Unlock'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setConfirmModalVisible(false)}
+        item={selectedItem}
+        priceOptions={selectedPriceOptions}
+        selectedDurationDays={selectedDurationDays}
+        onSelectDuration={setSelectedDurationDays}
+        price={selectedPrice}
+        purchasing={purchasing}
+        onConfirm={handleConfirmPurchase}
+        styles={styles}
+      />
     </View>
   );
 }
@@ -1612,47 +1339,6 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
   },
-  durationOptionsRow: {
-    width: '100%',
-    flexDirection: 'row',
-    gap: 7,
-    marginBottom: 14,
-  },
-  durationOption: {
-    flex: 1,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 12,
-    paddingVertical: 9,
-    backgroundColor: '#F8FAFC',
-  },
-  durationOptionActive: {
-    borderColor: '#7C3AED',
-    backgroundColor: '#7C3AED',
-  },
-  durationDaysText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  durationDaysTextActive: {
-    color: '#FFFFFF',
-  },
-  durationDiamondRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    marginTop: 4,
-  },
-  durationPriceText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0E7490',
-  },
-  durationPriceTextActive: {
-    color: '#FFFFFF',
-  },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -1836,15 +1522,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
-  },
-  previewFormatTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  previewFormatTagText: {
-    fontSize: 11,
-    fontWeight: '800',
   },
   previewModalCloseBtn: {
     width: 32,

@@ -8,13 +8,13 @@ import {
   StyleSheet,
   Image,
   Dimensions,
-  Modal,
   StatusBar,
   Clipboard,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import IonIcon from 'react-native-vector-icons/Ionicons';
+import AvatarSourceModal from '../../components/profile/AvatarSourceModal';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
@@ -554,79 +554,12 @@ const EditProfile = () => {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Sleek Custom Avatar Picker Modal */}
-      <Modal
+      <AvatarSourceModal
         visible={photoPickerVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPhotoPickerVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setPhotoPickerVisible(false)}
-        >
-          <TouchableOpacity activeOpacity={1} style={styles.modalContentCard}>
-            <View style={styles.modalHandleBar} />
-            <Text style={styles.modalHeading}>Change Profile Photo</Text>
-            <Text style={styles.modalSubheading}>
-              Select a source to instantly update your avatar
-            </Text>
-
-            <View style={styles.modalOptionsGrid}>
-              <TouchableOpacity
-                style={styles.modalTile}
-                activeOpacity={0.8}
-                onPress={() => {
-                  setPhotoPickerVisible(false);
-                  processPhotoUpload('camera');
-                }}
-              >
-                <LinearGradient
-                  colors={['#8B5CF6', '#7C3AED']}
-                  style={styles.modalTileIconBox}
-                >
-                  <Icon name="photo-camera" size={24} color="#FFFFFF" />
-                </LinearGradient>
-                <View style={styles.modalTileTextWrap}>
-                  <Text style={styles.modalTileTitle}>Take Live Photo</Text>
-                  <Text style={styles.modalTileDesc}>Open camera for a quick selfie</Text>
-                </View>
-                <IonIcon name="chevron-forward" size={18} color="#94A3B8" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalTile}
-                activeOpacity={0.8}
-                onPress={() => {
-                  setPhotoPickerVisible(false);
-                  processPhotoUpload('gallery');
-                }}
-              >
-                <LinearGradient
-                  colors={['#EC4899', '#D946EF']}
-                  style={styles.modalTileIconBox}
-                >
-                  <Icon name="photo-library" size={24} color="#FFFFFF" />
-                </LinearGradient>
-                <View style={styles.modalTileTextWrap}>
-                  <Text style={styles.modalTileTitle}>Choose From Gallery</Text>
-                  <Text style={styles.modalTileDesc}>Select from photos on device</Text>
-                </View>
-                <IonIcon name="chevron-forward" size={18} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={styles.modalCancelButton}
-              activeOpacity={0.7}
-              onPress={() => setPhotoPickerVisible(false)}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setPhotoPickerVisible(false)}
+        onSelectSource={(source) => { setPhotoPickerVisible(false); processPhotoUpload(source); }}
+        styles={styles}
+      />
     </View>
   );
 };

@@ -7,11 +7,12 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  Modal,
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import KingAssetPreviewModal from '../../components/membership/KingAssetPreviewModal';
+import KingRulesModal from '../../components/membership/KingRulesModal';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -631,78 +632,19 @@ export default function KingOfKingsScreen() {
       </View>
 
       {/* Asset Preview Modal */}
-      <Modal
+            <KingAssetPreviewModal
         visible={Boolean(selectedAsset)}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setSelectedAsset(null)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setSelectedAsset(null)}
-        >
-          <View style={styles.assetModalCard}>
-            <LinearGradient
-              colors={['#2A1807', '#150C03']}
-              style={styles.assetModalGradient}
-            >
-              <View style={styles.assetModalIconCircle}>
-                <Icon
-                  name={selectedAsset?.icon || 'sparkles'}
-                  size={36}
-                  color="#FDE047"
-                />
-              </View>
-
-              <Text style={styles.assetModalTitle}>{selectedAsset?.name}</Text>
-              <Text style={styles.assetModalStatus}>
-                {selectedAsset?.unlocked ? '✨ UNLOCKED IN THIS TIER' : '🔒 UNLOCKS IN HIGHER NOBILITY'}
-              </Text>
-
-              <Text style={styles.assetModalDesc}>{selectedAsset?.desc}</Text>
-
-              <TouchableOpacity
-                style={styles.modalCloseBtn}
-                onPress={() => setSelectedAsset(null)}
-              >
-                <Text style={styles.modalCloseText}>Got It</Text>
-              </TouchableOpacity>
-            </LinearGradient>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setSelectedAsset(null)}
+        asset={selectedAsset}
+        styles={styles}
+      />
 
       {/* Nobility Rules Modal */}
-      <Modal
+            <KingRulesModal
         visible={showRuleModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowRuleModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowRuleModal(false)}
-        >
-          <View style={styles.rulesModalCard}>
-            <LinearGradient colors={['#1F1306', '#0C0702']} style={styles.rulesModalGradient}>
-              <View style={styles.rulesHeader}>
-                <Text style={styles.rulesTitle}>King of Kings Nobility Rules</Text>
-                <TouchableOpacity onPress={() => setShowRuleModal(false)}>
-                  <Icon name="close" size={22} color="#FDE047" />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={{ maxHeight: 300 }}>
-                <Text style={styles.ruleItem}>1. Nobility is valid for 30 days upon activation.</Text>
-                <Text style={styles.ruleItem}>2. As your rank advances from Knight to King, you unlock more assets (up to 11/11) and exclusive privileges (up to 13/13).</Text>
-                <Text style={styles.ruleItem}>3. Daily coins can be claimed once every 24 hours.</Text>
-                <Text style={styles.ruleItem}>4. Custom Vanity IDs, Animated Badges, and Anti-Kick protections remain active throughout your subscription duration.</Text>
-              </ScrollView>
-            </LinearGradient>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setShowRuleModal(false)}
+        styles={styles}
+      />
     </View>
   );
 }

@@ -8,8 +8,6 @@ import {
   Image,
   Dimensions,
   FlatList,
-  Modal,
-  TextInput,
   View as ScreenBackgroundView,
   StatusBar as ScreenBackgroundStatusBar,
   StyleSheet as ScreenBackgroundStyleSheet,
@@ -27,16 +25,17 @@ import { useVoiceRoom } from '../../context/VoiceRoomContext';
 import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
-import { requestCameraAndCapture, requestGalleryAndSelect } from '../../utils/verificationMedia';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { countries } from '../../constants/countries';
+import { ROOM_CATEGORY_TAGS, ROOM_SEAT_OPTIONS } from '../../constants/party';
 import AdminBannerCarousel from '../../components/AdminBannerCarousel';
+import CountryPickerModal from '../../components/party/CountryPickerModal';
+import CreateRoomModal from '../../components/party/CreateRoomModal';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 44) / 2;
 
 const TOP_NAV_TABS = ['Follow', 'Explore', 'Nearby', 'Beauty', 'New'];
-const SEAT_OPTIONS = [8, 10, 12, 15];
 
 const POPULAR_COUNTRY_CHIPS = [
   { id: 'all', name: '', label: '🔥 All / Popular', flag: '🔥' },
@@ -49,7 +48,6 @@ const POPULAR_COUNTRY_CHIPS = [
   { id: 'gb', name: 'United Kingdom', label: 'UK', flag: '🇬🇧' },
   { id: 'more', name: 'MORE', label: 'More 🌐', flag: '🌐' },
 ];
-const CATEGORY_TAGS = ['Chat 💬', 'Music 🎵', 'Dating 💖', 'Gaming 🎮', 'Chill ☕'];
 
 export default function PartyScreen() {
   const navigation = useNavigation();
@@ -70,7 +68,7 @@ export default function PartyScreen() {
   const [roomAboutInput, setRoomAboutInput] = useState('');
   const [selectedCover, setSelectedCover] = useState(user?.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp');
   const [selectedSeatCount, setSelectedSeatCount] = useState(8);
-  const [selectedCategory, setSelectedCategory] = useState('Music 🎵');
+  const [selectedCategory, setSelectedCategory] = useState(ROOM_CATEGORY_TAGS[1]);
   const [roomMode, setRoomMode] = useState('Public');
 
   // Real rooms state - No dummy data
@@ -93,7 +91,6 @@ export default function PartyScreen() {
     try {
       setLoadingRooms(true);
       setRoomsError(false);
-      setRooms([]);
       const res = await apiUtil.get('/voice-room/rooms', { params: selectedCountry ? { country: selectedCountry } : {} });
       if (requestId !== roomFetchSeq.current) return;
       const list = res.data?.data?.rooms || res.data?.data || [];
@@ -106,7 +103,6 @@ export default function PartyScreen() {
       if (requestId !== roomFetchSeq.current) return;
       console.log('Error fetching active rooms:', err?.message);
       setRoomsError(true);
-      setRooms([]);
     } finally {
       if (requestId === roomFetchSeq.current) setLoadingRooms(false);
     }
@@ -484,111 +480,24 @@ export default function PartyScreen() {
         )}
       </ScrollView>
 
-      {/* Modern Searchable Country Picker Modal */}
-      <Modal visible={countryPickerVisible} transparent animationType="slide" onRequestClose={() => setCountryPickerVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.65)', justifyContent: 'flex-end' }}>
-          <TouchableOpacity style={{ flex: 1 }} onPress={() => setCountryPickerVisible(false)} activeOpacity={1} />
-          <View style={{
-            backgroundColor: '#FFFFFF',
-            borderTopLeftRadius: 30,
-            borderTopRightRadius: 30,
-            padding: 20,
-            paddingBottom: Math.max(20, bottomTabBarPadding + 14),
-            maxHeight: '80%',
-          }}>
-            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 14 }} />
-
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View>
-                <Text style={{ color: '#0F172A', fontSize: 20, fontWeight: '900' }}>Select Country</Text>
-                <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>Explore voice rooms from around the world</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setCountryPickerVisible(false)}
-                style={{ width: 34, height: 34, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Icon name="close" size={18} color="#475569" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Search Input */}
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: '#F8FAFC',
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: '#E2E8F0',
-              paddingHorizontal: 12,
-              marginTop: 14,
-              marginBottom: 10,
-            }}>
-              <Icon name="search" size={18} color="#94A3B8" />
-              <TextInput
-                value={countrySearch}
-                onChangeText={setCountrySearch}
-                placeholder="Search country name..."
-                placeholderTextColor="#94A3B8"
-                style={{ flex: 1, color: '#0F172A', paddingVertical: 10, paddingHorizontal: 8, fontSize: 13, fontWeight: '600' }}
-              />
-              {countrySearch.length > 0 && (
-                <TouchableOpacity onPress={() => setCountrySearch('')}>
-                  <Icon name="close-circle" size={16} color="#94A3B8" />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Reset to All Countries */}
-            <TouchableOpacity
-              onPress={() => { setSelectedCountry(''); setCountryPickerVisible(false); }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: !selectedCountry ? '#EEF2FF' : '#F8FAFC',
-                borderWidth: 1,
-                borderColor: !selectedCountry ? '#6366F1' : '#E2E8F0',
-                borderRadius: 14,
-                padding: 12,
-                marginBottom: 8,
-              }}
-            >
-              <Text style={{ fontSize: 18, marginRight: 10 }}>🔥</Text>
-              <Text style={{ color: !selectedCountry ? '#4F46E5' : '#0F172A', fontSize: 14, fontWeight: '800', flex: 1 }}>All Countries (Popular)</Text>
-              {!selectedCountry && <Icon name="checkmark-circle" size={20} color="#6366F1" />}
-            </TouchableOpacity>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {countries
-                .filter(c => c.name.toLowerCase().includes(countrySearch.trim().toLowerCase()))
-                .map(c => {
-                  const isCur = selectedCountry && selectedCountry.toLowerCase() === c.name.toLowerCase();
-                  return (
-                    <TouchableOpacity
-                      key={c.id || c.name}
-                      onPress={() => { setSelectedCountry(c.name); setCountryPickerVisible(false); setCountrySearch(''); }}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: isCur ? '#EEF2FF' : '#FFFFFF',
-                        borderBottomWidth: 1,
-                        borderBottomColor: '#F8FAFC',
-                        paddingVertical: 12,
-                        paddingHorizontal: 8,
-                        borderRadius: 10,
-                      }}
-                    >
-                      <Text style={{ fontSize: 20, marginRight: 12 }}>{c.flag}</Text>
-                      <Text style={{ color: isCur ? '#4F46E5' : '#1E293B', fontSize: 15, fontWeight: isCur ? '800' : '600', flex: 1 }}>{c.name}</Text>
-                      <Text style={{ color: '#94A3B8', fontSize: 12, marginRight: 10 }}>{c.code}</Text>
-                      <Icon name={isCur ? 'checkmark-circle' : 'chevron-forward'} size={18} color={isCur ? '#6366F1' : '#CBD5E1'} />
-                    </TouchableOpacity>
-                  );
-                })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
+      <CountryPickerModal
+        visible={countryPickerVisible}
+        onClose={() => setCountryPickerVisible(false)}
+        bottomPadding={bottomTabBarPadding}
+        countries={countries}
+        search={countrySearch}
+        onSearchChange={setCountrySearch}
+        selectedCountry={selectedCountry}
+        onSelectCountry={(country) => {
+          setSelectedCountry(country);
+          setCountryPickerVisible(false);
+          setCountrySearch('');
+        }}
+        onSelectAll={() => {
+          setSelectedCountry('');
+          setCountryPickerVisible(false);
+        }}
+      />
       {/* FLOATING "GO LIVE" BUTTON (JUST ABOVE BOTTOM TAB BAR) */}
       <View
         pointerEvents="box-none"
@@ -617,184 +526,31 @@ export default function PartyScreen() {
       {/* ============================================================== */}
       {/* GO LIVE: CREATE VOICE PARTY ROOM MODAL                          */}
       {/* ============================================================== */}
-      <Modal
+      <CreateRoomModal
         visible={goLiveModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setGoLiveModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalSheet, { paddingBottom: bottomTabBarPadding + 20 }]}>
-            {/* Modal Header */}
-            <View style={styles.modalHeaderRow}>
-              <View style={styles.modalTitleBadge}>
-                <MaterialCommunityIcons name="broadcast" size={20} color="#EC4899" />
-                <Text style={styles.modalSheetTitle}>Start Your Voice Room</Text>
-              </View>
-              <TouchableOpacity onPress={() => setGoLiveModalVisible(false)} style={styles.closeModalBtn}>
-                <Icon name="close" size={22} color="#64748B" />
-              </TouchableOpacity>
-            </View>
+        onClose={() => setGoLiveModalVisible(false)}
+        bottomTabBarPadding={bottomTabBarPadding}
+        styles={styles}
+        user={user}
+        roomTitleInput={roomTitleInput}
+        setRoomTitleInput={setRoomTitleInput}
+        roomAboutInput={roomAboutInput}
+        setRoomAboutInput={setRoomAboutInput}
+        selectedCover={selectedCover}
+        setSelectedCover={setSelectedCover}
+        selectedSeatCount={selectedSeatCount}
+        setSelectedSeatCount={setSelectedSeatCount}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        roomMode={roomMode}
+        setRoomMode={setRoomMode}
+        seatOptions={ROOM_SEAT_OPTIONS}
+        categoryTags={ROOM_CATEGORY_TAGS}
+        onCreateRoom={handleCreateRoom}
+        onCoverSelected={(image, source) => AlertService.show(source === 'gallery' ? 'Cover Selected' : 'Photo Captured', source === 'gallery' ? 'Cover image selected from gallery' : 'New cover photo captured', 'success')}
+        onCoverError={(error, source) => AlertService.show(source === 'gallery' ? 'Upload Error' : 'Camera Error', error?.message || (source === 'gallery' ? 'Failed to select image' : 'Failed to capture photo'), 'error')}
+      />
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Room Name */}
-              <Text style={styles.inputFieldLabel}>Room Name *</Text>
-              <TextInput
-                style={styles.textInputField}
-                placeholder="Give your room a catchy title..."
-                placeholderTextColor="#94A3B8"
-                value={roomTitleInput}
-                onChangeText={setRoomTitleInput}
-              />
-
-              {/* Room About / Topic */}
-              <Text style={styles.inputFieldLabel}>Room Announcement / About</Text>
-              <TextInput
-                style={[styles.textInputField, { height: 60, textAlignVertical: 'top' }]}
-                placeholder="What's this room about? (e.g. Hindi songs, chill chit-chat)"
-                placeholderTextColor="#94A3B8"
-                multiline
-                value={roomAboutInput}
-                onChangeText={setRoomAboutInput}
-              />
-
-              {/* Cover Image Manual Upload */}
-              <Text style={styles.inputFieldLabel}>Room Cover Photo</Text>
-              <View style={styles.manualUploadAvatarBox}>
-                <Image
-                  source={{ uri: selectedCover || user?.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
-                  style={styles.manualUploadAvatarPreview}
-                />
-                <View style={styles.manualUploadActionsCol}>
-                  <Text style={styles.manualUploadTitle}>Custom Cover Photo</Text>
-                  <Text style={styles.manualUploadSub}>Pick from gallery or capture with camera</Text>
-                  <View style={styles.uploadBtnRow}>
-                    <TouchableOpacity
-                      style={styles.uploadMiniBtn}
-                      activeOpacity={0.8}
-                      onPress={async () => {
-                        try {
-                          const picked = await requestGalleryAndSelect();
-                          if (picked?.uri) {
-                            setSelectedCover(picked.uri);
-                            AlertService.show('Cover Selected', 'Cover image selected from gallery', 'success');
-                          }
-                        } catch (e) {
-                          AlertService.show('Upload Error', e?.message || 'Failed to select image', 'error');
-                        }
-                      }}
-                    >
-                      <Icon name="images-outline" size={16} color="#6366F1" style={{ marginRight: 5 }} />
-                      <Text style={styles.uploadMiniBtnText}>Gallery</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.uploadMiniBtn}
-                      activeOpacity={0.8}
-                      onPress={async () => {
-                        try {
-                          const captured = await requestCameraAndCapture('back');
-                          if (captured?.uri) {
-                            setSelectedCover(captured.uri);
-                            AlertService.show('Photo Captured', 'New cover photo captured', 'success');
-                          }
-                        } catch (e) {
-                          AlertService.show('Camera Error', e?.message || 'Failed to capture photo', 'error');
-                        }
-                      }}
-                    >
-                      <Icon name="camera-outline" size={16} color="#EC4899" style={{ marginRight: 5 }} />
-                      <Text style={styles.uploadMiniBtnText}>Camera</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-
-              {/* Number of Seats Selector */}
-              <Text style={styles.inputFieldLabel}>Number of Speaker Seats</Text>
-              <View style={styles.chipsRow}>
-                {SEAT_OPTIONS.map((count) => {
-                  const isSelected = selectedSeatCount === count;
-                  return (
-                    <TouchableOpacity
-                      key={count}
-                      onPress={() => setSelectedSeatCount(count)}
-                      style={[styles.seatChip, isSelected && styles.seatChipActive]}
-                      activeOpacity={0.75}
-                    >
-                      <MaterialCommunityIcons
-                        name="seat-recline-normal"
-                        size={16}
-                        color={isSelected ? '#7C3AED' : '#64748B'}
-                      />
-                      <Text style={[styles.seatChipText, isSelected && styles.seatChipTextActive]}>
-                        {count} Seats
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Room Category Tag */}
-              <Text style={styles.inputFieldLabel}>Room Category Tag</Text>
-              <View style={styles.chipsRow}>
-                {CATEGORY_TAGS.map((tag) => {
-                  const isSelected = selectedCategory === tag;
-                  return (
-                    <TouchableOpacity
-                      key={tag}
-                      onPress={() => setSelectedCategory(tag)}
-                      style={[styles.categoryChip, isSelected && styles.categoryChipActive]}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextActive]}>
-                        {tag}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Room Privacy / Mode */}
-              <Text style={styles.inputFieldLabel}>Room Access Mode</Text>
-              <View style={styles.chipsRow}>
-                {['Public', 'Friends Only', 'VIP'].map((mode) => {
-                  const isSelected = roomMode === mode;
-                  return (
-                    <TouchableOpacity
-                      key={mode}
-                      onPress={() => setRoomMode(mode)}
-                      style={[styles.seatChip, isSelected && styles.seatChipActive]}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[styles.seatChipText, isSelected && styles.seatChipTextActive]}>
-                        {mode === 'Public' ? '🌐 Public' : mode === 'Friends Only' ? '👥 Friends' : '🔒 VIP'}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Go Live Submit Button */}
-              <TouchableOpacity
-                style={styles.submitGoLiveBtn}
-                onPress={handleCreateRoom}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={['#EC4899', '#8B5CF6', '#6366F1']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.submitGoLiveGradient}
-                >
-                  <MaterialCommunityIcons name="broadcast" size={20} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.submitGoLiveText}>Launch Room (Go Live Now)</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </ScreenBackgroundView>
   );
 }

@@ -36,16 +36,36 @@ export default function AvatarWithFrame({
     user?.storeInventory?.find(
       (item) =>
         String(item?.name || '').toLowerCase() === frameName &&
-        (item?.animationUrl || item?.imageUrl || item?.image || item?.catalogItem),
+        (item?.animationUrl || item?.frameOverlayUrl || item?.overlayUrl || item?.frameImageUrl || item?.imageUrl || item?.image || item?.catalogItem),
     ),
   );
-  // Frame imageUrl/image is a store cover. Only animationUrl is the actual
-  // overlay asset, so an opaque cover can never hide the user's avatar.
-  const uploadedFrame = resolvedFrame?.animationUrl
+  // imageUrl/image are commonly opaque store covers. Only dedicated overlay
+  // fields are accepted for static images so they cannot hide the avatar.
+  const hasResolvedOverlay = Boolean(
+    resolvedFrame?.animationUrl ||
+    resolvedFrame?.frameOverlayUrl ||
+    resolvedFrame?.overlayUrl ||
+    resolvedFrame?.frameImageUrl ||
+    resolvedFrame?.transparentImageUrl,
+  );
+  const hasInventoryOverlay = Boolean(
+    inventoryFrame?.animationUrl ||
+    inventoryFrame?.frameOverlayUrl ||
+    inventoryFrame?.overlayUrl ||
+    inventoryFrame?.frameImageUrl ||
+    inventoryFrame?.transparentImageUrl,
+  );
+  const uploadedFrame = hasResolvedOverlay
     ? resolvedFrame
-    : inventoryFrame?.animationUrl
+    : hasInventoryOverlay
       ? inventoryFrame
       : null;
+  const frameOverlaySource =
+    uploadedFrame?.frameOverlayUrl ||
+    uploadedFrame?.overlayUrl ||
+    uploadedFrame?.frameImageUrl ||
+    uploadedFrame?.transparentImageUrl ||
+    null;
 
   // Resolve user avatar strictly - never let the frame image or SVGA become the user's avatar
   const frameAssetUrl = uploadedFrame?.imageUrl || null;
@@ -67,14 +87,12 @@ export default function AvatarWithFrame({
     avatar = getUserAvatar(null, user?.gender);
   }
 
-  const hasFrame = Boolean(
-    uploadedFrame?.animationUrl ||
-    (resolvedFrame && frameName && frameName !== 'default' && frameName !== 'none' && frameName !== 'null')
-  );
+  const isDefaultFrame = ['default', 'default frame', 'none', 'no frame', 'null'].includes(frameName.trim());
+  const hasFrame = Boolean(uploadedFrame?.animationUrl || frameOverlaySource || (resolvedFrame && frameName && !isDefaultFrame));
 
   // Render specific luxury frame ornament overlays (fallback when no asset file uploaded)
   const renderFrameDecorations = () => {
-    if (!hasFrame || uploadedFrame?.animationUrl) return null;
+    if (!hasFrame || uploadedFrame?.animationUrl || frameOverlaySource) return null;
 
     // 1. ROSE FRAME
     if (frameName.includes('rose')) {
@@ -184,25 +202,25 @@ export default function AvatarWithFrame({
     );
   };
 
-  // Frame art is always laid out against the avatar's logical size, not the
-  // uploaded file's pixel dimensions. `contain` in SvgaView then preserves the
-  // source aspect ratio for square, wide, or tall PNG/GIF/WebP/SVGA assets.
-  const requestedFrameScale = Number(
-    uploadedFrame?.frameScale || uploadedFrame?.metadata?.frameScale || resolvedFrame?.frameScale || 1.42,
-  );
-  const frameScale = Number.isFinite(requestedFrameScale)
-    ? Math.min(1.8, Math.max(1.2, requestedFrameScale))
+  // Keep the user's avatar at exactly `size`; only the frame artwork grows
+  // around it. Asset scale may be supplied as a ratio (1.4) or a percentage
+  // (140) by the panel/API. The resulting overlay always tracks avatar size.
+  const configuredFrameScale =
+    uploadedFrame?.frameScale ??
+    uploadedFrame?.metadata?.frameScale ??
+    resolvedFrame?.frameScale ??
+    resolvedFrame?.metadata?.frameScale;
+  const frameScaleText = String(configuredFrameScale ?? '').trim();
+  const parsedFrameScale = Number(frameScaleText.replace(/%$/, ''));
+  const normalizedFrameScale = frameScaleText.endsWith('%')
+    ? parsedFrameScale / 100
+    : parsedFrameScale > 3 && parsedFrameScale <= 300
+      ? parsedFrameScale / 100
+      : parsedFrameScale;
+  const frameScale = Number.isFinite(normalizedFrameScale) && normalizedFrameScale > 0
+    ? Math.min(2.5, Math.max(0.6, normalizedFrameScale))
     : 1.42;
-  const frameSize = Math.round(size * frameScale);
-
-  const getFrameColor = () => {
-    if (frameName.includes('rose') || frameName.includes('sakura') || frameName.includes('pink')) return '#EC4899';
-    if (frameName.includes('wing') || frameName.includes('gold') || frameName.includes('crown') || frameName.includes('king') || frameName.includes('royal')) return '#F59E0B';
-    if (frameName.includes('neon') || frameName.includes('cyber') || frameName.includes('rockstar')) return '#06B6D4';
-    if (frameName.includes('dragon') || frameName.includes('ruby') || frameName.includes('fire')) return '#EF4444';
-    if (frameName.includes('crystal') || frameName.includes('purple')) return '#A855F7';
-    return resolvedFrame?.previewColor || resolvedFrame?.borderColor || '#F59E0B';
-  };
+  const frameSize = Math.max(1, Math.round(size * frameScale));
 
   return (
     <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }, style]}>
@@ -231,24 +249,7 @@ export default function AvatarWithFrame({
         />
       </View>
 
-      {/* Luxury Circular Frame Border (Always present when user has an active frame) */}
-      {hasFrame && (
-        <View
-          style={[
-            styles.circularFrameRing,
-            {
-              width: size + 4,
-              height: size + 4,
-              borderRadius: (size + 4) / 2,
-              borderColor: getFrameColor(),
-              borderWidth: Math.max(2.5, Math.round(size * 0.05)),
-            },
-          ]}
-          pointerEvents="none"
-        />
-      )}
-
-      {/* Uploaded Animated SVGA or Static Frame Overlay */}
+      {/* Uploaded frame overlay scales with the avatar without shrinking it. */}
       {uploadedFrame?.animationUrl ? (
         <View
           style={{
@@ -270,6 +271,20 @@ export default function AvatarWithFrame({
             resizeMode="contain"
           />
         </View>
+      ) : frameOverlaySource ? (
+        <Image
+          source={typeof frameOverlaySource === 'string' ? { uri: frameOverlaySource } : frameOverlaySource}
+          style={{
+            position: 'absolute',
+            top: (size - frameSize) / 2,
+            left: (size - frameSize) / 2,
+            width: frameSize,
+            height: frameSize,
+            zIndex: 10,
+          }}
+          resizeMode="contain"
+          pointerEvents="none"
+        />
       ) : null}
 
       {/* Frame Decorative Ornaments (Fallback) */}
@@ -301,16 +316,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  circularFrameRing: {
-    position: 'absolute',
-    backgroundColor: 'transparent',
-    zIndex: 9,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.6,
-    shadowRadius: 4,
-    elevation: 4,
   },
   avatarImage: {
     backgroundColor: '#F1F5F9',

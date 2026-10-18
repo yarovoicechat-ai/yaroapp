@@ -9,7 +9,6 @@ import {
   Dimensions,
   ActivityIndicator,
   StatusBar,
-  Modal,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -523,27 +522,12 @@ function LevelScreen() {
           })}
         </View>
       </ScrollView>
-      <Modal visible={Boolean(selectedReward)} transparent animationType="fade" onRequestClose={() => setSelectedReward(null)}>
-        <View style={styles.rewardModalOverlay}>
-          <View style={styles.rewardModalCard}>
-            <TouchableOpacity onPress={() => setSelectedReward(null)} style={styles.rewardModalClose}>
-              <IonIcon name="close" size={22} color="#CBD5E1" />
-            </TouchableOpacity>
-            <View style={styles.rewardModalPreview}>
-              {selectedReward?.type === 'frame' && <Image source={getUserAvatar(user)} style={styles.rewardModalAvatar} />}
-              {selectedReward?.animationUrl && /\.svga(?:\?|$)/i.test(selectedReward.animationUrl) ? (
-                <SvgaPlayer source={selectedReward.animationUrl} style={styles.rewardModalAsset} loops={0} />
-              ) : selectedReward?.animationUrl || selectedReward?.imageUrl ? (
-                <Image source={{ uri: selectedReward.animationUrl || selectedReward.imageUrl }} style={styles.rewardModalAsset} resizeMode="contain" />
-              ) : (
-                <MaterialCommunityIcons name={selectedReward?.type === 'frame' ? 'circle-double' : 'car-sports'} size={72} color="#C084FC" />
-              )}
-            </View>
-            <Text style={styles.rewardModalTitle}>{selectedReward?.name}</Text>
-            <Text style={styles.rewardModalDuration}>{selectedReward?.durationDays === 0 ? 'Permanent reward' : selectedReward?.durationDays ? `${selectedReward.durationDays} days after unlock` : 'Level reward preview'}</Text>
-          </View>
-        </View>
-      </Modal>
+            <LevelRewardDetailModal
+        reward={selectedReward}
+        user={user}
+        onClose={() => setSelectedReward(null)}
+        styles={styles}
+      />
     </View>
   );
 }

@@ -8,11 +8,12 @@ import {
   StatusBar,
   Dimensions,
   Image,
-  Modal,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import VIPActivationConfirmModal from '../../components/membership/VIPActivationConfirmModal';
+import VIPPerkModal from '../../components/membership/VIPPerkModal';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -310,79 +311,22 @@ const VIPScreen = () => {
       </ScrollView>
 
       {/* Confirmation Modal */}
-      <Modal
+            <VIPActivationConfirmModal
         visible={showConfirmModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowConfirmModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Confirm VIP Activation</Text>
-              <TouchableOpacity onPress={() => setShowConfirmModal(false)}>
-                <Ionicons name="close" size={22} color="#64748B" />
-              </TouchableOpacity>
-            </View>
+        onClose={() => setShowConfirmModal(false)}
+        tier={currentTierData}
+        packageOption={pkgData}
+        onConfirm={handleActivate}
+        styles={styles}
+      />
 
-            <Text style={styles.modalDesc}>
-              You are activating <Text style={{ fontWeight: '700', color: '#0F172A' }}>{currentTierData.name}</Text> for{' '}
-              <Text style={{ fontWeight: '700', color: '#0F172A' }}>{pkgData.title}</Text>.
-            </Text>
-
-            <View style={styles.modalCostRow}>
-              <Text style={styles.modalCostLabel}>Total Price:</Text>
-              <View style={styles.modalCostVal}>
-                <MaterialCommunityIcons name="diamond-stone" size={18} color="#0284C7" />
-                <Text style={styles.modalCostText}>{formatCompactBalance(pkgData.diamonds)} Diamonds</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.modalConfirmBtn}
-              onPress={handleActivate}
-              activeOpacity={0.88}
-            >
-              <LinearGradient
-                colors={['#4F46E5', '#6366F1']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.modalConfirmGradient}
-              >
-                <Text style={styles.modalConfirmText}>Confirm & Pay</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
+            <VIPPerkModal
         visible={Boolean(selectedPerk)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedPerk(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Included in {currentTierData.name}</Text>
-              <TouchableOpacity onPress={() => setSelectedPerk(null)}>
-                <Ionicons name="close" size={22} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-            <View style={[styles.perkIconCircle, { alignSelf: 'center', marginVertical: 14, backgroundColor: `${currentTierData.color}18` }]}>
-              <MaterialCommunityIcons name={selectedPerk?.icon || 'crown'} size={28} color={currentTierData.color} />
-            </View>
-            <Text style={[styles.modalTitle, { textAlign: 'center' }]}>{selectedPerk?.title}</Text>
-            <Text style={[styles.modalDesc, { textAlign: 'center', marginTop: 8 }]}>{selectedPerk?.desc}</Text>
-            <TouchableOpacity style={styles.modalConfirmBtn} onPress={() => setSelectedPerk(null)}>
-              <LinearGradient colors={currentTierData.gradient} style={styles.modalConfirmGradient}>
-                <Text style={styles.modalConfirmText}>Got it</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setSelectedPerk(null)}
+        tier={currentTierData}
+        perk={selectedPerk}
+        styles={styles}
+      />
     </View>
   );
 };

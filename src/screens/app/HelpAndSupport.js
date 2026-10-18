@@ -11,7 +11,6 @@ import {
   Platform,
   Dimensions,
   Image,
-  Modal,
   KeyboardAvoidingView,
   Linking,
   StatusBar,
@@ -27,6 +26,7 @@ import { apiUtil, getApiErrorMessage } from '../../utils/apiUtil';
 import { uploadToCloudinary } from '../../utils/cloudinaryUtil';
 import { useTranslation } from 'react-i18next';
 import AnimatedTitleLine from '../../components/AnimatedTitleLine';
+import TicketDetailModal from '../../components/support/TicketDetailModal';
 import { AlertService } from '../../utils/AlertService';
 
 const { width } = Dimensions.get('window');
@@ -746,127 +746,20 @@ const HelpAndSupport = () => {
           />
         )}
 
-        {/* Ticket Detail Modal */}
-        <Modal
+        <TicketDetailModal
           visible={showTicketDetail}
-          animationType="slide"
-          onRequestClose={() => setShowTicketDetail(false)}
-        >
-          <View style={styles.detailContainer}>
-            <View style={[styles.detailHeader, { paddingTop: topSafeInset + 10 }]}>
-              <TouchableOpacity
-                onPress={() => setShowTicketDetail(false)}
-                style={styles.detailBackButton}
-              >
-                <IonIcon name="chevron-back" size={24} color="#1E293B" />
-              </TouchableOpacity>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.detailTitle}>{selectedTicket?.ticketNumber || 'Ticket'}</Text>
-                <Text style={styles.detailSubtitle} numberOfLines={1}>
-                  {selectedTicket?.reason}
-                </Text>
-              </View>
-              {selectedTicket && (
-                <View
-                  style={[
-                    styles.statusPill,
-                    { backgroundColor: `${getStatusColor(selectedTicket.status)}18` },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusPillText,
-                      { color: getStatusColor(selectedTicket.status) },
-                    ]}
-                  >
-                    {getStatusLabel(selectedTicket.status)}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Conversation Messages */}
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-            >
-              {selectedTicket && (
-                <View style={styles.threadOriginalBox}>
-                  <View style={styles.threadMetaRow}>
-                    <Text style={styles.threadSender}>You (Original)</Text>
-                    <Text style={styles.threadTime}>
-                      {new Date(selectedTicket.createdAt).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <Text style={styles.threadContent}>{selectedTicket.message}</Text>
-                  {selectedTicket.image ? (
-                    <Image
-                      source={{ uri: selectedTicket.image }}
-                      style={styles.threadAttachment}
-                      resizeMode="cover"
-                    />
-                  ) : null}
-                </View>
-              )}
-
-              {selectedTicket?.replies?.map((rep, idx) => (
-                <View
-                  key={idx}
-                  style={rep.sender === 'admin' ? styles.threadAdminBox : styles.threadUserBox}
-                >
-                  <View style={styles.threadMetaRow}>
-                    <Text
-                      style={[
-                        styles.threadSender,
-                        rep.sender === 'admin' && { color: '#059669', fontWeight: '800' },
-                      ]}
-                    >
-                      {rep.sender === 'admin' ? '🛡️ Yaro Care Team' : 'You'}
-                    </Text>
-                    <Text style={styles.threadTime}>
-                      {new Date(rep.createdAt).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <Text style={styles.threadContent}>{rep.message}</Text>
-                </View>
-              ))}
-            </ScrollView>
-
-            {/* Reply Input */}
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-              <View
-                style={[
-                  styles.replyBar,
-                  { paddingBottom: Math.max(12, insets.bottom + 8) },
-                ]}
-              >
-                <TextInput
-                  style={styles.replyInput}
-                  placeholder="Write a reply..."
-                  placeholderTextColor="#94A3B8"
-                  value={replyText}
-                  onChangeText={setReplyText}
-                  multiline
-                  maxLength={500}
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.replySendButton,
-                    (!replyText.trim() || replyLoading) && { opacity: 0.5 },
-                  ]}
-                  onPress={handleUserReply}
-                  disabled={!replyText.trim() || replyLoading}
-                >
-                  {replyLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Icon name="send" size={18} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </KeyboardAvoidingView>
-          </View>
-        </Modal>
+          onClose={() => setShowTicketDetail(false)}
+          topSafeInset={topSafeInset}
+          bottomInset={insets.bottom}
+          ticket={selectedTicket}
+          getStatusColor={getStatusColor}
+          getStatusLabel={getStatusLabel}
+          replyText={replyText}
+          onChangeReply={setReplyText}
+          replyLoading={replyLoading}
+          onSendReply={handleUserReply}
+          styles={styles}
+        />
       </View>
     );
   };

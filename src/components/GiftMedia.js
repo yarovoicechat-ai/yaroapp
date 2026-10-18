@@ -9,6 +9,7 @@ import {
 import { SvgUri } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Video from 'react-native-video';
+import { SvgaPlayer } from '@dasimems/react-native-svga';
 
 export const NativeSvgaPlayer = Platform.OS === 'android'
   ? requireNativeComponent('SvgaPlayerView')
@@ -51,8 +52,21 @@ const GiftMedia = ({
     );
   }
 
-  if (type === 'svga' && NativeSvgaPlayer) {
-    return <NativeSvgaPlayer source={source} style={style} />;
+  if (type === 'svga') {
+    if (NativeSvgaPlayer) {
+      return <NativeSvgaPlayer source={source} style={style} />;
+    }
+    return (
+      <SvgaPlayer
+        source={source}
+        style={style}
+        loops={repeat ? 0 : 1}
+        autoPlay
+        muteBuiltInAudio={muted}
+        scaleMode={resizeMode === 'contain' ? 'aspectFit' : 'aspectFill'}
+        onError={() => setFailed(true)}
+      />
+    );
   }
 
   if (type === 'svg') {

@@ -280,10 +280,12 @@ const styles = StyleSheet.create({
   },
   assetStage: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
+    // Keep arrival animations in the header area so they do not cover
+    // people already visible on room seats.
+    top: Math.max(64, height * 0.07),
+    left: width * 0.16,
+    width: width * 0.68,
+    height: Math.min(112, height * 0.14),
     zIndex: 9998,
     alignItems: 'center',
     justifyContent: 'center',

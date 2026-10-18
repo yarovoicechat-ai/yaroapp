@@ -7,7 +7,6 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  Modal,
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
@@ -15,6 +14,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import SvipPrivilegeModal from '../../components/membership/SvipPrivilegeModal';
+import SvipHelpModal from '../../components/membership/SvipHelpModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { useNavigation } from '@react-navigation/native';
@@ -597,88 +598,19 @@ export default function SVIPScreen() {
       </View>
 
       {/* Privilege Detail Modal */}
-      <Modal
+            <SvipPrivilegeModal
         visible={!!selectedPrivilege}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedPrivilege(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedPrivilege?.title}</Text>
-              <TouchableOpacity onPress={() => setSelectedPrivilege(null)}>
-                <Icon name="close" size={22} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalIconWrap}>
-              <LinearGradient colors={['#FBBF24', '#D97706']} style={styles.modalIconGrad}>
-                <Icon name={selectedPrivilege?.icon || 'star'} size={32} color="#FFFFFF" />
-              </LinearGradient>
-            </View>
-
-            <Text style={styles.modalDesc}>
-              {selectedPrivilege?.description || 'Exclusive nobility privilege for SVIP members.'}
-            </Text>
-
-            {selectedPrivilege?.value ? (
-              <View style={styles.modalValueRow}>
-                <Text style={styles.modalValueLabel}>Tier Benefit:</Text>
-                <Text style={styles.modalValueText}>{selectedPrivilege.value}</Text>
-              </View>
-            ) : null}
-
-            <TouchableOpacity
-              style={styles.modalCloseBtn}
-              onPress={() => setSelectedPrivilege(null)}
-            >
-              <Text style={styles.modalCloseText}>Got It</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setSelectedPrivilege(null)}
+        privilege={selectedPrivilege}
+        styles={styles}
+      />
 
       {/* Help Modal */}
-      <Modal
+            <SvipHelpModal
         visible={showHelpModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowHelpModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>SVIP Nobility Rules</Text>
-              <TouchableOpacity onPress={() => setShowHelpModal(false)}>
-                <Icon name="close" size={22} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ maxHeight: 300, marginVertical: 12 }}>
-              <Text style={styles.helpRuleText}>
-                1. SVIP tiers are purchased using diamonds and remain active for the configured validity period.
-              </Text>
-              <Text style={styles.helpRuleText}>
-                2. Your permanent account numeric ID is never overwritten or affected by temporary SVIP display tags.
-              </Text>
-              <Text style={styles.helpRuleText}>
-                3. When your SVIP expires, benefits automatically stop and your profile safely reverts to default styling.
-              </Text>
-              <Text style={styles.helpRuleText}>
-                4. SVIP grants immunity from public room kicks, high-priority entry notifications, and exclusive privileges.
-              </Text>
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.modalCloseBtn}
-              onPress={() => setShowHelpModal(false)}
-            >
-              <Text style={styles.modalCloseText}>Understood</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowHelpModal(false)}
+        styles={styles}
+      />
     </View>
   );
 }

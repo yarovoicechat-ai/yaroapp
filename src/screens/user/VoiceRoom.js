@@ -11,7 +11,6 @@ import {
   Dimensions,
   FlatList,
   TextInput,
-  Modal,
   Animated,
   StatusBar,
   Alert,
@@ -34,14 +33,13 @@ import { AlertService } from '../../utils/AlertService';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { apiUtil } from '../../utils/apiUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
-import { requestCameraAndCapture, requestGalleryAndSelect } from '../../utils/verificationMedia';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RoomUserProfileModal from '../../components/room/RoomUserProfileModal';
 import RoomDetailsModal from '../../components/room/RoomDetailsModal';
 import RoomEntryEffectEngine from '../../components/room/RoomEntryEffectEngine';
 import VipFloatingEntryEngine from '../../components/room/VipFloatingEntryEngine';
 import ResponsiveChatBubble from '../../components/room/ResponsiveChatBubble';
-import VipMicWave from '../../components/room/VipMicWave';
+import VoiceRoomSeatGrid from '../../components/room/VoiceRoomSeatGrid';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
 import {
   GiftButton,
@@ -68,14 +66,18 @@ import RoomThemeModal from '../../components/room/RoomThemeModal';
 import RoomSeatSkinModal from '../../components/room/RoomSeatSkinModal';
 import RoomTasksModal from '../../components/room/RoomTasksModal';
 import RoomSupportModal from '../../components/room/RoomSupportModal';
+import RoomSettingsModal from '../../components/room/RoomSettingsModal';
+import SelfSeatOptionsModal from '../../components/room/SelfSeatOptionsModal';
+import RoomReportModal from '../../components/room/RoomReportModal';
+import RoomSeatActionModal from '../../components/room/RoomSeatActionModal';
+import RoomMessageNoticeModal from '../../components/room/RoomMessageNoticeModal';
+import RoomAnnouncementModal from '../../components/room/RoomAnnouncementModal';
 import {
   resolveEntryAssets,
   resolveRoomTheme,
   resolveSeatSkin,
   DEFAULT_ROOM_BG,
   DEFAULT_ROOM_THEME,
-  DEFAULT_SEAT_IMAGE,
-  LOCK_SEAT_IMAGE,
 } from '../../utils/cosmeticResolver';
 
 const { width, height } = Dimensions.get('window');
@@ -179,6 +181,7 @@ export default function VoiceRoomScreen() {
     isMuted,
     currentSeatIndex,
     isOwner: contextIsOwner,
+    isGlobalRoomManager: contextIsGlobalRoomManager,
     admins,
     bannedChatUsers,
     mutedUsers,
@@ -256,17 +259,6 @@ export default function VoiceRoomScreen() {
   const [activeJoinBanner, setActiveJoinBanner] = useState(null);
   const joinBannerAnim = useRef(new Animated.Value(-width)).current;
   const joinBannerOpacity = useRef(new Animated.Value(0)).current;
-
-  // Handle Hardware Back Button to smoothly exit room and return to MainTabs
-  useEffect(() => {
-    const onBackPress = () => {
-      try { leaveRoom && leaveRoom(); } catch (e) {}
-      navigation.navigate('MainTabs');
-      return true;
-    };
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => backHandler.remove();
-  }, [navigation, leaveRoom]);
 
   // Modals for Tools, Music, Seat Layout, Themes & Seat Skins (Owner Tools)
   const [toolsModalVisible, setToolsModalVisible] = useState(false);
@@ -427,8 +419,6 @@ export default function VoiceRoomScreen() {
   const activeTheme = resolveRoomTheme(room, currentRoomTheme);
   const activeSeatSkin = resolveSeatSkin(room, currentSeatSkin);
 
-  const hasLeftRef = useRef(false);
-
   const handleShareRoom = async () => {
     try {
       const shareRoomId = room.id || room.roomId || route.params?.roomId || '';
@@ -522,7 +512,7 @@ export default function VoiceRoomScreen() {
 
   // Initialize or synchronize room in context
   useEffect(() => {
-    if (!hasLeftRef.current) {
+    if (route.params?.room || route.params?.roomId || route.params?.id) {
       if (route.params?.room) {
         const incoming = route.params.room;
         if (!activeRoom || activeRoom.id !== incoming.id) {
@@ -550,7 +540,7 @@ export default function VoiceRoomScreen() {
         }
       }
     }
-  }, [route.params?.room, route.params?.roomId, route.params?.id, activeRoom?.id]);
+  }, [route.params?.room, route.params?.roomId, route.params?.id]);
 
   // Strict ownership check: prevent visitor from getting host/admin controls
   const currentUserId = user?.userId ? String(user.userId) : (user?._id || user?.id ? String(user._id || user.id) : null);
@@ -573,8 +563,16 @@ export default function VoiceRoomScreen() {
 
   const isRoomOwner = Boolean(isSelfHostParam || isIdMatch || isContextOwnerMatch);
   const isCurrentUserAdmin = Boolean(
-    isRoomOwner || (currentUserId && Array.isArray(admins) && admins.map(String).includes(currentUserId))
+    isRoomOwner || contextIsGlobalRoomManager || (currentUserId && Array.isArray(admins) && admins.map(String).includes(currentUserId))
   );
+
+  const stopMusicMixingRef = useRef(stopMusicMixing);
+  stopMusicMixingRef.current = stopMusicMixing;
+  useEffect(() => {
+    if (isCurrentUserAdmin) return;
+    setMusicModalVisible(false);
+    stopMusicMixingRef.current();
+  }, [isCurrentUserAdmin]);
 
   // Balance & Chat
   const [inputText, setInputText] = useState('');
@@ -869,6 +867,7 @@ export default function VoiceRoomScreen() {
     roomMenuModalVisible,
     toolsModalVisible,
     emojiModalVisible,
+    messageModalVisible,
     roomTasksVisible,
     roomSupportVisible,
     roomDetailsModalVisible,
@@ -921,6 +920,10 @@ export default function VoiceRoomScreen() {
       }
       if (s.emojiModalVisible) {
         setEmojiModalVisible(false);
+        return true;
+      }
+      if (s.messageModalVisible) {
+        setMessageModalVisible(false);
         return true;
       }
       if (s.wealthModalVisible) {
@@ -1324,14 +1327,8 @@ export default function VoiceRoomScreen() {
   };
 
   const handleLeaveCompletely = () => {
-    hasLeftRef.current = true;
     setExitModalVisible(false);
     leaveRoom(user);
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('MainTabs');
-    }
   };
 
   // Dynamic Seat Layout according to seatCount (8, 10, 15)
@@ -1479,8 +1476,7 @@ export default function VoiceRoomScreen() {
           <TouchableOpacity
             style={styles.headerIconBtn}
             onPress={() => {
-              try { leaveRoom && leaveRoom(); } catch (e) {}
-              navigation.navigate('MainTabs');
+              setExitModalVisible(true);
             }}
             activeOpacity={0.8}
           >
@@ -1641,239 +1637,19 @@ export default function VoiceRoomScreen() {
       )}
 
       {/* Gift Celebration Banner */}
-      {/* Voice Seats Grid: Top 2 Featured Seats (Host & Co-Host) + Responsive Bottom Grid */}
-      <View style={styles.seatsAreaContainer}>
-        {/* 1. TOP ROW: 2 FEATURED SEATS (Centered: Host 👑 & Co-Host 💖) */}
-        <View style={styles.topTwoSeatsRow}>
-          {topTwoSeats.map((seat) => {
-            const isHostSeat = seat.seatIndex === 0;
-            const isOccupied = Boolean(seat.user);
-            return (
-              <TouchableOpacity
-                key={`top-seat-${seat.seatIndex}`}
-                style={styles.topFeaturedSeatItem}
-                onPress={() => {
-                  handleSeatPress(seat);
-                }}
-                activeOpacity={0.85}
-              >
-                {isOccupied ? (
-                  <View style={styles.occupiedSeatWrapper}>
-                    <VipMicWave
-                      state={seat.isMuted ? 'MUTED' : ((speakingSeatIndices?.has?.(seat.seatIndex) || seat.isSpeaking) ? 'SPEAKING' : 'IDLE')}
-                      waveColors={isHostSeat ? ['#F59E0B', '#FBBF24'] : ['#EC4899', '#F472B6']}
-                      intensity={1.1}
-                      size={56}
-                    >
-                      <View
-                        ref={(ref) => registerGiftAvatarPosition(ref, [
-                          seat.user.userId,
-                          seat.user.id,
-                          seat.user._id,
-                          seat.user.name,
-                          seat.seatIndex === 0 ? 'host' : null,
-                          seat.seatIndex === 1 ? 'cohost' : null,
-                          seat.seatIndex === 0 ? room?.hostId : null,
-                          seat.seatIndex === 0 ? room?.ownerId : null,
-                          seat.seatIndex === 0 ? room?.hostName : null,
-                        ])}
-                        style={styles.topFeaturedAvatarBox}
-                      >
-                        <AvatarWithFrame
-                          user={seat.user}
-                          frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame) : null)}
-                          size={50}
-                          showOnlineDot={false}
-                        />
-                        <View style={[styles.avatarCrestFrame, isHostSeat ? styles.hostCrest : styles.cpCrest]}>
-                          <MaterialCommunityIcons
-                            name={isHostSeat ? 'crown' : 'heart'}
-                            size={11}
-                            color={isHostSeat ? '#FBBF24' : '#F472B6'}
-                          />
-                        </View>
-                        {seat.isMuted && (
-                          <View style={styles.micMuteBadge}>
-                            <Icon name="mic-off" size={7} color="#FFF" />
-                          </View>
-                        )}
-                      </View>
-                    </VipMicWave>
-                    <Text style={styles.topSeatUserName} numberOfLines={1}>
-                      {seat.user.name}
-                    </Text>
-                    {showSeatCharm && (
-                      <View style={styles.charmPill}>
-                        <Text style={styles.charmFlower}>🌸</Text>
-                        <Text style={styles.charmVal}>{seat.charm || 0}</Text>
-                      </View>
-                    )}
-                  </View>
-                ) : (
-                  <View style={styles.emptySeatWrapper}>
-                    <View style={[styles.topFeaturedEmptyCircle, { borderWidth: 0, borderColor: 'transparent', backgroundColor: 'transparent', overflow: 'hidden' }]}>
-                      {seat.isLocked ? (
-                        <Image
-                          source={LOCK_SEAT_IMAGE}
-                          style={{ width: 50, height: 50, borderRadius: 25 }}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <Image
-                          source={DEFAULT_SEAT_IMAGE}
-                          style={{ width: 50, height: 50, borderRadius: 25 }}
-                          resizeMode="cover"
-                        />
-                      )}
-                    </View>
-                    <Text style={[styles.topSeatLabel, isHostSeat ? styles.hostLabelColor : styles.cpLabelColor]}>
-                      {seat.isLocked ? 'Locked 🔒' : (isHostSeat ? 'Host 👑' : 'Co-Host 💖')}
-                    </Text>
-                    {showSeatCharm && (
-                      <View style={styles.charmPill}>
-                        <Text style={styles.charmFlower}>🌸</Text>
-                        <Text style={styles.charmVal}>0</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* 2. BOTTOM SEAT ROWS: 5 in a line for > 8 seats */}
-        {bottomSeatRows.map((row, rowIdx) => (
-          <View key={`bottom-row-${rowIdx}`} style={[styles.seatsRow, { marginTop: 10 }]}>
-            {row.map((seat) => {
-              const seatNum = `No.${seat.seatIndex + 1}`;
-              const isOccupied = Boolean(seat.user);
-              const seatWidth = isCompactLayout ? (width - 16) / 5 : (width - 24) / 4;
-              const circleSize = isCompactLayout ? 42 : 50;
-              const avatarSize = isCompactLayout ? 38 : 46;
-
-              return (
-                <TouchableOpacity
-                  key={`seat-${seat.seatIndex}`}
-                  style={[styles.seatItem, { width: seatWidth }]}
-                  onPress={() => {
-                    handleSeatPress(seat);
-                  }}
-                  activeOpacity={0.85}
-                >
-                  {isOccupied ? (
-                    <View style={styles.occupiedSeatWrapper}>
-                      <VipMicWave
-                        state={seat.isMuted ? 'MUTED' : ((speakingSeatIndices?.has?.(seat.seatIndex) || seat.isSpeaking) ? 'SPEAKING' : 'IDLE')}
-                        waveColors={activeSeatSkin?.ringColors || ['#38BDF8', '#0284C7']}
-                        size={circleSize}
-                      >
-                        <View
-                          ref={(ref) => registerGiftAvatarPosition(ref, [
-                            seat.user.userId,
-                            seat.user.id,
-                            seat.user._id,
-                            seat.user.name,
-                          ])}
-                          style={[
-                          styles.occupiedAvatarContainer,
-                          {
-                            width: circleSize,
-                            height: circleSize,
-                            borderRadius: circleSize / 2,
-                            borderWidth: 0,
-                            borderColor: 'transparent',
-                          },
-                        ]}
-                        >
-                          <AvatarWithFrame
-                            user={seat.user}
-                            frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame) : null)}
-                            size={avatarSize}
-                            showOnlineDot={false}
-                          />
-                          {seat.isMuted && (
-                            <View style={styles.micMuteBadge}>
-                              <Icon name="mic-off" size={7} color="#FFF" />
-                            </View>
-                          )}
-                        </View>
-                      </VipMicWave>
-                      <Text style={[styles.seatUserName, isCompactLayout && { fontSize: 8.5, maxWidth: 54 }]} numberOfLines={1}>
-                        {seat.user.name}
-                      </Text>
-                      {showSeatCharm && (
-                        <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
-                          <Text style={styles.charmFlower}>🌸</Text>
-                          <Text style={[styles.charmVal, isCompactLayout && { fontSize: 8 }]}>{seat.charm || 0}</Text>
-                        </View>
-                      )}
-                    </View>
-                  ) : (
-                    <View style={styles.emptySeatWrapper}>
-                      <View style={[
-                        styles.emptySeatCircle,
-                        {
-                          width: circleSize,
-                          height: circleSize,
-                          borderRadius: circleSize / 2,
-                          borderColor: 'transparent',
-                          backgroundColor: 'transparent',
-                          borderWidth: 0,
-                          overflow: 'hidden',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        },
-                      ]}>
-                        {seat.isLocked ? (
-                          <Image
-                            source={LOCK_SEAT_IMAGE}
-                            style={{
-                              width: circleSize,
-                              height: circleSize,
-                              borderRadius: circleSize / 2,
-                            }}
-                            resizeMode="cover"
-                          />
-                        ) : activeSeatSkin?.imageUrl ? (
-                          <Image
-                            source={typeof activeSeatSkin.imageUrl === 'string' ? { uri: activeSeatSkin.imageUrl } : activeSeatSkin.imageUrl}
-                            style={{
-                              width: circleSize,
-                              height: circleSize,
-                              borderRadius: circleSize / 2,
-                            }}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <Image
-                            source={DEFAULT_SEAT_IMAGE}
-                            style={{
-                              width: circleSize,
-                              height: circleSize,
-                              borderRadius: circleSize / 2,
-                            }}
-                            resizeMode="cover"
-                          />
-                        )}
-                      </View>
-                      <Text style={[styles.seatNumText, isCompactLayout && { fontSize: 8.5 }, seat.isLocked && { color: '#F59E0B' }]}>
-                        {seat.isLocked ? 'Locked 🔒' : seatNum}
-                      </Text>
-                      {showSeatCharm && (
-                        <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
-                          <Text style={styles.charmFlower}>🌸</Text>
-                          <Text style={[styles.charmVal, isCompactLayout && { fontSize: 8 }]}>0</Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
-      </View>
+      <VoiceRoomSeatGrid
+        topTwoSeats={topTwoSeats}
+        bottomSeatRows={bottomSeatRows}
+        isCompactLayout={isCompactLayout}
+        speakingSeatIndices={speakingSeatIndices}
+        activeSeatSkin={activeSeatSkin}
+        user={user}
+        room={room}
+        showSeatCharm={showSeatCharm}
+        handleSeatPress={handleSeatPress}
+        registerGiftAvatarPosition={registerGiftAvatarPosition}
+        styles={styles}
+      />
 
       {/* PK Button (Image 1 & 2) */}
       <View style={styles.pkButtonContainer}>
@@ -2342,7 +2118,9 @@ export default function VoiceRoomScreen() {
         onRoomSettings={openRoomSettings}
         onLockSeats={toggleLockAllSeats}
         onClearChat={clearChat}
-        onOpenMusic={() => setMusicModalVisible(true)}
+        onOpenMusic={() => {
+          if (isCurrentUserAdmin) setMusicModalVisible(true);
+        }}
         onOpenSeatSettings={() => setSeatLayoutModalVisible(true)}
         onOpenThemeModal={() => setThemeModalVisible(true)}
         onOpenSeatSkinModal={() => setSeatSkinModalVisible(true)}
@@ -2396,17 +2174,25 @@ export default function VoiceRoomScreen() {
 
       {/* MODAL: IN-ROOM MUSIC PLAYER MODAL */}
       <RoomMusicModal
-        visible={musicModalVisible}
+        visible={musicModalVisible && isCurrentUserAdmin}
         onClose={() => setMusicModalVisible(false)}
         isMusicPlaying={isMusicPlaying}
         currentTrack={currentTrack}
         musicVolume={musicVolume}
         micVolume={micVolume}
-        onPlayTrack={startMusicMixing}
-        onPauseTrack={pauseMusicMixing}
-        onResumeTrack={resumeMusicMixing}
+        onPlayTrack={(...args) => {
+          if (isCurrentUserAdmin) startMusicMixing(...args);
+        }}
+        onPauseTrack={() => {
+          if (isCurrentUserAdmin) pauseMusicMixing();
+        }}
+        onResumeTrack={() => {
+          if (isCurrentUserAdmin) resumeMusicMixing();
+        }}
         onStopTrack={stopMusicMixing}
-        onSetMusicVolume={setMusicVolume}
+        onSetMusicVolume={(volume) => {
+          if (isCurrentUserAdmin) setMusicVolume(volume);
+        }}
         onSetMicVolume={setMicVolume}
         bottomSafePadding={bottomSafePadding}
       />
@@ -2432,34 +2218,12 @@ export default function VoiceRoomScreen() {
         bottomSafePadding={bottomSafePadding}
       />
 
-      {/* ============================================================== */}
-      {/* MODAL: MESSAGE NOTICES POPUP (MATCHING SCREENSHOT 7)            */}
-      {/* ============================================================== */}
-      <Modal
+      <RoomMessageNoticeModal
         visible={messageModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setMessageModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.messageNoticesSheet, { paddingBottom: bottomSafePadding + 24 }]}>
-            {/* Header */}
-            <View style={styles.messageNoticesHeader}>
-              <Text style={styles.messageNoticesTitle}>Message</Text>
-              <TouchableOpacity
-                onPress={() => setMessageModalVisible(false)}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <Icon name="close" size={24} color="#FFF" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={{ color: '#94A3B8', textAlign: 'center', paddingVertical: 28 }}>
-              No new messages or activity.
-            </Text>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setMessageModalVisible(false)}
+        bottomSafePadding={bottomSafePadding}
+        styles={styles}
+      />
 
       {/* MODAL 3: ROOM USER PROFILE CARD (MODULAR COMPONENT) */}
       <RoomUserProfileModal
@@ -2503,6 +2267,7 @@ export default function VoiceRoomScreen() {
         }}
         isHostOrAdmin={isCurrentUserAdmin}
         isRoomOwner={isRoomOwner}
+        isGlobalRoomManager={contextIsGlobalRoomManager}
         roomOwnerId={room.hostId || room.creatorId || room.ownerId || (isContextOwnerMatch ? user?.userId : null)}
         admins={admins}
         seats={seats}
@@ -2513,7 +2278,7 @@ export default function VoiceRoomScreen() {
         onToggleSeatLock={(seatIdx) => toggleSeatLock(seatIdx)}
         onMuteSeat={(u) => toggleMuteUser(String(u?.userId || u?.id || u?._id), u?.name)}
         bannedChatUsers={bannedChatUsers}
-        mutedUsers={[...new Set([...(mutedUsers || []).map(String), ...(locallyMutedUsers || []).map(String)])]}
+        mutedUsers={mutedUsers}
         bottomSafePadding={bottomSafePadding}
       />
 
@@ -2543,51 +2308,14 @@ export default function VoiceRoomScreen() {
 
 
       {/* ============================================================== */}
-      {/* MODAL 4: SELF SEAT OPTIONS                                      */}
-      {/* ============================================================== */}
-      <Modal
+      <SelfSeatOptionsModal
         visible={selfSeatModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelfSeatModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.selfSeatSheet}>
-            <Text style={styles.selfSeatTitle}>Your Seat Options</Text>
-
-            <TouchableOpacity
-              style={styles.selfSeatActionBtn}
-              onPress={() => {
-                setSelfSeatModalVisible(false);
-                leaveSeat(user);
-              }}
-            >
-              <MaterialCommunityIcons name="seat-passenger" size={20} color="#EF4444" style={{ marginRight: 8 }} />
-              <Text style={[styles.selfSeatActionText, { color: '#EF4444' }]}>Leave Seat (Become Listener)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.selfSeatActionBtn}
-              onPress={() => {
-                setSelfSeatModalVisible(false);
-                toggleMic();
-              }}
-            >
-              <Icon name={isMuted ? 'mic' : 'mic-off'} size={20} color="#4F46E5" style={{ marginRight: 8 }} />
-              <Text style={styles.selfSeatActionText}>{isMuted ? 'Turn Microphone Live' : 'Mute Microphone'}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.selfSeatCancelBtn}
-              onPress={() => setSelfSeatModalVisible(false)}
-            >
-              <Text style={styles.selfSeatCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-
+        onClose={() => setSelfSeatModalVisible(false)}
+        isMuted={isMuted}
+        onLeaveSeat={() => leaveSeat(user)}
+        onToggleMic={toggleMic}
+        styles={styles}
+      />
       {/* ROOM ENTRY EFFECT ANIMATION ENGINE */}
       <RoomEntryEffectEngine
         activeEntry={activeEntryEffect}
@@ -2641,423 +2369,60 @@ export default function VoiceRoomScreen() {
 
 
       {/* ============================================================== */}
-      {/* MODAL 6B: ROOM SETTINGS EDITOR POPUP (AVATAR, NAME, SEATS, PIN) */}
-      {/* ============================================================== */}
-      <Modal
+      <RoomSettingsModal
         visible={roomSettingsModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setRoomSettingsModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setRoomSettingsModalVisible(false)}
-          />
-          <View style={[styles.roomSettingsSheet, { paddingBottom: bottomSafePadding + 10 }]}>
-            <View style={styles.sheetHandle} />
-
-            <View style={styles.settingsHeaderRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialIcons name="tune" size={22} color="#8B5CF6" />
-                <Text style={styles.settingsSheetTitle}>Room Settings</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <TouchableOpacity
-                  style={styles.headerSavePillBtn}
-                  onPress={handleSaveRoomSettings}
-                  activeOpacity={0.8}
-                  disabled={isSavingRoomSettings}
-                >
-                  <LinearGradient
-                    colors={['#8B5CF6', '#EC4899']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.headerSavePillGradient}
-                  >
-                    <Icon name="checkmark" size={14} color="#FFF" />
-                    <Text style={styles.headerSavePillText}>{isSavingRoomSettings ? 'Saving…' : 'Save'}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setRoomSettingsModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Icon name="close" size={22} color="#64748B" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: '70%' }}>
-              {/* 1. Room Cover / Avatar Manual Upload */}
-              <Text style={styles.settingsSectionTitle}>Room Avatar / Cover</Text>
-              <View style={styles.manualUploadAvatarBox}>
-                <Image
-                  source={{ uri: editRoomCover || user?.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp' }}
-                  style={styles.manualUploadAvatarPreview}
-                />
-                <View style={styles.manualUploadActionsCol}>
-                  <Text style={styles.manualUploadTitle}>Custom Room Cover</Text>
-                  <Text style={styles.manualUploadSub}>Upload from device gallery or take photo</Text>
-                  <View style={styles.uploadBtnRow}>
-                    <TouchableOpacity
-                      style={styles.uploadMiniBtn}
-                      activeOpacity={0.8}
-                      onPress={async () => {
-                        try {
-                          const picked = await requestGalleryAndSelect();
-                          if (picked?.uri) {
-                            setEditRoomCover(picked.uri);
-                            setPendingRoomCoverUpload(picked);
-                          }
-                        } catch (e) {
-                          console.log('Upload error', e);
-                        }
-                      }}
-                    >
-                      <Icon name="images-outline" size={16} color="#6366F1" style={{ marginRight: 5 }} />
-                      <Text style={styles.uploadMiniBtnText}>Gallery</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.uploadMiniBtn}
-                      activeOpacity={0.8}
-                      onPress={async () => {
-                        try {
-                          const captured = await requestCameraAndCapture('back');
-                          if (captured?.uri) {
-                            setEditRoomCover(captured.uri);
-                            setPendingRoomCoverUpload(captured);
-                          }
-                        } catch (e) {
-                          console.log('Camera error', e);
-                        }
-                      }}
-                    >
-                      <Icon name="camera-outline" size={16} color="#EC4899" style={{ marginRight: 5 }} />
-                      <Text style={styles.uploadMiniBtnText}>Camera</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-
-              {/* 2. Room Name Input */}
-              <View style={styles.settingsInputGroup}>
-                <View style={styles.settingsLabelRow}>
-                  <Text style={styles.settingsInputLabel}>Room Name</Text>
-                  <Text style={styles.settingsCharCount}>{editRoomName.length}/30</Text>
-                </View>
-                <TextInput
-                  style={styles.settingsTextInput}
-                  value={editRoomName}
-                  onChangeText={setEditRoomName}
-                  maxLength={30}
-                  placeholder="Enter a catchy room name..."
-                  placeholderTextColor="#94A3B8"
-                />
-              </View>
-
-              {/* 3. Room Bio / Announcement Input */}
-              <View style={styles.settingsInputGroup}>
-                <View style={styles.settingsLabelRow}>
-                  <Text style={styles.settingsInputLabel}>Room Announcement / Bio</Text>
-                  <Text style={styles.settingsCharCount}>{editRoomAbout.length}/120</Text>
-                </View>
-                <TextInput
-                  style={[styles.settingsTextInput, { height: 75, textAlignVertical: 'top' }]}
-                  value={editRoomAbout}
-                  onChangeText={setEditRoomAbout}
-                  maxLength={120}
-                  multiline
-                  numberOfLines={3}
-                  placeholder="Tell listeners what this room is about..."
-                  placeholderTextColor="#94A3B8"
-                />
-              </View>
-
-              {/* 4. Seat Layout / Count */}
-              <View style={styles.settingsInputGroup}>
-                <Text style={styles.settingsInputLabel}>Seat Layout (Top: 2 Seats Host & Co-Host)</Text>
-                <View style={styles.seatOptionsRow}>
-                  {[
-                    { count: 8, label: '8 Below (4+4)' },
-                    { count: 10, label: '10 Below (5+5)' },
-                    { count: 15, label: '15 Below (5+5+5)' },
-                  ].map((item) => {
-                    const isSelected = editSeatCount === item.count;
-                    return (
-                      <TouchableOpacity
-                        key={item.count}
-                        onPress={() => setEditSeatCount(item.count)}
-                        activeOpacity={0.8}
-                        style={[styles.seatOptionChip, isSelected && styles.seatOptionChipActive]}
-                      >
-                        <Text style={[styles.seatOptionText, isSelected && styles.seatOptionTextActive]}>
-                          {item.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* 5. Room Security & Lock PIN */}
-              <View style={styles.settingsInputGroup}>
-                <Text style={styles.settingsInputLabel}>Room Lock & Privacy</Text>
-                <View style={styles.lockToggleRow}>
-                  <TouchableOpacity
-                    style={[styles.lockChoiceCard, !editRoomLocked && styles.lockChoiceCardActive]}
-                    onPress={() => setEditRoomLocked(false)}
-                    activeOpacity={0.8}
-                  >
-                    <Icon name="lock-open-outline" size={20} color={!editRoomLocked ? '#10B981' : '#64748B'} />
-                    <Text style={[styles.lockChoiceTitle, !editRoomLocked && { color: '#10B981' }]}>Public Room</Text>
-                    <Text style={styles.lockChoiceSub}>Anyone can join</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.lockChoiceCard, editRoomLocked && styles.lockChoiceCardActive]}
-                    onPress={() => setEditRoomLocked(true)}
-                    activeOpacity={0.8}
-                  >
-                    <Icon name="lock-closed-outline" size={20} color={editRoomLocked ? '#EF4444' : '#64748B'} />
-                    <Text style={[styles.lockChoiceTitle, editRoomLocked && { color: '#EF4444' }]}>PIN Protected</Text>
-                    <Text style={styles.lockChoiceSub}>Passcode needed</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {editRoomLocked && (
-                  <View style={styles.pinInputContainer}>
-                    <Text style={styles.pinInputHint}>
-                      {hasRoomPin ? 'PIN saved hai. Naya PIN set karne ke liye 4 digits enter karein:' : 'Set 4-Digit Passcode PIN:'}
-                    </Text>
-                    <TextInput
-                      style={styles.pinTextInput}
-                      value={editRoomPin}
-                      onChangeText={(val) => setEditRoomPin(val.replace(/[^0-9]/g, '').slice(0, 4))}
-                      keyboardType="numeric"
-                      maxLength={4}
-                      placeholder={hasRoomPin ? 'Leave blank to keep saved PIN' : 'e.g. 1234'}
-                      placeholderTextColor="#94A3B8"
-                    />
-                  </View>
-                )}
-              </View>
-            </ScrollView>
-
-            {/* STICKY FIXED SAVE BUTTON AT BOTTOM - ALWAYS VISIBLE */}
-            <View style={styles.fixedSettingsFooter}>
-              <TouchableOpacity
-                style={styles.saveSettingsSubmitBtn}
-                onPress={handleSaveRoomSettings}
-                activeOpacity={0.85}
-                disabled={isSavingRoomSettings}
-              >
-                <LinearGradient
-                  colors={['#8B5CF6', '#EC4899']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.saveSettingsSubmitGradient}
-                >
-                  <MaterialIcons name="done-all" size={20} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.saveSettingsSubmitText}>Save & Apply Settings / सहेजें</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-      {/* ============================================================== */}
-      {/* MODAL 7: UGC REPORT USER MODAL                                  */}
-      {/* ============================================================== */}
-      <Modal
+        onClose={() => setRoomSettingsModalVisible(false)}
+        onSave={handleSaveRoomSettings}
+        isSaving={isSavingRoomSettings}
+        bottomSafePadding={bottomSafePadding}
+        styles={styles}
+        user={user}
+        editRoomCover={editRoomCover}
+        setEditRoomCover={setEditRoomCover}
+        setPendingRoomCoverUpload={setPendingRoomCoverUpload}
+        editRoomName={editRoomName}
+        setEditRoomName={setEditRoomName}
+        editRoomAbout={editRoomAbout}
+        setEditRoomAbout={setEditRoomAbout}
+        editSeatCount={editSeatCount}
+        setEditSeatCount={setEditSeatCount}
+        editRoomLocked={editRoomLocked}
+        setEditRoomLocked={setEditRoomLocked}
+        hasRoomPin={hasRoomPin}
+        editRoomPin={editRoomPin}
+        setEditRoomPin={setEditRoomPin}
+      />
+      <RoomReportModal
         visible={ugcReportModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setUgcReportModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.menuSheet, { paddingBottom: bottomSafePadding + 20 }]}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.menuSheetTitle}>Report User</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginBottom: 8 }}>
-              Select a reason for reporting {ugcReportTargetUser?.name || 'this participant'}:
-            </Text>
-
-            <ScrollView style={{ maxHeight: 200, marginVertical: 8 }}>
-              {UGC_REPORT_REASONS.map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  style={[
-                    styles.ugcReasonItem,
-                    ugcReportReason === r && styles.ugcReasonItemSelected
-                  ]}
-                  onPress={() => setUgcReportReason(r)}
-                >
-                  <Text style={[styles.ugcReasonText, ugcReportReason === r && styles.ugcReasonTextSelected]}>
-                    {r}
-                  </Text>
-                  {ugcReportReason === r && <MaterialIcons name="check" size={18} color="#03dcfe" />}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <TextInput
-              style={[styles.editTextInput, { height: 60, textAlignVertical: 'top' }]}
-              value={ugcReportDetails}
-              onChangeText={setUgcReportDetails}
-              placeholder="Additional details (optional)..."
-              placeholderTextColor="#94A3B8"
-              multiline
-              maxLength={200}
-            />
-
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
-              <TouchableOpacity
-                style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.08)' }}
-                onPress={() => setUgcReportModalVisible(false)}
-                disabled={submittingUgcReport}
-              >
-                <Text style={{ color: '#fff', fontSize: 14 }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ paddingVertical: 10, paddingHorizontal: 18, borderRadius: 10, backgroundColor: '#e11d48' }}
-                onPress={handleSendUgcReport}
-                disabled={submittingUgcReport}
-              >
-                {submittingUgcReport ? (
-                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Submitting...</Text>
-                ) : (
-                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Submit Report</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ============================================================== */}
-      {/* MODAL 8: SEAT ACTION MODAL (HOST/ADMIN EMPTY SEAT BOTTOM SHEET)  */}
-      {/* 4 HORIZONTAL ITEMS: Lock/Unlock, Lock All/Unlock All, On mic, Invite */}
-      {/* ============================================================== */}
-      <Modal
+        onClose={() => setUgcReportModalVisible(false)}
+        targetUser={ugcReportTargetUser}
+        reasons={UGC_REPORT_REASONS}
+        selectedReason={ugcReportReason}
+        setSelectedReason={setUgcReportReason}
+        details={ugcReportDetails}
+        setDetails={setUgcReportDetails}
+        submitting={submittingUgcReport}
+        onSubmit={handleSendUgcReport}
+        bottomSafePadding={bottomSafePadding}
+        styles={styles}
+      />
+      <RoomSeatActionModal
         visible={seatActionModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
+        onClose={() => {
           setSeatActionModalVisible(false);
           setSelectedSeatForAction(null);
         }}
-      >
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => {
-            setSeatActionModalVisible(false);
-            setSelectedSeatForAction(null);
-          }}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[styles.emptySeatActionSheet, { paddingBottom: bottomSafePadding + 16 }]}
-          >
-            <View style={styles.sheetHandle} />
-
-            <View style={styles.emptySeatActionRow}>
-              {/* Option 1: Lock / Unlock */}
-              <TouchableOpacity
-                style={styles.emptySeatActionItem}
-                onPress={() => {
-                  if (selectedSeatForAction) {
-                    toggleSeatLock(selectedSeatForAction.seatIndex);
-                  }
-                  setSeatActionModalVisible(false);
-                  setSelectedSeatForAction(null);
-                }}
-                activeOpacity={0.75}
-              >
-                <View style={styles.emptySeatIconCircle}>
-                  <MaterialCommunityIcons
-                    name={selectedSeatForAction?.isLocked ? 'lock-open-variant' : 'lock'}
-                    size={26}
-                    color="#334155"
-                  />
-                </View>
-                <Text style={styles.emptySeatActionLabel}>
-                  {selectedSeatForAction?.isLocked ? 'Unlock' : 'Lock'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Option 2: Lock All / Unlock All */}
-              <TouchableOpacity
-                style={styles.emptySeatActionItem}
-                onPress={() => {
-                  const guestSeats = seats.filter((s) => s.seatIndex > 0);
-                  const allLocked = guestSeats.length > 0 && guestSeats.every((s) => s.isLocked);
-                  if (allLocked) {
-                    unlockAllSeats();
-                  } else {
-                    lockAllSeats();
-                  }
-                  setSeatActionModalVisible(false);
-                  setSelectedSeatForAction(null);
-                }}
-                activeOpacity={0.75}
-              >
-                <View style={styles.emptySeatIconCircle}>
-                  <MaterialCommunityIcons
-                    name={
-                      seats.filter((s) => s.seatIndex > 0).every((s) => s.isLocked)
-                        ? 'lock-open-variant-outline'
-                        : 'lock-outline'
-                    }
-                    size={26}
-                    color="#334155"
-                  />
-                </View>
-                <Text style={styles.emptySeatActionLabel}>
-                  {seats.filter((s) => s.seatIndex > 0).every((s) => s.isLocked)
-                    ? 'Unlock All'
-                    : 'Lock All'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Option 3: On mic */}
-              <TouchableOpacity
-                style={styles.emptySeatActionItem}
-                onPress={() => {
-                  if (selectedSeatForAction) {
-                    takeSeat(selectedSeatForAction.seatIndex, user);
-                  }
-                  setSeatActionModalVisible(false);
-                  setSelectedSeatForAction(null);
-                }}
-                activeOpacity={0.75}
-              >
-                <View style={styles.emptySeatIconCircle}>
-                  <MaterialCommunityIcons name="microphone" size={26} color="#334155" />
-                </View>
-                <Text style={styles.emptySeatActionLabel}>On mic</Text>
-              </TouchableOpacity>
-
-              {/* Option 4: Invite */}
-              <TouchableOpacity
-                style={styles.emptySeatActionItem}
-                onPress={() => {
-                  setSeatActionModalVisible(false);
-                  setSelectedSeatForAction(null);
-                  setOnlineUsersModalVisible(true);
-                }}
-                activeOpacity={0.75}
-              >
-                <View style={styles.emptySeatIconCircle}>
-                  <MaterialCommunityIcons name="account-plus-outline" size={26} color="#334155" />
-                </View>
-                <Text style={styles.emptySeatActionLabel}>Invite</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
+        selectedSeat={selectedSeatForAction}
+        seats={seats}
+        toggleSeatLock={toggleSeatLock}
+        lockAllSeats={lockAllSeats}
+        unlockAllSeats={unlockAllSeats}
+        takeSeat={takeSeat}
+        user={user}
+        setOnlineUsersModalVisible={setOnlineUsersModalVisible}
+        bottomSafePadding={bottomSafePadding}
+        styles={styles}
+      />
       {/* Enterprise Gift Panel Sheet */}
       <GiftPanel
         visible={giftPanelVisible}
@@ -3085,49 +2450,15 @@ export default function VoiceRoomScreen() {
         bottomInset={bottomSafePadding + 62}
       />
 
-      {/* Edit Room Announcement Modal (Image 2) */}
-      <Modal
+      <RoomAnnouncementModal
         visible={isEditingAnnouncement}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsEditingAnnouncement(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.announcementModalOverlay}
-        >
-          <View style={styles.announcementModalCard}>
-            <View style={styles.announcementModalHeader}>
-              <MaterialCommunityIcons name="bullhorn-outline" size={22} color="#F59E0B" />
-              <Text style={styles.announcementModalTitle}>Edit Announcement</Text>
-            </View>
-            <TextInput
-              style={styles.announcementTextInput}
-              value={tempAnnouncement}
-              onChangeText={setTempAnnouncement}
-              placeholder="Enter room announcement..."
-              placeholderTextColor="#94A3B8"
-              multiline
-              maxLength={120}
-            />
-            <View style={styles.announcementModalButtonsRow}>
-              <TouchableOpacity
-                style={styles.announcementCancelBtn}
-                onPress={() => setIsEditingAnnouncement(false)}
-              >
-                <Text style={styles.announcementCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.announcementSaveBtn}
-                onPress={handleSaveAnnouncement}
-                disabled={isSavingRoomSettings}
-              >
-                <Text style={styles.announcementSaveText}>{isSavingRoomSettings ? 'Saving…' : 'Save'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        onClose={() => setIsEditingAnnouncement(false)}
+        announcement={tempAnnouncement}
+        onChangeAnnouncement={setTempAnnouncement}
+        onSave={handleSaveAnnouncement}
+        saving={isSavingRoomSettings}
+        styles={styles}
+      />
     </ImageBackground>
   );
 }

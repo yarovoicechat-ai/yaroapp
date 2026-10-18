@@ -31,7 +31,12 @@ export function useGiftQueue() {
     const item = queueRef.current.shift();
     setActiveAnimation(item);
 
-    const duration = Math.min(6500, Math.max(1600, Number(item.duration) || 2600));
+    const isSvga =
+      String(item.mediaType || item.gift?.mediaType || '').toLowerCase() === 'svga' ||
+      /\.svga(?:[?#]|$)/i.test(String(item.animationUrl || item.gift?.animationUrl || ''));
+    const duration = isSvga
+      ? Math.min(12000, Math.max(4500, Number(item.duration || item.gift?.duration) || 4500))
+      : Math.min(6500, Math.max(1600, Number(item.duration) || 2600));
 
     if (currentTimeoutRef.current) {
       clearTimeout(currentTimeoutRef.current);

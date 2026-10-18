@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Platform,
   PermissionsAndroid,
-  Modal,
   FlatList,
   ActivityIndicator,
   Dimensions,
@@ -18,7 +17,6 @@ import {
   Animated,
   PanResponder,
   Alert,
-  TextInput,
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -28,6 +26,8 @@ import {
   ClientRoleType,
 } from 'react-native-agora';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import OngoingCallSafetyModal from '../../components/call/OngoingCallSafetyModal';
+import OngoingCallGiftModal from '../../components/call/OngoingCallGiftModal';
 import { apiUtil } from '../../utils/apiUtil.js';
 import { getSocket, initSocket } from '../../sockets';
 import GiftMedia from '../../components/GiftMedia';
@@ -928,47 +928,6 @@ const OnGoing = ({ route, navigation }) => {
     }
   };
 
-  const getFilteredGifts = () => {
-    if (activeTab.toLowerCase() === 'all') return gifts;
-    return gifts.filter((gift) => {
-      const category = typeof gift.category === 'string' ? gift.category : gift.category?.name || '';
-      return category.toLowerCase() === activeTab.toLowerCase();
-    });
-  };
-
-  const renderPopupGiftItem = ({ item }) => {
-    const isSelected = String(selectedPopupGift?._id || selectedPopupGift?.id) === String(item._id || item.id);
-    const giftVisual = resolveGiftVisual(item);
-    return (
-      <TouchableOpacity
-        style={[styles.popupGiftItem, isSelected && styles.selectedPopupGiftItem]}
-        onPress={() => setSelectedPopupGift(item)}
-        activeOpacity={0.8}
-      >
-        {item.animationUrl || giftVisual.giftImage ? (
-          <GiftMedia
-            source={item.animationUrl || giftVisual.giftImage}
-            mediaType={item.mediaType}
-            style={styles.popupGiftIcon}
-            resizeMode="contain"
-          />
-        ) : giftVisual.giftIcon ? (
-          <Text style={{ fontSize: 32 }}>{giftVisual.giftIcon}</Text>
-        ) : (
-          <Icon name="gift" size={30} color="#FBBF24" />
-        )}
-        <View style={styles.popupGiftDetails}>
-          <Text style={styles.popupGiftName}>{item.name}</Text>
-          <View style={styles.popupGiftCostRow}>
-            <Image source={require('../../assets/icons/diamond.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
-            <Text style={styles.popupGiftCost}>{item.price ?? item.cost ?? item.priceDiamonds ?? 0}</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const featuredGifts = gifts.slice(0, 5);
   const activeGiftVisual = resolveGiftVisual(activeGift?.gift || activeGift || {});
 
   const getInitials = value => (value || 'You')
@@ -1264,226 +1223,42 @@ const OnGoing = ({ route, navigation }) => {
         </View>
       </View>
 
-      {/* Full Tabbed Gift Modal */}
-      <Modal
+      <OngoingCallGiftModal
         visible={showGiftModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowGiftModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <LinearGradient
-            colors={['#11052C', '#0E093D']}
-            style={[styles.modalContent, { paddingBottom: Math.max(WP(4), (insets.bottom || 0) + 12) }]}
-          >
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderTitleRow}>
-                <Text style={styles.modalTitle}>Choose a Gift</Text>
-                <View style={styles.modalCoinBadge}>
-                  <Icon name="bitcoin" size={14} color="#FFD700" />
-                  <Text style={styles.modalCoinBadgeText}>
-                    {Number(user?.diamonds || 0).toLocaleString()}
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={() => setShowGiftModal(false)} style={styles.closeBtn} activeOpacity={0.7}>
-                <Icon name="close-circle" size={24} color="rgba(255,255,255,0.6)" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Categories Navigation Bar */}
-            <View style={styles.categoriesTabBar}>
-              {categories.map((tab) => {
-                const isActive = activeTab.toLowerCase() === tab.toLowerCase();
-                return (
-                  <TouchableOpacity
-                    key={tab}
-                    style={[styles.categoryTabButton, isActive && styles.categoryTabButtonActive]}
-                    onPress={() => {
-                      setActiveTab(tab);
-                      setSelectedPopupGift(null);
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.categoryTabText, isActive && styles.categoryTabTextActive]}>
-                      {tab}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Gift List Content */}
-            {loadingGifts ? (
-              <ActivityIndicator size="large" color="#03dcfe" style={styles.modalLoader} />
-            ) : getFilteredGifts().length === 0 ? (
-              <View style={styles.modalEmptyState}>
-                <Icon name="gift-off-outline" size={40} color="rgba(255,255,255,0.3)" />
-                <Text style={styles.modalEmptyText}>No gifts in this category</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={getFilteredGifts()}
-                numColumns={4}
-                keyExtractor={(item) => item._id}
-                renderItem={renderPopupGiftItem}
-                contentContainerStyle={styles.popupGiftGrid}
-                showsVerticalScrollIndicator={false}
-              />
-            )}
-
-            {/* Modal Bottom Send Action Bar */}
-            <View style={styles.modalBottomBar}>
-              {/* Quantity Selector Button */}
-              <View style={styles.quantityPickerContainer}>
-                <TouchableOpacity
-                  style={styles.quantityPickerBtn}
-                  onPress={() => setShowQtyDropdown(!showQtyDropdown)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.quantityPickerText}>x{selectedQuantity}</Text>
-                  <Icon name={showQtyDropdown ? "chevron-down" : "chevron-up"} size={16} color="#fff" />
-                </TouchableOpacity>
-
-                {/* Dropdown Options */}
-                {showQtyDropdown && (
-                  <View style={styles.qtyDropdownMenu}>
-                    {quantities.map((qty) => (
-                      <TouchableOpacity
-                        key={qty}
-                        style={styles.qtyDropdownItem}
-                        onPress={() => {
-                          setSelectedQuantity(qty);
-                          setShowQtyDropdown(false);
-                        }}
-                      >
-                        <Text style={[styles.qtyDropdownItemText, selectedQuantity === qty && styles.qtyDropdownItemActive]}>
-                          x{qty}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-
-              {/* Main Send Action Button */}
-              <TouchableOpacity
-                style={[styles.modalSendBtn, !selectedPopupGift && styles.modalSendBtnDisabled]}
-                disabled={!selectedPopupGift}
-                onPress={() => handleSendGift(selectedPopupGift, selectedQuantity)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={selectedPopupGift ? ['#FF3366', '#CB11F5'] : ['#4A4A6A', '#2E2E48']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.modalSendBtnGradient}
-                >
-                  <Text style={styles.modalSendBtnText}>
-                    Send ({selectedPopupGift ? Number(selectedPopupGift.price ?? selectedPopupGift.cost ?? selectedPopupGift.priceDiamonds ?? 0) * selectedQuantity : 0})
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </View>
-      </Modal>
-      {/* UGC Safety Moderation Modal */}
-      <Modal visible={safetyModalVisible} transparent animationType="fade">
-        <View style={styles.safetyModalOverlay}>
-          <View style={styles.safetyModalCard}>
-            <View style={styles.safetyModalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Icon name="shield-check" size={22} color="#f43f5e" />
-                <Text style={styles.safetyModalTitle}>Safety & Moderation</Text>
-              </View>
-              <TouchableOpacity onPress={() => { setSafetyModalVisible(false); setSafetyAction(null); }}>
-                <Icon name="close" size={22} color="#94a3b8" />
-              </TouchableOpacity>
-            </View>
-
-            {safetyAction === 'report' ? (
-              <View style={{ marginTop: 12 }}>
-                <Text style={styles.safetySubtitle}>Why are you reporting this user?</Text>
-                <View style={styles.reasonsList}>
-                  {REPORT_REASONS.map((r) => (
-                    <TouchableOpacity
-                      key={r}
-                      style={[styles.reasonChip, reportReason === r && styles.reasonChipActive]}
-                      onPress={() => setReportReason(r)}
-                    >
-                      <Text style={[styles.reasonChipText, reportReason === r && styles.reasonChipTextActive]}>
-                        {r}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <TextInput
-                  style={styles.safetyInput}
-                  placeholder="Additional details (optional)..."
-                  placeholderTextColor="#64748b"
-                  value={reportDetails}
-                  onChangeText={setReportDetails}
-                  multiline
-                  numberOfLines={3}
-                />
-
-                <View style={styles.safetyActionRow}>
-                  <TouchableOpacity
-                    style={styles.safetyCancelBtn}
-                    onPress={() => setSafetyAction(null)}
-                  >
-                    <Text style={styles.safetyCancelText}>Back</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.safetySubmitBtn}
-                    onPress={handleSendCallReport}
-                    disabled={submittingReport}
-                  >
-                    {submittingReport ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.safetySubmitText}>Submit Report</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View style={{ marginTop: 14 }}>
-                <Text style={styles.safetySubtitle}>
-                  Choose an action for this call with {name || 'user'}:
-                </Text>
-
-                <TouchableOpacity
-                  style={styles.safetyOptionBtn}
-                  onPress={() => setSafetyAction('report')}
-                >
-                  <Icon name="flag-outline" size={22} color="#f59e0b" />
-                  <View style={{ marginLeft: 12, flex: 1 }}>
-                    <Text style={styles.safetyOptionTitle}>Report User</Text>
-                    <Text style={styles.safetyOptionSub}>Report offensive behavior, underage user, or policy violations</Text>
-                  </View>
-                  <Icon name="chevron-right" size={20} color="#64748b" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.safetyOptionBtn, { borderColor: 'rgba(244, 63, 94, 0.3)', backgroundColor: 'rgba(244, 63, 94, 0.08)' }]}
-                  onPress={handleBlockFromCall}
-                >
-                  <Icon name="account-cancel-outline" size={22} color="#f43f5e" />
-                  <View style={{ marginLeft: 12, flex: 1 }}>
-                    <Text style={[styles.safetyOptionTitle, { color: '#f43f5e' }]}>Block User & End Call</Text>
-                    <Text style={styles.safetyOptionSub}>Immediately disconnect and block all future interactions</Text>
-                  </View>
-                  <Icon name="chevron-right" size={20} color="#64748b" />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowGiftModal(false)}
+        bottomPadding={Math.max(WP(4), (insets.bottom || 0) + 12)}
+        user={user}
+        categories={categories}
+        activeTab={activeTab}
+        onTabChange={(tab) => { setActiveTab(tab); setSelectedPopupGift(null); }}
+        loading={loadingGifts}
+        allGifts={gifts}
+        selectedGift={selectedPopupGift}
+        onSelectGift={setSelectedPopupGift}
+        selectedQuantity={selectedQuantity}
+        onSelectQuantity={setSelectedQuantity}
+        quantityMenuVisible={showQtyDropdown}
+        onToggleQuantityMenu={() => setShowQtyDropdown(!showQtyDropdown)}
+        onCloseQuantityMenu={() => setShowQtyDropdown(false)}
+        onSend={() => handleSendGift(selectedPopupGift, selectedQuantity)}
+        styles={styles}
+      />
+      <OngoingCallSafetyModal
+        visible={safetyModalVisible}
+        onClose={() => { setSafetyModalVisible(false); setSafetyAction(null); }}
+        action={safetyAction}
+        onActionChange={setSafetyAction}
+        name={name}
+        reasons={REPORT_REASONS}
+        selectedReason={reportReason}
+        onSelectReason={setReportReason}
+        details={reportDetails}
+        onChangeDetails={setReportDetails}
+        submitting={submittingReport}
+        onSubmitReport={handleSendCallReport}
+        onBlock={handleBlockFromCall}
+        styles={styles}
+      />
     </LinearGradient>
   );
 };

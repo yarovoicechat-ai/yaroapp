@@ -11,7 +11,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Modal,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -290,39 +289,14 @@ export default function OneToOne() {
         )}
       </ScrollView>
 
-      {/* Language Picker Modal */}
-      <Modal
+      <LanguageSelectionModal
         visible={langModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setLangModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => setLangModalVisible(false)}
-        >
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Select Language</Text>
-            <View style={styles.modalLanguages}>
-              {LANGUAGES.map((lang) => (
-                <TouchableOpacity
-                  key={lang}
-                  style={[styles.langChip, selectedLanguage === lang && styles.langChipActive]}
-                  onPress={() => {
-                    setSelectedLanguage(lang);
-                    setLangModalVisible(false);
-                  }}
-                >
-                  <Text style={[styles.langChipText, selectedLanguage === lang && styles.langChipTextActive]}>
-                    {lang}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setLangModalVisible(false)}
+        languages={LANGUAGES}
+        selectedLanguage={selectedLanguage}
+        onSelect={(language) => { setSelectedLanguage(language); setLangModalVisible(false); }}
+        styles={styles}
+      />
     </View>
   );
 }

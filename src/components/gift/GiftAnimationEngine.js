@@ -45,6 +45,7 @@ export default function GiftAnimationEngine({ animation, onAnimationComplete }) 
   };
   const animationType = String(animation?.animationType || gift.animationType || 'NORMAL').toUpperCase();
   const animationUrl = gift.animationUrl || gift.mediaUrl || animation?.animationUrl || '';
+  const isSvga = String(gift.mediaType || '').toLowerCase() === 'svga' || /\.svga(?:[?#]|$)/i.test(animationUrl);
   const giftVisual = resolveGiftVisual(gift);
   const visualUrl = animationUrl || (PREMIUM_TYPES.has(animationType) ? giftVisual.giftImage : '');
   const animationId = animation?.id || animation?.animationId || null;
@@ -56,8 +57,8 @@ export default function GiftAnimationEngine({ animation, onAnimationComplete }) 
   };
   const targetX = Math.max(8, Math.min(width - 60, target.x - 26));
   const targetY = Math.max(24, Math.min(height - 72, target.y - 26));
-  const isFlightAnimation = !PREMIUM_TYPES.has(animationType);
-  const flightSource = giftVisual.giftImage || animationUrl;
+  const isFlightAnimation = !PREMIUM_TYPES.has(animationType) && !isSvga;
+  const flightSource = isSvga ? animationUrl : (giftVisual.giftImage || animationUrl);
   const hasAnyVisual = Boolean(visualUrl || flightSource || giftVisual.giftIcon);
 
   useEffect(() => {
@@ -131,7 +132,9 @@ export default function GiftAnimationEngine({ animation, onAnimationComplete }) 
     ribbonOpacity.setValue(0);
 
     const requestedDuration = Number(animation.duration || gift.duration || 4200);
-    const duration = Math.min(12000, Math.max(2400, requestedDuration));
+    const duration = isSvga
+      ? Math.min(12000, Math.max(4500, requestedDuration))
+      : Math.min(12000, Math.max(2400, requestedDuration));
     const enterDuration = 360;
     const exitDuration = 360;
     const holdDuration = Math.max(1200, duration - enterDuration - exitDuration);
@@ -170,6 +173,7 @@ export default function GiftAnimationEngine({ animation, onAnimationComplete }) 
     flightY,
     gift.duration,
     hasAnyVisual,
+    isSvga,
     isFlightAnimation,
     opacity,
     ribbonOpacity,

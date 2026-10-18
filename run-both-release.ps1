@@ -13,6 +13,8 @@ if (-not (Test-Path $apkPath)) {
 }
 
 Write-Host "Finding connected devices..."
+adb connect 192.168.31.82:34451 | Out-Null
+Start-Sleep -Seconds 3
 $deviceLines = adb devices -l
 $uniqueTransports = @()
 $seenModels = @{}

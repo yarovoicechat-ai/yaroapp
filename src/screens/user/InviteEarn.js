@@ -14,9 +14,9 @@ import {
   Dimensions,
   RefreshControl,
   StatusBar,
-  Modal,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import ReferralRulesModal from '../../components/invite/ReferralRulesModal';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthProvider';
@@ -510,79 +510,12 @@ const InviteEarn = () => {
 
       </ScrollView>
 
-      {/* Rules & Terms Popup Modal */}
-      <Modal
+      <ReferralRulesModal
         visible={showRulesModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowRulesModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: Math.max(18, (insets.bottom || 0) + 12) }]}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleRow}>
-                <Icon name="gavel" size={20} color="#D97706" style={{ marginRight: 6 }} />
-                <Text style={styles.modalTitle}>Referral System Rules (नियम)</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowRulesModal(false)} style={styles.modalCloseBtn}>
-                <Icon name="close" size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <View style={styles.ruleItem}>
-                <View style={styles.ruleNumBadge}><Text style={styles.ruleNumText}>1</Text></View>
-                <View style={styles.ruleTextWrap}>
-                  <Text style={styles.ruleItemTitle}>New User Welcome Reward (+100 Diamonds)</Text>
-                  <Text style={styles.ruleItemDesc}>
-                    When a new user registers using your valid referral link/code, they receive +100 FREE Welcome Diamonds instantly!
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.ruleItem}>
-                <View style={styles.ruleNumBadge}><Text style={styles.ruleNumText}>2</Text></View>
-                <View style={styles.ruleTextWrap}>
-                  <Text style={styles.ruleItemTitle}>Referrer Bonus (+50 Total Beans)</Text>
-                  <Text style={styles.ruleItemDesc}>
-                    The referrer receives +25 Beans on friend's signup + +25 Beans when friend completes 5 minutes (300s) of calls.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.ruleItem}>
-                <View style={styles.ruleNumBadge}><Text style={styles.ruleNumText}>3</Text></View>
-                <View style={styles.ruleTextWrap}>
-                  <Text style={styles.ruleItemTitle}>Maximum Reward Limit (50 Beans)</Text>
-                  <Text style={styles.ruleItemDesc}>
-                    The maximum reward per referred friend is exactly 50 Beans (25 Beans on signup + 25 Beans on call milestone). No Diamonds are awarded.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.ruleItem}>
-                <View style={styles.ruleNumBadge}><Text style={styles.ruleNumText}>4</Text></View>
-                <View style={styles.ruleTextWrap}>
-                  <Text style={styles.ruleItemTitle}>Anti-Fraud & Self-Referral Policy</Text>
-                  <Text style={styles.ruleItemDesc}>
-                    Self-referrals, fake accounts, or multiple registrations on the same device are automatically detected and blocked by security audits.
-                  </Text>
-                </View>
-              </View>
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.modalDoneBtn}
-              onPress={() => setShowRulesModal(false)}
-              activeOpacity={0.85}
-            >
-              <LinearGradient colors={['#F59E0B', '#D97706']} style={styles.modalDoneGradient}>
-                <Text style={styles.modalDoneText}>I Understand (समझ गया)</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowRulesModal(false)}
+        bottomInset={insets.bottom}
+        styles={styles}
+      />
     </View>
   );
 };

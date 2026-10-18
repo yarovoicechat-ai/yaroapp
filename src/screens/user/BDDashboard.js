@@ -11,11 +11,11 @@ import {
   Clipboard,
   Share,
   Alert,
-  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
+import BDFormModal from '../../components/bd/BDFormModal';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -769,236 +769,63 @@ export default function BDDashboardScreen() {
       </ScrollView>
 
       {/* ============================================================== */}
-      {/* MODAL: HIRE AGENCY                                              */}
-      {/* ============================================================== */}
-      <Modal
+      <BDFormModal
         visible={hireAgencyModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setHireAgencyModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalSheet, { paddingBottom: bottomSafePadding + 20 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Onboard New Agency</Text>
-              <TouchableOpacity onPress={() => setHireAgencyModalVisible(false)}>
-                <Icon name="close" size={22} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Agency Name *</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Star Creators Media"
-                placeholderTextColor="#94A3B8"
-                value={agencyForm.name}
-                onChangeText={(t) => setAgencyForm({ ...agencyForm, name: t })}
-              />
-
-              <Text style={styles.inputLabel}>Leader / Owner Full Name *</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Rajesh Sharma"
-                placeholderTextColor="#94A3B8"
-                value={agencyForm.leaderName}
-                onChangeText={(t) => setAgencyForm({ ...agencyForm, leaderName: t })}
-              />
-
-              <Text style={styles.inputLabel}>WhatsApp / Contact Number *</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. +91 98765 43210"
-                placeholderTextColor="#94A3B8"
-                keyboardType="phone-pad"
-                value={agencyForm.phone}
-                onChangeText={(t) => setAgencyForm({ ...agencyForm, phone: t })}
-              />
-
-              <Text style={styles.inputLabel}>Email Address</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. contact@agency.com"
-                placeholderTextColor="#94A3B8"
-                keyboardType="email-address"
-                value={agencyForm.email}
-                onChangeText={(t) => setAgencyForm({ ...agencyForm, email: t })}
-              />
-
-              <Text style={styles.inputLabel}>Operating State / Region</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Delhi NCR, Maharashtra"
-                placeholderTextColor="#94A3B8"
-                value={agencyForm.state}
-                onChangeText={(t) => setAgencyForm({ ...agencyForm, state: t })}
-              />
-
-              <TouchableOpacity
-                style={styles.modalSubmitBtn}
-                onPress={handleSubmitHireAgency}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={['#4F46E5', '#3730A3']} style={styles.modalSubmitGradient}>
-                  <Text style={styles.modalSubmitText}>Register & Assign Agency Code</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ============================================================== */}
-      {/* MODAL: HIRE HOST                                                */}
-      {/* ============================================================== */}
-      <Modal
+        title="Onboard New Agency"
+        onClose={() => setHireAgencyModalVisible(false)}
+        bottomSafePadding={bottomSafePadding}
+        form={agencyForm}
+        onChange={(key, value) => setAgencyForm((current) => ({ ...current, [key]: value }))}
+        fields={[
+          { key: 'name', label: 'Agency Name *', placeholder: 'e.g. Star Creators Media' },
+          { key: 'leaderName', label: 'Leader / Owner Full Name *', placeholder: 'e.g. Rajesh Sharma' },
+          { key: 'phone', label: 'WhatsApp / Contact Number *', placeholder: 'e.g. +91 98765 43210', keyboardType: 'phone-pad' },
+          { key: 'email', label: 'Email Address', placeholder: 'e.g. contact@agency.com', keyboardType: 'email-address' },
+          { key: 'state', label: 'Operating State / Region', placeholder: 'e.g. Delhi NCR, Maharashtra' },
+        ]}
+        submitLabel="Register & Assign Agency Code"
+        gradientColors={['#4F46E5', '#3730A3']}
+        onSubmit={handleSubmitHireAgency}
+        styles={styles}
+      />
+      <BDFormModal
         visible={hireHostModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setHireHostModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalSheet, { paddingBottom: bottomSafePadding + 20 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Onboard New Host</Text>
-              <TouchableOpacity onPress={() => setHireHostModalVisible(false)}>
-                <Icon name="close" size={22} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Host Full Name *</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Neha Verma"
-                placeholderTextColor="#94A3B8"
-                value={hostForm.name}
-                onChangeText={(t) => setHostForm({ ...hostForm, name: t })}
-              />
-
-              <Text style={styles.inputLabel}>User ID or Registered Mobile *</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. 10000045 or 9876543210"
-                placeholderTextColor="#94A3B8"
-                value={hostForm.userIdOrPhone}
-                onChangeText={(t) => setHostForm({ ...hostForm, userIdOrPhone: t })}
-              />
-
-              <Text style={styles.inputLabel}>Primary Languages</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Hindi, English, Punjabi"
-                placeholderTextColor="#94A3B8"
-                value={hostForm.language}
-                onChangeText={(t) => setHostForm({ ...hostForm, language: t })}
-              />
-
-              <Text style={styles.inputLabel}>Daily Calling Target Commitment</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. 2-3 Hours Daily"
-                placeholderTextColor="#94A3B8"
-                value={hostForm.dailyTargetHours}
-                onChangeText={(t) => setHostForm({ ...hostForm, dailyTargetHours: t })}
-              />
-
-              <TouchableOpacity
-                style={styles.modalSubmitBtn}
-                onPress={handleSubmitHireHost}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={['#EC4899', '#BE185D']} style={styles.modalSubmitGradient}>
-                  <Text style={styles.modalSubmitText}>Register Host Under BD</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ============================================================== */}
-      {/* MODAL: PAYOUT SETTLEMENT                                        */}
-      {/* ============================================================== */}
-      <Modal
+        title="Onboard New Host"
+        onClose={() => setHireHostModalVisible(false)}
+        bottomSafePadding={bottomSafePadding}
+        form={hostForm}
+        onChange={(key, value) => setHostForm((current) => ({ ...current, [key]: value }))}
+        fields={[
+          { key: 'name', label: 'Host Full Name *', placeholder: 'e.g. Neha Verma' },
+          { key: 'userIdOrPhone', label: 'User ID or Registered Mobile *', placeholder: 'e.g. 10000045 or 9876543210' },
+          { key: 'language', label: 'Primary Languages', placeholder: 'e.g. Hindi, English, Punjabi' },
+          { key: 'dailyTargetHours', label: 'Daily Calling Target Commitment', placeholder: 'e.g. 2-3 Hours Daily' },
+        ]}
+        submitLabel="Register Host Under BD"
+        gradientColors={['#EC4899', '#BE185D']}
+        onSubmit={handleSubmitHireHost}
+        styles={styles}
+      />
+      <BDFormModal
         visible={payoutModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPayoutModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalSheet, { paddingBottom: bottomSafePadding + 20 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request BD Payout</Text>
-              <TouchableOpacity onPress={() => setPayoutModalVisible(false)}>
-                <Icon name="close" size={22} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Withdrawal Amount (₹) *</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Minimum ₹500"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                value={payoutForm.amount}
-                onChangeText={(t) => setPayoutForm({ ...payoutForm, amount: t })}
-              />
-
-              <Text style={styles.inputLabel}>UPI ID (Recommended)</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. username@okhdfcbank"
-                placeholderTextColor="#94A3B8"
-                value={payoutForm.upiId}
-                onChangeText={(t) => setPayoutForm({ ...payoutForm, upiId: t })}
-              />
-
-              <Text style={styles.orDividerText}>— OR BANK TRANSFER —</Text>
-
-              <Text style={styles.inputLabel}>Account Holder Name</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Full Name as per Bank"
-                placeholderTextColor="#94A3B8"
-                value={payoutForm.accountHolder}
-                onChangeText={(t) => setPayoutForm({ ...payoutForm, accountHolder: t })}
-              />
-
-              <Text style={styles.inputLabel}>Account Number</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Bank Account Number"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                value={payoutForm.accountNumber}
-                onChangeText={(t) => setPayoutForm({ ...payoutForm, accountNumber: t })}
-              />
-
-              <Text style={styles.inputLabel}>IFSC Code</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. HDFC0001234"
-                placeholderTextColor="#94A3B8"
-                autoCapitalize="characters"
-                value={payoutForm.ifsc}
-                onChangeText={(t) => setPayoutForm({ ...payoutForm, ifsc: t.toUpperCase() })}
-              />
-
-              <TouchableOpacity
-                style={styles.modalSubmitBtn}
-                onPress={handleSubmitPayout}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={['#22C55E', '#16A34A']} style={styles.modalSubmitGradient}>
-                  <Text style={styles.modalSubmitText}>Submit Payout Request</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+        title="Request BD Payout"
+        onClose={() => setPayoutModalVisible(false)}
+        bottomSafePadding={bottomSafePadding}
+        form={payoutForm}
+        onChange={(key, value) => setPayoutForm((current) => ({ ...current, [key]: value }))}
+        fields={[
+          { key: 'amount', label: 'Withdrawal Amount (₹) *', placeholder: 'Minimum ₹500', keyboardType: 'numeric' },
+          { key: 'upiId', label: 'UPI ID (Recommended)', placeholder: 'e.g. username@okhdfcbank' },
+          { separatorLabel: '— OR BANK TRANSFER —' },
+          { key: 'accountHolder', label: 'Account Holder Name', placeholder: 'Full Name as per Bank' },
+          { key: 'accountNumber', label: 'Account Number', placeholder: 'Bank Account Number', keyboardType: 'numeric' },
+          { key: 'ifsc', label: 'IFSC Code', placeholder: 'e.g. HDFC0001234', autoCapitalize: 'characters', uppercase: true },
+        ]}
+        submitLabel="Submit Payout Request"
+        gradientColors={['#22C55E', '#16A34A']}
+        onSubmit={handleSubmitPayout}
+        styles={styles}
+      />
     </View>
   );
 }

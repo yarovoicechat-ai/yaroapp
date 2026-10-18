@@ -145,8 +145,10 @@ export default function ChatListScreen() {
   const fetchSystemNotices = useCallback(async () => {
     try {
       setLoadingNotices(true);
-      const response = await apiUtil.get('/notifications', { params: { limit: 50 } });
-      const notices = response.data?.data?.notifications || [];
+      const response = await apiUtil.get('/notifications', { params: { limit: 50, type: 'system' } });
+      const notices = (response.data?.data?.notifications || []).filter(
+        (notice) => String(notice?.type || '').toLowerCase() === 'system',
+      );
       const mapped = Array.isArray(notices) ? notices.map((notice) => ({
         id: String(notice._id || notice.id),
         type: notice.type,

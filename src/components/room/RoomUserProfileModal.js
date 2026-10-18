@@ -48,6 +48,7 @@ export default function RoomUserProfileModal({
   onOpenFullProfile,
   isHostOrAdmin = false,
   isRoomOwner = false,
+  isGlobalRoomManager = false,
   roomOwnerId,
   admins = [],
   seats = [],
@@ -154,26 +155,49 @@ export default function RoomUserProfileModal({
   const wealthLevel = Number(identityProfile.wealthLevel || user?.wealthLevel || identityProfile.level || user?.level || 1);
   const charmLevel = Number(identityProfile.charmLevel || user?.charmLevel || 1);
 
+  const targetIds = [user?.userId, user?.id, user?._id, targetUserId].filter(Boolean).map(String);
+  const targetIdSet = new Set(targetIds);
+  const matchesTarget = (id) => id !== undefined && id !== null && targetIdSet.has(String(id));
   const isTargetOwner = Boolean(
     user?.isOwner ||
     user?.isHost ||
-    (roomOwnerId && String(roomOwnerId) === targetUserId)
+    matchesTarget(roomOwnerId)
   );
 
   const isTargetAdmin = Boolean(
     !isTargetOwner && (
       user?.isAdmin ||
-      (Array.isArray(admins) && admins.map(String).includes(targetUserId))
+      (Array.isArray(admins) && admins.some(matchesTarget))
     )
   );
+  const isTargetGlobalRoomManager = Boolean(user?.isGlobalRoomManager || resolvedProfile?.isGlobalRoomManager);
 
-  const targetIds = [user?.userId, user?.id, user?._id, targetUserId].filter(Boolean).map(String);
   const isSelf = Boolean(
     user?.isCurrentUser ||
     (currentUserId && targetIds.includes(String(currentUserId)))
   );
 
-  const canModerate = (isHostOrAdmin || isRoomOwner) && !isTargetOwner && !isSelf;
+  const canModerate = (isHostOrAdmin || isRoomOwner) && !isTargetOwner && !isSelf && !isTargetGlobalRoomManager;
+  const canAssignRoomAdmins = (isRoomOwner || isGlobalRoomManager) && !isTargetOwner && !isSelf && !isTargetGlobalRoomManager;
+  const targetSeat = Array.isArray(seats)
+    ? seats.find((seat) => seat?.user && [seat.user.userId, seat.user.id, seat.user._id].some(matchesTarget))
+    : null;
+  const isTargetChatBanned = Array.isArray(bannedChatUsers) && bannedChatUsers.some(matchesTarget);
+  const isTargetMuted = Array.isArray(mutedUsers) && mutedUsers.some(matchesTarget);
+
+  const renderModerationAction = (label, icon, onPress, tone = 'normal') => (
+    <TouchableOpacity
+      key={label}
+      style={[styles.moderationAction, tone === 'danger' && styles.moderationActionDanger]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <MaterialCommunityIcons name={icon} size={17} color={tone === 'danger' ? '#DC2626' : '#4F46E5'} />
+      <Text style={[styles.moderationActionText, tone === 'danger' && styles.moderationActionDangerText]} numberOfLines={2}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
 
   // Partner CP Info if available (no dummy fallback)
   const cpPartner = identityProfile.cpPartner || user?.cpPartner || null;
@@ -215,6 +239,11 @@ export default function RoomUserProfileModal({
             <Text style={styles.reportText}>Report</Text>
           </TouchableOpacity>
 
+          <ScrollView
+            style={styles.profileContentScroll}
+            contentContainerStyle={styles.profileContentContainer}
+            showsVerticalScrollIndicator={false}
+          >
           {/* Floating Avatar & CP Bubble Header (Screenshot 1) */}
           <View style={styles.avatarHeaderRow}>
             {/* Main User Avatar with Ornate SVIP Frame */}
@@ -360,8 +389,8 @@ export default function RoomUserProfileModal({
             {userBio}
           </Text>
 
-          {/* 4 Action Icons Row: Profile, Chat, Mute Mic, Mention */}
-          <View style={styles.fourActionsRow}>
+          {/* Profile, chat, and mention actions */}
+          <View style={styles.profileActionsRow}>
             <TouchableOpacity
               style={styles.circleActionBtn}
               onPress={() => {
@@ -393,20 +422,6 @@ export default function RoomUserProfileModal({
             <TouchableOpacity
               style={styles.circleActionBtn}
               onPress={() => {
-                onMuteSeat && onMuteSeat(targetUserId);
-                AlertService.show('Mute', `Mute toggled for ${targetName}`, 'info');
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.actionIconCircle, { backgroundColor: '#FB923C' }]}>
-                <MaterialCommunityIcons name="microphone-off" size={20} color="#FFFFFF" />
-              </View>
-              <Text style={styles.actionIconLabel}>Mute Mic</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.circleActionBtn}
-              onPress={() => {
                 onClose();
                 onMention && onMention(targetName);
               }}
@@ -418,6 +433,46 @@ export default function RoomUserProfileModal({
               <Text style={styles.actionIconLabel}>Mention</Text>
             </TouchableOpacity>
           </View>
+
+          {canModerate && (
+            <View style={styles.moderationPanel}>
+              <Text style={styles.moderationPanelTitle}>Room moderation</Text>
+              <View style={styles.moderationActions}>
+                {canAssignRoomAdmins && onToggleAdmin && renderModerationAction(
+                  isTargetAdmin ? 'Remove Admin' : 'Make Admin',
+                  isTargetAdmin ? 'account-minus-outline' : 'account-plus-outline',
+                  () => onToggleAdmin(user),
+                )}
+                {onBanChat && renderModerationAction(
+                  isTargetChatBanned ? 'Unmute Chat' : 'Mute Chat',
+                  isTargetChatBanned ? 'message-text-outline' : 'message-off-outline',
+                  () => onBanChat(user),
+                )}
+                {targetSeat && onMuteSeat && renderModerationAction(
+                  isTargetMuted ? 'Unmute Mic' : 'Mute Mic',
+                  isTargetMuted ? 'microphone' : 'microphone-off',
+                  () => onMuteSeat(user),
+                )}
+                {targetSeat && onRemoveFromSeat && renderModerationAction(
+                  'Remove Seat',
+                  'account-arrow-down-outline',
+                  () => onRemoveFromSeat(user),
+                  'danger',
+                )}
+                {targetSeat && onToggleSeatLock && renderModerationAction(
+                  targetSeat.isLocked ? 'Unlock Seat' : 'Lock Seat',
+                  targetSeat.isLocked ? 'lock-open-variant-outline' : 'lock-outline',
+                  () => onToggleSeatLock(targetSeat.seatIndex),
+                )}
+                {onKickUser && renderModerationAction(
+                  'Kick 24h',
+                  'account-cancel-outline',
+                  () => onKickUser(user),
+                  'danger',
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Bottom Big Action Buttons: Follow & Send Gifts */}
           {!isSelf && (
@@ -468,6 +523,7 @@ export default function RoomUserProfileModal({
               </TouchableOpacity>
             </View>
           )}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -486,6 +542,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
     paddingTop: 16,
+    maxHeight: '94%',
     alignItems: 'center',
     position: 'relative',
     shadowColor: '#000',
@@ -493,6 +550,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 20,
+  },
+  profileContentScroll: {
+    width: '100%',
+    flexShrink: 1,
+  },
+  profileContentContainer: {
+    alignItems: 'center',
+    paddingTop: 52,
+    paddingBottom: 8,
   },
   topSheetGlow: {
     position: 'absolute',
@@ -690,7 +756,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginVertical: 4,
   },
-  fourActionsRow: {
+  profileActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
@@ -721,6 +787,53 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontWeight: '600',
     marginTop: 5,
+  },
+  moderationPanel: {
+    width: '100%',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 9,
+    marginTop: 2,
+  },
+  moderationPanelTitle: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 7,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  moderationActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  moderationAction: {
+    width: '31%',
+    minHeight: 48,
+    paddingHorizontal: 5,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  moderationActionDanger: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  moderationActionText: {
+    color: '#3730A3',
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 3,
+  },
+  moderationActionDangerText: {
+    color: '#B91C1C',
   },
   bottomButtonsRow: {
     flexDirection: 'row',

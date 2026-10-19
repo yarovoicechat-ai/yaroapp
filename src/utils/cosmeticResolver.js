@@ -115,6 +115,11 @@ export const resolveEntryAssets = (payload) => {
         payload?.effect ||
         payload?.entryAsset ||
         payload?.equippedEntryAsset ||
+        payload?.vehicle ||
+        payload?.equippedVehicle ||
+        payload?.equippedVehicleAsset ||
+        user?.equippedVehicleAsset ||
+        user?.equippedVehicle ||
         user?.equippedEntryAsset ||
         user?.equippedEntryEffect ||
         user?.equippedEntry ||

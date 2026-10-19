@@ -19,7 +19,6 @@ import GiftCategoryTabs from './GiftCategoryTabs';
 import GiftCard from './GiftCard';
 import ReceiverSelector from './ReceiverSelector';
 import GiftLevelBar from './GiftLevelBar';
-import GiftConfirmationModal from './GiftConfirmationModal';
 import GiftHistoryModal from './GiftHistoryModal';
 import InsufficientBalanceModal from './InsufficientBalanceModal';
 import { AlertService } from '../../utils/AlertService';
@@ -474,17 +473,6 @@ export default function GiftPanel({
           </View>
         </Animated.View>
 
-        {/* Confirmation Modal for high-value gifts */}
-        <GiftConfirmationModal
-          visible={confirmationPending}
-          gift={selectedGift}
-          quantity={selectedQuantity}
-          receivers={selectedReceivers}
-          totalDiamonds={currentCost}
-          currentBalance={activeBalance}
-          onConfirm={confirmSend}
-          onCancel={cancelConfirmation}
-        />
 
         {/* Insufficient Diamonds Modal */}
         <InsufficientBalanceModal

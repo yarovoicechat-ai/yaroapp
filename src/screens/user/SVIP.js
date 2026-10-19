@@ -23,6 +23,7 @@ import { AuthContext } from '../../context/AuthProvider';
 import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
 import { formatCompactBalance } from '../../utils/numberUtil';
+import { getUserAvatar } from '../../utils/avatarUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -312,7 +313,7 @@ export default function SVIPScreen() {
             >
               {/* Lynx / Noble Mascot Portrait */}
               <Image
-                source={require('../../assets/images/user1.png')}
+                source={getUserAvatar(user)}
                 style={styles.mascotImage}
                 resizeMode="cover"
               />

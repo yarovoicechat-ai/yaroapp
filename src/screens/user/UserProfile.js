@@ -25,6 +25,7 @@ import { AlertService } from '../../utils/AlertService';
 import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
 import { apiUtil } from '../../utils/apiUtil';
 import { formatCompactBalance } from '../../utils/numberUtil';
+import { getUserAvatar } from '../../utils/avatarUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -47,15 +48,23 @@ export default function UserProfileScreen() {
   const bottomSafePadding = getStackScreenBottomPadding(insets.bottom, 16);
   const { user: currentUser } = useContext(AuthContext);
 
-  const [fetchedUser, setFetchedUser] = useState(null);
+  const incomingUser = route.params?.user || route.params?.host || null;
+  const [fetchedUser, setFetchedUser] = useState(incomingUser);
   const [activeTab, setActiveTab] = useState('Profile'); // 'Profile' | 'Moment'
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(Boolean(incomingUser?.isFollowing));
   const [followLoading, setFollowLoading] = useState(false);
   const [callingInProgress, setCallingInProgress] = useState(false);
 
   useEffect(() => {
     const fetchUserById = async () => {
-      const uid = route.params?.userId || route.params?.id;
+      const uid = route.params?.userId ||
+        route.params?.id ||
+        incomingUser?._id ||
+        incomingUser?.userId ||
+        incomingUser?.id ||
+        incomingUser?.displayId ||
+        incomingUser?.name;
+
       if (uid) {
         // Record profile visit
         apiUtil.post(`/user/visit/${encodeURIComponent(uid)}`).catch(() => {});
@@ -75,7 +84,7 @@ export default function UserProfileScreen() {
       }
     };
     fetchUserById();
-  }, [route.params?.userId, route.params?.id]);
+  }, [route.params?.userId, route.params?.id, route.params?.user, route.params?.host]);
 
   const targetUser = useMemo(() => {
     const raw = fetchedUser || route.params?.user || route.params?.host || {};
@@ -350,7 +359,7 @@ export default function UserProfileScreen() {
                 style={styles.avatarGoldBorder}
               >
                 <Image
-                  source={targetUser.avatar ? { uri: targetUser.avatar } : require('../../assets/images/user1.png')}
+                  source={getUserAvatar(targetUser)}
                   style={styles.mainAvatarImg}
                 />
               </LinearGradient>
@@ -382,7 +391,7 @@ export default function UserProfileScreen() {
                 style={styles.avatarPurpleBorder}
               >
                 <Image
-                  source={targetUser.cpPartner?.avatar ? { uri: targetUser.cpPartner.avatar } : require('../../assets/images/user2.png')}
+                  source={getUserAvatar(targetUser.cpPartner)}
                   style={styles.partnerAvatarImg}
                 />
               </LinearGradient>
@@ -573,7 +582,7 @@ export default function UserProfileScreen() {
                     {/* Left Partner */}
                     <View style={styles.cpPartnerCol}>
                       <Image
-                        source={targetUser.avatar ? { uri: targetUser.avatar } : require('../../assets/images/user1.png')}
+                        source={getUserAvatar(targetUser)}
                         style={styles.cpAvatar}
                       />
                       <Text style={styles.cpName} numberOfLines={1}>💫{targetUser.name}💫</Text>
@@ -595,7 +604,7 @@ export default function UserProfileScreen() {
                     {/* Right Partner */}
                     <View style={styles.cpPartnerCol}>
                       <Image
-                        source={targetUser.cpPartner.avatar ? { uri: targetUser.cpPartner.avatar } : require('../../assets/images/user2.png')}
+                        source={getUserAvatar(targetUser.cpPartner)}
                         style={styles.cpAvatar}
                       />
                       <Text style={styles.cpName} numberOfLines={1}>💫{targetUser.cpPartner.name}💫</Text>

@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import api from "../../api/apiClient";
+import api from "../../utils/apiUtil";
 
 // get all chats
 export const fetchChats = createAsyncThunk(

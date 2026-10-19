@@ -264,7 +264,7 @@ export default function RoomUserProfileModal({
               {cpPartner && (
                 <View style={styles.cpBubbleWrap}>
                   <Image
-                    source={cpPartner.avatar ? { uri: cpPartner.avatar } : require('../../assets/images/user2.png')}
+                    source={getUserAvatar(cpPartner)}
                     style={styles.cpAvatarImg}
                   />
                   <LinearGradient

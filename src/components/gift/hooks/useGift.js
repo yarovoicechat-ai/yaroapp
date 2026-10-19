@@ -207,12 +207,8 @@ export function useGift({
   );
 
   const handleInitiateSend = useCallback(() => {
-    if (totalDiamonds >= CONFIRMATION_THRESHOLD_DIAMONDS) {
-      setConfirmationPending(true);
-    } else {
-      executeSend();
-    }
-  }, [totalDiamonds, executeSend]);
+    executeSend();
+  }, [executeSend]);
 
   return {
     categories,

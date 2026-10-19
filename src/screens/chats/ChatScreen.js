@@ -608,7 +608,14 @@ const Massage = ({ route }) => {
             <Icon name="chevron-left" size={22} color="#1E293B" />
           </TouchableOpacity>
           
-          <View style={styles.navUserInfo}>
+          <TouchableOpacity
+            style={styles.navUserInfo}
+            activeOpacity={0.8}
+            onPress={() => {
+              const targetId = otherUser?._id || otherUser?.userId || otherUser?.id || otherUser?.name;
+              navigation.navigate('UserProfile', { user: otherUser, userId: targetId, id: targetId });
+            }}
+          >
             <View style={styles.navAvatarWrapper}>
               <Image source={receiverImage} style={styles.navAvatar} />
               {otherUser?.isOnline && <View style={styles.navOnlineDot} />}
@@ -624,7 +631,7 @@ const Massage = ({ route }) => {
                 {otherUser?.isOnline ? 'Online' : `Active at ${formatLastSeen}`}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           <TouchableOpacity onPress={startCall} disabled={calling} style={styles.navBlockButton}>
             {calling ? <ActivityIndicator size="small" color="#6C5CE7" /> : <Icon name="call" size={20} color="#6C5CE7" />}

@@ -26,6 +26,7 @@ import EmptyStateView from '../../components/EmptyStateView';
 import { HostCardSkeleton } from '../../components/SkeletonLoader';
 import AdminBannerCarousel from '../../components/AdminBannerCarousel';
 
+import { formatCompactBalance } from '../../utils/numberUtil';
 const diamondIcon = require('../../assets/icons/diamond.png');
 const CARD_WIDTH = (Dimensions.get('window').width - 40) / 2;
 const FILTERS = [
@@ -181,7 +182,7 @@ export default function OneToOne() {
         <View style={styles.actions}>
           <TouchableOpacity style={styles.coins} onPress={() => navigation.navigate('Recharge')} activeOpacity={0.8}>
             <Image source={diamondIcon} style={styles.coinIcon} resizeMode="contain" />
-            <Text style={styles.coinText}>{Number(user?.diamonds || 0).toLocaleString('en-US')}</Text>
+            <Text style={styles.coinText}>{formatCompactBalance(user?.diamonds || 0)}</Text>
             <View style={styles.plus}><Icon name="add" size={17} color="#fff" /></View>
           </TouchableOpacity>
           <TouchableOpacity

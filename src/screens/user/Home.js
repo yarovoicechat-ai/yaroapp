@@ -35,6 +35,7 @@ import { getUserAvatar } from '../../utils/avatarUtil';
 import { AlertService } from '../../utils/AlertService';
 import EmptyStateView from '../../components/EmptyStateView';
 import { HostCardSkeleton } from '../../components/SkeletonLoader';
+import { formatCompactBalance } from '../../utils/numberUtil';
 const diamondIcon = require('../../assets/icons/diamond.png');
 
 const { width, height } = Dimensions.get('window');
@@ -602,7 +603,7 @@ const CallAppUI = () => {
               resizeMode="contain"
             />
             <Text style={styles.coinBalanceValText}>
-              {Number(diamonds || 0).toLocaleString('en-US')}
+              {formatCompactBalance(diamonds)}
             </Text>
             <View style={styles.plusIconBadgeBtn}>
               <Icon name="add" size={10} color="#FFFFFF" />

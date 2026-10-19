@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import api from "../../api/apiClient";
+import api from "../../utils/apiUtil";
 
 // Fetch all users (for contact list / search etc.)
 export const fetchUsers = createAsyncThunk(

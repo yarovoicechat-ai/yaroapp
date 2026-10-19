@@ -219,10 +219,11 @@ export default function SearchScreen() {
 
   const navigateToUserProfile = (item) => {
     const isHost = item.role === 'host' || item.isHost;
+    const resolvedId = item._id || item.userId || item.id || item.displayId || item.name;
     if (isHost) {
-      navigation.navigate('HostProfile', { host: item });
+      navigation.navigate('HostProfile', { host: item, id: resolvedId });
     } else {
-      navigation.navigate('UserProfile', { user: item });
+      navigation.navigate('UserProfile', { user: item, userId: resolvedId, id: resolvedId });
     }
   };
 

@@ -16,6 +16,8 @@ export default function RoomWealthModal({
   onClose,
   onSelectUser,
   users = [],
+  currentUser = null,
+  onOpenGiftPanel,
   bottomSafePadding = 16,
 }) {
   const [activeTab, setActiveTab] = useState('Daily'); // 'Daily' | 'Weekly' | 'Monthly'
@@ -123,8 +125,44 @@ export default function RoomWealthModal({
                   </View>
                 </TouchableOpacity>
               ))
-            )}
           </ScrollView>
+
+          {/* Bottom Fixed Current User Bar (Matching Image 3) */}
+          <View style={styles.myRankBar}>
+            <Text style={styles.myRankNum}>99+</Text>
+            <Image
+              source={{
+                uri:
+                  currentUser?.avatar ||
+                  currentUser?.image ||
+                  'https://api.yaroapp.in/uploads/avatars/male_default.webp',
+              }}
+              style={styles.myAvatar}
+            />
+            <View style={styles.myInfoCol}>
+              <View style={styles.nameRow}>
+                <Text style={styles.myName} numberOfLines={1}>{currentUser?.name || 'You'}</Text>
+                <View style={styles.myWealthPill}>
+                  <MaterialCommunityIcons name="star-four-points" size={10} color="#FFF" style={{ marginRight: 2 }} />
+                  <Text style={styles.myWealthText}>Lv.{currentUser?.wealthLevel || currentUser?.level || 1}</Text>
+                </View>
+              </View>
+              <View style={styles.myDiamondRow}>
+                <Text style={{ fontSize: 11 }}>💎</Text>
+                <Text style={styles.myDiamondsVal}> 0</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.sendGiftBtn}
+              onPress={() => {
+                onClose?.();
+                onOpenGiftPanel?.();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.sendGiftBtnText}>Send &gt;</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -264,5 +302,74 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#B45309',
+  },
+  myRankBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+    marginTop: 4,
+  },
+  myRankNum: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#94A3B8',
+    width: 32,
+    textAlign: 'center',
+  },
+  myAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+    backgroundColor: '#F1F5F9',
+  },
+  myInfoCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  myName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginRight: 6,
+    maxWidth: '65%',
+  },
+  myWealthPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F59E0B',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+  },
+  myWealthText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  myDiamondRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  myDiamondsVal: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  sendGiftBtn: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+  },
+  sendGiftBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

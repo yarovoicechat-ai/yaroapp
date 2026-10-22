@@ -73,6 +73,10 @@ import RoomSettingsModal from '../../components/room/RoomSettingsModal';
 import SelfSeatOptionsModal from '../../components/room/SelfSeatOptionsModal';
 import RoomReportModal from '../../components/room/RoomReportModal';
 import RoomSeatActionModal from '../../components/room/RoomSeatActionModal';
+import RoomAdminListModal from '../../components/room/RoomAdminListModal';
+import RoomLockModal from '../../components/room/RoomLockModal';
+import RoomShareModal from '../../components/room/RoomShareModal';
+import RoomGatherFollowersModal from '../../components/room/RoomGatherFollowersModal';
 import RoomMessageNoticeModal from '../../components/room/RoomMessageNoticeModal';
 import RoomAnnouncementModal from '../../components/room/RoomAnnouncementModal';
 import {
@@ -271,6 +275,11 @@ export default function VoiceRoomScreen() {
   const [seatSkinModalVisible, setSeatSkinModalVisible] = useState(false);
   const [roomTasksVisible, setRoomTasksVisible] = useState(false);
   const [roomSupportVisible, setRoomSupportVisible] = useState(false);
+  const [adminListModalVisible, setAdminListModalVisible] = useState(false);
+  const [roomLockModalVisible, setRoomLockModalVisible] = useState(false);
+  const [roomLockModalMode, setRoomLockModalMode] = useState('set_pin');
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [gatherFollowersVisible, setGatherFollowersVisible] = useState(false);
 
   // Periodic on-mic heartbeat for Room Tasks (10 min, 30 min, 120 min)
   useEffect(() => {
@@ -922,6 +931,14 @@ export default function VoiceRoomScreen() {
   const [currentRoomLocked, setCurrentRoomLocked] = useState(Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || '')));
   const [hasRoomPin, setHasRoomPin] = useState(Boolean(room.hasPin || room.pin));
 
+  // Prompt PIN when a non-admin enters a locked room
+  useEffect(() => {
+    if (currentRoomLocked && hasRoomPin && !isCurrentUserAdmin && !isRoomOwner) {
+      setRoomLockModalMode('enter_pin');
+      setRoomLockModalVisible(true);
+    }
+  }, [currentRoomLocked, hasRoomPin, isCurrentUserAdmin, isRoomOwner]);
+
   const [roomDetailsModalVisible, setRoomDetailsModalVisible] = useState(false);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
   const [roomSettingsModalVisible, setRoomSettingsModalVisible] = useState(false);
@@ -1301,10 +1318,6 @@ export default function VoiceRoomScreen() {
       );
 
       if (isCurrentUserSeat) {
-        if (seat.seatIndex === 0 && (isRoomOwner || isContextOwnerMatch)) {
-          setRoomDetailsModalVisible(true);
-          return;
-        }
         // Current user clicked their own seat -> show own Profile modal with "Profile" & "Leave the seat"
         setSelectedProfileUser({
           ...user,
@@ -1342,8 +1355,12 @@ export default function VoiceRoomScreen() {
       } else {
         AlertService.show('Seat Locked', `Seat #${seat.seatIndex + 1} has been locked by the host`, 'warning');
       }
+    } else if (isCurrentUserAdmin) {
+      // Host / Admin clicked on an empty seat -> open 4-option seat action modal (Lock, Lock All, On mic, Invite)
+      setSelectedSeatForAction(seat);
+      setSeatActionModalVisible(true);
     } else {
-      // Empty seat -> Take seat directly
+      // Normal guest user -> take seat directly
       takeSeat(seat.seatIndex, user);
     }
   };
@@ -1569,7 +1586,7 @@ export default function VoiceRoomScreen() {
         <View style={styles.headerRightActionIcons}>
           <TouchableOpacity
             style={styles.headerIconBtn}
-            onPress={handleShareRoom}
+            onPress={() => setShareModalVisible(true)}
             activeOpacity={0.8}
           >
             <MaterialCommunityIcons name="share-variant-outline" size={19} color="#FFF" />
@@ -1615,18 +1632,30 @@ export default function VoiceRoomScreen() {
             activeOpacity={0.8}
           >
             <View style={styles.topContribAvatarsRow}>
-              {topRoomContributors.length > 0 ? topRoomContributors.map((member, index) => (
-                <View
-                  key={String(member.id || member._id || member.userId || index)}
-                  style={[styles.contribAvatarWrap, { marginLeft: index ? -6 : 0, zIndex: 3 - index }]}
-                >
-                  <Image source={getUserAvatar(member)} style={styles.smallContribAvatar} />
-                  <View style={[styles.contribRankBadge, { backgroundColor: ['#F59E0B', '#94A3B8', '#B45309'][index] }]}>
-                    <Text style={styles.contribRankText}>{index + 1}</Text>
+              {topRoomContributors.length > 0 ? (
+                topRoomContributors.slice(0, 3).map((member, index) => (
+                  <View
+                    key={String(member.id || member._id || member.userId || index)}
+                    style={[styles.contribAvatarWrap, { marginLeft: index ? -6 : 0, zIndex: 3 - index }]}
+                  >
+                    <Image source={getUserAvatar(member)} style={styles.smallContribAvatar} />
+                    <View style={[styles.contribRankBadge, { backgroundColor: ['#F59E0B', '#94A3B8', '#B45309'][index] }]}>
+                      <Text style={styles.contribRankText}>{index + 1}</Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyContribRow}>
+                  <View style={styles.contribEmptyCircle}>
+                    <MaterialCommunityIcons name="account" size={15} color="rgba(255,255,255,0.4)" />
+                  </View>
+                  <View style={[styles.contribEmptyCircle, { marginLeft: -6 }]}>
+                    <MaterialCommunityIcons name="account" size={15} color="rgba(255,255,255,0.4)" />
+                  </View>
+                  <View style={[styles.contribEmptyCircle, { marginLeft: -6 }]}>
+                    <MaterialCommunityIcons name="account" size={15} color="rgba(255,255,255,0.4)" />
                   </View>
                 </View>
-              )) : (
-                <MaterialCommunityIcons name="account-group-outline" size={24} color="rgba(255,255,255,0.8)" />
               )}
             </View>
             <MaterialCommunityIcons name="chevron-right" size={15} color="rgba(255, 255, 255, 0.7)" />
@@ -2012,16 +2041,7 @@ export default function VoiceRoomScreen() {
               badgeText={giftHook.comboCount > 1 ? `x${giftHook.comboCount}` : null}
             />
 
-            {/* 5. Gamepad Trigger */}
-            <TouchableOpacity
-              style={styles.controlCircleBtn}
-              onPress={() => AlertService.show('Party Games', 'Spin the wheel and lucky party games opening soon!', 'info')}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="gamepad-variant-outline" size={22} color="#38BDF8" />
-            </TouchableOpacity>
-
-            {/* 6. 4-Squares Room Tools Trigger */}
+            {/* 4-Squares Room Tools Trigger */}
             <TouchableOpacity
               style={styles.controlCircleBtn}
               onPress={() => setRoomMenuModalVisible(true)}
@@ -2081,22 +2101,13 @@ export default function VoiceRoomScreen() {
               <MaterialCommunityIcons name="emoticon-happy-outline" size={23} color="#FFF" />
             </TouchableOpacity>
 
-            {/* 6. Luxury Gift Tray Trigger */}
+            {/* 5. Luxury Gift Tray Trigger */}
             <GiftButton
               onPress={() => setGiftPanelVisible((prev) => !prev)}
               badgeText={giftHook.comboCount > 1 ? `x${giftHook.comboCount}` : null}
             />
 
-            {/* 7. Gamepad Trigger */}
-            <TouchableOpacity
-              style={styles.controlCircleBtn}
-              onPress={() => AlertService.show('Party Games', 'Spin the wheel and lucky party games opening soon!', 'info')}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="gamepad-variant-outline" size={22} color="#38BDF8" />
-            </TouchableOpacity>
-
-            {/* 8. 4-Squares Room Tools Trigger */}
+            {/* 6. 4-Squares Room Tools Trigger */}
             <TouchableOpacity
               style={styles.controlCircleBtn}
               onPress={() => setRoomMenuModalVisible(true)}
@@ -2267,13 +2278,34 @@ export default function VoiceRoomScreen() {
       <RoomThreeDotModal
         visible={toolsModalVisible}
         onClose={() => setToolsModalVisible(false)}
+        canModerate={isCurrentUserAdmin}
+        onReportRoom={() => {
+          setToolsModalVisible(false);
+          setUgcReportTargetUser({
+            id: room?.hostId || room?.ownerId,
+            userId: room?.hostId || room?.ownerId,
+            name: room?.hostName || currentRoomTitle,
+            avatar: currentRoomCover,
+          });
+          setUgcReportModalVisible(true);
+        }}
         onOpenSeatSettings={() => setSeatLayoutModalVisible(true)}
-        onLockSeats={toggleLockAllSeats}
+        onLockSeats={() => {
+          setToolsModalVisible(false);
+          setRoomLockModalMode('set_pin');
+          setRoomLockModalVisible(true);
+        }}
         onOpenThemeModal={() => setThemeModalVisible(true)}
-        onShareRoom={handleShareRoom}
-        onOpenAdminSettings={() => setRoomSettingsModalVisible(true)}
+        onShareRoom={() => {
+          setToolsModalVisible(false);
+          setShareModalVisible(true);
+        }}
+        onOpenAdminSettings={() => setAdminListModalVisible(true)}
         onClearChat={clearChat}
-        onGatherFollowers={() => AlertService.show('Gather Followers', 'Notification sent to all room followers to join the room!', 'success')}
+        onGatherFollowers={() => {
+          setToolsModalVisible(false);
+          setGatherFollowersVisible(true);
+        }}
         isGlobalRoomManager={isEffectiveGlobalRoomManager}
         onBanRoom={handleOfficialBanRoom}
         onToggleStealth={() => {
@@ -2303,6 +2335,56 @@ export default function VoiceRoomScreen() {
         }}
         isStealthActive={isStealthMode}
         bottomSafePadding={bottomSafePadding}
+      />
+
+      {/* MODAL: ROOM ADMIN LIST (MATCHING USER SCREENSHOT media_1792690947708.png) */}
+      <RoomAdminListModal
+        visible={adminListModalVisible}
+        onClose={() => setAdminListModalVisible(false)}
+        roomId={room?.id || room?.roomId || route?.params?.roomId}
+        canManageAdmin={Boolean(isRoomOwner || isContextOwnerMatch || isEffectiveGlobalRoomManager)}
+      />
+
+      {/* MODAL: ROOM LOCK (MATCHING media_1792690965383.png & media_1792690977464.png & media_1792691000624.png) */}
+      <RoomLockModal
+        visible={roomLockModalVisible}
+        onClose={() => {
+          setRoomLockModalVisible(false);
+          if (roomLockModalMode === 'enter_pin' && !isCurrentUserAdmin && !isRoomOwner) {
+            handleLeaveRoom();
+          }
+        }}
+        mode={roomLockModalMode}
+        roomId={room?.id || room?.roomId || route?.params?.roomId}
+        onSuccess={(pin) => {
+          if (roomLockModalMode === 'set_pin') {
+            setCurrentRoomLocked(true);
+            setHasRoomPin(true);
+          }
+        }}
+        onBuyLock={() => {
+          navigation.navigate('VipCenter');
+        }}
+      />
+
+      {/* MODAL: ROOM SHARE (MATCHING media_1792691055376.png) */}
+      <RoomShareModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        roomName={currentRoomTitle || room.title}
+        roomId={room?.id || room?.roomId || route?.params?.roomId}
+        onShareWithFriends={() => {
+          handleShareRoom();
+        }}
+      />
+
+      {/* MODAL: GATHER FOLLOWERS (MATCHING media_1792691076423.png) */}
+      <RoomGatherFollowersModal
+        visible={gatherFollowersVisible}
+        onClose={() => setGatherFollowersVisible(false)}
+        onGetCharm={() => {
+          navigation.navigate('Level');
+        }}
       />
 
       {/* MODAL: ROOM TASKS MODAL (MATCHING REFERENCE VIDEO 00:06-00:21) */}
@@ -2465,6 +2547,8 @@ export default function VoiceRoomScreen() {
           setSelectedProfileUser(u);
           setProfileModalVisible(true);
         }}
+        currentUser={user}
+        onOpenGiftPanel={() => setGiftPanelVisible(true)}
         bottomSafePadding={bottomSafePadding}
         users={onlineUsers}
       />
@@ -2967,6 +3051,8 @@ const styles = StyleSheet.create({
   seatsAreaContainer: {
     paddingHorizontal: 8,
     marginTop: 8,
+    zIndex: 95,
+    elevation: 8,
   },
   seatsRow: {
     flexDirection: 'row',
@@ -4964,6 +5050,20 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 8,
     fontWeight: '900',
+  },
+  emptyContribRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  contribEmptyCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
 
   // Image 1 Top Flying Gift Banner

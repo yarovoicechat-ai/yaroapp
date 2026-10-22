@@ -22,9 +22,9 @@ import { AuthContext } from '../../context/AuthProvider';
 const CATEGORIES = ['All', 'Gifts', 'Followers', 'Visitors', 'Host'];
 
 export default function RoomTasksModal({ visible, onClose, roomId }) {
-  const insets = useSafeAreaInsets();
-  const topSafeInset = getAppTopSafeInset(insets.top);
-  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
+  const insets = useSafeAreaInsets() || { top: 0, bottom: 0, left: 0, right: 0 };
+  const topSafeInset = getAppTopSafeInset(insets?.top || 0);
+  const bottomPadding = getStackScreenBottomPadding(insets?.bottom || 0, 24);
   const { fetchUserProfile } = useContext(AuthContext) || {};
 
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -234,8 +234,10 @@ export default function RoomTasksModal({ visible, onClose, roomId }) {
           ) : (
             filteredTasks.map((task) => {
               const isClaimed = task.status === 'claimed';
-              const isClaimable = task.status === 'claimable' || (!isClaimed && task.progress >= task.target);
-              const progressRatio = Math.min(1, (task.progress || 0) / (task.target || 1));
+              const targetVal = Number(task.target) > 0 ? Number(task.target) : 1;
+              const progressVal = Number(task.progress) || 0;
+              const isClaimable = task.status === 'claimable' || (!isClaimed && progressVal >= targetVal);
+              const progressRatio = Math.min(1, Math.max(0, progressVal / targetVal));
               const percent = Math.floor(progressRatio * 100);
 
               return (

@@ -9,14 +9,19 @@ import {
   Text,
   TouchableOpacity,
   View,
+  StatusBar,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiUtil } from '../../utils/apiUtil';
+import AlertService from '../../services/AlertService';
+import { ROOM_THEME_CATALOG, DEFAULT_ROOM_BG } from '../../utils/cosmeticResolver';
 
 const { width } = Dimensions.get('window');
-const ITEM_WIDTH = (width - 48) / 2;
+const CARD_WIDTH = (width - 48) / 2;
 
 const normalizeTheme = (inventoryItem) => {
   const catalog = inventoryItem.catalogItem || inventoryItem.itemId || inventoryItem;
@@ -34,11 +39,8 @@ const normalizeTheme = (inventoryItem) => {
     expiresAt: inventoryItem.expiresAt || null,
     isOwned: Boolean(inventoryItem.isOwned || inventoryItem.catalogItem),
     isFree: Boolean(inventoryItem.isFree || metadata.isFree || Number(catalog.price || 0) === 0),
-    themeLocation: metadata.themeLocation || 'STORE',
   };
 };
-
-import { ROOM_THEME_CATALOG, DEFAULT_ROOM_BG } from '../../utils/cosmeticResolver';
 
 const PRESET_THEMES = ROOM_THEME_CATALOG.map((item) => ({
   id: item.id,
@@ -47,7 +49,7 @@ const PRESET_THEMES = ROOM_THEME_CATALOG.map((item) => ({
   coverImage: item.coverImage || (item.id === 'default' ? DEFAULT_ROOM_BG : null),
   bgColors: item.bgColors || ['#3A0E5C', '#1E0A3C', '#0B031E'],
   previewColor: item.previewColor || item.bgColors?.[0] || '#9333EA',
-  desc: item.desc || 'Default Yaro room theme preset',
+  desc: item.desc || 'Default Yaro room theme',
   isPreset: true,
   isFree: true,
 }));
@@ -57,19 +59,19 @@ export default function RoomThemeModal({
   onClose,
   currentTheme,
   onSelectTheme,
-  bottomSafePadding = 16,
 }) {
+  const insets = useSafeAreaInsets() || { top: 0, bottom: 0 };
+  const [activeTab, setActiveTab] = useState('Room Theme');
   const [themes, setThemes] = useState(PRESET_THEMES);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!visible) return undefined;
+    if (!visible) return;
     let active = true;
     setSelected(String(currentTheme?.itemId || currentTheme?.id || ''));
     setLoading(true);
-    setError('');
+
     Promise.allSettled([
       apiUtil.get('/store/inventory'),
       apiUtil.get('/store/items', { params: { category: 'Theme', activeOnly: true } }),
@@ -88,91 +90,133 @@ export default function RoomThemeModal({
         const freeRoomToolThemes = catalogItems
           .filter((item) => {
             if (!['theme', 'themes'].includes(String(item.category || '').toLowerCase())) return false;
-            const location = String(item.metadata?.themeLocation || 'STORE')
-              .trim()
-              .toUpperCase()
-              .replace(/[ -]+/g, '_');
             const isFree = item.metadata?.isFree === true || Number(item.price || 0) === 0;
-            return isFree && ['ROOM_TOOL', 'BOTH'].includes(location);
+            return isFree;
           })
           .map((item) => normalizeTheme({ ...item, isFree: true }));
 
         const byId = new Map();
-        [...PRESET_THEMES, ...freeRoomToolThemes, ...ownedThemes].forEach((theme) => {
-          byId.set(theme.id, { ...(byId.get(theme.id) || {}), ...theme });
-        });
-        const combined = Array.from(byId.values());
-        setThemes(combined);
-        setSelected((value) => value || combined[0]?.id || null);
-        if (inventoryResult.status === 'rejected' && catalogResult.status === 'rejected') {
-          setError('Themes sync failed, showing the default room theme.');
-        }
+        PRESET_THEMES.forEach((t) => byId.set(t.id, t));
+        ownedThemes.forEach((t) => byId.set(t.itemId, { ...(byId.get(t.itemId) || {}), ...t, isOwned: true }));
+        freeRoomToolThemes.forEach((t) => byId.set(t.itemId, { ...(byId.get(t.itemId) || {}), ...t, isFree: true }));
+
+        setThemes(Array.from(byId.values()));
       })
-      .catch((requestError) => {
-        if (!active) return;
-        setThemes(PRESET_THEMES);
-        setSelected((value) => value || PRESET_THEMES[0]?.id || null);
-        setError(requestError?.response?.data?.message || 'Inventory themes sync failed, showing presets.');
-      })
-      .finally(() => active && setLoading(false));
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
     return () => {
       active = false;
     };
-  }, [visible, currentTheme?.id, currentTheme?.itemId]);
+  }, [visible, currentTheme]);
 
-  const selectedTheme = useMemo(
-    () => themes.find((theme) => theme.id === selected) || null,
-    [themes, selected],
-  );
+  if (!visible) return null;
 
-  const handleApply = () => {
-    if (!selectedTheme) return;
-    onSelectTheme?.(selectedTheme);
-    onClose?.();
+  const handleApply = (themeItem) => {
+    if (onSelectTheme) onSelectTheme(themeItem);
+    setSelected(themeItem.itemId || themeItem.id);
+    onClose();
   };
 
-  return (
-    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <TouchableOpacity style={styles.backdropDismiss} activeOpacity={1} onPress={onClose} />
-        <View style={[styles.sheetContainer, { paddingBottom: bottomSafePadding + 16 }]}>
-          <View style={styles.sheetHandle} />
-          <View style={styles.headerRow}>
-            <View style={styles.headerTitleRow}>
-              <MaterialCommunityIcons name="palette" size={20} color="#F59E0B" />
-              <Text style={styles.headerTitle}>Room Tool Themes</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Icon name="close" size={20} color="#94A3B8" />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.headerSubtitle}>
-            Free Room Tool themes direct use karein; Store themes purchase ke baad yahan milengi.
-          </Text>
+  const handleCustomUpload = () => {
+    AlertService.show('Privilege Required', 'Custom room decorations are unlocked at Wealth Level 10 or with SVIP membership.', 'info');
+  };
 
-          {loading ? (
-            <ActivityIndicator color="#8B5CF6" style={styles.loader} />
+  // Prepend Custom card to the data list for "Room Theme" tab
+  const displayData = useMemo(() => {
+    if (activeTab !== 'Room Theme') return [];
+    return [{ isCustomCard: true, id: '__custom_card__' }, ...themes];
+  }, [activeTab, themes]);
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+
+        {/* Top Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={onClose}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Icon name="chevron-back" size={26} color="#1E293B" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Room Decorations</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        {/* Tabs: Room Theme | Mic Theme | Theme Set */}
+        <View style={styles.tabsRow}>
+          {['Room Theme', 'Mic Theme', 'Theme Set'].map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabBtn, isActive && styles.tabBtnActive]}
+                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                  {tab}
+                </Text>
+                {isActive && <View style={styles.tabIndicator} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Tab Content */}
+        {activeTab === 'Room Theme' ? (
+          loading ? (
+            <View style={styles.loaderWrap}>
+              <ActivityIndicator size="large" color="#FB923C" />
+            </View>
           ) : (
             <FlatList
-              data={themes}
-              keyExtractor={(item) => item.id}
+              data={displayData}
+              keyExtractor={(item) => item.id || item.itemId || String(Math.random())}
               numColumns={2}
-              columnWrapperStyle={themes.length > 1 ? styles.columnWrapper : undefined}
+              columnWrapperStyle={styles.columnWrapper}
               contentContainerStyle={styles.listContent}
-              ListEmptyComponent={
-                <Text style={styles.emptyText}>{error || 'Aapke inventory me koi active room theme nahi hai.'}</Text>
-              }
               renderItem={({ item }) => {
-                const isSelected = selected === item.id;
-                const isActive =
-                  String(currentTheme?.itemId || currentTheme?.id || '') === item.id;
+                if (item.isCustomCard) {
+                  return (
+                    <View style={styles.customCard}>
+                      <View style={styles.customPlusWrap}>
+                        <Icon name="add" size={48} color="#CBD5E1" />
+                      </View>
+                      <Text style={styles.customTitle}>Custom</Text>
+                      <Text style={styles.noPrivilegesText}>No Privileges</Text>
+                      <TouchableOpacity
+                        style={styles.uploadBtn}
+                        onPress={handleCustomUpload}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.uploadBtnText}>Upload</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }
+
+                const itemId = String(item.itemId || item.id);
+                const isSelected = selected === itemId;
+                const isCurrentInUse = String(currentTheme?.itemId || currentTheme?.id) === itemId;
+
                 return (
                   <TouchableOpacity
                     style={[styles.themeCard, isSelected && styles.themeCardSelected]}
-                    onPress={() => setSelected(item.id)}
+                    onPress={() => handleApply(item)}
                     activeOpacity={0.85}
                   >
-                    <View style={styles.previewContainer}>
+                    <View style={styles.imagePreviewWrap}>
                       {item.coverImage ? (
                         <Image
                           source={
@@ -186,67 +230,206 @@ export default function RoomThemeModal({
                       ) : (
                         <LinearGradient colors={item.bgColors} style={styles.previewImage} />
                       )}
-                      {isActive && <Text style={styles.activeBadge}>IN USE</Text>}
-                      {!isActive && (item.isFree || item.isOwned) && (
-                        <Text style={[styles.accessBadge, item.isOwned && styles.ownedBadge]}>
-                          {item.isOwned ? 'OWNED' : 'FREE'}
-                        </Text>
+                      {isCurrentInUse && (
+                        <View style={styles.inUseBadge}>
+                          <Text style={styles.inUseText}>USING</Text>
+                        </View>
                       )}
                       {isSelected && (
                         <View style={styles.checkCircle}>
-                          <Icon name="checkmark" size={14} color="#FFF" />
+                          <Icon name="checkmark" size={14} color="#FFFFFF" />
                         </View>
                       )}
                     </View>
-                    <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.itemDesc} numberOfLines={2}>{item.desc}</Text>
+                    <Text style={styles.themeName} numberOfLines={1}>{item.name}</Text>
                   </TouchableOpacity>
                 );
               }}
             />
-          )}
-
-          <TouchableOpacity
-            style={[styles.applyBtn, !selectedTheme && styles.disabled]}
-            onPress={handleApply}
-            disabled={!selectedTheme || loading}
-          >
-            <LinearGradient colors={['#8B5CF6', '#6D28D9']} style={styles.applyGradient}>
-              <Text style={styles.applyBtnText}>USE THEME</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+          )
+        ) : (
+          <View style={styles.emptyTabWrap}>
+            <MaterialCommunityIcons
+              name={activeTab === 'Mic Theme' ? 'microphone-outline' : 'palette-swatch-outline'}
+              size={54}
+              color="#CBD5E1"
+            />
+            <Text style={styles.emptyTabText}>No {activeTab} available yet</Text>
+          </View>
+        )}
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
-  backdropDismiss: { flex: 1 },
-  sheetContainer: { backgroundColor: '#0F172A', borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 16, paddingTop: 10, maxHeight: '75%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  sheetHandle: { width: 38, height: 4, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 2, alignSelf: 'center', marginBottom: 10 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#F8FAFC' },
-  headerSubtitle: { fontSize: 12, color: '#94A3B8', marginTop: 4, marginBottom: 12 },
-  closeBtn: { padding: 4 },
-  loader: { minHeight: 180 },
-  listContent: { paddingBottom: 16, minHeight: 150 },
-  columnWrapper: { justifyContent: 'space-between', marginBottom: 12 },
-  themeCard: { width: ITEM_WIDTH, backgroundColor: '#1E293B', borderRadius: 12, padding: 8, borderWidth: 1.5, borderColor: 'transparent', marginBottom: 12 },
-  themeCardSelected: { borderColor: '#8B5CF6', backgroundColor: '#261B48' },
-  previewContainer: { width: '100%', height: 80, borderRadius: 8, overflow: 'hidden', position: 'relative', marginBottom: 6 },
-  previewImage: { width: '100%', height: '100%' },
-  activeBadge: { position: 'absolute', bottom: 4, left: 4, color: '#FFF', backgroundColor: '#22C55E', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, fontSize: 9, fontWeight: '800' },
-  accessBadge: { position: 'absolute', bottom: 4, left: 4, color: '#FFF', backgroundColor: '#8B5CF6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, fontSize: 9, fontWeight: '800' },
-  ownedBadge: { backgroundColor: '#0284C7' },
-  checkCircle: { position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: '#8B5CF6', alignItems: 'center', justifyContent: 'center' },
-  itemName: { color: '#F1F5F9', fontSize: 13, fontWeight: '700', marginBottom: 2 },
-  itemDesc: { color: '#94A3B8', fontSize: 10.5, lineHeight: 14 },
-  emptyText: { color: '#94A3B8', textAlign: 'center', paddingVertical: 48, paddingHorizontal: 24 },
-  applyBtn: { borderRadius: 12, overflow: 'hidden', marginTop: 4 },
-  disabled: { opacity: 0.45 },
-  applyGradient: { paddingVertical: 13, alignItems: 'center' },
-  applyBtnText: { color: '#FFF', fontSize: 14, fontWeight: '800', letterSpacing: 0.5 },
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    height: 52,
+  },
+  backBtn: {
+    padding: 6,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  tabsRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingHorizontal: 8,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  tabBtnActive: {},
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  tabTextActive: {
+    color: '#F97316',
+    fontWeight: '700',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    width: '60%',
+    height: 2.5,
+    backgroundColor: '#F97316',
+    borderRadius: 2,
+  },
+  loaderWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  customCard: {
+    width: CARD_WIDTH,
+    height: CARD_WIDTH * 1.35,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customPlusWrap: {
+    marginBottom: 10,
+  },
+  customTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  noPrivilegesText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#FB923C',
+    marginBottom: 16,
+  },
+  uploadBtn: {
+    backgroundColor: '#CBD5E1',
+    paddingHorizontal: 28,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  uploadBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  themeCard: {
+    width: CARD_WIDTH,
+    height: CARD_WIDTH * 1.35,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    padding: 6,
+    alignItems: 'center',
+  },
+  themeCardSelected: {
+    borderColor: '#F97316',
+  },
+  imagePreviewWrap: {
+    width: '100%',
+    height: '80%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#1E1B4B',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  inUseBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  inUseText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  checkCircle: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#F97316',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  themeName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  emptyTabWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 60,
+    gap: 12,
+  },
+  emptyTabText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
 });

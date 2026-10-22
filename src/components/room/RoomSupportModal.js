@@ -54,8 +54,8 @@ const RULES_LIST = [
 ];
 
 export default function RoomSupportModal({ visible, onClose, roomId, canManageAutoSend = false }) {
-  const insets = useSafeAreaInsets();
-  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 20);
+  const insets = useSafeAreaInsets() || { top: 0, bottom: 0, left: 0, right: 0 };
+  const bottomPadding = getStackScreenBottomPadding(insets?.bottom || 0, 20);
 
   const [supportData, setSupportData] = useState({
     thisWeek: { bonusCoins: 0, roomVisitors: 0, roomCoins: 0 },

@@ -147,6 +147,8 @@ export default function RoomUserProfileModal({
   const followersCount = currentFollowersCount || displayData.followersCount || 0;
   const userBio = displayData.bio || displayData.about || (isSelf ? 'Adding Information can gain more followers.' : '');
 
+  const uniqueId = displayData.equippedCustomId || displayData.uniqueId || displayData.customId || null;
+  const hasUniqueId = Boolean(uniqueId && String(uniqueId).trim());
   const displayId = displayData.displayId || displayData.customDisplayId || targetUserId || '—';
 
   // Room roles
@@ -301,9 +303,24 @@ export default function RoomUserProfileModal({
               </View>
             )}
 
-            {/* 5. Maza ID & Followers Row (Screenshots 1, 2, 3) */}
+            {/* 5. YARO ID / Unique ID & Followers Row */}
             <View style={styles.idFollowersRow}>
-              <Text style={styles.mazaIdText}>Maza Id:{displayId}</Text>
+              {hasUniqueId ? (
+                <View style={styles.idPillRow}>
+                  <LinearGradient
+                    colors={['#F59E0B', '#D97706']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.uniqueIdBadgePill}
+                  >
+                    <MaterialCommunityIcons name="shield-star" size={11} color="#FFF" style={{ marginRight: 2 }} />
+                    <Text style={styles.uniqueIdBadgeText}>ID</Text>
+                  </LinearGradient>
+                  <Text style={styles.uniqueIdValText}>{uniqueId}</Text>
+                </View>
+              ) : (
+                <Text style={styles.mazaIdText}>YARO ID : {displayId}</Text>
+              )}
               <View style={styles.greenFollowersBadge}>
                 <MaterialCommunityIcons name="account-group" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
                 <Text style={styles.followersBadgeText}>{formatCompactBalance(followersCount)} Followers</Text>
@@ -674,7 +691,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 24,
     maxHeight: '92%',
     position: 'relative',
     shadowColor: '#000',
@@ -682,6 +699,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 14,
     elevation: 20,
+    overflow: 'hidden',
   },
   topReportBtn: {
     position: 'absolute',
@@ -704,9 +722,40 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   avatarCenterWrap: {
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  idPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  uniqueIdBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 8,
+    marginRight: 6,
+  },
+  uniqueIdBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
+  uniqueIdValText: {
+    color: '#B45309',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   nameRow: {
     flexDirection: 'row',

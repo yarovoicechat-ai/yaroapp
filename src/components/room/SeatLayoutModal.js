@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,36 +6,40 @@ import {
   Modal,
   TouchableOpacity,
   Dimensions,
+  ScrollView,
+  StatusBar,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
-const SEAT_OPTIONS = [
+const MIC_LAYOUTS = [
   {
+    id: 8,
+    label: '8 people',
     count: 8,
-    title: '8 Seats (Standard)',
-    sub: 'Top: 2 Seats • Bottom: 6 Seats',
-    icon: 'numeric-8-box-multiple-outline',
+    rows: [4, 4],
   },
   {
-    count: 10,
-    title: '10 Seats (Club Party)',
-    sub: 'Top: 2 Seats • Bottom: 2 Rows of 4/5',
-    icon: 'numeric-10-box-multiple-outline',
-  },
-  {
+    id: 12,
+    label: '12 people',
     count: 12,
-    title: '12 Seats (Celebrity)',
-    sub: 'Top: 2 Seats • Bottom: 2 Rows of 5',
-    icon: 'view-grid-plus-outline',
+    rows: [4, 4, 4],
   },
   {
+    id: '12_alt',
+    label: '12 people',
+    count: 12,
+    rows: [3, 4, 5],
+  },
+  {
+    id: 15,
+    label: '15 people',
     count: 15,
-    title: '15 Seats (Mega Lounge)',
-    sub: 'Top: 2 Seats • Bottom: 3 Rows of 5 (Responsive)',
-    icon: 'apps',
+    rows: [5, 5, 5],
   },
 ];
 
@@ -46,85 +50,182 @@ export default function SeatLayoutModal({
   currentSeatCount,
   onSelectCount,
   onSelectSeatCount,
-  bottomSafePadding = 16,
 }) {
-  const activeCount = currentSeatCount !== undefined ? currentSeatCount : currentCount;
+  const insets = useSafeAreaInsets() || { top: 0, bottom: 0 };
+  const activeCount = Number(currentSeatCount !== undefined ? currentSeatCount : currentCount) || 8;
   const handleSelect = onSelectSeatCount || onSelectCount;
 
+  // Selected layout state
+  const [selectedLayoutId, setSelectedLayoutId] = useState(activeCount);
+
   if (!visible) return null;
+
+  const currentLayout =
+    MIC_LAYOUTS.find((l) => l.id === selectedLayoutId) ||
+    MIC_LAYOUTS.find((l) => l.count === activeCount) ||
+    MIC_LAYOUTS[0];
+
+  const isCurrentActive = currentLayout.count === activeCount;
+
+  const handleApply = () => {
+    if (handleSelect) {
+      handleSelect(currentLayout.count);
+    }
+    onClose();
+  };
 
   return (
     <Modal
       visible={visible}
-      transparent
       animationType="slide"
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={styles.backdrop}>
-        <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-        <View style={[styles.sheetContainer, { paddingBottom: bottomSafePadding + 16 }]}>
-          <View style={styles.sheetHandle} />
+        {/* Top Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={onClose}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="chevron-back" size={26} color="#1E293B" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Choose number of mic</Text>
+          <View style={{ width: 40 }} />
+        </View>
 
-          <View style={styles.headerRow}>
-            <View style={styles.titleWrap}>
-              <MaterialCommunityIcons name="seat-passenger" size={24} color="#F59E0B" />
-              <Text style={styles.titleText}>Room Seats Layout / सीट संख्या</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
-            </TouchableOpacity>
+        {/* Center Phone Mockup Preview */}
+        <View style={styles.previewContainer}>
+          <View style={styles.phoneFrame}>
+            <LinearGradient
+              colors={['#1E0A3C', '#3B0764', '#581C87', '#2E1065']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.phoneScreen}
+            >
+              {/* Room Mini Header */}
+              <View style={styles.phoneHeader}>
+                <View style={styles.phoneHostInfo}>
+                  <View style={styles.phoneHostAvatar}>
+                    <MaterialCommunityIcons name="account" size={16} color="#FFFFFF" />
+                  </View>
+                  <View>
+                    <Text style={styles.phoneHostTitle}>Club Welcome</Text>
+                    <Text style={styles.phoneHostId}>ID:10000087  👤999</Text>
+                  </View>
+                </View>
+                <View style={styles.phoneHeaderIcons}>
+                  <Ionicons name="share-outline" size={14} color="#E2E8F0" />
+                  <Ionicons name="ellipsis-horizontal" size={14} color="#E2E8F0" />
+                  <Ionicons name="power" size={14} color="#E2E8F0" />
+                </View>
+              </View>
+
+              {/* Dynamic Mic Seats Grid Preview */}
+              <View style={styles.micsGrid}>
+                {(() => {
+                  let seatCounter = 1;
+                  return currentLayout.rows.map((rowSeats, rowIndex) => (
+                    <View key={`row-${rowIndex}`} style={styles.micRow}>
+                      {Array.from({ length: rowSeats }).map((_, seatIdx) => {
+                        const num = seatCounter++;
+                        return (
+                          <View key={`seat-${num}`} style={styles.micItem}>
+                            <View style={styles.micCircle}>
+                              <MaterialCommunityIcons name="microphone" size={14} color="#E9D5FF" />
+                            </View>
+                            <Text style={styles.micLabel}>No.{num}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ));
+                })()}
+              </View>
+            </LinearGradient>
           </View>
+        </View>
 
-          <Text style={styles.subHintText}>
-            Choose room seat capacity. Above 8 seats, seat icons scale down responsively to fit 5 per line!
-          </Text>
+        {/* Thin Divider */}
+        <View style={styles.divider} />
 
-          <View style={styles.optionsList}>
-            {SEAT_OPTIONS.map((opt) => {
-              const isSelected = Number(activeCount) === opt.count;
+        {/* Horizontal Thumbnails Carousel */}
+        <View style={styles.thumbnailsWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.thumbnailsScroll}
+          >
+            {MIC_LAYOUTS.map((item) => {
+              const isSelected = selectedLayoutId === item.id;
               return (
                 <TouchableOpacity
-                  key={`seat-opt-${opt.count}`}
-                  style={[styles.optionCard, isSelected && styles.optionCardSelected]}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    handleSelect && handleSelect(opt.count);
-                    onClose && onClose();
-                  }}
+                  key={`thumb-${item.id}`}
+                  style={styles.thumbnailCardWrap}
+                  activeOpacity={0.85}
+                  onPress={() => setSelectedLayoutId(item.id)}
                 >
-                  <LinearGradient
-                    colors={isSelected ? ['rgba(245, 158, 11, 0.2)', 'rgba(217, 119, 6, 0.1)'] : ['rgba(255, 255, 255, 0.04)', 'rgba(255, 255, 255, 0.02)']}
-                    style={styles.cardGradient}
+                  <View
+                    style={[
+                      styles.thumbnailCard,
+                      isSelected && styles.thumbnailCardSelected,
+                    ]}
                   >
-                    <View style={[styles.iconWrap, isSelected && styles.iconWrapSelected]}>
-                      <MaterialCommunityIcons
-                        name={opt.icon}
-                        size={24}
-                        color={isSelected ? '#F59E0B' : '#94A3B8'}
-                      />
-                    </View>
+                    <LinearGradient
+                      colors={['#1E0A3C', '#4C1D95']}
+                      style={styles.thumbnailInner}
+                    >
+                      {/* Mini mic dots preview */}
+                      <View style={styles.thumbMics}>
+                        {item.rows.map((rCount, rIdx) => (
+                          <View key={`tr-${rIdx}`} style={styles.thumbRow}>
+                            {Array.from({ length: rCount }).map((_, cIdx) => (
+                              <View key={`tc-${cIdx}`} style={styles.thumbDot}>
+                                <MaterialCommunityIcons name="microphone" size={5} color="#DDD6FE" />
+                              </View>
+                            ))}
+                          </View>
+                        ))}
+                      </View>
+                    </LinearGradient>
 
-                    <View style={styles.infoCol}>
-                      <Text style={[styles.optTitle, isSelected && styles.optTitleSelected]}>
-                        {opt.title}
-                      </Text>
-                      <Text style={styles.optSub}>{opt.sub}</Text>
-                    </View>
-
-                    <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
-                      {isSelected && <View style={styles.radioDot} />}
-                    </View>
-                  </LinearGradient>
+                    {/* Green checkmark badge when selected */}
+                    {isSelected && (
+                      <View style={styles.checkBadge}>
+                        <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.thumbLabel, isSelected && styles.thumbLabelSelected]}>
+                    {item.label}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </ScrollView>
+        </View>
+
+        {/* Bottom Button ("Using" or "Use") */}
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={handleApply}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#FFB703', '#FB8500']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.actionBtnGradient}
+            >
+              <Text style={styles.actionBtnText}>
+                {isCurrentActive ? 'Using' : 'Use'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -132,114 +233,201 @@ export default function SeatLayoutModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  container: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'flex-end',
+    backgroundColor: '#FFFFFF',
   },
-  sheetContainer: {
-    backgroundColor: '#0F172A',
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 14,
-  },
-  headerRow: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    paddingHorizontal: 16,
+    height: 52,
   },
-  titleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  backBtn: {
+    padding: 6,
   },
-  titleText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  subHintText: {
-    color: '#94A3B8',
-    fontSize: 11.5,
-    marginBottom: 14,
-    lineHeight: 16,
-  },
-  optionsList: {
-    gap: 10,
-    marginBottom: 10,
-  },
-  optionCard: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  optionCardSelected: {
-    borderColor: '#F59E0B',
-  },
-  cardGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  iconWrapSelected: {
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-  },
-  infoCol: {
-    flex: 1,
-  },
-  optTitle: {
-    color: '#E2E8F0',
-    fontSize: 13.5,
+  headerTitle: {
+    fontSize: 17,
     fontWeight: '700',
+    color: '#0F172A',
   },
-  optTitleSelected: {
-    color: '#FBBF24',
-    fontWeight: '800',
+  previewContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
   },
-  optSub: {
-    color: '#94A3B8',
-    fontSize: 11,
-    marginTop: 2,
+  phoneFrame: {
+    width: width * 0.62,
+    aspectRatio: 9 / 16,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: '#334155',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
   },
-  radioCircle: {
-    width: 20,
-    height: 20,
+  phoneScreen: {
+    flex: 1,
+    paddingTop: 14,
+    paddingHorizontal: 10,
+  },
+  phoneHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  phoneHostInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  phoneHostAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FB7185',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  phoneHostTitle: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  phoneHostId: {
+    fontSize: 7.5,
+    color: '#CBD5E1',
+  },
+  phoneHeaderIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  micsGrid: {
+    marginTop: 8,
+    gap: 14,
+  },
+  micRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  micItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  micCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  micLabel: {
+    fontSize: 8,
+    color: '#DDD6FE',
+    fontWeight: '500',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginHorizontal: 16,
+  },
+  thumbnailsWrap: {
+    paddingVertical: 18,
+  },
+  thumbnailsScroll: {
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  thumbnailCardWrap: {
+    alignItems: 'center',
+    width: 78,
+  },
+  thumbnailCard: {
+    width: 76,
+    height: 120,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#0F172A',
   },
-  radioCircleSelected: {
-    borderColor: '#F59E0B',
+  thumbnailCardSelected: {
+    borderColor: '#10B981',
+    borderWidth: 2,
   },
-  radioDot: {
+  thumbnailInner: {
+    flex: 1,
+    paddingTop: 10,
+    paddingHorizontal: 4,
+  },
+  thumbMics: {
+    gap: 6,
+    marginTop: 6,
+  },
+  thumbRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  thumbDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#F59E0B',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  thumbLabel: {
+    fontSize: 12,
+    color: '#475569',
+    marginTop: 8,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  thumbLabelSelected: {
+    color: '#0F172A',
+    fontWeight: '700',
+  },
+  bottomBar: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 10,
+  },
+  actionBtn: {
+    width: '100%',
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+    elevation: 3,
+  },
+  actionBtnGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

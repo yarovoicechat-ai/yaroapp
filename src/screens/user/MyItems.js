@@ -22,6 +22,7 @@ import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
 import CosmeticAsset from '../../components/cosmetics/CosmeticAsset';
 import CosmeticFormatBadge from '../../components/cosmetics/CosmeticFormatBadge';
+import SvgaView from '../../components/SvgaView';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
@@ -33,8 +34,8 @@ const CATEGORIES = ['All', 'Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 
 const EQUIPPABLE_TYPES = ['Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'VIP', 'Chat Bubble', 'Tassel', 'Theme', 'Profile Border', 'Unique ID'];
 
 export default function MyItems() {
-  const insets = useSafeAreaInsets();
-  const topSafeInset = getAppTopSafeInset(insets.top);
+  const insets = useSafeAreaInsets() || { top: 0, bottom: 0, left: 0, right: 0 };
+  const topSafeInset = getAppTopSafeInset(insets?.top || 0);
   const navigation = useNavigation();
   const route = useRoute();
   const { user, equipCosmetic } = useContext(AuthContext);

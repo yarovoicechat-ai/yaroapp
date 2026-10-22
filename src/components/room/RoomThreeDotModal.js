@@ -11,6 +11,8 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 export default function RoomThreeDotModal({
   visible,
   onClose,
+  canModerate = true,
+  onReportRoom,
   onOpenSeatSettings,
   onLockSeats,
   onOpenThemeModal,
@@ -26,7 +28,26 @@ export default function RoomThreeDotModal({
 }) {
   if (!visible) return null;
 
-  const toolItems = [
+  // Normal guest users only see Report & Share (matches media_1792691205454.png)
+  const guestItems = [
+    {
+      id: 'report',
+      label: 'Report',
+      icon: 'alert-circle-outline',
+      iconColor: '#8B5CF6', // Purple
+      onPress: onReportRoom,
+    },
+    {
+      id: 'share',
+      label: 'Share',
+      icon: 'share-variant-outline',
+      iconColor: '#F43F5E', // Coral
+      onPress: onShareRoom,
+    },
+  ];
+
+  // Room Owner & Admins see full management suite
+  const adminItems = [
     {
       id: 'mic_count',
       label: 'Number of Mic',
@@ -93,6 +114,8 @@ export default function RoomThreeDotModal({
       },
     ] : []),
   ];
+
+  const toolItems = canModerate ? adminItems : guestItems;
 
   return (
     <Modal

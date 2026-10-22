@@ -9,3 +9,12 @@ export { default as RoomUserProfileModal } from './RoomUserProfileModal';
 export { default as RoomEntryEffectEngine } from './RoomEntryEffectEngine';
 export { default as RoomTasksModal } from './RoomTasksModal';
 export { default as RoomSupportModal } from './RoomSupportModal';
+export { default as RoomAdminListModal } from './RoomAdminListModal';
+export { default as RoomLockModal } from './RoomLockModal';
+export { default as RoomShareModal } from './RoomShareModal';
+export { default as RoomGatherFollowersModal } from './RoomGatherFollowersModal';
+export { default as RoomThreeDotModal } from './RoomThreeDotModal';
+export { default as SeatLayoutModal } from './SeatLayoutModal';
+export { default as RoomThemeModal } from './RoomThemeModal';
+export { default as RoomSeatActionModal } from './RoomSeatActionModal';
+

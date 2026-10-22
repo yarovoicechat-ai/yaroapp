@@ -460,19 +460,11 @@ export default function RoomSettingsModal({
             </View>
 
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: 10 }}>
-              {/* Sample or real history row (matches screenshot 8) */}
-              <View style={styles.historyTableRow}>
-                <View style={{ flex: 1.2 }}>
-                  <Text style={styles.operateTimeText}>02-Oct</Text>
-                  <Text style={styles.operateSubTimeText}>21:06:57</Text>
+              {(!operateHistory || operateHistory.length === 0) && (
+                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                  <Text style={{ color: '#94A3B8', fontSize: 13 }}>No operation history records</Text>
                 </View>
-                <View style={{ flex: 1.2, alignItems: 'center' }}>
-                  <Text style={styles.operateAdminName}>Ansh</Text>
-                  <Text style={styles.operateAdminId}>63076825</Text>
-                </View>
-                <Text style={[styles.operateFunctionText, { flex: 1.2, textAlign: 'center' }]}>Set Admin</Text>
-                <Text style={[styles.operateStatusText, { flex: 1, textAlign: 'right' }]}>Set</Text>
-              </View>
+              )}
 
               {operateHistory && operateHistory.length > 0 && operateHistory.map((item, idx) => (
                 <View key={idx} style={styles.historyTableRow}>

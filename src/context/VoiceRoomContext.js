@@ -1130,22 +1130,25 @@ export const VoiceRoomProvider = ({ children }) => {
             // User requirement: Do NOT show welcome greeting card to existing occupants in room.
           } else if (isSelf && !actuallyOwner) {
             // User requirement: Welcome greeting card & "Come on mic" banner is ONLY shown to the user who joins!
-            const joinEventId = data?.eventId || `join-self-${Date.now()}`;
-            setChatMessages((prev) => [
-              ...prev,
-              {
-                id: `welcome-${joinEventId}`,
-                type: 'welcome',
-                variant: 'joined',
-                targetUserId: currentUserId,
-                targetUserName: currentUser?.name || data?.user?.name || 'Friend',
-                isOwner: false,
-                roomHostName: roomData.hostName || 'Host',
-                avatar: roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
-                equippedFrame: null,
-                timestamp: Date.now(),
-              },
-            ]);
+            setChatMessages((prev) => {
+              if (prev.some((m) => m.type === 'welcome')) return prev;
+              const joinEventId = data?.eventId || `join-self-${Date.now()}`;
+              return [
+                ...prev,
+                {
+                  id: `welcome-${joinEventId}`,
+                  type: 'welcome',
+                  variant: 'joined',
+                  targetUserId: currentUserId,
+                  targetUserName: currentUser?.name || data?.user?.name || 'Friend',
+                  isOwner: false,
+                  roomHostName: roomData.hostName || 'Host',
+                  avatar: roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
+                  equippedFrame: null,
+                  timestamp: Date.now(),
+                },
+              ];
+            });
           }
         });
 
@@ -1240,6 +1243,12 @@ export const VoiceRoomProvider = ({ children }) => {
             }
             setChatMessages((prev) => {
               if (prev.some((m) => m.id === msg.id)) return prev;
+              if (msg.type === 'system') {
+                const recentSame = prev.slice(-3).find(
+                  (m) => m.type === 'system' && m.text === msg.text && Math.abs((m.timestamp || 0) - (msg.timestamp || Date.now())) < 4000
+                );
+                if (recentSame) return prev;
+              }
               return [...prev, msg];
             });
           }

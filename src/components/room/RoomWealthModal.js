@@ -125,6 +125,7 @@ export default function RoomWealthModal({
                   </View>
                 </TouchableOpacity>
               ))
+            )}
           </ScrollView>
 
           {/* Bottom Fixed Current User Bar (Matching Image 3) */}

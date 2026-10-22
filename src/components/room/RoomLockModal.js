@@ -13,7 +13,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { apiUtil } from '../../utils/apiUtil';
-import AlertService from '../../services/AlertService';
+import { AlertService } from '../../utils/AlertService';
 
 /**
  * RoomLockModal

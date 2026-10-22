@@ -17,7 +17,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiUtil } from '../../utils/apiUtil';
-import AlertService from '../../services/AlertService';
+import { AlertService } from '../../utils/AlertService';
 import { ROOM_THEME_CATALOG, DEFAULT_ROOM_BG } from '../../utils/cosmeticResolver';
 
 const { width } = Dimensions.get('window');

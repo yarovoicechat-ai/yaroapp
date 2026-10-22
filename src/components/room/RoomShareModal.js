@@ -11,7 +11,7 @@ import {
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AlertService from '../../services/AlertService';
+import { AlertService } from '../../utils/AlertService';
 
 /**
  * RoomShareModal

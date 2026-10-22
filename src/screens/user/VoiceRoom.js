@@ -1495,18 +1495,12 @@ export default function VoiceRoomScreen() {
     <ImageBackground
       source={
         (() => {
-          const hasCustomTheme = activeTheme && activeTheme.id && activeTheme.id !== 'default';
           const themeImg = activeTheme?.coverImage;
-          if (hasCustomTheme) {
-            if (themeImg) {
-              if (typeof themeImg === 'number') return themeImg;
-              if (typeof themeImg === 'string' && themeImg.trim().length > 0) return { uri: themeImg };
-              if (typeof themeImg === 'object' && themeImg.uri) return themeImg;
-            }
-            // Custom theme with only color gradient
-            return undefined;
+          if (themeImg) {
+            if (typeof themeImg === 'number') return themeImg;
+            if (typeof themeImg === 'string' && themeImg.trim().length > 0) return { uri: themeImg.trim() };
+            if (typeof themeImg === 'object' && themeImg?.uri) return themeImg;
           }
-          // Default room background (twilight purple beach "Yaro" wallpaper)
           return DEFAULT_ROOM_BG;
         })()
       }
@@ -1526,11 +1520,9 @@ export default function VoiceRoomScreen() {
       {/* Ambient Gradient Overlay tuned for wallpaper clarity while preserving seat & chat readability */}
       <LinearGradient
         colors={
-          !activeTheme || activeTheme.id === 'default' || activeTheme?.coverImage
-            ? ['rgba(15, 7, 32, 0.30)', 'rgba(10, 4, 22, 0.12)', 'rgba(8, 2, 18, 0.65)']
-            : (activeTheme?.bgColors && activeTheme.bgColors.length > 1
-                ? activeTheme.bgColors
-                : ['rgba(8, 16, 26, 0.72)', 'rgba(6, 12, 22, 0.82)', 'rgba(4, 8, 16, 0.92)'])
+          Array.isArray(activeTheme?.bgColors) && activeTheme.bgColors.length >= 2
+            ? activeTheme.bgColors
+            : ['rgba(15, 7, 32, 0.40)', 'rgba(10, 4, 22, 0.25)', 'rgba(8, 2, 18, 0.70)']
         }
         style={StyleSheet.absoluteFillObject}
       />
@@ -2408,6 +2400,8 @@ export default function VoiceRoomScreen() {
         onClose={() => setThemeModalVisible(false)}
         currentTheme={activeTheme}
         onSelectTheme={updateRoomTheme}
+        currentSeatSkin={activeSeatSkin}
+        onSelectSeatSkin={updateRoomSeatSkin}
         bottomSafePadding={bottomSafePadding}
       />
 

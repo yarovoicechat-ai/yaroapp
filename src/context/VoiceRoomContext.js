@@ -1315,12 +1315,18 @@ export const VoiceRoomProvider = ({ children }) => {
           return true;
         };
         const acceptEntryEffect = (data, eventName) => {
-          const entryUserIds = [data?.user?.userId, data?.userId, data?.user?.id, data?.user?._id]
-            .filter(Boolean).map(String);
-          if (hasRoomMemberSnapshotRef.current && entryUserIds.length &&
-              !entryUserIds.some((id) => roomMemberIdsRef.current.has(id))) return;
           if (!rememberEntryEvent(data)) return;
           console.warn(`📡 [VoiceRoom] ${eventName} received in Context:`, data?.entryId, data?.user?.name);
+          if (data?.user) {
+            const entryUserIds = [data.user.userId, data.userId, data.user.id, data.user._id].filter(Boolean).map(String);
+            entryUserIds.forEach((id) => roomMemberIdsRef.current.add(id));
+            setOnlineUsers((prev) => {
+              const exists = prev.some((p) =>
+                entryUserIds.includes(String(p?.userId || p?.id || p?._id || ''))
+              );
+              return exists ? prev : [...prev, data.user];
+            });
+          }
           setActiveEntryEffect(data);
         };
         sock.on('entry:effect', (data) => {
@@ -1760,10 +1766,15 @@ export const VoiceRoomProvider = ({ children }) => {
   const updateRoomTheme = (theme) => {
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
     const sock = socketRef.current || getSocket();
+    if (theme) {
+      setCurrentRoomTheme(theme);
+    }
     if (sock && roomId && theme) {
+      const themeId = theme.itemId || theme.id || theme._id || 'default';
       sock.emit('voice_room:update_theme', {
         roomId,
-        themeId: theme.itemId || theme.id || theme._id,
+        themeId,
+        themeAsset: theme,
       });
     }
   };

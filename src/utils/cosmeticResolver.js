@@ -332,8 +332,64 @@ export const SEAT_SKIN_CATALOG = [
   },
 ];
 
-// Compatibility exports; these are not used as a store catalog.
-export const ROOM_THEME_CATALOG = [DEFAULT_ROOM_THEME];
+export const ROOM_THEME_CATALOG = [
+  DEFAULT_ROOM_THEME,
+  {
+    id: 'cyber_neon',
+    itemId: 'cyber_neon',
+    name: 'Cyber Neon',
+    coverImage: null,
+    bgColors: ['#031B33', '#062B4E', '#010E1D'],
+    previewColor: '#06B6D4',
+    desc: 'Futuristic electric blue neon gaming pod theme',
+    isPreset: true,
+    isFree: true,
+  },
+  {
+    id: 'royal_gold',
+    itemId: 'royal_gold',
+    name: 'Imperial Gold',
+    coverImage: null,
+    bgColors: ['#3D2406', '#261603', '#130B01'],
+    previewColor: '#F59E0B',
+    desc: 'Majestic 24k golden palace with warm amber reflections',
+    isPreset: true,
+    isFree: true,
+  },
+  {
+    id: 'sakura_blossom',
+    itemId: 'sakura_blossom',
+    name: 'Sakura Dream',
+    coverImage: null,
+    bgColors: ['#3D0B24', '#260616', '#14030B'],
+    previewColor: '#EC4899',
+    desc: 'Enchanted cherry blossom garden in midnight bloom',
+    isPreset: true,
+    isFree: true,
+  },
+  {
+    id: 'galaxy_cosmos',
+    itemId: 'galaxy_cosmos',
+    name: 'Cosmic Galaxy',
+    coverImage: null,
+    bgColors: ['#1A0C3D', '#0F0626', '#060212'],
+    previewColor: '#8B5CF6',
+    desc: 'Deep space stars, nebula gradients and cosmic dust',
+    isPreset: true,
+    isFree: true,
+  },
+  {
+    id: 'sunset_glow',
+    itemId: 'sunset_glow',
+    name: 'Sunset Twilight',
+    coverImage: null,
+    bgColors: ['#3F1523', '#270C15', '#120409'],
+    previewColor: '#F97316',
+    desc: 'Atmospheric crimson sunset with velvet violet horizon',
+    isPreset: true,
+    isFree: true,
+  },
+];
 
 const asAsset = (value) => {
   if (!value) return null;
@@ -343,19 +399,33 @@ const asAsset = (value) => {
 const normalizeTheme = (value) => {
   const asset = asAsset(value);
   if (!asset) return null;
-  const isDefault = String(asset.id || asset.itemId || asset._id || asset.name || '').toLowerCase() === 'default';
+  const rawId = String(asset.id || asset.itemId || asset._id || asset.name || '').toLowerCase().trim();
+  const matchedPreset = ROOM_THEME_CATALOG.find((p) => {
+    const pid = String(p.id).toLowerCase();
+    const pname = String(p.name).toLowerCase();
+    return rawId === pid || rawId === pname || rawId.includes(pid);
+  });
+  const base = matchedPreset || DEFAULT_ROOM_THEME;
+  const isDefault = (base.id === 'default' || rawId === 'default' || !rawId);
   const metadata = asset.metadata || {};
+
   return {
+    ...base,
     ...asset,
-    id: asset.id || asset.itemId || asset._id || asset.name || 'default',
+    id: asset.id || asset.itemId || asset._id || base.id,
+    itemId: asset.itemId || asset.id || asset._id || base.itemId,
+    name: asset.name || base.name,
     coverImage:
       asset.coverImage !== undefined
         ? asset.coverImage
-        : (asset.imageUrl || asset.animationUrl || asset.backgroundImage || metadata.coverImage || (isDefault ? DEFAULT_ROOM_BG : null)),
+        : (asset.imageUrl || asset.animationUrl || asset.backgroundImage || metadata.coverImage || (isDefault ? DEFAULT_ROOM_BG : base.coverImage)),
     bgColors:
-      asset.bgColors || asset.backgroundColors || metadata.bgColors || DEFAULT_ROOM_THEME.bgColors,
+      (Array.isArray(asset.bgColors) && asset.bgColors.length >= 2 ? asset.bgColors : null) ||
+      (Array.isArray(asset.backgroundColors) && asset.backgroundColors.length >= 2 ? asset.backgroundColors : null) ||
+      (Array.isArray(metadata.bgColors) && metadata.bgColors.length >= 2 ? metadata.bgColors : null) ||
+      base.bgColors,
     previewColor:
-      asset.previewColor || metadata.previewColor || asset.bgColor || DEFAULT_ROOM_THEME.previewColor,
+      asset.previewColor || metadata.previewColor || asset.bgColor || base.previewColor,
   };
 };
 

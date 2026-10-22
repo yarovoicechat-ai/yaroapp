@@ -282,7 +282,8 @@ export default function VipFloatingEntryEngine({
 const styles = StyleSheet.create({
   fullscreenOverlay: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 10000,
+    zIndex: 100000,
+    elevation: 10000,
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingTop: height * 0.16,

@@ -18,10 +18,133 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiUtil } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
-import { ROOM_THEME_CATALOG, DEFAULT_ROOM_BG } from '../../utils/cosmeticResolver';
+import { ROOM_THEME_CATALOG, DEFAULT_ROOM_BG, SEAT_SKIN_CATALOG } from '../../utils/cosmeticResolver';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
+
+const FALLBACK_ROOM_THEMES = [
+  {
+    id: 'default',
+    itemId: 'default',
+    name: 'Default Twilight',
+    coverImage: DEFAULT_ROOM_BG,
+    bgColors: ['#3A0E5C', '#1E0A3C', '#0B031E'],
+    previewColor: '#9333EA',
+    desc: 'Default Yaro room theme with twilight beach & ambient neon glow',
+    isPreset: true,
+    isFree: true,
+  },
+  {
+    id: 'cyber_neon',
+    itemId: 'cyber_neon',
+    name: 'Cyber Neon',
+    coverImage: null,
+    bgColors: ['#031B33', '#062B4E', '#010E1D'],
+    previewColor: '#06B6D4',
+    desc: 'Futuristic electric blue neon gaming pod theme',
+    isPreset: true,
+    isFree: true,
+  },
+  {
+    id: 'royal_gold',
+    itemId: 'royal_gold',
+    name: 'Imperial Gold',
+    coverImage: null,
+    bgColors: ['#3D2406', '#261603', '#130B01'],
+    previewColor: '#F59E0B',
+    desc: 'Majestic 24k golden palace with warm amber reflections',
+    isPreset: true,
+    isFree: true,
+  },
+  {
+    id: 'sakura_blossom',
+    itemId: 'sakura_blossom',
+    name: 'Sakura Dream',
+    coverImage: null,
+    bgColors: ['#3D0B24', '#260616', '#14030B'],
+    previewColor: '#EC4899',
+    desc: 'Enchanted cherry blossom garden in midnight bloom',
+    isPreset: true,
+    isFree: true,
+  },
+  {
+    id: 'galaxy_cosmos',
+    itemId: 'galaxy_cosmos',
+    name: 'Cosmic Galaxy',
+    coverImage: null,
+    bgColors: ['#1A0C3D', '#0F0626', '#060212'],
+    previewColor: '#8B5CF6',
+    desc: 'Deep space stars, nebula gradients and cosmic dust',
+    isPreset: true,
+    isFree: true,
+  },
+  {
+    id: 'sunset_glow',
+    itemId: 'sunset_glow',
+    name: 'Sunset Twilight',
+    coverImage: null,
+    bgColors: ['#3F1523', '#270C15', '#120409'],
+    previewColor: '#F97316',
+    desc: 'Atmospheric crimson sunset with velvet violet horizon',
+    isPreset: true,
+    isFree: true,
+  },
+];
+
+const PRESET_THEMES = (Array.isArray(ROOM_THEME_CATALOG) && ROOM_THEME_CATALOG.length > 0
+  ? ROOM_THEME_CATALOG
+  : FALLBACK_ROOM_THEMES
+).map((item) => ({
+  id: String(item?.id || 'default'),
+  itemId: String(item?.itemId || item?.id || 'default'),
+  name: item?.name || item?.id || 'Theme',
+  coverImage: item?.coverImage !== undefined ? item.coverImage : (item?.id === 'default' ? DEFAULT_ROOM_BG : null),
+  bgColors: Array.isArray(item?.bgColors) && item.bgColors.length >= 2 ? item.bgColors : ['#3A0E5C', '#1E0A3C', '#0B031E'],
+  previewColor: item?.previewColor || item?.bgColors?.[0] || '#9333EA',
+  desc: item?.desc || 'Yaro room theme',
+  isPreset: true,
+  isFree: true,
+}));
+
+const THEME_SETS = [
+  {
+    id: 'set_cyber',
+    name: 'Cyberpunk Neon Set',
+    themeId: 'cyber_neon',
+    seatSkinId: 'cyber_pod',
+    previewColor: '#06B6D4',
+    bgColors: ['#031B33', '#062B4E'],
+    desc: 'Futuristic Cyber Neon Room + Cyber Pod Seat',
+  },
+  {
+    id: 'set_gold',
+    name: 'Imperial Gold Set',
+    themeId: 'royal_gold',
+    seatSkinId: 'golden_throne',
+    previewColor: '#F59E0B',
+    bgColors: ['#3D2406', '#261603'],
+    desc: 'Majestic 24k Imperial Room + Imperial Gold Throne',
+  },
+  {
+    id: 'set_sakura',
+    name: 'Sakura Garden Set',
+    themeId: 'sakura_blossom',
+    seatSkinId: 'lotus_throne',
+    previewColor: '#EC4899',
+    bgColors: ['#3D0B24', '#260616'],
+    desc: 'Enchanted Sakura Room + Emerald Lotus Throne',
+  },
+  {
+    id: 'set_phoenix',
+    name: 'Phoenix Sovereign Set',
+    themeId: 'sunset_glow',
+    seatSkinId: 'phoenix_fire',
+    previewColor: '#EF4444',
+    bgColors: ['#3F1523', '#270C15'],
+    desc: 'Sunset Crimson Room + Phoenix Dragon Throne',
+  },
+];
 
 const normalizeTheme = (inventoryItem) => {
   const catalog = inventoryItem.catalogItem || inventoryItem.itemId || inventoryItem || {};
@@ -47,23 +170,14 @@ const normalizeTheme = (inventoryItem) => {
   };
 };
 
-const PRESET_THEMES = (ROOM_THEME_CATALOG || []).map((item) => ({
-  id: item?.id || 'default',
-  itemId: item?.itemId || item?.id || 'default',
-  name: item?.name || item?.id || 'Default',
-  coverImage: item?.coverImage || (item?.id === 'default' ? DEFAULT_ROOM_BG : null),
-  bgColors: Array.isArray(item?.bgColors) && item.bgColors.length >= 2 ? item.bgColors : ['#3A0E5C', '#1E0A3C', '#0B031E'],
-  previewColor: item?.previewColor || item?.bgColors?.[0] || '#9333EA',
-  desc: item?.desc || 'Default Yaro room theme',
-  isPreset: true,
-  isFree: true,
-}));
-
 export default function RoomThemeModal({
   visible,
   onClose,
   currentTheme,
   onSelectTheme,
+  currentSeatSkin,
+  onSelectSeatSkin,
+  bottomSafePadding = 16,
 }) {
   const insets = useSafeAreaInsets();
   const topInset = insets?.top ?? 0;
@@ -76,7 +190,7 @@ export default function RoomThemeModal({
   useEffect(() => {
     if (!visible) return;
     let active = true;
-    setSelected(String(currentTheme?.itemId || currentTheme?.id || ''));
+    setSelected(String(currentTheme?.itemId || currentTheme?.id || 'default'));
     setLoading(true);
 
     Promise.allSettled([
@@ -107,9 +221,12 @@ export default function RoomThemeModal({
         ownedThemes.forEach((t) => byId.set(t.itemId, { ...(byId.get(t.itemId) || {}), ...t, isOwned: true }));
         freeRoomToolThemes.forEach((t) => byId.set(t.itemId, { ...(byId.get(t.itemId) || {}), ...t, isFree: true }));
 
-        setThemes(Array.from(byId.values()));
+        const merged = Array.from(byId.values());
+        setThemes(merged.length > 0 ? merged : PRESET_THEMES);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (active) setThemes(PRESET_THEMES);
+      })
       .finally(() => {
         if (active) setLoading(false);
       });
@@ -121,10 +238,41 @@ export default function RoomThemeModal({
 
   if (!visible) return null;
 
-  const handleApply = (themeItem) => {
-    if (onSelectTheme) onSelectTheme(themeItem);
-    setSelected(themeItem.itemId || themeItem.id);
-    onClose();
+  const handleApplyTheme = (themeItem) => {
+    try {
+      if (onSelectTheme) onSelectTheme(themeItem);
+      setSelected(String(themeItem.itemId || themeItem.id || 'default'));
+      AlertService.show('Theme Applied! ✨', `"${themeItem.name}" room theme is now active for all visitors.`, 'success');
+      onClose();
+    } catch (e) {
+      console.warn('Theme apply error:', e);
+      onClose();
+    }
+  };
+
+  const handleApplySeatSkin = (seatItem) => {
+    try {
+      if (onSelectSeatSkin) onSelectSeatSkin(seatItem);
+      AlertService.show('Mic Skin Applied! 🎤', `"${seatItem.name}" mic skin is now active for all seats.`, 'success');
+      onClose();
+    } catch (e) {
+      console.warn('Seat skin apply error:', e);
+      onClose();
+    }
+  };
+
+  const handleApplyThemeSet = (themeSet) => {
+    try {
+      const targetTheme = PRESET_THEMES.find((t) => t.id === themeSet.themeId) || PRESET_THEMES[0];
+      const targetSeatSkin = (SEAT_SKIN_CATALOG || []).find((s) => s.id === themeSet.seatSkinId) || (SEAT_SKIN_CATALOG || [])[0];
+      if (onSelectTheme && targetTheme) onSelectTheme(targetTheme);
+      if (onSelectSeatSkin && targetSeatSkin) onSelectSeatSkin(targetSeatSkin);
+      AlertService.show('Theme Set Applied! 🌟', `"${themeSet.name}" theme and matching mic skin applied!`, 'success');
+      onClose();
+    } catch (e) {
+      console.warn('Theme set apply error:', e);
+      onClose();
+    }
   };
 
   const handleCustomUpload = () => {
@@ -132,10 +280,10 @@ export default function RoomThemeModal({
   };
 
   // Prepend Custom card to the data list for "Room Theme" tab
-  const displayData = useMemo(() => {
-    if (activeTab !== 'Room Theme') return [];
-    return [{ isCustomCard: true, id: '__custom_card__' }, ...themes];
-  }, [activeTab, themes]);
+  const displayThemeData = useMemo(() => {
+    const list = themes && themes.length > 0 ? themes : PRESET_THEMES;
+    return [{ isCustomCard: true, id: '__custom_card__' }, ...list];
+  }, [themes]);
 
   return (
     <Modal
@@ -144,7 +292,7 @@ export default function RoomThemeModal({
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { paddingTop: topInset, paddingBottom: Math.max(bottomInset, 16) }]}>
+      <View style={[styles.container, { paddingTop: topInset, paddingBottom: Math.max(bottomInset, bottomSafePadding, 16) }]}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
         {/* Top Header */}
@@ -180,15 +328,15 @@ export default function RoomThemeModal({
           })}
         </View>
 
-        {/* Tab Content */}
-        {activeTab === 'Room Theme' ? (
+        {/* Tab 1: Room Theme */}
+        {activeTab === 'Room Theme' && (
           loading ? (
             <View style={styles.loaderWrap}>
               <ActivityIndicator size="large" color="#FB923C" />
             </View>
           ) : (
             <FlatList
-              data={displayData}
+              data={displayThemeData}
               keyExtractor={(item, index) => String(item.id || item.itemId || index)}
               numColumns={2}
               columnWrapperStyle={styles.columnWrapper}
@@ -213,9 +361,9 @@ export default function RoomThemeModal({
                   );
                 }
 
-                const itemId = String(item.itemId || item.id);
-                const isSelected = selected === itemId;
-                const isCurrentInUse = String(currentTheme?.itemId || currentTheme?.id) === itemId;
+                const itemId = String(item.itemId || item.id || '');
+                const isSelected = String(selected) === itemId || (itemId === 'default' && (!selected || selected === 'default'));
+                const isCurrentInUse = String(currentTheme?.itemId || currentTheme?.id || 'default') === itemId;
                 const safeBgColors = Array.isArray(item.bgColors) && item.bgColors.length >= 2
                   ? item.bgColors
                   : ['#3A0E5C', '#1E0A3C'];
@@ -223,7 +371,7 @@ export default function RoomThemeModal({
                 return (
                   <TouchableOpacity
                     style={[styles.themeCard, isSelected && styles.themeCardSelected]}
-                    onPress={() => handleApply(item)}
+                    onPress={() => handleApplyTheme(item)}
                     activeOpacity={0.85}
                   >
                     <View style={styles.imagePreviewWrap}>
@@ -257,15 +405,76 @@ export default function RoomThemeModal({
               }}
             />
           )
-        ) : (
-          <View style={styles.emptyTabWrap}>
-            <MaterialCommunityIcons
-              name={activeTab === 'Mic Theme' ? 'microphone-outline' : 'palette-swatch-outline'}
-              size={54}
-              color="#CBD5E1"
-            />
-            <Text style={styles.emptyTabText}>No {activeTab} available yet</Text>
-          </View>
+        )}
+
+        {/* Tab 2: Mic Theme (Seat Skins) */}
+        {activeTab === 'Mic Theme' && (
+          <FlatList
+            data={SEAT_SKIN_CATALOG || []}
+            keyExtractor={(item, index) => String(item.id || item.itemId || index)}
+            numColumns={2}
+            columnWrapperStyle={styles.columnWrapper}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => {
+              const itemId = String(item.itemId || item.id || 'default');
+              const isCurrentInUse = String(currentSeatSkin?.itemId || currentSeatSkin?.id || 'default') === itemId;
+              return (
+                <TouchableOpacity
+                  style={[styles.themeCard, isCurrentInUse && styles.themeCardSelected]}
+                  onPress={() => handleApplySeatSkin(item)}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.imagePreviewWrap, { backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' }]}>
+                    {item.imageUrl || item.image ? (
+                      <Image
+                        source={typeof (item.imageUrl || item.image) === 'number' ? (item.imageUrl || item.image) : { uri: String(item.imageUrl || item.image) }}
+                        style={styles.previewImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <MaterialCommunityIcons name={item.icon || 'chair-rolling'} size={52} color={item.previewColor || '#F59E0B'} />
+                    )}
+                    {isCurrentInUse && (
+                      <View style={styles.inUseBadge}>
+                        <Text style={styles.inUseText}>USING</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.themeName} numberOfLines={1}>{item.name}</Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        )}
+
+        {/* Tab 3: Theme Set */}
+        {activeTab === 'Theme Set' && (
+          <FlatList
+            data={THEME_SETS}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            columnWrapperStyle={styles.columnWrapper}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.themeCard}
+                onPress={() => handleApplyThemeSet(item)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.imagePreviewWrap}>
+                  <LinearGradient colors={item.bgColors} style={styles.previewImage}>
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <MaterialCommunityIcons name="palette" size={30} color={item.previewColor} />
+                      <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '700', textAlign: 'center', paddingHorizontal: 8 }}>
+                        Theme + Mic
+                      </Text>
+                    </View>
+                  </LinearGradient>
+                </View>
+                <Text style={styles.themeName} numberOfLines={1}>{item.name}</Text>
+              </TouchableOpacity>
+            )}
+          />
         )}
       </View>
     </Modal>

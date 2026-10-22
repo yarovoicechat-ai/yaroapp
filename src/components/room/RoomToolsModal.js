@@ -6,73 +6,36 @@ import {
   TouchableOpacity,
   Modal,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function RoomToolsModal({
   visible,
   onClose,
-  onOpenSeatSettings,
+  isMuted,
+  onToggleMic,
+  onFollowRoom,
+  onTakeSeat,
+  onRoomSettings,
   onLockSeats,
-  onOpenThemeModal,
-  onShareRoom,
-  onOpenAdminSettings,
   onClearChat,
-  onGatherFollowers,
+  onOpenMusic,
+  onOpenSeatSettings,
+  onOpenThemeModal,
+  onOpenSeatSkinModal,
+  showSeatCharm = false,
+  onToggleSeatCharm,
+  seatCount = 8,
+  isHost,
+  isGlobalRoomManager = false,
+  isStealthActive = false,
+  onToggleStealth,
+  onBanRoom,
+  onOpenRoomTasks,
+  onOpenRoomSupport,
   bottomSafePadding = 16,
 }) {
   if (!visible) return null;
-
-  const toolItems = [
-    {
-      id: 'mic_count',
-      label: 'Number of Mic',
-      icon: 'microphone-outline',
-      iconColor: '#EC4899', // Pink
-      onPress: onOpenSeatSettings,
-    },
-    {
-      id: 'lock',
-      label: 'Lock',
-      icon: 'lock-outline',
-      iconColor: '#F97316', // Orange
-      onPress: onLockSeats,
-    },
-    {
-      id: 'decorations',
-      label: 'Room Decorations',
-      icon: 'palette-outline',
-      iconColor: '#A855F7', // Purple
-      onPress: onOpenThemeModal,
-    },
-    {
-      id: 'share',
-      label: 'Share',
-      icon: 'share-variant-outline',
-      iconColor: '#F43F5E', // Coral
-      onPress: onShareRoom,
-    },
-    {
-      id: 'admin',
-      label: 'Admin',
-      icon: 'account-star-outline',
-      iconColor: '#06B6D4', // Cyan
-      onPress: onOpenAdminSettings,
-    },
-    {
-      id: 'clear_chat',
-      label: 'Clear comments history',
-      icon: 'delete-outline',
-      iconColor: '#F43F5E', // Red-Pink
-      onPress: onClearChat,
-    },
-    {
-      id: 'gather',
-      label: 'Gather followers',
-      icon: 'bullhorn-outline',
-      iconColor: '#EAB308', // Yellow
-      onPress: onGatherFollowers,
-    },
-  ];
 
   return (
     <Modal
@@ -84,40 +47,294 @@ export default function RoomToolsModal({
     >
       <View style={styles.modalBackdrop}>
         <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
+          style={styles.backdropDismissArea}
           activeOpacity={1}
           onPress={onClose}
         />
 
-        <View style={[styles.sheetContainer, { paddingBottom: Math.max(bottomSafePadding, 20) }]}>
-          {toolItems.map((item, index) => (
-            <React.Fragment key={item.id}>
+        <View style={[styles.sheetContainer, { paddingBottom: bottomSafePadding + 16 }]} pointerEvents="auto">
+          <View style={styles.sheetHandle} />
+
+          {/* Top Quick Actions: Follow the room + Take a seat */}
+          <View style={styles.topPillsRow}>
+            <TouchableOpacity
+              style={styles.actionPillBtn}
+              onPress={() => {
+                onClose();
+                onFollowRoom && onFollowRoom();
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.actionPillText}>Follow the room</Text>
+              <View style={styles.actionPillIconCircle}>
+                <Icon name="star-outline" size={16} color="#FFF" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionPillBtn}
+              onPress={() => {
+                onClose();
+                onTakeSeat && onTakeSeat();
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.actionPillText}>Take a seat</Text>
+              <View style={styles.actionPillIconCircle}>
+                <MaterialCommunityIcons name="chair-rolling" size={16} color="#FFF" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Section Title */}
+          <Text style={styles.sectionTitle}>Room Tools</Text>
+
+          {/* Tools Grid / Row */}
+          <View style={styles.toolsRow}>
+            {/* Mute */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                onToggleMic && onToggleMic();
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, isMuted && styles.toolCircleMuted]}>
+                <Icon name={isMuted ? 'volume-mute' : 'volume-high'} size={22} color="#8B5CF6" />
+              </View>
+              <Text style={styles.toolLabel}>Mute</Text>
+            </TouchableOpacity>
+
+            {/* Room music is controlled by the host and room admins. */}
+            {isHost && (
               <TouchableOpacity
-                style={styles.toolRow}
+                style={styles.toolCol}
                 onPress={() => {
                   onClose();
-                  item.onPress && item.onPress();
+                  setTimeout(() => {
+                    onOpenMusic && onOpenMusic();
+                  }, 450);
                 }}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
               >
-                <View style={styles.iconWrapper}>
-                  <MaterialCommunityIcons name={item.icon} size={25} color={item.iconColor} />
+                <View style={[styles.toolCircle, { borderColor: '#C084FC' }]}>
+                  <MaterialCommunityIcons name="music" size={22} color="#C084FC" />
                 </View>
-                <Text style={styles.toolLabel}>{item.label}</Text>
+                <Text style={styles.toolLabel}>Music 🎵</Text>
               </TouchableOpacity>
-              {index < toolItems.length - 1 && <View style={styles.divider} />}
-            </React.Fragment>
-          ))}
+            )}
 
-          {/* Bottom Divider & Cancel */}
-          <View style={[styles.divider, { marginVertical: 12 }]} />
-          <TouchableOpacity
-            style={styles.cancelBtn}
-            onPress={onClose}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
+            {/* Broadcast */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.toolCircle}>
+                <MaterialCommunityIcons name="bullhorn-outline" size={22} color="#8B5CF6" />
+              </View>
+              <Text style={styles.toolLabel}>Broadcast</Text>
+            </TouchableOpacity>
+
+            {/* Seat Layout (if host) */}
+            {isHost && (
+              <TouchableOpacity
+                style={styles.toolCol}
+                onPress={() => {
+                  onClose();
+                  setTimeout(() => {
+                    onOpenSeatSettings && onOpenSeatSettings();
+                  }, 450);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.toolCircle, { borderColor: '#10B981' }]}>
+                  <MaterialCommunityIcons name="view-grid" size={22} color="#10B981" />
+                </View>
+                <Text style={styles.toolLabel}>{seatCount} Seats</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Lock All Seats (if host) */}
+            {isHost && (
+              <TouchableOpacity
+                style={styles.toolCol}
+                onPress={() => {
+                  onClose();
+                  onLockSeats && onLockSeats();
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.toolCircle, { borderColor: '#F59E0B' }]}>
+                  <MaterialCommunityIcons name="lock-outline" size={22} color="#F59E0B" />
+                </View>
+                <Text style={styles.toolLabel}>Lock Seats</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Clear Chat (if host) */}
+            {isHost && (
+              <TouchableOpacity
+                style={styles.toolCol}
+                onPress={() => {
+                  onClose();
+                  onClearChat && onClearChat();
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.toolCircle, { borderColor: '#EF4444' }]}>
+                  <MaterialCommunityIcons name="broom" size={22} color="#EF4444" />
+                </View>
+                <Text style={styles.toolLabel}>Clear Chat</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Seat Charm */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onToggleSeatCharm && onToggleSeatCharm();
+              }}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.toolCircle,
+                  showSeatCharm
+                    ? { borderColor: '#EC4899', backgroundColor: 'rgba(236, 72, 153, 0.22)' }
+                    : { borderColor: 'rgba(255, 255, 255, 0.12)' },
+                ]}
+              >
+                <Text style={{ fontSize: 21 }}>🌸</Text>
+              </View>
+              <Text
+                style={[
+                  styles.toolLabel,
+                  showSeatCharm && { color: '#EC4899', fontWeight: '700' },
+                ]}
+                numberOfLines={1}
+              >
+                {showSeatCharm ? 'Charm ON' : 'Charm OFF'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Room Tasks */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenRoomTasks && onOpenRoomTasks();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, { borderColor: '#818CF8' }]}>
+                <MaterialCommunityIcons name="clipboard-check-outline" size={22} color="#818CF8" />
+              </View>
+              <Text style={styles.toolLabel}>Tasks 🎯</Text>
+            </TouchableOpacity>
+
+            {/* Room Support */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenRoomSupport && onOpenRoomSupport();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, { borderColor: '#F59E0B' }]}>
+                <MaterialCommunityIcons name="trophy-award" size={22} color="#F59E0B" />
+              </View>
+              <Text style={styles.toolLabel}>Support 🏆</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* OWNER TOOLS SECTION (Only Host / Room Owner) */}
+          {isHost && (
+            <View style={styles.ownerToolsSection}>
+              <View style={styles.ownerHeaderRow}>
+                <MaterialCommunityIcons name="shield-crown" size={16} color="#F59E0B" />
+                <Text style={styles.ownerSectionTitle}>OWNER TOOLS</Text>
+              </View>
+              <View style={styles.toolsRow}>
+                {/* 1. Theme */}
+                <TouchableOpacity
+                  style={styles.toolCol}
+                  onPress={() => {
+                    onClose();
+                    setTimeout(() => {
+                      onOpenThemeModal && onOpenThemeModal();
+                    }, 400);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.toolCircle, { borderColor: '#F59E0B' }]}>
+                    <MaterialCommunityIcons name="palette" size={22} color="#F59E0B" />
+                  </View>
+                  <Text style={styles.toolLabel}>Theme</Text>
+                </TouchableOpacity>
+
+                {/* 2. Seat Skin */}
+                <TouchableOpacity
+                  style={styles.toolCol}
+                  onPress={() => {
+                    onClose();
+                    setTimeout(() => {
+                      onOpenSeatSkinModal && onOpenSeatSkinModal();
+                    }, 400);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.toolCircle, { borderColor: '#10B981' }]}>
+                    <MaterialCommunityIcons name="chair-rolling" size={22} color="#10B981" />
+                  </View>
+                  <Text style={styles.toolLabel}>Seat Skin</Text>
+                </TouchableOpacity>
+
+                {/* 3. Global Controller: Stealth Mode */}
+                {isGlobalRoomManager && (
+                  <TouchableOpacity
+                    style={styles.toolCol}
+                    onPress={() => {
+                      onToggleStealth && onToggleStealth();
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.toolCircle, isStealthActive ? { borderColor: '#A855F7', backgroundColor: 'rgba(168, 85, 247, 0.25)' } : { borderColor: '#A855F7' }]}>
+                      <MaterialCommunityIcons name={isStealthActive ? 'eye-off' : 'eye-off-outline'} size={22} color="#A855F7" />
+                    </View>
+                    <Text style={[styles.toolLabel, isStealthActive && { color: '#C084FC', fontWeight: 'bold' }]}>
+                      {isStealthActive ? 'Stealth ON' : 'Stealth OFF'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* 4. Global Controller: Ban Room */}
+                {isGlobalRoomManager && (
+                  <TouchableOpacity
+                    style={styles.toolCol}
+                    onPress={() => {
+                      onClose();
+                      onBanRoom && onBanRoom();
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.toolCircle, { borderColor: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                      <MaterialCommunityIcons name="cancel" size={22} color="#EF4444" />
+                    </View>
+                    <Text style={[styles.toolLabel, { color: '#F87171' }]}>Ban Room 🚫</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -127,51 +344,117 @@ export default function RoomToolsModal({
 const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end',
   },
-  sheetContainer: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    paddingTop: 16,
-    paddingHorizontal: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 20,
+  backdropDismissArea: {
+    flex: 1,
+    width: '100%',
   },
-  toolRow: {
+  sheetContainer: {
+    width: '100%',
+    backgroundColor: '#121424',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    elevation: 25,
+    zIndex: 100,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#334155',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  topPillsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  actionPillBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1E2338',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 11,
-    position: 'relative',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.25)',
   },
-  iconWrapper: {
-    marginRight: 14,
+  actionPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  actionPillIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#7C3AED',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#94A3B8',
+    marginBottom: 14,
+    letterSpacing: 0.5,
+  },
+  toolsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 20,
+    marginBottom: 12,
+  },
+  toolCol: {
+    alignItems: 'center',
+    width: 60,
+  },
+  toolCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#1D223B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 6,
+  },
+  toolCircleMuted: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderColor: '#EF4444',
   },
   toolLabel: {
-    fontSize: 15.5,
+    fontSize: 11,
+    color: '#94A3B8',
     fontWeight: '600',
-    color: '#1E293B',
     textAlign: 'center',
   },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#F1F5F9',
+  ownerToolsSection: {
+    marginTop: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
-  cancelBtn: {
-    paddingVertical: 10,
+  ownerHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 12,
   },
-  cancelText: {
-    fontSize: 15.5,
-    fontWeight: '600',
-    color: '#94A3B8',
+  ownerSectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#F59E0B',
+    letterSpacing: 0.8,
   },
 });

@@ -58,6 +58,7 @@ import {
 } from '../../components/gift';
 import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import RoomToolsModal from '../../components/room/RoomToolsModal';
+import RoomThreeDotModal from '../../components/room/RoomThreeDotModal';
 import RoomExitModal from '../../components/room/RoomExitModal';
 import RoomEmojiModal from '../../components/room/RoomEmojiModal';
 import RoomWealthModal from '../../components/room/RoomWealthModal';
@@ -2169,13 +2170,10 @@ export default function VoiceRoomScreen() {
         onLeaveCompletely={handleLeaveCompletely}
       />
 
-      {/* MODAL 2: ROOM TOOLS MODAL */}
+      {/* MODAL 2A: ROOM TOOLS MENU MODAL (TRIGGERED BY BOTTOM 4-SQUARES MENU) */}
       <RoomToolsModal
-        visible={roomMenuModalVisible || toolsModalVisible}
-        onClose={() => {
-          setRoomMenuModalVisible(false);
-          setToolsModalVisible(false);
-        }}
+        visible={roomMenuModalVisible}
+        onClose={() => setRoomMenuModalVisible(false)}
         isMuted={isMuted}
         onToggleMic={toggleMic}
         onFollowRoom={() => AlertService.show('Followed', 'You are now following this room!', 'success')}
@@ -2237,6 +2235,20 @@ export default function VoiceRoomScreen() {
         onBanRoom={handleOfficialBanRoom}
         onOpenRoomTasks={() => setRoomTasksVisible(true)}
         onOpenRoomSupport={() => setRoomSupportVisible(true)}
+        bottomSafePadding={bottomSafePadding}
+      />
+
+      {/* MODAL 2B: ROOM 3-DOT HEADER MODAL (TRIGGERED BY TOP RIGHT 3-DOTS BUTTON) */}
+      <RoomThreeDotModal
+        visible={toolsModalVisible}
+        onClose={() => setToolsModalVisible(false)}
+        onOpenSeatSettings={() => setSeatLayoutModalVisible(true)}
+        onLockSeats={toggleLockAllSeats}
+        onOpenThemeModal={() => setThemeModalVisible(true)}
+        onShareRoom={handleShareRoom}
+        onOpenAdminSettings={() => setRoomSettingsModalVisible(true)}
+        onClearChat={clearChat}
+        onGatherFollowers={() => AlertService.show('Gather Followers', 'Notification sent to all room followers to join the room!', 'success')}
         bottomSafePadding={bottomSafePadding}
       />
 

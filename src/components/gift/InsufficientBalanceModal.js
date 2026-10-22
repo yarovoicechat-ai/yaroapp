@@ -27,6 +27,7 @@ export default function InsufficientBalanceModal({
       visible={visible}
       transparent
       animationType="fade"
+      statusBarTranslucent
       onRequestClose={onCancel}
     >
       <View style={styles.backdrop}>

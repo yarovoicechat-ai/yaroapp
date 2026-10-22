@@ -132,7 +132,7 @@ export default function RoomThemeModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
         <TouchableOpacity style={styles.backdropDismiss} activeOpacity={1} onPress={onClose} />
         <View style={[styles.sheetContainer, { paddingBottom: bottomSafePadding + 16 }]}>

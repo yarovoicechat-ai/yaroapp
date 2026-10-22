@@ -151,6 +151,7 @@ export default function RoomSupportModal({ visible, onClose, roomId, canManageAu
       visible={visible}
       animationType="slide"
       transparent
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.modalBackdrop}>

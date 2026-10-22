@@ -208,7 +208,7 @@ const OnboardingModal = ({ visible }) => {
       statusBarTranslucent
       onRequestClose={() => {}}
     >
-      <StatusBar backgroundColor="#020b24" barStyle="light-content" />
+      <StatusBar backgroundColor="transparent" translucent barStyle="light-content" />
       <LinearGradient
         colors={['#020b24', '#081438', '#010512']}
         style={[styles.container, { paddingTop: topSafeInset }]}

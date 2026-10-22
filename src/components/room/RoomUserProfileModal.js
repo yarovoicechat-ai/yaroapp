@@ -12,10 +12,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { AlertService } from '../../utils/AlertService';
 import AvatarWithFrame from '../AvatarWithFrame';
-import IdentityDisplayId from '../identity/IdentityDisplayId';
 import { AuthContext } from '../../context/AuthProvider';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { apiUtil } from '../../utils/apiUtil';
@@ -23,17 +20,17 @@ import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 
-// 7 Prestige Medals strictly matching Screenshot 2
+// 9 Prestige Medals strictly matching Screenshot 2
 const PRESTIGE_MEDALS = [
-  { id: 'm1', label: 'Verified', icon: 'shield-check', colors: ['#F59E0B', '#D97706'], badge: 'VERIFIED' },
-  { id: 'm2', label: 'Crystal Crown', icon: 'crown', colors: ['#38BDF8', '#0284C7'], badge: 'VIP' },
-  { id: 'm3', label: '40M Received', icon: 'heart', colors: ['#EF4444', '#DC2626'], badge: '40M' },
-  { id: 'm4', label: '30-Day Loyalty', icon: 'shield-star', colors: ['#10B981', '#059669'], badge: '30' },
-  { id: 'm5', label: 'Eagle SVIP 1', icon: 'shield-crown', colors: ['#F59E0B', '#B45309'], badge: 'SVIP' },
-  { id: 'm6', label: 'Eagle SVIP 2', icon: 'shield-crown', colors: ['#F59E0B', '#B45309'], badge: 'SVIP' },
-  { id: 'm7', label: 'Eagle SVIP 3', icon: 'shield-crown', colors: ['#F59E0B', '#B45309'], badge: 'SVIP' },
-  { id: 'm8', label: 'CP Level 6', icon: 'heart-multiple', colors: ['#EC4899', '#BE185D'], badge: 'LV.6' },
-  { id: 'm9', label: 'Honor 35', icon: 'laurel', colors: ['#10B981', '#047857'], badge: '35' },
+  { id: 'm1', label: 'Heart', icon: 'heart', colors: ['#EF4444', '#DC2626'] },
+  { id: 'm2', label: 'Verified', icon: 'shield-check', colors: ['#F59E0B', '#D97706'] },
+  { id: 'm3', label: 'Golden Heart', icon: 'heart-multiple', colors: ['#F59E0B', '#B45309'] },
+  { id: 'm4', label: 'Chalice', icon: 'trophy', colors: ['#D97706', '#92400E'] },
+  { id: 'm5', label: '30-Day', icon: 'shield-star', colors: ['#10B981', '#059669'] },
+  { id: 'm6', label: 'Gift', icon: 'gift', colors: ['#84CC16', '#65A30D'] },
+  { id: 'm7', label: 'Crown', icon: 'crown', colors: ['#38BDF8', '#0284C7'] },
+  { id: 'm8', label: 'Rose', icon: 'flower', colors: ['#EC4899', '#BE185D'] },
+  { id: 'm9', label: 'Shield', icon: 'shield-sun', colors: ['#F59E0B', '#B45309'] },
 ];
 
 export default function RoomUserProfileModal({
@@ -63,6 +60,7 @@ export default function RoomUserProfileModal({
   onRemoveFromSeat,
   onToggleSeatLock,
   onMuteSeat,
+  onOpenGroup,
   bannedChatUsers = [],
   mutedUsers = [],
   bottomSafePadding = 16,
@@ -123,17 +121,11 @@ export default function RoomUserProfileModal({
     try {
       const res = await apiUtil.post(`/user/follow/${encodeURIComponent(targetUserId)}`);
       if (res.data?.success) {
-        AlertService.show(
-          nextFollowing ? 'Following' : 'Unfollowed',
-          nextFollowing ? 'You are now following this user.' : 'You unfollowed this user.',
-          'success'
-        );
         onFollow && onFollow(nextFollowing);
       }
     } catch (err) {
       setIsFollowing(!nextFollowing);
       setCurrentFollowersCount((prev) => Math.max(0, prev + (nextFollowing ? -1 : 1)));
-      AlertService.show('Notice', err.response?.data?.message || 'Could not update follow status.', 'error');
     } finally {
       setFollowLoading(false);
     }
@@ -142,27 +134,20 @@ export default function RoomUserProfileModal({
   if (!visible || !user) return null;
 
   const currentAuthId = String(currentUserId || authUser?.userId || authUser?.id || authUser?._id || '');
-  const isSelf = Boolean(targetUserId && currentAuthId && targetUserId === currentAuthId);
+  const isSelf = Boolean(
+    user?.isCurrentUser ||
+    (targetUserId && currentAuthId && targetUserId === currentAuthId)
+  );
 
   const displayData = resolvedProfile || user;
   const targetName = displayData.name || displayData.userName || 'User';
   const targetGender = displayData.gender || 'female';
   const targetAge = displayData.age || 24;
-  const wealthLevel = displayData.wealthLevel ?? displayData.level ?? 35;
-  const charmLevel = displayData.charmLevel ?? 36;
-  const svipLevel = Number(displayData.svipLevel ?? displayData.svip ?? (displayData.isSvip ? 3 : 0));
-  const followersCount = currentFollowersCount || displayData.followersCount || 987;
-  const userBio = displayData.bio || displayData.about || '^мy нusвαиd💫JAFAR💫... дои\'т тоuсн му iд';
+  const wealthLevel = displayData.wealthLevel ?? displayData.level ?? 4;
+  const followersCount = currentFollowersCount || displayData.followersCount || 0;
+  const userBio = displayData.bio || displayData.about || (isSelf ? 'Adding Information can gain more followers.' : '');
 
-  const identityProfile = displayData.effectiveIdentity || {};
-  const displayId = displayData.displayId || identityProfile.displayId || targetUserId;
-  const isOfficialId = Boolean(displayData.isOfficial || identityProfile.isOfficial);
-  const officialBadge = displayData.officialBadge || identityProfile.officialBadge || {};
-  const uniqueIdBadge = displayData.uniqueIdBadge || identityProfile.uniqueIdBadge || {};
-  const badgeUrl = displayData.badgeUrl || uniqueIdBadge.badgeIconUrl || officialBadge.badgeUrl || null;
-
-  // CP Partner
-  const cpPartner = displayData.cpPartner?.name ? displayData.cpPartner : null;
+  const displayId = displayData.displayId || displayData.customDisplayId || targetUserId || '—';
 
   // Room roles
   const ownerIdStr = String(roomOwnerId || '');
@@ -179,32 +164,15 @@ export default function RoomUserProfileModal({
   const isTargetMuted = targetSeat?.isMuted || mutedUsers.some((id) => String(id) === targetUserId);
 
   const hasOfficialBanUserPower = Boolean(canBanUser || authUser?.officialPowers?.canBanUser || isGlobalRoomManager);
+  // canModerate is true when current user is room owner, host, or admin, and NOT viewing themselves
   const canModerate = !isSelf && (isRoomOwner || isHostOrAdmin || isGlobalRoomManager || hasOfficialBanUserPower);
-  const canAssignRoomAdmins = isRoomOwner || isGlobalRoomManager;
-
-  const renderModerationAction = (label, iconName, onPress, variant = 'default') => (
-    <TouchableOpacity
-      key={label}
-      style={[styles.moderationBtn, variant === 'danger' && styles.moderationBtnDanger]}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <MaterialCommunityIcons
-        name={iconName}
-        size={18}
-        color={variant === 'danger' ? '#EF4444' : '#1E293B'}
-      />
-      <Text style={[styles.moderationBtnText, variant === 'danger' && styles.moderationBtnTextDanger]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.modalBackdrop}>
@@ -214,356 +182,479 @@ export default function RoomUserProfileModal({
           onPress={onClose}
         />
 
-        {/* Bottom Sheet Card matching Screenshot 2 */}
-        <View style={[styles.bottomSheetCard, { paddingBottom: Math.max(bottomSafePadding, 16) }]}>
-          {/* Top Report Button */}
-          <TouchableOpacity
-            style={styles.topReportBtn}
-            onPress={() => {
-              onClose();
-              onReport ? onReport(user) : AlertService.show('Report', 'Report submitted to moderators.', 'info');
-            }}
-            activeOpacity={0.7}
-          >
-            <Icon name="warning-outline" size={16} color="#94A3B8" />
-            <Text style={styles.topReportText}>Report</Text>
-          </TouchableOpacity>
+        {/* Bottom Sheet Card matching Screenshots 1, 2, 3 */}
+        <View style={[styles.bottomSheetCard, { paddingBottom: Math.max(bottomSafePadding, 20) }]}>
+          {/* Top Report Button (Only shown when not self) */}
+          {!isSelf && (
+            <TouchableOpacity
+              style={styles.topReportBtn}
+              onPress={() => {
+                onClose();
+                onReport && onReport(user);
+              }}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="alert-outline" size={20} color="#94A3B8" />
+              <Text style={styles.topReportText}>Report</Text>
+            </TouchableOpacity>
+          )}
 
           <ScrollView
             style={styles.profileContentScroll}
             contentContainerStyle={styles.profileContentContainer}
             showsVerticalScrollIndicator={false}
           >
-            {/* Header: Large Avatar in Golden Eagle SVIP Frame + Mini CP Partner */}
-            <View style={styles.avatarHeaderRow}>
-              {/* Main Avatar Container */}
-              <View style={styles.mainAvatarContainer}>
-                <AvatarWithFrame
-                  user={isSelf ? (authUser || user) : user}
-                  frame={
-                    (isSelf
-                      ? (authUser?.equippedFrameAsset || authUser?.equippedFrame || equippedFrame || currentUserFrame)
-                      : (user?.equippedFrameAsset || user?.equippedFrame)) || null
-                  }
-                  size={92}
-                  showOnlineDot={false}
-                />
-
-                {/* SVIP Plaque Ribbon under avatar */}
-                <LinearGradient
-                  colors={['#CA8A04', '#F59E0B', '#B45309']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.svipRibbonBadge}
-                >
-                  <Text style={styles.svipRibbonText}>SVIP{svipLevel || 3}</Text>
-                </LinearGradient>
-              </View>
-
-              {/* CP Partner Avatar Bubble */}
-              {cpPartner && (
-                <View style={styles.cpBubbleWrap}>
-                  <Image
-                    source={getUserAvatar(cpPartner)}
-                    style={styles.cpAvatarImg}
-                  />
-                  <LinearGradient
-                    colors={['#EC4899', '#BE185D']}
-                    style={styles.cpLevelBadge}
-                  >
-                    <Text style={styles.cpLevelBadgeText}>Lv.{cpPartner.level || 6}</Text>
-                  </LinearGradient>
-                </View>
-              )}
+            {/* 1. Center Avatar */}
+            <View style={styles.avatarCenterWrap}>
+              <AvatarWithFrame
+                user={isSelf ? (authUser || user) : user}
+                frame={
+                  (isSelf
+                    ? (authUser?.equippedFrameAsset || authUser?.equippedFrame || equippedFrame || currentUserFrame)
+                    : (user?.equippedFrameAsset || user?.equippedFrame)) || null
+                }
+                size={84}
+                showOnlineDot={false}
+              />
             </View>
 
-            {/* User Name + Gender/Age Badge */}
+            {/* 2. User Name + Gender Badge */}
             <View style={styles.nameRow}>
-              <Text style={styles.nameSparkle}>💫</Text>
               <Text style={styles.userName} numberOfLines={1}>
                 {targetName}
               </Text>
-              <Text style={styles.nameSparkle}>💫</Text>
 
-              <View style={[styles.genderAgePill, targetGender === 'female' ? styles.genderFemale : styles.genderMale]}>
-                <Text style={styles.genderIcon}>{targetGender === 'female' ? '♀' : '♂'}</Text>
-                <Text style={styles.genderAgeText}>{targetAge}</Text>
-              </View>
-            </View>
-
-            {/* TAGS ROW directly under Name (Screenshot 2) */}
-            <View style={styles.tagsRow}>
-              {/* SVIP Tag */}
-              <LinearGradient
-                colors={['#0D9488', '#115E59']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.svipTagPill}
-              >
-                <Text style={styles.svipTagPillText}>🦅 SVIP{svipLevel || 3}</Text>
-              </LinearGradient>
-
-              {/* Wealth Tag */}
-              <LinearGradient
-                colors={['#0284C7', '#0369A1']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.wealthTagPill}
-              >
-                <Text style={styles.wealthTagPillText}>💎 Lv.{wealthLevel}</Text>
-              </LinearGradient>
-
-              {/* Charm Tag */}
-              <LinearGradient
-                colors={['#10B981', '#059669']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.charmTagPill}
-              >
-                <Text style={styles.charmTagPillText}>🌿 Lv.{charmLevel}</Text>
-              </LinearGradient>
-
-              {/* Club / Family Tag */}
-              <View style={styles.clubTagPill}>
-                <Text style={styles.clubTagPillText}>🛡️ JP</Text>
-              </View>
-
-              {/* Member Tag */}
-              <View style={styles.memberTagPill}>
-                <Text style={styles.memberTagPillText}>Member</Text>
-              </View>
-
-              {/* Admin Tag */}
-              {(isTargetAdmin || isTargetOwner) && (
-                <View style={styles.adminTagPill}>
-                  <Text style={styles.adminTagPillText}>{isTargetOwner ? 'Owner' : 'Admin'}</Text>
+              {/* Gender Tag: Male is blue circle with ♂, Female is pink pill with ♀ age */}
+              {targetGender === 'female' ? (
+                <View style={styles.genderFemalePill}>
+                  <Text style={styles.genderText}>♀ {targetAge}</Text>
+                </View>
+              ) : (
+                <View style={styles.genderMaleCircle}>
+                  <Text style={styles.genderMaleIcon}>♂</Text>
                 </View>
               )}
             </View>
 
-            {/* BADGES ROW directly under Tags (Screenshot 2) */}
-            <View style={styles.medalsShelfContainer}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.medalsScroll}
-              >
-                {PRESTIGE_MEDALS.map((medal) => (
-                  <View key={medal.id} style={styles.medalItemWrap}>
-                    <LinearGradient
-                      colors={medal.colors}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.medalCircle}
-                    >
-                      <MaterialCommunityIcons name={medal.icon} size={15} color="#FFFFFF" />
-                    </LinearGradient>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* ID & Followers Row (Screenshot 2) */}
-            <View style={styles.idFollowersRow}>
-              <IdentityDisplayId
-                userId={targetUserId}
-                officialDisplayId={displayId}
-                customDisplayId={identityProfile.customDisplayId || displayData?.customDisplayId}
-                isOfficial={isOfficialId}
-                badgeUrl={badgeUrl}
-                badgeText={uniqueIdBadge.badgeName || officialBadge.badgeText || 'VIP'}
-                showBadge={true}
-                showCopy={true}
-                fontSize={13.5}
-                textColor="#D97706"
-              />
-
-              <View style={styles.followersWrap}>
-                <MaterialCommunityIcons name="account-group" size={13} color="#64748B" />
-                <Text style={styles.followersText}>{formatCompactBalance(followersCount)} Followers</Text>
+            {/* 3. Badges Row: Lv.4, Lv.0, VIP+, SYAMBABA, Admin/Owner */}
+            <View style={styles.badgesRow}>
+              {/* Bronze Level Pill */}
+              <View style={styles.levelBronzePill}>
+                <MaterialCommunityIcons name="star-four-points" size={11} color="#FFF" style={{ marginRight: 2 }} />
+                <Text style={styles.levelText}>Lv.{wealthLevel}</Text>
               </View>
+
+              {/* Silver Star Level Pill */}
+              <View style={styles.levelSilverPill}>
+                <MaterialCommunityIcons name="star" size={11} color="#CBD5E1" style={{ marginRight: 2 }} />
+                <Text style={styles.levelText}>Lv.0</Text>
+              </View>
+
+              {/* VIP+ badge if not self */}
+              {!isSelf && (
+                <View style={styles.vipPill}>
+                  <Text style={styles.vipText}>VIP+</Text>
+                </View>
+              )}
+
+              {/* Agency Tag if any */}
+              {!isSelf && (
+                <View style={styles.agencyPill}>
+                  <Text style={styles.agencyText}>SYAMBABA</Text>
+                </View>
+              )}
+
+              {/* Admin or Owner Badge */}
+              {isTargetOwner && (
+                <View style={styles.ownerBadgePill}>
+                  <Text style={styles.roleBadgeText}>Owner</Text>
+                </View>
+              )}
+              {isTargetAdmin && !isTargetOwner && (
+                <View style={styles.adminBadgePill}>
+                  <Text style={styles.roleBadgeText}>Admin</Text>
+                </View>
+              )}
             </View>
 
-            {/* Bio Row (Screenshot 2) */}
-            <Text style={styles.bioText} numberOfLines={2}>
-              {userBio}
-            </Text>
-
-            {/* 4 Round Action Buttons: Profile | Chat | Mute Mic | Mention (Screenshot 2) */}
-            <View style={styles.actionButtonsRow}>
-              {/* Profile */}
-              <TouchableOpacity
-                style={styles.actionBtnCol}
-                onPress={() => {
-                  onClose();
-                  onOpenFullProfile && onOpenFullProfile(user);
-                }}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.roundActionCircle, { backgroundColor: '#38BDF8' }]}>
-                  <Icon name="person" size={20} color="#FFFFFF" />
-                </View>
-                <Text style={styles.roundActionLabel}>Profile</Text>
-              </TouchableOpacity>
-
-              {/* Chat */}
-              <TouchableOpacity
-                style={styles.actionBtnCol}
-                onPress={() => {
-                  onClose();
-                  if (onOpenChat) {
-                    onOpenChat(user);
-                  } else {
-                    AlertService.show('Chat', `Opening private chat with ${targetName}`, 'info');
-                  }
-                }}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.roundActionCircle, { backgroundColor: '#C084FC' }]}>
-                  <Icon name="chatbubble" size={20} color="#FFFFFF" />
-                </View>
-                <Text style={styles.roundActionLabel}>Chat</Text>
-              </TouchableOpacity>
-
-              {/* Mute Mic */}
-              <TouchableOpacity
-                style={styles.actionBtnCol}
-                onPress={() => {
-                  if (targetSeat && onMuteSeat) {
-                    onMuteSeat(user);
-                  } else {
-                    AlertService.show('Mute', isTargetMuted ? 'User mic unmuted.' : 'User mic muted.', 'info');
-                  }
-                }}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.roundActionCircle, { backgroundColor: '#F97316' }]}>
-                  <MaterialCommunityIcons
-                    name={isTargetMuted ? 'microphone-off' : 'microphone'}
-                    size={20}
-                    color="#FFFFFF"
-                  />
-                </View>
-                <Text style={styles.roundActionLabel}>{isTargetMuted ? 'Unmute' : 'Mute Mic'}</Text>
-              </TouchableOpacity>
-
-              {/* Mention */}
-              <TouchableOpacity
-                style={styles.actionBtnCol}
-                onPress={() => {
-                  onClose();
-                  onMention && onMention(targetName);
-                }}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.roundActionCircle, { backgroundColor: '#FACC15' }]}>
-                  <MaterialCommunityIcons name="at" size={20} color="#1E293B" />
-                </View>
-                <Text style={styles.roundActionLabel}>Mention</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Moderation Controls (if host/owner) */}
-            {canModerate && (
-              <View style={styles.moderationPanel}>
-                <Text style={styles.moderationPanelTitle}>Room Moderation</Text>
-                <View style={styles.moderationActions}>
-                  {canAssignRoomAdmins && onToggleAdmin && renderModerationAction(
-                    isTargetAdmin ? 'Remove Admin' : 'Make Admin',
-                    isTargetAdmin ? 'account-minus-outline' : 'account-plus-outline',
-                    () => onToggleAdmin(user),
-                  )}
-                  {onBanChat && renderModerationAction(
-                    isTargetChatBanned ? 'Unmute Chat' : 'Mute Chat',
-                    isTargetChatBanned ? 'message-text-outline' : 'message-off-outline',
-                    () => onBanChat(user),
-                  )}
-                  {targetSeat && onRemoveFromSeat && renderModerationAction(
-                    'Remove Seat',
-                    'account-arrow-down-outline',
-                    () => onRemoveFromSeat(user),
-                    'danger',
-                  )}
-                  {targetSeat && onToggleSeatLock && renderModerationAction(
-                    targetSeat.isLocked ? 'Unlock Seat' : 'Lock Seat',
-                    targetSeat.isLocked ? 'lock-open-variant-outline' : 'lock-outline',
-                    () => onToggleSeatLock(targetSeat.seatIndex),
-                  )}
-                  {onKickUser && renderModerationAction(
-                    'Kick 24h',
-                    'account-cancel-outline',
-                    () => onKickUser(user),
-                    'danger',
-                  )}
-                  {onBanUser && hasOfficialBanUserPower && renderModerationAction(
-                    'Ban User 🚫',
-                    'shield-alert-outline',
-                    () => onBanUser(user),
-                    'danger',
-                  )}
-                </View>
+            {/* 4. Prestigious Medals Row (Screenshot 2: only for another user when regular guest) */}
+            {!isSelf && !canModerate && (
+              <View style={styles.medalsShelfContainer}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.medalsScroll}
+                >
+                  {PRESTIGE_MEDALS.map((medal) => (
+                    <View key={medal.id} style={styles.medalItemWrap}>
+                      <LinearGradient
+                        colors={medal.colors}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.medalCircle}
+                      >
+                        <MaterialCommunityIcons name={medal.icon} size={15} color="#FFFFFF" />
+                      </LinearGradient>
+                    </View>
+                  ))}
+                </ScrollView>
               </View>
             )}
 
-            {/* Bottom Row: SVIP Diamond Level + Follow + Send Gifts (Screenshot 2) */}
-            {!isSelf && (
-              <View style={styles.bottomButtonsRow}>
-                {/* SVIP Level Badge on Left */}
-                <View style={styles.bottomSvipBadgeWrap}>
-                  <LinearGradient
-                    colors={['#10B981', '#047857']}
-                    style={styles.bottomSvipDiamond}
-                  >
-                    <Text style={styles.bottomSvipLevelNum}>{svipLevel || 3}</Text>
-                  </LinearGradient>
-                </View>
+            {/* 5. Maza ID & Followers Row (Screenshots 1, 2, 3) */}
+            <View style={styles.idFollowersRow}>
+              <Text style={styles.mazaIdText}>Maza Id:{displayId}</Text>
+              <View style={styles.greenFollowersBadge}>
+                <MaterialCommunityIcons name="account-group" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+                <Text style={styles.followersBadgeText}>{formatCompactBalance(followersCount)} Followers</Text>
+              </View>
+            </View>
 
-                {/* Follow Button (White Pill with Shadow) */}
-                <TouchableOpacity
-                  style={[styles.followButton, isFollowing && styles.followingButton]}
-                  onPress={handleToggleFollow}
-                  disabled={followLoading}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </Text>
-                </TouchableOpacity>
+            {/* 6. Bio Text (Screenshots 1, 2, 3) */}
+            {!!userBio && (
+              <Text style={styles.bioText} numberOfLines={2}>
+                {userBio}
+              </Text>
+            )}
 
-                {/* Send Gifts Button (Golden Amber Gradient) */}
+            {/* ------------------------------------------------------------- */}
+            {/* CASE A: User is looking at THEMSELVES (Screenshot 1) */}
+            {/* ------------------------------------------------------------- */}
+            {isSelf && (
+              <View style={styles.selfActionRow}>
+                {/* Profile Button */}
                 <TouchableOpacity
-                  style={styles.sendGiftButton}
+                  style={styles.actionColBtn}
                   onPress={() => {
                     onClose();
-                    onGift && onGift(user);
+                    onOpenFullProfile && onOpenFullProfile(user);
                   }}
-                  activeOpacity={0.85}
+                  activeOpacity={0.75}
                 >
-                  <LinearGradient
-                    colors={['#FDE047', '#F59E0B', '#D97706']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.sendGiftGrad}
-                  >
-                    <Text style={styles.sendGiftBtnText}>Send Gifts</Text>
-                  </LinearGradient>
+                  <View style={styles.selfIconCircle}>
+                    <MaterialCommunityIcons name="account" size={32} color="#0EA5E9" />
+                  </View>
+                  <Text style={styles.actionColLabel}>Profile</Text>
                 </TouchableOpacity>
-              </View>
-            )}
 
-            {isSelf && (
-              <View style={styles.bottomButtonsRow}>
+                {/* Leave the seat Button */}
                 <TouchableOpacity
-                  style={[styles.followButton, { borderColor: '#EF4444', flex: 1 }]}
+                  style={styles.actionColBtn}
                   onPress={() => {
                     onClose();
                     onLeaveSeat && onLeaveSeat();
                   }}
-                  activeOpacity={0.85}
+                  activeOpacity={0.75}
                 >
-                  <Text style={[styles.followBtnText, { color: '#EF4444' }]}>Leave the Seat</Text>
+                  <View style={styles.selfIconCircle}>
+                    <MaterialCommunityIcons name="seat-passenger" size={32} color="#EAB308" />
+                  </View>
+                  <Text style={styles.actionColLabel}>Leave the seat</Text>
                 </TouchableOpacity>
               </View>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* CASE B: User is GUEST viewing ANOTHER USER (Screenshot 2) */}
+            {/* ------------------------------------------------------------- */}
+            {!isSelf && !canModerate && (
+              <>
+                <View style={styles.actionButtonsRow}>
+                  {/* Profile */}
+                  <TouchableOpacity
+                    style={styles.actionColBtn}
+                    onPress={() => {
+                      onClose();
+                      onOpenFullProfile && onOpenFullProfile(user);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.selfIconCircle}>
+                      <MaterialCommunityIcons name="account" size={28} color="#0EA5E9" />
+                    </View>
+                    <Text style={styles.actionColLabel}>Profile</Text>
+                  </TouchableOpacity>
+
+                  {/* Chat */}
+                  <TouchableOpacity
+                    style={styles.actionColBtn}
+                    onPress={() => {
+                      onClose();
+                      onOpenChat && onOpenChat(user);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.selfIconCircle}>
+                      <MaterialCommunityIcons name="chat" size={28} color="#A855F7" />
+                    </View>
+                    <Text style={styles.actionColLabel}>Chat</Text>
+                  </TouchableOpacity>
+
+                  {/* Mute Mic */}
+                  <TouchableOpacity
+                    style={styles.actionColBtn}
+                    onPress={() => {
+                      onMuteSeat && onMuteSeat(user);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.selfIconCircle}>
+                      <MaterialCommunityIcons
+                        name={isTargetMuted ? 'volume-high' : 'volume-mute'}
+                        size={28}
+                        color="#F97316"
+                      />
+                    </View>
+                    <Text style={styles.actionColLabel}>{isTargetMuted ? 'Unmute' : 'Mute Mic'}</Text>
+                  </TouchableOpacity>
+
+                  {/* Mention */}
+                  <TouchableOpacity
+                    style={styles.actionColBtn}
+                    onPress={() => {
+                      onClose();
+                      onMention && onMention(targetName);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.selfIconCircle}>
+                      <MaterialCommunityIcons name="at" size={28} color="#EAB308" />
+                    </View>
+                    <Text style={styles.actionColLabel}>Mention</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Bottom Row: Follow (white with yellow border) & Send Gifts (golden yellow) */}
+                <View style={styles.bottomButtonsRow}>
+                  <TouchableOpacity
+                    style={[styles.followOutlineBtn, isFollowing && styles.followingBtn]}
+                    onPress={handleToggleFollow}
+                    disabled={followLoading}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
+                      {isFollowing ? 'Following' : 'Follow'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.sendGiftSolidBtn}
+                    onPress={() => {
+                      onClose();
+                      onGift && onGift(user);
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient
+                      colors={['#FACC15', '#F59E0B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.sendGiftGrad}
+                    >
+                      <Text style={styles.sendGiftText}>Send Gifts</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* CASE C: User is HOST / ADMIN viewing ANOTHER USER (Screenshot 3) */}
+            {/* ------------------------------------------------------------- */}
+            {!isSelf && canModerate && (
+              <>
+                {/* Row 1: Profile | Chat | Mention (3 items) */}
+                <View style={[styles.actionButtonsRow, { justifyContent: 'space-around', paddingHorizontal: 20 }]}>
+                  {/* Profile */}
+                  <TouchableOpacity
+                    style={styles.actionColBtn}
+                    onPress={() => {
+                      onClose();
+                      onOpenFullProfile && onOpenFullProfile(user);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.selfIconCircle}>
+                      <MaterialCommunityIcons name="account" size={28} color="#0EA5E9" />
+                    </View>
+                    <Text style={styles.actionColLabel}>Profile</Text>
+                  </TouchableOpacity>
+
+                  {/* Chat */}
+                  <TouchableOpacity
+                    style={styles.actionColBtn}
+                    onPress={() => {
+                      onClose();
+                      onOpenChat && onOpenChat(user);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.selfIconCircle}>
+                      <MaterialCommunityIcons name="chat" size={28} color="#A855F7" />
+                    </View>
+                    <Text style={styles.actionColLabel}>Chat</Text>
+                  </TouchableOpacity>
+
+                  {/* Mention */}
+                  <TouchableOpacity
+                    style={styles.actionColBtn}
+                    onPress={() => {
+                      onClose();
+                      onMention && onMention(targetName);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.selfIconCircle}>
+                      <MaterialCommunityIcons name="at" size={28} color="#EAB308" />
+                    </View>
+                    <Text style={styles.actionColLabel}>Mention</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Moderation Grid matching Screenshot 3 */}
+                <View style={styles.moderationGrid}>
+                  {/* Row 1: Lock | Mute | Ban Chat | Kick */}
+                  <View style={styles.moderationRow}>
+                    {/* Lock */}
+                    <TouchableOpacity
+                      style={styles.moderationItem}
+                      onPress={() => targetSeat && onToggleSeatLock && onToggleSeatLock(targetSeat.seatIndex)}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name={targetSeat?.isLocked ? 'lock' : 'lock-outline'}
+                        size={28}
+                        color="#64748B"
+                      />
+                      <Text style={styles.moderationLabel}>
+                        {targetSeat?.isLocked ? 'Unlock' : 'Lock'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Mute */}
+                    <TouchableOpacity
+                      style={styles.moderationItem}
+                      onPress={() => onMuteSeat && onMuteSeat(user)}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name={isTargetMuted ? 'microphone' : 'microphone-off'}
+                        size={28}
+                        color="#64748B"
+                      />
+                      <Text style={styles.moderationLabel}>
+                        {isTargetMuted ? 'Unmute' : 'Mute'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Ban Chat */}
+                    <TouchableOpacity
+                      style={styles.moderationItem}
+                      onPress={() => onBanChat && onBanChat(user)}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name={isTargetChatBanned ? 'comment-text-outline' : 'comment-off-outline'}
+                        size={28}
+                        color="#64748B"
+                      />
+                      <Text style={styles.moderationLabel}>
+                        {isTargetChatBanned ? 'Unban Chat' : 'Ban Chat'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Kick */}
+                    <TouchableOpacity
+                      style={styles.moderationItem}
+                      onPress={() => {
+                        onClose();
+                        onKickUser && onKickUser(user);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons name="logout-variant" size={28} color="#64748B" />
+                      <Text style={styles.moderationLabel}>Kick</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Row 2: Remove | Group | Remove Admin / Make Admin */}
+                  <View style={styles.moderationRow}>
+                    {/* Remove from seat */}
+                    <TouchableOpacity
+                      style={styles.moderationItem}
+                      onPress={() => {
+                        onClose();
+                        onRemoveFromSeat && onRemoveFromSeat(user);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons name="seat-passenger" size={28} color="#64748B" />
+                      <Text style={styles.moderationLabel}>Remove</Text>
+                    </TouchableOpacity>
+
+                    {/* Group */}
+                    <TouchableOpacity
+                      style={styles.moderationItem}
+                      onPress={() => {
+                        onClose();
+                        onOpenGroup && onOpenGroup();
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons name="account-group-outline" size={28} color="#64748B" />
+                      <Text style={styles.moderationLabel}>Group</Text>
+                    </TouchableOpacity>
+
+                    {/* Admin Toggle */}
+                    <TouchableOpacity
+                      style={styles.moderationItem}
+                      onPress={() => onToggleAdmin && onToggleAdmin(user)}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name={isTargetAdmin ? 'account-minus-outline' : 'account-plus-outline'}
+                        size={28}
+                        color="#64748B"
+                      />
+                      <Text style={styles.moderationLabel}>
+                        {isTargetAdmin ? 'Remove Admin' : 'Admin'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Bottom Row: Follow & Send Gifts */}
+                <View style={styles.bottomButtonsRow}>
+                  <TouchableOpacity
+                    style={[styles.followOutlineBtn, isFollowing && styles.followingBtn]}
+                    onPress={handleToggleFollow}
+                    disabled={followLoading}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
+                      {isFollowing ? 'Following' : 'Follow'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.sendGiftSolidBtn}
+                    onPress={() => {
+                      onClose();
+                      onGift && onGift(user);
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient
+                      colors={['#FACC15', '#F59E0B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.sendGiftGrad}
+                    >
+                      <Text style={styles.sendGiftText}>Send Gifts</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </>
             )}
           </ScrollView>
         </View>
@@ -579,34 +670,31 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   bottomSheetCard: {
-    backgroundColor: '#FAF7FF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 18,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
     paddingTop: 16,
     maxHeight: '92%',
-    alignItems: 'center',
     position: 'relative',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
     elevation: 20,
   },
   topReportBtn: {
     position: 'absolute',
     top: 14,
     right: 18,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
     zIndex: 10,
-    padding: 4,
   },
   topReportText: {
-    color: '#94A3B8',
     fontSize: 11,
-    fontWeight: '700',
+    color: '#94A3B8',
+    fontWeight: '600',
+    marginTop: 1,
   },
   profileContentScroll: {
     width: '100%',
@@ -615,379 +703,280 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 10,
   },
-  avatarHeaderRow: {
-    flexDirection: 'row',
+  avatarCenterWrap: {
+    marginTop: 4,
+    marginBottom: 8,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    marginBottom: 6,
-    position: 'relative',
-  },
-  mainAvatarContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  svipRibbonBadge: {
-    position: 'absolute',
-    bottom: -6,
-    paddingHorizontal: 14,
-    paddingVertical: 2,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#FEF08A',
-    shadowColor: '#CA8A04',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.6,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  svipRibbonText: {
-    color: '#0F172A',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  cpBubbleWrap: {
-    position: 'absolute',
-    right: -36,
-    top: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cpAvatarImg: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1.5,
-    borderColor: '#EC4899',
-  },
-  cpLevelBadge: {
-    position: 'absolute',
-    bottom: -5,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 6,
-  },
-  cpLevelBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 8,
-    fontWeight: '900',
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    marginTop: 12,
-  },
-  nameSparkle: {
-    fontSize: 14,
+    marginBottom: 6,
+    maxWidth: '85%',
   },
   userName: {
-    color: '#F59E0B',
-    fontSize: 17,
-    fontWeight: '900',
-    maxWidth: width * 0.55,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginRight: 6,
   },
-  genderAgePill: {
+  genderMaleCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderMaleIcon: {
+    fontSize: 13,
+    color: '#0284C7',
+    fontWeight: '900',
+  },
+  genderFemalePill: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FCE7F3',
     paddingHorizontal: 7,
-    paddingVertical: 1.5,
-    borderRadius: 12,
-    marginLeft: 4,
-    gap: 2,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
-  genderFemale: {
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
-    borderWidth: 1,
-    borderColor: '#F472B6',
+  genderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#DB2777',
   },
-  genderMale: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderWidth: 1,
-    borderColor: '#60A5FA',
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 10,
+    flexWrap: 'wrap',
   },
-  genderIcon: {
-    color: '#EC4899',
-    fontSize: 11,
-    fontWeight: '900',
+  levelBronzePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#9A5B28',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
-  genderAgeText: {
-    color: '#1E293B',
+  levelSilverPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#64748B',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  levelText: {
     fontSize: 10.5,
     fontWeight: '800',
+    color: '#FFFFFF',
   },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    marginTop: 8,
-    paddingHorizontal: 12,
-  },
-  svipTagPill: {
+  vipPill: {
+    backgroundColor: '#334155',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
   },
-  svipTagPillText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  wealthTagPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  wealthTagPillText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  charmTagPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  charmTagPillText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  clubTagPill: {
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  clubTagPillText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  memberTagPill: {
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  memberTagPillText: {
-    color: '#FFFFFF',
-    fontSize: 10,
+  vipText: {
+    fontSize: 10.5,
     fontWeight: '800',
+    color: '#FACC15',
   },
-  adminTagPill: {
-    backgroundColor: '#10B981',
-    paddingHorizontal: 7,
+  agencyPill: {
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
   },
-  adminTagPillText: {
+  agencyText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#38BDF8',
+  },
+  ownerBadgePill: {
+    backgroundColor: '#F97316',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  adminBadgePill: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  roleBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
     color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
   },
   medalsShelfContainer: {
-    marginVertical: 10,
     width: '100%',
+    marginVertical: 4,
   },
   medalsScroll: {
-    paddingHorizontal: 16,
-    gap: 8,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 10,
+    gap: 8,
   },
   medalItemWrap: {
-    alignItems: 'center',
+    marginHorizontal: 3,
   },
   medalCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.4,
-    shadowRadius: 3,
-    elevation: 3,
   },
   idFollowersRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-    marginVertical: 4,
+    marginVertical: 6,
+    gap: 12,
   },
-  followersWrap: {
+  mazaIdText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  greenFollowersBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
-  followersText: {
-    color: '#64748B',
-    fontSize: 12,
+  followersBadgeText: {
+    fontSize: 11.5,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
   bioText: {
-    color: '#334155',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 12.5,
+    color: '#64748B',
     textAlign: 'center',
-    paddingHorizontal: 24,
-    marginVertical: 6,
-    lineHeight: 16,
+    marginTop: 4,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    lineHeight: 18,
   },
-  actionButtonsRow: {
+  // Self actions (Screenshot 1)
+  selfActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    width: '88%',
-    marginTop: 10,
-    marginBottom: 14,
+    width: '100%',
+    paddingHorizontal: 30,
+    paddingVertical: 14,
   },
-  actionBtnCol: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  roundActionCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  actionColBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    minWidth: 70,
   },
-  roundActionLabel: {
-    color: '#475569',
-    fontSize: 11,
-    fontWeight: '700',
+  selfIconCircle: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
-  moderationPanel: {
-    width: '92%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 12,
+  actionColLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+    textAlign: 'center',
   },
-  moderationPanelTitle: {
-    color: '#64748B',
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  moderationActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  moderationBtn: {
+  // Guest / Another user 4 action buttons (Screenshot 2)
+  actionButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 12,
+    marginVertical: 10,
+  },
+  // Moderation Grid (Screenshot 3)
+  moderationGrid: {
+    width: '100%',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: '#F1F5F9',
+    marginVertical: 12,
   },
-  moderationBtnDanger: {
-    backgroundColor: '#FEE2E2',
+  moderationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    marginVertical: 8,
   },
-  moderationBtnText: {
-    color: '#1E293B',
-    fontSize: 11,
-    fontWeight: '700',
+  moderationItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 68,
   },
-  moderationBtnTextDanger: {
-    color: '#DC2626',
+  moderationLabel: {
+    fontSize: 12,
+    color: '#475569',
+    marginTop: 4,
+    fontWeight: '600',
+    textAlign: 'center',
   },
+  // Bottom Buttons: Follow & Send Gifts
   bottomButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '94%',
-    gap: 10,
-    marginTop: 4,
+    width: '100%',
+    paddingHorizontal: 10,
+    marginTop: 14,
+    gap: 12,
   },
-  bottomSvipBadgeWrap: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bottomSvipDiamond: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  bottomSvipLevelNum: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  followButton: {
+  followOutlineBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 22,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.2,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  followingButton: {
-    backgroundColor: '#F1F5F9',
-    borderColor: '#CBD5E1',
+  followingBtn: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#D97706',
   },
   followBtnText: {
-    color: '#D97706',
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#F59E0B',
   },
   followingBtnText: {
-    color: '#64748B',
+    color: '#D97706',
   },
-  sendGiftButton: {
+  sendGiftSolidBtn: {
     flex: 1.2,
-    height: 44,
-    borderRadius: 22,
+    height: 46,
+    borderRadius: 23,
     overflow: 'hidden',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 5,
   },
   sendGiftGrad: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sendGiftBtnText: {
+  sendGiftText: {
+    fontSize: 15,
+    fontWeight: '800',
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
     letterSpacing: 0.3,
   },
 });

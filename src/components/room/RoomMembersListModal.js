@@ -24,6 +24,7 @@ export default function RoomMembersListModal({
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.modalBackdrop}>

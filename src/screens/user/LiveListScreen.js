@@ -120,7 +120,7 @@ export default function LiveListScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: topSafeInset + 6 }]}>

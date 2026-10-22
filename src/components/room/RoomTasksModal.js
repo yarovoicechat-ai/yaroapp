@@ -122,10 +122,11 @@ export default function RoomTasksModal({ visible, onClose, roomId }) {
       visible={visible}
       animationType="slide"
       transparent={false}
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#E0E7FF" translucent />
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
         {/* Dreamy Sky Header Background */}
         <LinearGradient

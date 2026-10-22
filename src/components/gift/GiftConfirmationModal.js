@@ -39,6 +39,7 @@ export default function GiftConfirmationModal({
       visible={visible}
       transparent
       animationType="fade"
+      statusBarTranslucent
       onRequestClose={onCancel}
     >
       <View style={styles.backdrop}>

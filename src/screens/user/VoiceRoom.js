@@ -37,6 +37,7 @@ import { getSocket } from '../../sockets';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RoomUserProfileModal from '../../components/room/RoomUserProfileModal';
 import RoomDetailsModal from '../../components/room/RoomDetailsModal';
+import RoomGroupPrivilegeModal from '../../components/room/RoomGroupPrivilegeModal';
 import RoomEntryEffectEngine from '../../components/room/RoomEntryEffectEngine';
 import VipFloatingEntryEngine from '../../components/room/VipFloatingEntryEngine';
 import ResponsiveChatBubble from '../../components/room/ResponsiveChatBubble';
@@ -911,6 +912,7 @@ export default function VoiceRoomScreen() {
   const [hasRoomPin, setHasRoomPin] = useState(Boolean(room.hasPin || room.pin));
 
   const [roomDetailsModalVisible, setRoomDetailsModalVisible] = useState(false);
+  const [groupModalVisible, setGroupModalVisible] = useState(false);
   const [roomSettingsModalVisible, setRoomSettingsModalVisible] = useState(false);
   const [isSavingRoomSettings, setIsSavingRoomSettings] = useState(false);
 
@@ -942,6 +944,7 @@ export default function VoiceRoomScreen() {
     roomTasksVisible,
     roomSupportVisible,
     roomDetailsModalVisible,
+    groupModalVisible,
     roomSettingsModalVisible,
     profileModalVisible,
     wealthModalVisible,
@@ -1011,6 +1014,10 @@ export default function VoiceRoomScreen() {
       }
       if (s.roomDetailsModalVisible) {
         setRoomDetailsModalVisible(false);
+        return true;
+      }
+      if (s.groupModalVisible) {
+        setGroupModalVisible(false);
         return true;
       }
       if (s.roomSettingsModalVisible) {
@@ -1138,56 +1145,68 @@ export default function VoiceRoomScreen() {
     return savedSettings;
   };
 
-  const handleSaveRoomSettings = async () => {
+  const handleSaveRoomSettings = async (updates) => {
     if (isSavingRoomSettings) return;
-    const trimmedTitle = editRoomName.trim();
-    if (!trimmedTitle) {
+    const titleToSave = (updates?.title !== undefined ? updates.title : editRoomName).trim();
+    if (!titleToSave) {
       AlertService.show('Required', 'Please enter a valid room title', 'error');
       return;
     }
 
-    if (editRoomLocked && editRoomPin && editRoomPin.length !== 4) {
+    if (!updates && editRoomLocked && editRoomPin && editRoomPin.length !== 4) {
       AlertService.show('PIN Required', 'PIN 4 digits ka hona chahiye.', 'error');
       return;
     }
 
-    if (editRoomLocked && !editRoomPin && !hasRoomPin) {
+    if (!updates && editRoomLocked && !editRoomPin && !hasRoomPin) {
       AlertService.show('PIN Required', 'Please enter a 4-digit PIN for passcode lock', 'error');
       return;
     }
 
     setIsSavingRoomSettings(true);
     try {
-      let coverImageToSave = editRoomCover;
-      if (pendingRoomCoverUpload) {
+      let coverImageToSave = updates?.coverImage !== undefined ? updates.coverImage : editRoomCover;
+      const assetToUpload = updates?.imageAsset || pendingRoomCoverUpload;
+
+      if (assetToUpload) {
         AlertService.show('Uploading', 'Room DP upload ho raha hai...', 'info');
         const uploadData = new FormData();
         uploadData.append('file', {
-          uri: pendingRoomCoverUpload.uri,
-          type: pendingRoomCoverUpload.type || 'image/jpeg',
-          name: pendingRoomCoverUpload.name || `room-cover-${Date.now()}.jpg`,
+          uri: assetToUpload.uri,
+          type: assetToUpload.type || 'image/jpeg',
+          name: assetToUpload.name || `room-cover-${Date.now()}.jpg`,
         });
         const uploadResponse = await apiUtil.post('/upload/room-cover', uploadData);
         if (!uploadResponse.data?.success || !uploadResponse.data?.data?.url) {
           throw new Error(uploadResponse.data?.message || 'Room DP upload nahi ho saka.');
         }
         coverImageToSave = uploadResponse.data.data.url;
-      } else if (/^(file|content):\/\//i.test(String(coverImageToSave || ''))) {
+      } else if (!updates && /^(file|content):\/\//i.test(String(coverImageToSave || ''))) {
         AlertService.show('Room DP Required', 'Room DP ko dobara select karein, phir save karein.', 'error');
+        setIsSavingRoomSettings(false);
         return;
       }
 
+      const aboutToSave = (updates?.about !== undefined ? updates.about : editRoomAbout).trim();
+      const seatCountToSave = updates?.seatCount !== undefined ? updates.seatCount : editSeatCount;
+
       await persistRoomSettings({
-        title: trimmedTitle,
+        title: titleToSave,
         coverImage: coverImageToSave,
-        about: editRoomAbout.trim(),
-        seatCount: editSeatCount,
+        about: aboutToSave,
+        seatCount: seatCountToSave,
         category: room.category || 'Music 🎵',
         mode: editRoomLocked ? 'Private (PIN)' : 'Public',
         isLocked: editRoomLocked,
         pin: editRoomLocked ? (editRoomPin || undefined) : '',
       });
-      setRoomSettingsModalVisible(false);
+      setCurrentRoomTitle(titleToSave);
+      setCurrentRoomAbout(aboutToSave);
+      setCurrentRoomCover(coverImageToSave);
+      setEditRoomName(titleToSave);
+      setEditRoomAbout(aboutToSave);
+      setEditRoomCover(coverImageToSave);
+      setPendingRoomCoverUpload(null);
       AlertService.show('Settings Saved', 'Room settings saved and applied successfully!', 'success');
     } catch (e) {
       console.log('Error saving room config', e?.message || e);
@@ -1271,6 +1290,10 @@ export default function VoiceRoomScreen() {
       );
 
       if (isCurrentUserSeat) {
+        if (seat.seatIndex === 0 && (isRoomOwner || isContextOwnerMatch)) {
+          setRoomDetailsModalVisible(true);
+          return;
+        }
         // Current user clicked their own seat -> show own Profile modal with "Profile" & "Leave the seat"
         setSelectedProfileUser({
           ...user,
@@ -1309,19 +1332,8 @@ export default function VoiceRoomScreen() {
         AlertService.show('Seat Locked', `Seat #${seat.seatIndex + 1} has been locked by the host`, 'warning');
       }
     } else {
-      if (seat.seatIndex > 0 && !isCurrentUserAdmin) {
-        setSelectedSeatForAction(seat);
-        setSeatActionModalVisible(true);
-        return;
-      }
-      if (isCurrentUserAdmin) {
-        // Host / Admin clicked empty seat -> choice to Take Seat or Lock Seat
-        setSelectedSeatForAction(seat);
-        setSeatActionModalVisible(true);
-      } else {
-        // Empty seat -> Take seat
-        takeSeat(seat.seatIndex, user);
-      }
+      // Empty seat -> Take seat directly
+      takeSeat(seat.seatIndex, user);
     }
   };
 
@@ -1513,7 +1525,13 @@ export default function VoiceRoomScreen() {
             </Text>
             <View style={styles.headerRoomSubRow}>
               <Text style={styles.headerRoomIdText}>ID:{room.id || room.roomId || '—'}</Text>
-              <Text style={styles.headerRoomMembersText}>👤 {onlineCount ?? 0}</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setOnlineUsersModalVisible(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              >
+                <Text style={styles.headerRoomMembersText}>👤 {onlineCount ?? 0}</Text>
+              </TouchableOpacity>
               {agoraStatus === 'connected' ? (
                 <View style={styles.voiceLiveBadge}>
                   <View style={styles.voiceGreenDot} />
@@ -1569,10 +1587,14 @@ export default function VoiceRoomScreen() {
       {/* Sub-Header Row: Group Tag & Top 3 Contributors (Image 1 & 2) */}
       <View style={styles.subHeaderRow}>
         {/* Left: Group Badge */}
-        <View style={styles.groupPillBadge}>
+        <TouchableOpacity
+          style={styles.groupPillBadge}
+          activeOpacity={0.8}
+          onPress={() => setGroupModalVisible(true)}
+        >
           <Text style={{ fontSize: 11, marginRight: 3 }}>💜</Text>
           <Text style={styles.groupPillText}>Group 1</Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Keep Top 3 and place Tasks directly underneath it. */}
         <View style={styles.topContribActions}>
@@ -2447,38 +2469,65 @@ export default function VoiceRoomScreen() {
           coverImage: currentRoomCover || room.coverImage,
           tag: room.tag || '',
           about: currentRoomAbout || room.about || '',
+          onlineCount: onlineCount,
         }}
+        owner={{
+          name: room.hostName || user?.name,
+          avatar: currentRoomCover || room.coverImage || user?.avatar,
+          userId: room.hostId || room.ownerId || user?.userId,
+        }}
+        onOpenSettings={() => setRoomSettingsModalVisible(true)}
         members={onlineUsers}
         onFollow={() => {}}
         onJoin={() => {}}
         bottomSafePadding={bottomSafePadding}
       />
 
-
+      {/* MODAL 6B: ROOM GROUP PRIVILEGE CARD */}
+      <RoomGroupPrivilegeModal
+        visible={groupModalVisible}
+        onClose={() => setGroupModalVisible(false)}
+        room={{
+          id: room.id || room.roomId || '',
+          title: currentRoomTitle || room.title || 'Voice Room',
+          coverImage: currentRoomCover || room.coverImage,
+          tag: room.tag || '',
+          about: currentRoomAbout || room.about || '',
+        }}
+        owner={{
+          name: room.hostName || user?.name,
+          avatar: currentRoomCover || room.coverImage || user?.avatar,
+          userId: room.hostId || room.ownerId || user?.userId,
+        }}
+        membersCount={onlineCount ?? 1}
+        bottomSafePadding={bottomSafePadding}
+      />
 
       {/* ============================================================== */}
+      {/* MODAL 7: ROOM SETTINGS MODAL (FULL SCREEN YELLOW HEADER) */}
       <RoomSettingsModal
         visible={roomSettingsModalVisible}
         onClose={() => setRoomSettingsModalVisible(false)}
+        room={{
+          id: room.id || room.roomId || '',
+          title: currentRoomTitle || room.title || 'Voice Room',
+          coverImage: currentRoomCover || room.coverImage,
+          tag: room.tag || '',
+          about: currentRoomAbout || room.about || '',
+        }}
+        user={user}
         onSave={handleSaveRoomSettings}
         isSaving={isSavingRoomSettings}
         bottomSafePadding={bottomSafePadding}
-        styles={styles}
-        user={user}
-        editRoomCover={editRoomCover}
-        setEditRoomCover={setEditRoomCover}
-        setPendingRoomCoverUpload={setPendingRoomCoverUpload}
-        editRoomName={editRoomName}
-        setEditRoomName={setEditRoomName}
-        editRoomAbout={editRoomAbout}
-        setEditRoomAbout={setEditRoomAbout}
-        editSeatCount={editSeatCount}
-        setEditSeatCount={setEditSeatCount}
-        editRoomLocked={editRoomLocked}
-        setEditRoomLocked={setEditRoomLocked}
-        hasRoomPin={hasRoomPin}
-        editRoomPin={editRoomPin}
-        setEditRoomPin={setEditRoomPin}
+        blockedUsers={room.blockedUsers || []}
+        onUnblockUser={async (blockedUserId) => {
+          try {
+            await apiUtil.post(`/rooms/${room.id || room.roomId}/unblock`, { userId: blockedUserId });
+            AlertService.show('Unblocked', 'User has been unblocked from the room.', 'success');
+          } catch (e) {
+            console.log('Unblock error:', e);
+          }
+        }}
       />
       <RoomReportModal
         visible={ugcReportModalVisible}

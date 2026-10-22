@@ -169,7 +169,7 @@ const InviteEarn = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" translucent={false} />
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent />
 
       {/* Professional Top Header Bar */}
       <View style={[styles.topHeader, { paddingTop: topSafeInset + 8 }]}>

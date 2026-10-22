@@ -58,6 +58,7 @@ export default function SeatLayoutModal({
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.backdrop}>

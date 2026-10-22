@@ -119,7 +119,7 @@ export default function GiftHistoryModal({ visible, onClose }) {
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <TouchableOpacity style={styles.dismissOverlay} activeOpacity={1} onPress={onClose} />
 

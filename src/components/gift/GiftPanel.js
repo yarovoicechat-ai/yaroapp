@@ -256,6 +256,7 @@ export default function GiftPanel({
       visible={mounted}
       transparent
       animationType="none"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.modalBackdrop}>

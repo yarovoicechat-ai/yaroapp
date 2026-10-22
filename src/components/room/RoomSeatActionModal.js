@@ -23,6 +23,7 @@ export default function RoomSeatActionModal({
         visible={visible}
         transparent
         animationType="slide"
+        statusBarTranslucent
         onRequestClose={() => {
           onClose();
         }}

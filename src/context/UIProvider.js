@@ -65,6 +65,7 @@ export const UIProvider = ({ children }) => {
                 visible={alert.visible}
                 transparent
                 animationType="none"
+                statusBarTranslucent
                 onRequestClose={hideAlert}
             >
                 <View style={styles.overlay}>

@@ -1361,14 +1361,7 @@ export const VoiceRoomProvider = ({ children }) => {
     }
 
     try {
-      const microphoneGranted = await requestMicrophonePermission();
-      if (!microphoneGranted) {
-        AlertService.show(
-          'Microphone permission needed',
-          'You can take the seat muted, then enable microphone access in Settings to speak.',
-          'warning',
-        );
-      }
+      await requestMicrophonePermission();
     } catch (permErr) {
       console.warn('Microphone permission check on take seat:', permErr?.message || permErr);
     }

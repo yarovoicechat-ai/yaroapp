@@ -26,6 +26,7 @@ export default function CreateActionModal({ visible, onClose }) {
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <TouchableOpacity

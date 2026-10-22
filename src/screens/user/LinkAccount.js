@@ -47,7 +47,7 @@ const LinkAccount = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+            <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
             {/* Header */}
             <View style={[styles.header, { paddingTop: topSafeInset + 8 }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>

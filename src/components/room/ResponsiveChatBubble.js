@@ -17,6 +17,7 @@ export default function ResponsiveChatBubble({
   isSvip = false,
   bubbleConfig,
   onPressUser,
+  onMention,
 }) {
   const text = message?.text || message?.content || '';
   const senderName = sender?.name || message?.user || message?.senderName || 'User';
@@ -87,13 +88,13 @@ export default function ResponsiveChatBubble({
 
   const customBubble = getCustomBubble();
 
-  // Self gets a welcome card; other users get one joined card.
+  // Welcome card matching Screenshot 4
   if (message?.type === 'welcome') {
     const targetUserName = message.targetUserName || 'Friend';
-    const hostName = message.roomHostName || 'Customer Service';
-    const avatar = message.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp';
+    const hostName = message.roomHostName || 'Host';
+    const avatar = message.avatar || message.roomHostAvatar || 'https://api.yaroapp.in/uploads/avatars/male_default.webp';
     const frame = message.equippedFrame || null;
-    const isSelfWelcome = message.variant === 'self';
+    const hostLevel = message.hostLevel ?? 4;
 
     return (
       <View style={styles.welcomeCardContainer}>
@@ -101,33 +102,49 @@ export default function ResponsiveChatBubble({
           <AvatarWithFrame
             user={{ avatar }}
             frame={frame}
-            size={36}
+            size={42}
             showOnlineDot={false}
           />
         </View>
         <View style={styles.welcomeRightCol}>
+          {/* Row 1: Owner badge + Host name */}
           <View style={styles.welcomeHeaderRow}>
-            {message.isOwner && (
-              <LinearGradient
-                colors={['#EF4444', '#DC2626']}
-                style={styles.ownerPillTag}
-              >
-                <Text style={styles.ownerPillText}>Owner</Text>
-              </LinearGradient>
-            )}
+            <LinearGradient
+              colors={['#FB7185', '#F43F5E']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.ownerPillTag}
+            >
+              <Text style={styles.ownerPillText}>Owner</Text>
+            </LinearGradient>
             <Text style={styles.welcomeHostTitle} numberOfLines={1}>
-              {isSelfWelcome ? hostName : targetUserName}
+              {hostName}
             </Text>
           </View>
+
+          {/* Row 2: Levels Lv.4, Lv.0 */}
+          <View style={styles.welcomeLevelsRow}>
+            <View style={styles.levelPillBronze}>
+              <MaterialCommunityIcons name="star-four-points" size={10} color="#FFF" style={{ marginRight: 2 }} />
+              <Text style={styles.levelPillText}>Lv.{hostLevel}</Text>
+            </View>
+            <View style={styles.levelPillSilver}>
+              <MaterialCommunityIcons name="star" size={10} color="#CBD5E1" style={{ marginRight: 2 }} />
+              <Text style={styles.levelPillText}>Lv.0</Text>
+            </View>
+          </View>
+
+          {/* Row 3: @Username (Yellow & Clickable) Greetings from {hostName},welcome to my chatroom! 🥰 */}
           <Text style={styles.welcomeMessageText}>
-            {isSelfWelcome ? (
-              <>
-                <Text style={styles.welcomeTargetUser}>@{targetUserName} </Text>
-                Thanks for coming. You are most welcome!
-              </>
-            ) : (
-              <Text style={styles.welcomeTargetUser}>{targetUserName} has joined the room</Text>
-            )}
+            <Text
+              style={styles.welcomeMentionYellow}
+              onPress={() => onMention && onMention(targetUserName)}
+            >
+              @{targetUserName}{' '}
+            </Text>
+            <Text style={styles.welcomeGreetingText}>
+              Greetings from {hostName},welcome to my chatroom! 🥰
+            </Text>
           </Text>
         </View>
       </View>
@@ -763,18 +780,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 17,
   },
-  // Welcome Message Card (Matching Reference Screenshot)
+  // Welcome Message Card (Matching Reference Screenshot 4)
   welcomeCardContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(9, 32, 42, 0.88)',
+    backgroundColor: 'rgba(10, 37, 51, 0.92)',
     borderWidth: 1,
     borderColor: 'rgba(20, 75, 90, 0.65)',
-    borderRadius: 10,
-    padding: 8,
+    borderRadius: 14,
+    padding: 10,
     marginVertical: 4,
-    maxWidth: MAX_BUBBLE_WIDTH,
-    gap: 8,
+    maxWidth: MAX_BUBBLE_WIDTH + 20,
+    gap: 10,
   },
   welcomeAvatarWrap: {
     marginTop: 2,
@@ -786,46 +803,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 3,
+    marginBottom: 4,
+  },
+  ownerPillTag: {
+    paddingHorizontal: 7,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  ownerPillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
   },
   welcomeHostTitle: {
-    color: '#CBD5E1',
-    fontSize: 11,
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '700',
     flexShrink: 1,
   },
-  welcomeBadgesRow: {
+  welcomeLevelsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginBottom: 2,
+    gap: 6,
+    marginBottom: 5,
   },
-  welcomeClubTag: {
-    backgroundColor: '#3B0764',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 8,
-    borderWidth: 0.8,
-    borderColor: '#7E22CE',
-  },
-  welcomeClubText: {
-    color: '#E9D5FF',
-    fontSize: 8.5,
-    fontWeight: '800',
-  },
-  welcomeCrestsRow: {
+  levelPillBronze: {
     flexDirection: 'row',
-    gap: 4,
-    marginBottom: 3,
+    alignItems: 'center',
+    backgroundColor: '#9A5B28',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 10,
+  },
+  levelPillSilver: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#64748B',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 10,
+  },
+  levelPillText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '800',
   },
   welcomeMessageText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 12,
+    lineHeight: 17,
   },
-  welcomeTargetUser: {
-    color: '#F59E0B',
+  welcomeMentionYellow: {
+    color: '#FACC15',
     fontWeight: '800',
+    fontSize: 12.5,
+  },
+  welcomeGreetingText: {
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
   // Custom Store Equipped Bubble
   customEquippedBubble: {

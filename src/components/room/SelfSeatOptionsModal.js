@@ -9,6 +9,7 @@ export default function SelfSeatOptionsModal({ visible, onClose, isMuted, onLeav
         visible={visible}
         transparent
         animationType="fade"
+        statusBarTranslucent
         onRequestClose={() => onClose()}
       >
         <View style={styles.modalBackdrop}>

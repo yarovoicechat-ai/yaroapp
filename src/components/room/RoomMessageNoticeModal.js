@@ -4,7 +4,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 
 export default function RoomMessageNoticeModal({ visible, onClose, bottomSafePadding, styles }) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
         <View style={[styles.messageNoticesSheet, { paddingBottom: bottomSafePadding + 24 }]}>
           <View style={styles.messageNoticesHeader}>

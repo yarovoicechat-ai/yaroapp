@@ -12,7 +12,7 @@ export default function RoomAnnouncementModal({
   styles,
 }) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.announcementModalOverlay}>
         <View style={styles.announcementModalCard}>
           <View style={styles.announcementModalHeader}>

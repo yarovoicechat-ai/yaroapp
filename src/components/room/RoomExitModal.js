@@ -23,6 +23,7 @@ export default function RoomExitModal({
       visible={visible}
       transparent
       animationType="fade"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.modalBackdrop}>

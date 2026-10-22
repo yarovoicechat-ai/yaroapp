@@ -510,7 +510,7 @@ export default function MyItems() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       {/* 1. Header Bar */}
       <View style={[styles.headerBar, { paddingTop: topSafeInset + 6 }]}>
         <TouchableOpacity

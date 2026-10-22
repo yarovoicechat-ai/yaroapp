@@ -78,14 +78,7 @@ export default function FloatingVoiceRoomWidget() {
   }
 
   const handleConfirmLeave = () => {
-    Alert.alert(
-      'Leave Room',
-      'Do you want to leave this voice party room?',
-      [
-        { text: 'Keep Playing', style: 'cancel' },
-        { text: 'Leave Room', style: 'destructive', onPress: leaveRoom },
-      ]
-    );
+    leaveRoom && leaveRoom();
   };
 
   return (

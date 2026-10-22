@@ -7,7 +7,6 @@ import { navigate, navigationRef } from './navigationRef';
 import {
     getCallParams,
     handleCallNotificationEvent,
-    showIncomingCallNotification,
 } from './CallNotificationService';
 import { handleMessageNotificationEvent } from './MessageNotificationService';
 import { getSocket } from '../sockets';
@@ -263,9 +262,20 @@ export const NotificationListen = () => {
         if (remoteMessage.data?.type === 'call_state') {
             await applyTerminalAndClose(remoteMessage.data);
         } else if (remoteMessage.data?.type === 'call') {
-            // The connected socket is the single foreground call source.
-            if (getSocket()?.connected) return;
-            await showIncomingCallNotification(remoteMessage.data);
+            // Socket.IO normally opens the live incoming screen immediately. Keep
+            // FCM as a delayed fallback in case the socket was connected but missed
+            // this event during a brief delivery gap.
+            if (getSocket()?.connected) {
+                const transactionId = String(remoteMessage.data?.transactionId || remoteMessage.data?.callId || '');
+                setTimeout(() => {
+                    const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
+                    const currentCallId = String(currentRoute?.params?.transactionId || '');
+                    if (!['Incomming', 'OnGoing'].includes(currentRoute?.name) || currentCallId !== transactionId) {
+                        handleNotificationNavigation(remoteMessage);
+                    }
+                }, 1500);
+                return;
+            }
             await handleNotificationNavigation(remoteMessage);
         }
     });

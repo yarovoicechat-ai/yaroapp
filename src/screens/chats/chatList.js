@@ -40,6 +40,18 @@ const SYSTEM_NOTICE_ENTRY = {
   icon: 'notifications',
 };
 
+const LUCKY_REWARD_BAG_ENTRY = {
+  id: 'm_lucky_reward_bag',
+  isSpecial: true,
+  actionTab: 'gifts',
+  type: 'lucky_reward_bag',
+  title: 'Lucky Reward Bag',
+  snippet: 'Open your gift box and check received rewards',
+  time: '',
+  unreadCount: 0,
+  icon: 'card-giftcard',
+};
+
 export default function ChatListScreen() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
@@ -202,10 +214,10 @@ export default function ChatListScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.cardWrapper}
-          onPress={() => setActiveSubTab('system')}
+          onPress={() => handleSubTabPress(item.actionTab || 'system')}
         >
-          <View style={[styles.specialIconBox, { backgroundColor: '#F3E8FF' }]}>
-            <Icon name={item.icon} size={24} color="#8B5CF6" />
+          <View style={[styles.specialIconBox, { backgroundColor: item.actionTab ? '#FEF3C7' : '#F3E8FF' }]}>
+            <Icon name={item.icon} size={24} color={item.actionTab ? '#D97706' : '#8B5CF6'} />
           </View>
           <View style={styles.cardMainContent}>
             <Text style={styles.userNameText}>{item.title}</Text>
@@ -393,7 +405,7 @@ export default function ChatListScreen() {
     );
   };
 
-  const listData = [SYSTEM_NOTICE_ENTRY, ...conversations];
+  const listData = [LUCKY_REWARD_BAG_ENTRY, SYSTEM_NOTICE_ENTRY, ...conversations];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>

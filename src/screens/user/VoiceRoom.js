@@ -1309,6 +1309,11 @@ export default function VoiceRoomScreen() {
         AlertService.show('Seat Locked', `Seat #${seat.seatIndex + 1} has been locked by the host`, 'warning');
       }
     } else {
+      if (seat.seatIndex > 0 && !isCurrentUserAdmin) {
+        setSelectedSeatForAction(seat);
+        setSeatActionModalVisible(true);
+        return;
+      }
       if (isCurrentUserAdmin) {
         // Host / Admin clicked empty seat -> choice to Take Seat or Lock Seat
         setSelectedSeatForAction(seat);
@@ -1806,6 +1811,17 @@ export default function VoiceRoomScreen() {
 
       {/* Live Chat Stream with Floating Right Widgets (Image 1 & 2 Model) */}
       <View style={styles.chatAreaContainer}>
+        {isCurrentUserAdmin && (
+          <TouchableOpacity
+            style={styles.clearRoomChatButton}
+            onPress={clearChat}
+            activeOpacity={0.8}
+            accessibilityLabel="Clear room chat"
+          >
+            <MaterialCommunityIcons name="delete-sweep-outline" size={16} color="#FFF" />
+            <Text style={styles.clearRoomChatText}>Clear</Text>
+          </TouchableOpacity>
+        )}
         <FlatList
           ref={chatListRef}
           data={chatMessages}
@@ -1876,7 +1892,7 @@ export default function VoiceRoomScreen() {
           }}
         />
 
-        {/* Floating Widgets on Right Side (Lucky, Bag, Solid Green Message Button) */}
+        {/* Floating reward bag and quick chat controls */}
         <View
           style={[
             styles.rightFloatingWidgetsCol,
@@ -1887,40 +1903,16 @@ export default function VoiceRoomScreen() {
           ]}
           pointerEvents="box-none"
         >
-          {/* 1. Lucky Widget */}
-          <TouchableOpacity
-            style={styles.luckyFruitWidget}
-            onPress={() => AlertService.show('Lucky Market', 'Spin and win huge diamond jackpots!', 'info')}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['#EC4899', '#8B5CF6']}
-              style={styles.luckyFruitBox}
-            >
-            <MaterialCommunityIcons
-              name="rocket-launch-outline"
-              size={16}
-              color={isBulletMode ? '#FFFFFF' : '#7C3AED'}
-            />
-              <Text style={styles.luckyFruitLabel}>LUCKY</Text>
-            </LinearGradient>
-            <View style={styles.luckyDotsRow}>
-              <View style={styles.tinyDot} />
-              <View style={styles.tinyDot} />
-              <View style={styles.tinyDot} />
-            </View>
-          </TouchableOpacity>
-
-          {/* 2. Rewards Bag Widget */}
+          {/* Rewards Bag Widget */}
           <TouchableOpacity
             style={styles.treasureChestWidget}
-            onPress={() => AlertService.show('Reward Bag', 'Daily room treasure & lucky bag rewards!', 'info')}
+            onPress={() => navigation.navigate('GiftsScreen')}
             activeOpacity={0.85}
           >
             <Text style={{ fontSize: 24 }}>💰</Text>
           </TouchableOpacity>
 
-          {/* 3. Floating Quick Chat Trigger (Solid Green Circle with White Chat Icon) */}
+          {/* Floating Quick Chat Trigger */}
           <TouchableOpacity
             style={styles.floatingChatBubbleBtn}
             onPress={() => setIsChatBarExpanded((prev) => !prev)}
@@ -1964,15 +1956,6 @@ export default function VoiceRoomScreen() {
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons name="chat-processing-outline" size={22} color="#FFF" />
-            </TouchableOpacity>
-
-            {/* 3. Lucky Bag */}
-            <TouchableOpacity
-              style={styles.controlCircleBtn}
-              onPress={() => AlertService.show('Lucky Bag', 'Lucky bag rewards opening soon!', 'info')}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="bag-personal-outline" size={22} color="#FBBF24" />
             </TouchableOpacity>
 
             {/* 4. Luxury Gift Tray Trigger */}
@@ -2048,15 +2031,6 @@ export default function VoiceRoomScreen() {
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons name="emoticon-happy-outline" size={23} color="#FFF" />
-            </TouchableOpacity>
-
-            {/* 5. Lucky Bag */}
-            <TouchableOpacity
-              style={styles.controlCircleBtn}
-              onPress={() => AlertService.show('Lucky Bag', 'Lucky bag rewards opening soon!', 'info')}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="bag-personal-outline" size={22} color="#FBBF24" />
             </TouchableOpacity>
 
             {/* 6. Luxury Gift Tray Trigger */}
@@ -2256,6 +2230,7 @@ export default function VoiceRoomScreen() {
         visible={roomSupportVisible}
         onClose={() => setRoomSupportVisible(false)}
         roomId={room?.id || room?.roomId || route?.params?.roomId}
+        canManageAutoSend={Boolean(isRoomOwner || isContextOwnerMatch)}
       />
 
       {/* MODAL: ROOM THEME (OWNER TOOLS) */}
@@ -2352,11 +2327,9 @@ export default function VoiceRoomScreen() {
         }}
         onOpenChat={(target) => {
           setProfileModalVisible(false);
-          const targetId = target?.userId || target?.id || target?._id;
           navigation.navigate('Chat', {
             user: target,
             otherUser: target,
-            conversationId: `conv_${targetId}`,
           });
         }}
         onMention={handleMentionUser}
@@ -2533,7 +2506,9 @@ export default function VoiceRoomScreen() {
         lockAllSeats={lockAllSeats}
         unlockAllSeats={unlockAllSeats}
         takeSeat={takeSeat}
+        applyLiveSeat={applyLiveSeat}
         user={user}
+        isModerator={isCurrentUserAdmin}
         setOnlineUsersModalVisible={setOnlineUsersModalVisible}
         bottomSafePadding={bottomSafePadding}
         styles={styles}
@@ -3009,6 +2984,24 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 4,
     width: '100%',
+  },
+  clearRoomChatButton: {
+    position: 'absolute',
+    top: 0,
+    right: 66,
+    zIndex: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: 'rgba(15, 23, 42, 0.78)',
+  },
+  clearRoomChatText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   chatFlatList: {
     flex: 1,

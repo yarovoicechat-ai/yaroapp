@@ -40,7 +40,16 @@ const Notifications = () => {
                     ? res.data.data
                     : [];
 
-                const activityItems = list.filter((item) => String(item?.type || 'system').toLowerCase() !== 'system');
+                const seenCallTransactions = new Set();
+                const activityItems = list.filter((item) => {
+                    if (String(item?.type || 'system').toLowerCase() === 'system') return false;
+                    if (String(item?.type || '').toLowerCase() !== 'call') return true;
+                    const transactionId = String(item?.data?.transactionId || '');
+                    if (!transactionId) return true;
+                    if (seenCallTransactions.has(transactionId)) return false;
+                    seenCallTransactions.add(transactionId);
+                    return true;
+                });
                 const formattedData = activityItems.map((item, idx) => ({
                     id: String(item?._id || item?.id || idx),
                     title: item?.title || 'Notification',

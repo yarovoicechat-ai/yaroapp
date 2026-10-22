@@ -189,7 +189,6 @@ export default function UserProfileScreen() {
       user: targetUser,
       chatUser: targetUser,
       otherUser: targetUser,
-      conversationId: `conv_${targetUser._id}`,
     });
   };
 

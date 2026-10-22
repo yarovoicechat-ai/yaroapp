@@ -231,6 +231,11 @@ const Incoming = ({ route }) => {
 
   useEffect(() => {
     let timeoutId;
+    try {
+      InCallManager.startRingtone('_DEFAULT_', [300, 500, 300, 500], 'default', 45);
+    } catch (ringError) {
+      console.warn('Incoming call ringtone could not start:', ringError?.message || ringError);
+    }
     Animated.loop(
       Animated.sequence([
         Animated.timing(animValue, {
@@ -368,13 +373,14 @@ const Incoming = ({ route }) => {
 
     return () => {
       clearTimeout(timeoutId);
+      try { InCallManager.stopRingtone(); } catch (_) {}
       if (activeSocket) {
         activeSocket.off('callEnded', handleCallEnded);
         activeSocket.off('callCancelled', handleCallEnded);
         activeSocket.off('connect', verifyCallStatus);
       }
     };
-  }, [transactionId, name, channelName, isVideoCall, displayImage, gender, callerId, createdAt, ringExpiresAt]);
+  }, [transactionId, name, channelName, isVideoCall, displayImage, gender, callerId, createdAt, ringExpiresAt, animValue, maxMinutes, navigation, parsedAgora]);
 
   return (
     <LinearGradient

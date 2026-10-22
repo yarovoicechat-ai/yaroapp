@@ -25,6 +25,7 @@ import { normalizeLanguages } from '../../utils/hostPresentation';
 import EmptyStateView from '../../components/EmptyStateView';
 import { HostCardSkeleton } from '../../components/SkeletonLoader';
 import AdminBannerCarousel from '../../components/AdminBannerCarousel';
+import LanguageSelectionModal from '../../components/home/LanguageSelectionModal';
 
 import { formatCompactBalance } from '../../utils/numberUtil';
 const diamondIcon = require('../../assets/icons/diamond.png');

@@ -1,6 +1,6 @@
 import { navigationRef } from './navigationRef';
 import { AppState } from 'react-native';
-import { showIncomingCallNotification } from './CallNotificationService';
+import { cancelIncomingCallNotification, showIncomingCallNotification } from './CallNotificationService';
 import { applyTerminalCallState, canOpenIncomingCall } from './callLifecycle';
 import { apiUtil } from './apiUtil';
 
@@ -116,11 +116,17 @@ export const attachSocketListeners = (socketInstance, setHosts) => {
     if (!data?.transactionId) return;
     console.log(`[SOCKET] INCOMING_CALL tx=${data.transactionId}`);
 
+    if (AppState.currentState === 'active') {
+      if (!await canOpenIncomingCall(data)) return;
+      await cancelIncomingCallNotification(data.transactionId);
+      openIncomingCall(data);
+      return;
+    }
+
     const shown = await showIncomingCallNotification(data).catch(() => false);
     if (!shown) {
       console.log(`[SOCKET] DUPLICATE_INCOMING_IGNORED tx=${data.transactionId}`);
     }
-    if (AppState.currentState === 'active') openIncomingCall(data);
   };
 
   socketInstance.on('hostsList', handleHostsList);

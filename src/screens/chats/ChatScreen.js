@@ -49,7 +49,15 @@ const Massage = ({ route }) => {
   const { user, fetchUserProfile } = useContext(AuthContext);
   const scrollViewRef = React.useRef();
 
-  const { conversationId, otherUser = {}, lastMessageTime } = route.params || {};
+  const routeParams = route.params || {};
+  const routeConversationId = routeParams.conversationId;
+  const otherUser = routeParams.otherUser || routeParams.user || routeParams.chatUser || {};
+  const lastMessageTime = routeParams.lastMessageTime;
+  const isMongoId = (value) => /^[a-f\d]{24}$/i.test(String(value || ''));
+  const [conversationId, setConversationId] = useState(() =>
+    isMongoId(routeConversationId) ? String(routeConversationId) : null
+  );
+  const [resolvingConversation, setResolvingConversation] = useState(!isMongoId(routeConversationId));
 
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -66,6 +74,36 @@ const Massage = ({ route }) => {
   const [inputBarHeight, setInputBarHeight] = useState(76);
   const giftTimerRef = useRef(null);
   const activeGiftVisual = resolveGiftVisual(activeGift?.gift || activeGift || {});
+
+  const receiverId = otherUser?._id || otherUser?.id || otherUser?.userId;
+  useEffect(() => {
+    let isCurrent = true;
+    if (isMongoId(routeConversationId)) {
+      setConversationId(String(routeConversationId));
+      setResolvingConversation(false);
+      return () => { isCurrent = false; };
+    }
+    setConversationId(null);
+    if (!receiverId) {
+      setResolvingConversation(false);
+      return () => { isCurrent = false; };
+    }
+    setResolvingConversation(true);
+    apiUtil.post('/chat/conversations', { receiverId })
+      .then((response) => {
+        const resolvedId = response.data?.data?.conversation?._id || response.data?.data?._id;
+        if (isCurrent && resolvedId) setConversationId(String(resolvedId));
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          AlertService.show('Chat unavailable', error.response?.data?.message || 'Could not open this private chat.', 'error');
+        }
+      })
+      .finally(() => {
+        if (isCurrent) setResolvingConversation(false);
+      });
+    return () => { isCurrent = false; };
+  }, [routeConversationId, receiverId]);
 
   const categories = useMemo(() => {
     const catalogCategories = gifts
@@ -137,6 +175,7 @@ const Massage = ({ route }) => {
     : 'Just now';
 
   useEffect(() => {
+    if (!conversationId) return undefined;
     const fetchMessages = async () => {
       const [messagesResult, sentGiftsResult, receivedGiftsResult] = await Promise.allSettled([
         apiUtil.get(`/chat/messages?conversationId=${conversationId}`),
@@ -232,7 +271,9 @@ const Massage = ({ route }) => {
         const newMsg = msgWrapper?.message || msgWrapper;
         if (newMsg) {
           console.log('Adding new message:', newMsg);
-          setMessages(prev => [...prev, newMsg]);
+          setMessages(prev => prev.some((existing) => String(existing._id || existing.id) === String(newMsg._id || newMsg.id))
+            ? prev
+            : [...prev, newMsg]);
           if (user?._id && newMsg.sender !== user._id) {
             console.log('Marking message as seen for:', convId);
             socket.emit('markSeen', { conversationId });
@@ -305,6 +346,10 @@ const Massage = ({ route }) => {
   const handleSend = async () => {
     const messageContentToSend = inputText.trim();
     if (!messageContentToSend) return;
+    if (!conversationId || resolvingConversation) {
+      AlertService.show('Chat is opening', 'Please wait a moment and try again.', 'info');
+      return;
+    }
 
     if (messageContentToSend.length > 50) {
       AlertService.show('Limit Exceeded', '1 message me maximum 50 characters hi bhej sakte hain.', 'error');

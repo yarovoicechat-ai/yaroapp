@@ -47,6 +47,7 @@ import InCallManager from 'react-native-incall-manager';
 import { FloatingCallBridge } from '../../services/FloatingCallBridge';
 import { getRoleAgoraCredentials } from '../../utils/callValidation';
 import { AgoraClientService } from '../../services/agoraService';
+import { requestMicrophonePermission } from '../../utils/permissions';
 
 const { width, height } = Dimensions.get('window');
 const { CallPip } = NativeModules;
@@ -557,13 +558,25 @@ const OnGoing = ({ route, navigation }) => {
       }
 
       try {
+        await requestMicrophonePermission();
+      } catch (permErr) {
+        console.warn('[CALL] Microphone permission request notice:', permErr);
+      }
+
+      try {
         engine.initialize({ appId: agoraAppId });
         console.log('[CALL] AGORA INITIALIZED WITH APP ID:', agoraAppId);
 
         engine.enableAudio();
+        engine.enableLocalAudio(true);
         engine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
         engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+        engine.setDefaultAudioRouteToSpeakerphone(isSpeakerOn);
         engine.setEnableSpeakerphone(isSpeakerOn);
+        engine.muteLocalAudioStream(isMuted);
+        engine.muteAllRemoteAudioStreams(false);
+        engine.adjustPlaybackSignalVolume(100);
+        engine.adjustRecordingSignalVolume(100);
 
         engine.addListener('onJoinChannelSuccess', (connection, elapsed) => {
           console.log('[CALL] AGORA JOIN CHANNEL SUCCESS:', connection?.channelId, 'UID:', connection?.localUid);
@@ -575,6 +588,16 @@ const OnGoing = ({ route, navigation }) => {
           joinRequestedRef.current = false;
           hasJoinedChannelRef.current = true;
           setIsChannelJoined(true);
+          try {
+            engine.enableLocalAudio(!isMuted);
+            engine.muteLocalAudioStream(isMuted);
+            engine.muteAllRemoteAudioStreams(false);
+            engine.setEnableSpeakerphone(isSpeakerOn);
+            engine.updateChannelMediaOptions({
+              publishMicrophoneTrack: !isMuted,
+              autoSubscribeAudio: true,
+            });
+          } catch (_) {}
         });
 
         engine.addListener('onUserMuteAudio', (connection, remoteUid, muted) => {
@@ -613,6 +636,8 @@ const OnGoing = ({ route, navigation }) => {
           joinRequestedRef.current = true;
           const res = engine.joinChannel(tokenToUse, String(channelName), uidToUse, {
             clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+            publishMicrophoneTrack: !isMuted,
+            autoSubscribeAudio: true,
           });
           if (res !== undefined && res !== null && typeof res === 'number' && res < 0) {
             console.error('Agora joinChannel returned error code:', res);
@@ -632,8 +657,9 @@ const OnGoing = ({ route, navigation }) => {
       }
 
       try {
-        InCallManager.start({ media: 'audio', auto: true });
-        InCallManager.setForceSpeakerphoneOn(false);
+        InCallManager.start({ media: 'audio', auto: false });
+        InCallManager.setForceSpeakerphoneOn(isSpeakerOn);
+        InCallManager.setSpeakerphoneOn(isSpeakerOn);
       } catch (err) {
         console.warn('InCallManager start error:', err);
       }
@@ -838,18 +864,36 @@ const OnGoing = ({ route, navigation }) => {
 
   // Toggle Mute
   const toggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
     if (agoraEngineRef.current) {
-      agoraEngineRef.current.muteLocalAudioStream(!isMuted);
-      setIsMuted(!isMuted);
+      try {
+        agoraEngineRef.current.muteLocalAudioStream(nextMuted);
+        agoraEngineRef.current.updateChannelMediaOptions({
+          publishMicrophoneTrack: !nextMuted,
+        });
+      } catch (e) {
+        console.warn('[CALL] Toggle mute notice:', e);
+      }
     }
   };
 
   // Toggle Speaker
   const toggleSpeaker = () => {
+    const nextSpeaker = !isSpeakerOn;
+    setIsSpeakerOn(nextSpeaker);
     if (agoraEngineRef.current) {
-      agoraEngineRef.current.setEnableSpeakerphone(!isSpeakerOn);
-      setIsSpeakerOn(!isSpeakerOn);
+      try {
+        agoraEngineRef.current.setEnableSpeakerphone(nextSpeaker);
+        agoraEngineRef.current.setDefaultAudioRouteToSpeakerphone(nextSpeaker);
+      } catch (e) {
+        console.warn('[CALL] Toggle speaker notice:', e);
+      }
     }
+    try {
+      InCallManager.setForceSpeakerphoneOn(nextSpeaker);
+      InCallManager.setSpeakerphoneOn(nextSpeaker);
+    } catch (_) {}
   };
 
   // Format Timer

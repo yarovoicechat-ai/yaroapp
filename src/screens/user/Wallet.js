@@ -441,7 +441,7 @@ const Wallet = () => {
                       <Image source={diamondIcon} style={{ width: 24, height: 24, marginLeft: 6 }} resizeMode="contain" />
                     </View>
                     <Text style={styles.balanceValue}>
-                      ≈ ₹{formatCompactBalance((user?.diamonds || 0) / 10)}
+                      ≈ ₹{formatCompactBalance(Math.round((user?.diamonds || 0) * 1.43))}
                       {Number(user?.diamonds || 0) >= 1000000 ? ` (${(user?.diamonds || 0).toLocaleString()} 💎)` : ''}
                     </Text>
                   </View>

@@ -78,11 +78,11 @@ export function WelcomeScreen() {
         <View style={s.userBadge}><Text style={s.userBadgeText}>1M+ Happy Users</Text></View>
       </View>
       <View style={s.full}>
-        <GradientButton title="Sign Up" onPress={() => navigation.navigate('SignUp')} style={s.zeroTop} />
-        <TouchableOpacity style={s.outlineButton} onPress={() => navigation.navigate('SignIn')}><Text style={s.outlineText}>Sign In</Text></TouchableOpacity>
-        <Divider />
         <TouchableOpacity style={s.socialButton} disabled={loading} onPress={() => googleAuth(navigation, login, setLoading)}>{loading ? <ActivityIndicator color={AUTH_COLORS.purple} /> : <><Image source={GoogleLogo} style={s.googleIcon} /><Text style={s.socialText}>Continue with Google</Text></>}</TouchableOpacity>
         {Platform.OS === 'ios' && <TouchableOpacity style={s.socialButton}><Icon name="logo-apple" size={23} color="#050505" /><Text style={s.socialText}>Continue with Apple</Text></TouchableOpacity>}
+        <Divider />
+        <GradientButton title="Sign Up" onPress={() => navigation.navigate('SignUp')} style={s.zeroTop} />
+        <TouchableOpacity style={s.outlineButton} onPress={() => navigation.navigate('SignIn')}><Text style={s.outlineText}>Sign In</Text></TouchableOpacity>
       </View>
       <Text style={[s.terms, s.termsFooter]}>By continuing, you agree to our{`\n`}<Text style={s.link}>Terms of Service</Text> and <Text style={s.link}>Privacy Policy</Text>.</Text>
     </AuthScreen>

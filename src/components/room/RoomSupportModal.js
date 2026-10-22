@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { apiUtil } from '../../utils/apiUtil';
+import { AlertService } from '../../utils/AlertService';
 
 const { width } = Dimensions.get('window');
 
@@ -52,18 +53,20 @@ const RULES_LIST = [
   "5. This has nothing to do with Apple or Google Play's policies, and is solely based on Yaro's internal Room Support program.",
 ];
 
-export default function RoomSupportModal({ visible, onClose, roomId }) {
+export default function RoomSupportModal({ visible, onClose, roomId, canManageAutoSend = false }) {
   const insets = useSafeAreaInsets();
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 20);
 
   const [supportData, setSupportData] = useState({
-    thisWeek: { bonusCoins: 0, roomVisitors: 1, roomCoins: 0 },
+    thisWeek: { bonusCoins: 0, roomVisitors: 0, roomCoins: 0 },
     lastWeek: { bonusCoins: 0, roomVisitors: 0, roomCoins: 0 },
   });
-  const [rewardSendSeconds, setRewardSendSeconds] = useState(314721); // ~3Day 15:25:21
-  const [weekCountdownSeconds, setWeekCountdownSeconds] = useState(141912); // ~1Day 15:25:12
+  const [rewardSendSeconds, setRewardSendSeconds] = useState(0);
+  const [weekCountdownSeconds, setWeekCountdownSeconds] = useState(0);
   const [autoSend, setAutoSend] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [updatingAutoSend, setUpdatingAutoSend] = useState(false);
+  const [supportError, setSupportError] = useState('');
 
   const timerRef = useRef(null);
 
@@ -78,26 +81,15 @@ export default function RoomSupportModal({ visible, onClose, roomId }) {
     return `${days}Day ${hours}:${mins}:${secs}`;
   };
 
-  useEffect(() => {
-    if (!visible) return;
-
-    fetchSupportStats();
-
-    timerRef.current = setInterval(() => {
-      setRewardSendSeconds((prev) => (prev > 0 ? prev - 1 : 0));
-      setWeekCountdownSeconds((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [visible, roomId]);
-
-  const fetchSupportStats = async () => {
+  const fetchSupportStats = useCallback(async () => {
     if (!roomId) return;
     setLoading(true);
+    setSupportError('');
     try {
       const res = await apiUtil.get(`/voice-club/rooms/${roomId}/support`);
+      if (!res.data?.success || !res.data?.data) {
+        throw new Error(res.data?.message || 'Room Support information could not be loaded.');
+      }
       if (res.data?.success && res.data?.data) {
         const { myRoom, rewardSendTimeSeconds, thisWeekCountdownSeconds, autoSendRewards } = res.data.data;
         if (myRoom) {
@@ -115,17 +107,40 @@ export default function RoomSupportModal({ visible, onClose, roomId }) {
       }
     } catch (err) {
       console.warn('[RoomSupportModal] Fetch support stats notice:', err?.message);
+      setSupportError(err.response?.data?.message || err.message || 'Room Support information could not be loaded.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!visible) return;
+
+    fetchSupportStats();
+
+    timerRef.current = setInterval(() => {
+      setRewardSendSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+      setWeekCountdownSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [visible, fetchSupportStats]);
 
   const handleToggleAutoSend = async (val) => {
+    const previousValue = autoSend;
     setAutoSend(val);
+    setUpdatingAutoSend(true);
     try {
-      await apiUtil.post(`/voice-club/rooms/${roomId}/support/toggle-auto-send`, { autoSend: val });
+      const response = await apiUtil.post(`/voice-club/rooms/${roomId}/support/toggle-auto-send`, { autoSend: val });
+      if (!response.data?.success) throw new Error(response.data?.message || 'Could not update reward sending.');
     } catch (err) {
       console.warn('[RoomSupportModal] Toggle auto-send warning:', err?.message);
+      setAutoSend(previousValue);
+      AlertService.show('Room Support', err.response?.data?.message || err.message || 'Could not update reward sending.', 'warning');
+    } finally {
+      setUpdatingAutoSend(false);
     }
   };
 
@@ -173,10 +188,27 @@ export default function RoomSupportModal({ visible, onClose, roomId }) {
                 colors={['#F97316', '#EA580C']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={styles.sectionHeaderBanner}
+                style={[styles.sectionHeaderBanner, { flexDirection: 'row', justifyContent: 'space-between' }]}
               >
                 <Text style={styles.sectionHeaderText}>My Room</Text>
+                <TouchableOpacity
+                  style={styles.refreshButton}
+                  onPress={fetchSupportStats}
+                  disabled={loading}
+                  accessibilityLabel="Refresh Room Support"
+                >
+                  {loading ? <ActivityIndicator size="small" color="#FFF" /> : <MaterialCommunityIcons name="refresh" size={18} color="#FFF" />}
+                </TouchableOpacity>
               </LinearGradient>
+
+              {supportError ? (
+                <View style={styles.supportErrorBox} accessibilityRole="alert">
+                  <Text style={styles.supportErrorText}>{supportError}</Text>
+                  <TouchableOpacity onPress={fetchSupportStats} disabled={loading} accessibilityRole="button">
+                    <Text style={styles.supportRetryText}>{loading ? 'Retrying…' : 'Retry'}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
 
               {/* Table: Bonus Coins | Room Visitors | Room Coins */}
               <View style={styles.myRoomTable}>
@@ -213,12 +245,15 @@ export default function RoomSupportModal({ visible, onClose, roomId }) {
                     Reward send time: <Text style={styles.rewardSendTimeHighlight}>{formatCountdown(rewardSendSeconds)}</Text>
                   </Text>
                 </View>
-                <Switch
-                  value={autoSend}
-                  onValueChange={handleToggleAutoSend}
-                  trackColor={{ false: '#475569', true: '#F59E0B' }}
-                  thumbColor={autoSend ? '#FFF' : '#94A3B8'}
-                />
+                {canManageAutoSend ? (
+                  <Switch
+                    value={autoSend}
+                    onValueChange={handleToggleAutoSend}
+                    disabled={updatingAutoSend}
+                    trackColor={{ false: '#475569', true: '#F59E0B' }}
+                    thumbColor={autoSend ? '#FFF' : '#94A3B8'}
+                  />
+                ) : null}
               </View>
             </View>
 
@@ -399,6 +434,29 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+  refreshButton: {
+    minWidth: 28,
+    minHeight: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  supportErrorBox: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#FFF7ED',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FED7AA',
+  },
+  supportErrorText: {
+    color: '#9A3412',
+    fontSize: 12,
+  },
+  supportRetryText: {
+    color: '#C2410C',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 6,
   },
   myRoomTable: {
     paddingVertical: 10,

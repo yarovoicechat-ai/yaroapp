@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Dimensions, Platform,
   View as ScreenBackgroundView,
   StatusBar as ScreenBackgroundStatusBar,
@@ -22,32 +22,66 @@ const SystemMessage = () => {
     const bottomPadding = getStackScreenBottomPadding(insets.bottom, 40);
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [error, setError] = useState('');
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const loadingMoreRef = useRef(false);
+    const readMessageIdsRef = useRef(new Set());
     const { t } = useTranslation();
 
-    const fetchSystemMessages = async () => {
+    const fetchSystemMessages = async (requestedPage = 1, append = false) => {
+        if (append && loadingMoreRef.current) return;
+        if (append) loadingMoreRef.current = true;
+        if (append) setLoadingMore(true);
+        else setLoading(true);
+        setError('');
         try {
-            const res = await apiUtil.get('/system-messages');
-            if (res.data.success || res.data.status) {
-                const dataArray = res.data.data?.messages || res.data.data || [];
-                const formattedData = dataArray.map(item => ({
-                    id: item._id,
-                    title: item.title,
-                    body: item.message || item.body || item.content,
-                    date: dayjs(item.createdAt).format('DD/MM/YYYY HH:mm'),
-                }));
-                setMessages(formattedData);
-            }
+            const res = await apiUtil.get('/notifications', { params: { page: requestedPage, limit: 50, type: 'system' } });
+            if (!res.data?.success) throw new Error(res.data?.message || 'Could not load system messages.');
+            const dataArray = res.data.data?.notifications || [];
+            const formattedData = dataArray.map(item => ({
+                id: String(item._id || item.id),
+                title: item.title || 'System Alert',
+                body: item.message || item.body || item.content,
+                date: item.createdAt ? dayjs(item.createdAt).format('DD/MM/YYYY HH:mm') : '',
+                isRead: Boolean(item.isRead),
+            }));
+            setMessages((previous) => {
+                const merged = new Map((append ? previous : []).map((item) => [item.id, item]));
+                formattedData.forEach((item) => merged.set(item.id, item));
+                return [...merged.values()];
+            });
+            setPage(requestedPage);
+            setHasMore(dataArray.length === 50);
+            dataArray.filter((item) => !item.isRead).forEach((item) => {
+                const id = item._id || item.id;
+                if (id && !readMessageIdsRef.current.has(String(id))) {
+                    readMessageIdsRef.current.add(String(id));
+                    apiUtil.patch(`/notifications/${id}/read`).catch((readError) => {
+                        readMessageIdsRef.current.delete(String(id));
+                    console.log('System message read update:', readError?.response?.status || readError.message);
+                    });
+                }
+            });
         } catch (error) {
             console.log("System Messages:", error?.response?.status || error.message);
-            setMessages([]);
+            setError(error?.response?.data?.message || error.message || 'Could not load system messages.');
+            if (!append) setMessages([]);
         } finally {
             setLoading(false);
+            setLoadingMore(false);
+            loadingMoreRef.current = false;
         }
     };
 
     useEffect(() => {
-        fetchSystemMessages();
+        fetchSystemMessages(1, false);
     }, []);
+
+    const loadMore = () => {
+        if (!loading && !loadingMore && !loadingMoreRef.current && hasMore) fetchSystemMessages(page + 1, true);
+    };
 
     const renderItem = ({ item }) => (
         <View style={styles.messageCard}>
@@ -109,9 +143,21 @@ const SystemMessage = () => {
                     data={messages}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
+                    onEndReached={loadMore}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#6366F1" style={{ paddingVertical: 16 }} /> : null}
                     contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
                     ListEmptyComponent={
                         <View style={styles.centerContainer}>
+                            {error ? (
+                                <>
+                                    <Text style={styles.emptyText}>{error}</Text>
+                                    <TouchableOpacity onPress={() => fetchSystemMessages(1, false)} style={styles.retryButton} accessibilityRole="button">
+                                        <Text style={styles.retryButtonText}>Try again</Text>
+                                    </TouchableOpacity>
+                                </>
+                            ) : (
+                                <>
                             <View style={styles.emptyIllustrationWrapper}>
                                 <View style={styles.glowBg} />
                                 <Icon name="near-me" size={32} color="rgba(3, 220, 254, 0.4)" style={styles.airplaneOutline} />
@@ -134,6 +180,8 @@ const SystemMessage = () => {
                             <Text style={styles.emptySubText}>
                                 {t('system_messages.empty_subtitle') || "You're all caught up! We'll notify you\nwhen there's something important."}
                             </Text>
+                                </>
+                            )}
                         </View>
                     }
                 />
@@ -258,6 +306,18 @@ const styles = StyleSheet.create({
         lineHeight: 18,
         textAlign: 'center',
         marginTop: 8,
+    },
+    retryButton: {
+        marginTop: 14,
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: '#6366F1',
+    },
+    retryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: '700',
     },
 
     // Empty Illustration Design

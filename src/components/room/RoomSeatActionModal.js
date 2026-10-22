@@ -11,7 +11,9 @@ export default function RoomSeatActionModal({
   lockAllSeats,
   unlockAllSeats,
   takeSeat,
+  applyLiveSeat,
   user,
+  isModerator = true,
   setOnlineUsersModalVisible,
   bottomSafePadding,
   styles,
@@ -39,6 +41,37 @@ export default function RoomSeatActionModal({
             <View style={styles.sheetHandle} />
 
             <View style={styles.emptySeatActionRow}>
+              {!isModerator ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.emptySeatActionItem}
+                    onPress={() => {
+                      if (selectedSeat) takeSeat(selectedSeat.seatIndex, user);
+                      onClose();
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.emptySeatIconCircle}>
+                      <MaterialCommunityIcons name="microphone" size={26} color="#334155" />
+                    </View>
+                    <Text style={styles.emptySeatActionLabel}>Free Seat</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.emptySeatActionItem}
+                    onPress={() => {
+                      if (selectedSeat) applyLiveSeat(selectedSeat.seatIndex, user);
+                      onClose();
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.emptySeatIconCircle}>
+                      <MaterialCommunityIcons name="account-clock-outline" size={26} color="#334155" />
+                    </View>
+                    <Text style={styles.emptySeatActionLabel}>Apply Seat</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+              <>
               {/* Option 1: Lock / Unlock */}
               <TouchableOpacity
                 style={styles.emptySeatActionItem}
@@ -126,6 +159,8 @@ export default function RoomSeatActionModal({
                 </View>
                 <Text style={styles.emptySeatActionLabel}>Invite</Text>
               </TouchableOpacity>
+              </>
+              )}
             </View>
           </TouchableOpacity>
         </TouchableOpacity>

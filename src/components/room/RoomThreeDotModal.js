@@ -139,7 +139,9 @@ export default function RoomThreeDotModal({
                 style={styles.toolRow}
                 onPress={() => {
                   onClose();
-                  item.onPress && item.onPress();
+                  setTimeout(() => {
+                    if (item.onPress) item.onPress();
+                  }, 120);
                 }}
                 activeOpacity={0.7}
               >

@@ -24,16 +24,21 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
 
 const normalizeTheme = (inventoryItem) => {
-  const catalog = inventoryItem.catalogItem || inventoryItem.itemId || inventoryItem;
+  const catalog = inventoryItem.catalogItem || inventoryItem.itemId || inventoryItem || {};
   const metadata = catalog.metadata || inventoryItem.metadata || {};
+  const rawBg = catalog.bgColors || metadata.bgColors;
+  const safeBg = Array.isArray(rawBg) && rawBg.length >= 2 ? rawBg : ['#1E1B4B', '#0F172A'];
+  const rawCover = catalog.imageUrl || metadata.coverImage || inventoryItem.imageUrl || null;
+  const coverImage = typeof rawCover === 'string' && rawCover.trim() ? rawCover.trim() : (typeof rawCover === 'number' ? rawCover : null);
+
   return {
     ...catalog,
     itemId: String(catalog._id || catalog.id || inventoryItem.itemId || ''),
     id: String(catalog._id || catalog.id || inventoryItem.itemId || ''),
     name: catalog.name || inventoryItem.name || 'Theme',
     category: catalog.category || inventoryItem.category,
-    coverImage: catalog.imageUrl || metadata.coverImage || inventoryItem.imageUrl || null,
-    bgColors: catalog.bgColors || metadata.bgColors || ['#1E1B4B', '#0F172A'],
+    coverImage,
+    bgColors: safeBg,
     previewColor: catalog.previewColor || metadata.previewColor || '#8B5CF6',
     desc: catalog.desc || metadata.description || '',
     expiresAt: inventoryItem.expiresAt || null,
@@ -42,14 +47,14 @@ const normalizeTheme = (inventoryItem) => {
   };
 };
 
-const PRESET_THEMES = ROOM_THEME_CATALOG.map((item) => ({
-  id: item.id,
-  itemId: item.id,
-  name: item.name || item.id || 'Default',
-  coverImage: item.coverImage || (item.id === 'default' ? DEFAULT_ROOM_BG : null),
-  bgColors: item.bgColors || ['#3A0E5C', '#1E0A3C', '#0B031E'],
-  previewColor: item.previewColor || item.bgColors?.[0] || '#9333EA',
-  desc: item.desc || 'Default Yaro room theme',
+const PRESET_THEMES = (ROOM_THEME_CATALOG || []).map((item) => ({
+  id: item?.id || 'default',
+  itemId: item?.itemId || item?.id || 'default',
+  name: item?.name || item?.id || 'Default',
+  coverImage: item?.coverImage || (item?.id === 'default' ? DEFAULT_ROOM_BG : null),
+  bgColors: Array.isArray(item?.bgColors) && item.bgColors.length >= 2 ? item.bgColors : ['#3A0E5C', '#1E0A3C', '#0B031E'],
+  previewColor: item?.previewColor || item?.bgColors?.[0] || '#9333EA',
+  desc: item?.desc || 'Default Yaro room theme',
   isPreset: true,
   isFree: true,
 }));
@@ -60,7 +65,9 @@ export default function RoomThemeModal({
   currentTheme,
   onSelectTheme,
 }) {
-  const insets = useSafeAreaInsets() || { top: 0, bottom: 0 };
+  const insets = useSafeAreaInsets();
+  const topInset = insets?.top ?? 0;
+  const bottomInset = insets?.bottom ?? 16;
   const [activeTab, setActiveTab] = useState('Room Theme');
   const [themes, setThemes] = useState(PRESET_THEMES);
   const [selected, setSelected] = useState(null);
@@ -137,7 +144,7 @@ export default function RoomThemeModal({
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View style={[styles.container, { paddingTop: topInset, paddingBottom: Math.max(bottomInset, 16) }]}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
         {/* Top Header */}
@@ -182,7 +189,7 @@ export default function RoomThemeModal({
           ) : (
             <FlatList
               data={displayData}
-              keyExtractor={(item) => item.id || item.itemId || String(Math.random())}
+              keyExtractor={(item, index) => String(item.id || item.itemId || index)}
               numColumns={2}
               columnWrapperStyle={styles.columnWrapper}
               contentContainerStyle={styles.listContent}
@@ -209,6 +216,9 @@ export default function RoomThemeModal({
                 const itemId = String(item.itemId || item.id);
                 const isSelected = selected === itemId;
                 const isCurrentInUse = String(currentTheme?.itemId || currentTheme?.id) === itemId;
+                const safeBgColors = Array.isArray(item.bgColors) && item.bgColors.length >= 2
+                  ? item.bgColors
+                  : ['#3A0E5C', '#1E0A3C'];
 
                 return (
                   <TouchableOpacity
@@ -222,13 +232,13 @@ export default function RoomThemeModal({
                           source={
                             typeof item.coverImage === 'number'
                               ? item.coverImage
-                              : { uri: item.coverImage }
+                              : { uri: String(item.coverImage) }
                           }
                           style={styles.previewImage}
                           resizeMode="cover"
                         />
                       ) : (
-                        <LinearGradient colors={item.bgColors} style={styles.previewImage} />
+                        <LinearGradient colors={safeBgColors} style={styles.previewImage} />
                       )}
                       {isCurrentInUse && (
                         <View style={styles.inUseBadge}>

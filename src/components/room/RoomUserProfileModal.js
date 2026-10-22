@@ -13,6 +13,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import AvatarWithFrame from '../AvatarWithFrame';
+import IdentityDisplayId from '../identity/IdentityDisplayId';
 import { AuthContext } from '../../context/AuthProvider';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { apiUtil } from '../../utils/apiUtil';
@@ -150,6 +151,19 @@ export default function RoomUserProfileModal({
   const uniqueId = displayData.equippedCustomId || displayData.uniqueId || displayData.customId || null;
   const hasUniqueId = Boolean(uniqueId && String(uniqueId).trim());
   const displayId = displayData.displayId || displayData.customDisplayId || targetUserId || '—';
+  const uniqueIdBadgeUrl =
+    displayData.uniqueIdBadge?.badgeIconUrl ||
+    displayData.uniqueIdBadge?.badgeUrl ||
+    displayData.badgeIconUrl ||
+    displayData.effectiveIdentity?.uniqueIdBadge?.badgeIconUrl ||
+    resolvedProfile?.uniqueIdBadge?.badgeIconUrl ||
+    resolvedProfile?.badgeIconUrl ||
+    user?.uniqueIdBadge?.badgeIconUrl ||
+    null;
+  const uniqueIdBadgeText =
+    displayData.uniqueIdBadge?.badgeName ||
+    resolvedProfile?.uniqueIdBadge?.badgeName ||
+    (hasUniqueId ? 'VIP' : 'ID');
 
   // Room roles
   const ownerIdStr = String(roomOwnerId || '');
@@ -303,24 +317,22 @@ export default function RoomUserProfileModal({
               </View>
             )}
 
-            {/* 5. YARO ID / Unique ID & Followers Row */}
+            {/* 5. YARO ID / Unique ID with SVGA Badge & Followers Row */}
             <View style={styles.idFollowersRow}>
-              {hasUniqueId ? (
-                <View style={styles.idPillRow}>
-                  <LinearGradient
-                    colors={['#F59E0B', '#D97706']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.uniqueIdBadgePill}
-                  >
-                    <MaterialCommunityIcons name="shield-star" size={11} color="#FFF" style={{ marginRight: 2 }} />
-                    <Text style={styles.uniqueIdBadgeText}>ID</Text>
-                  </LinearGradient>
-                  <Text style={styles.uniqueIdValText}>{uniqueId}</Text>
-                </View>
-              ) : (
-                <Text style={styles.mazaIdText}>YARO ID : {displayId}</Text>
-              )}
+              <IdentityDisplayId
+                userId={targetUserId || displayData.userId}
+                customDisplayId={hasUniqueId ? uniqueId : null}
+                officialDisplayId={displayData.officialDisplayId || (displayData.isOfficial ? displayData.displayId : null)}
+                isOfficial={Boolean(displayData.isOfficial)}
+                badgeUrl={uniqueIdBadgeUrl}
+                badgeText={uniqueIdBadgeText}
+                showBadge={true}
+                showCopy={true}
+                showPrefix={!hasUniqueId && !displayData.isOfficial}
+                prefix="YARO ID : "
+                fontSize={12}
+                style={styles.identityDisplayWrap}
+              />
               <View style={styles.greenFollowersBadge}>
                 <MaterialCommunityIcons name="account-group" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
                 <Text style={styles.followersBadgeText}>{formatCompactBalance(followersCount)} Followers</Text>
@@ -890,7 +902,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 6,
-    gap: 12,
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  identityDisplayWrap: {
+    marginRight: 4,
   },
   mazaIdText: {
     fontSize: 13,

@@ -99,85 +99,82 @@ export default function RoomLockModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.overlay}>
-          <View style={styles.dialogCard}>
-            {/* Close Cross */}
-            <TouchableOpacity
-              style={styles.closeBtn}
-              onPress={onClose}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Ionicons name="close" size={22} color="#64748B" />
-            </TouchableOpacity>
+      <View style={styles.overlay}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
 
-            {/* Title */}
-            <Text style={styles.dialogTitle}>
-              {mode === 'not_purchased' ? 'Room Lock' : 'Room lock'}
-            </Text>
+        <View style={styles.dialogCard}>
+          {/* Close Cross */}
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={onClose}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="close" size={22} color="#64748B" />
+          </TouchableOpacity>
 
-            {mode === 'not_purchased' ? (
-              /* Not Purchased View */
-              <View style={styles.bodyWrap}>
-                <Text style={styles.notPurchasedText}>
-                  {"You haven't purchased Room Lock yet.\nConfirm to buy?"}
-                </Text>
+          {/* Title */}
+          <Text style={styles.dialogTitle}>
+            {mode === 'not_purchased' ? 'Room Lock' : 'Room lock'}
+          </Text>
 
-                <TouchableOpacity
-                  style={styles.confirmBtn}
-                  onPress={handleConfirm}
-                  activeOpacity={0.85}
+          {mode === 'not_purchased' ? (
+            /* Not Purchased View */
+            <View style={styles.bodyWrap}>
+              <Text style={styles.notPurchasedText}>
+                {"You haven't purchased Room Lock yet.\nConfirm to buy?"}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.confirmBtn}
+                onPress={handleConfirm}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={['#FFB703', '#FB8500']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.confirmGradient}
                 >
-                  <LinearGradient
-                    colors={['#FFB703', '#FB8500']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.confirmGradient}
-                  >
-                    <Text style={styles.confirmText}>OK</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                  <Text style={styles.confirmText}>OK</Text>
+                </LinearGradient>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={onClose}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.cancelTextAllCaps}>CANCEL</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              /* PIN Entry View */
-              <View style={styles.bodyWrap}>
-                {/* 4 Box Digits Display */}
-                <TouchableOpacity
-                  style={styles.pinBoxesRow}
-                  activeOpacity={1}
-                  onPress={() => inputRef.current?.focus()}
-                >
-                  {digits.map((digit, idx) => (
-                    <View
-                      key={idx}
-                      style={[
-                        styles.pinBox,
-                        digit ? styles.pinBoxFilled : null,
-                      ]}
-                    >
-                      <Text style={styles.pinDigitText}>
-                        {digit ? '•' : ''}
-                      </Text>
-                    </View>
-                  ))}
-                </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={onClose}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelTextAllCaps}>CANCEL</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* PIN Entry View */
+            <View style={styles.bodyWrap}>
+              {/* 4 Box Digits with Direct Transparent Overlay Input */}
+              <View style={styles.pinInputContainer}>
+                <View style={styles.pinBoxesRow} pointerEvents="none">
+                  {digits.map((digit, idx) => {
+                    const isCurrent = idx === pin.length;
+                    return (
+                      <View
+                        key={idx}
+                        style={[
+                          styles.pinBox,
+                          digit ? styles.pinBoxFilled : null,
+                          isCurrent ? styles.pinBoxActive : null,
+                        ]}
+                      >
+                        <Text style={styles.pinDigitText}>
+                          {digit ? '•' : ''}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
 
-                {/* Subtitle */}
-                <Text style={styles.subPromptText}>
-                  {mode === 'set_pin'
-                    ? 'Please set 4 digits password'
-                    : 'Please enter 4 digits password'}
-                </Text>
-
-                {/* Hidden Text Input */}
+                {/* Direct Full-Area Numeric Input */}
                 <TextInput
                   ref={inputRef}
                   value={pin}
@@ -187,44 +184,52 @@ export default function RoomLockModal({
                   }}
                   keyboardType="number-pad"
                   maxLength={4}
-                  style={styles.hiddenInput}
+                  caretHidden
+                  style={styles.pinOverlayInput}
                   autoFocus
                 />
-
-                {/* Confirm Button */}
-                <TouchableOpacity
-                  style={styles.confirmBtn}
-                  onPress={handleConfirm}
-                  disabled={loading}
-                  activeOpacity={0.85}
-                >
-                  <LinearGradient
-                    colors={['#FFB703', '#FB8500']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.confirmGradient}
-                  >
-                    {loading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.confirmText}>Confirm</Text>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                {/* Cancel Link */}
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={onClose}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.cancelText}>Cancel</Text>
-                </TouchableOpacity>
               </View>
-            )}
-          </View>
+
+              {/* Subtitle */}
+              <Text style={styles.subPromptText}>
+                {mode === 'set_pin'
+                  ? 'Please set 4 digits password'
+                  : 'Please enter 4 digits password'}
+              </Text>
+
+              {/* Confirm Button */}
+              <TouchableOpacity
+                style={styles.confirmBtn}
+                onPress={handleConfirm}
+                disabled={loading}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={['#FFB703', '#FB8500']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.confirmGradient}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.confirmText}>Confirm</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Cancel Link */}
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={onClose}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-      </TouchableWithoutFeedback>
+      </View>
     </Modal>
   );
 }
@@ -276,43 +281,59 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 26,
   },
+  pinInputContainer: {
+    width: '100%',
+    height: 52,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   pinBoxesRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
     gap: 12,
   },
   pinBox: {
-    width: 46,
-    height: 46,
+    width: 48,
+    height: 48,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: '#FBBF24',
+    borderColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  pinBoxActive: {
+    borderColor: '#F59E0B',
+    backgroundColor: '#FFFBEB',
   },
   pinBoxFilled: {
     borderColor: '#F59E0B',
     backgroundColor: '#FFFBEB',
   },
   pinDigitText: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#0F172A',
+    lineHeight: 32,
+  },
+  pinOverlayInput: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0,
+    color: 'transparent',
+    fontSize: 1,
   },
   subPromptText: {
     fontSize: 13,
     color: '#64748B',
     marginBottom: 22,
     textAlign: 'center',
-  },
-  hiddenInput: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    opacity: 0.01,
   },
   confirmBtn: {
     width: '100%',

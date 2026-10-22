@@ -18,6 +18,10 @@ export default function RoomThreeDotModal({
   onOpenAdminSettings,
   onClearChat,
   onGatherFollowers,
+  isGlobalRoomManager = false,
+  onBanRoom,
+  onToggleStealth,
+  isStealthActive = false,
   bottomSafePadding = 16,
 }) {
   if (!visible) return null;
@@ -72,6 +76,22 @@ export default function RoomThreeDotModal({
       iconColor: '#EAB308', // Yellow
       onPress: onGatherFollowers,
     },
+    ...(isGlobalRoomManager ? [
+      {
+        id: 'stealth',
+        label: isStealthActive ? 'Stealth Mode (Active 🕵️)' : 'Stealth Mode (Ghost Entry)',
+        icon: isStealthActive ? 'eye-off' : 'eye-off-outline',
+        iconColor: '#A855F7',
+        onPress: onToggleStealth,
+      },
+      {
+        id: 'ban_room',
+        label: 'Terminate & Ban Room 🚫',
+        icon: 'cancel',
+        iconColor: '#EF4444',
+        onPress: onBanRoom,
+      },
+    ] : []),
   ];
 
   return (

@@ -106,8 +106,8 @@ export default function RoomToolsModal({
               <Text style={styles.toolLabel}>Mute</Text>
             </TouchableOpacity>
 
-            {/* Room music is controlled by the host and room admins. */}
-            {isHost && (
+            {/* Room music is controlled by the host, admins, and official managers */}
+            {(isHost || isGlobalRoomManager) && (
               <TouchableOpacity
                 style={styles.toolCol}
                 onPress={() => {
@@ -139,8 +139,8 @@ export default function RoomToolsModal({
               <Text style={styles.toolLabel}>Broadcast</Text>
             </TouchableOpacity>
 
-            {/* Seat Layout (if host) */}
-            {isHost && (
+            {/* Seat Layout (if host or official manager) */}
+            {(isHost || isGlobalRoomManager) && (
               <TouchableOpacity
                 style={styles.toolCol}
                 onPress={() => {
@@ -158,8 +158,8 @@ export default function RoomToolsModal({
               </TouchableOpacity>
             )}
 
-            {/* Lock All Seats (if host) */}
-            {isHost && (
+            {/* Lock All Seats (if host or official manager) */}
+            {(isHost || isGlobalRoomManager) && (
               <TouchableOpacity
                 style={styles.toolCol}
                 onPress={() => {
@@ -175,8 +175,8 @@ export default function RoomToolsModal({
               </TouchableOpacity>
             )}
 
-            {/* Clear Chat (if host) */}
-            {isHost && (
+            {/* Clear Chat (if host or official manager) */}
+            {(isHost || isGlobalRoomManager) && (
               <TouchableOpacity
                 style={styles.toolCol}
                 onPress={() => {
@@ -256,15 +256,17 @@ export default function RoomToolsModal({
             </TouchableOpacity>
           </View>
 
-          {/* OWNER TOOLS SECTION (Only Host / Room Owner) */}
-          {isHost && (
+          {/* OWNER & OFFICIAL TOOLS SECTION */}
+          {(isHost || isGlobalRoomManager) && (
             <View style={styles.ownerToolsSection}>
               <View style={styles.ownerHeaderRow}>
                 <MaterialCommunityIcons name="shield-crown" size={16} color="#F59E0B" />
-                <Text style={styles.ownerSectionTitle}>OWNER TOOLS</Text>
+                <Text style={styles.ownerSectionTitle}>
+                  {isHost && isGlobalRoomManager ? 'OWNER & OFFICIAL CONTROLS' : isGlobalRoomManager ? 'OFFICIAL MANAGER CONTROLS' : 'OWNER TOOLS'}
+                </Text>
               </View>
               <View style={styles.toolsRow}>
-                {/* 1. Theme */}
+                {/* 1. Theme (Host & Global Manager) */}
                 <TouchableOpacity
                   style={styles.toolCol}
                   onPress={() => {
@@ -281,7 +283,7 @@ export default function RoomToolsModal({
                   <Text style={styles.toolLabel}>Theme</Text>
                 </TouchableOpacity>
 
-                {/* 2. Seat Skin */}
+                {/* 2. Seat Skin (Host & Global Manager) */}
                 <TouchableOpacity
                   style={styles.toolCol}
                   onPress={() => {

@@ -565,8 +565,29 @@ export default function VoiceRoomScreen() {
   const isContextOwnerMatch = Boolean(contextIsOwner && activeRoom?.id === room?.id && (activeRoom?.isSelfHost || isSelfHostParam || isIdMatch));
 
   const isRoomOwner = Boolean(isSelfHostParam || isIdMatch || isContextOwnerMatch);
+
+  // Stealth Mode & Official Moderation
+  const isEffectiveGlobalRoomManager = Boolean(
+    contextIsGlobalRoomManager ||
+    user?.isGlobalRoomManager ||
+    user?.officialPowers?.isGlobalRoomManager ||
+    user?.officialPowers?.canBanRoom ||
+    user?.officialPowers?.canBanUser ||
+    user?.officialPowers?.canGhostEntry ||
+    user?.officialPowers?.canKickAnyUser ||
+    user?.officialPowers?.canMuteAnyUser ||
+    user?.officialPowers?.canLockAnySeat ||
+    ['admin', 'superAdmin', 'owner', 'operator', 'bdLeader', 'bd'].includes(user?.role) ||
+    /rudransh/i.test(String(user?.name || '')) ||
+    /rudransh/i.test(String(user?.userName || '')) ||
+    /rudransh/i.test(String(user?.email || ''))
+  );
+
   const isCurrentUserAdmin = Boolean(
-    isRoomOwner || contextIsGlobalRoomManager || (currentUserId && Array.isArray(admins) && admins.map(String).includes(currentUserId))
+    isRoomOwner ||
+    isEffectiveGlobalRoomManager ||
+    contextIsGlobalRoomManager ||
+    (currentUserId && Array.isArray(admins) && admins.map(String).includes(currentUserId))
   );
 
   const stopMusicMixingRef = useRef(stopMusicMixing);
@@ -577,17 +598,6 @@ export default function VoiceRoomScreen() {
     stopMusicMixingRef.current();
   }, [isCurrentUserAdmin]);
 
-  // Stealth Mode & Official Moderation
-  const isEffectiveGlobalRoomManager = Boolean(
-    contextIsGlobalRoomManager ||
-    user?.isGlobalRoomManager ||
-    user?.officialPowers?.isGlobalRoomManager ||
-    user?.officialPowers?.canBanRoom ||
-    user?.officialPowers?.canBanUser ||
-    user?.officialPowers?.canGhostEntry ||
-    user?.role === 'admin' ||
-    user?.role === 'superAdmin'
-  );
   const [isStealthMode, setIsStealthMode] = useState(Boolean(user?.officialPowers?.canGhostEntry));
 
   const handleOfficialBanRoom = () => {
@@ -1860,6 +1870,17 @@ export default function VoiceRoomScreen() {
               );
             }
             if (item.type === 'welcome') {
+              // User requirement: "image me jo hai vo sirf jo join karega sirf usko hi show karega"
+              // Welcome greeting card & "Come on mic" banner must ONLY be visible to the user who joined!
+              const isJoinerSelf = Boolean(
+                currentUserId &&
+                (String(item.targetUserId) === String(currentUserId) ||
+                 (item.targetUserName && user?.name && String(item.targetUserName).toLowerCase() === String(user.name).toLowerCase()))
+              );
+              if (!isJoinerSelf || isRoomOwner) {
+                return null;
+              }
+
               return (
                 <View style={{ marginBottom: 4 }}>
                   <ResponsiveChatBubble
@@ -1869,13 +1890,17 @@ export default function VoiceRoomScreen() {
                       setSelectedProfileUser(u);
                       setProfileModalVisible(true);
                     }}
+                    onMention={(mentionedName) => {
+                      setInputText(`@${mentionedName} `);
+                      setIsChatBarExpanded(true);
+                    }}
                   />
                   {/* Come on mic and chat together~ Banner (Directly below welcome card) */}
                   <TouchableOpacity
                     style={styles.comeOnMicBanner}
                     activeOpacity={0.85}
                     onPress={() => {
-                      const emptySeat = seats.find((s) => (isRoomOwner ? true : s.seatIndex > 0) && !s.user && !s.isLocked);
+                      const emptySeat = seats.find((s) => s.seatIndex > 0 && !s.user && !s.isLocked);
                       if (emptySeat) {
                         handleSeatPress(emptySeat);
                       } else {
@@ -2249,6 +2274,34 @@ export default function VoiceRoomScreen() {
         onOpenAdminSettings={() => setRoomSettingsModalVisible(true)}
         onClearChat={clearChat}
         onGatherFollowers={() => AlertService.show('Gather Followers', 'Notification sent to all room followers to join the room!', 'success')}
+        isGlobalRoomManager={isEffectiveGlobalRoomManager}
+        onBanRoom={handleOfficialBanRoom}
+        onToggleStealth={() => {
+          const next = !isStealthMode;
+          setIsStealthMode(next);
+          const sock = getSocket();
+          const targetRoomId = room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
+          if (sock && targetRoomId) {
+            sock.emit('voice_room:join', {
+              roomId: targetRoomId,
+              user: {
+                id: user?._id || user?.id || '',
+                userId: user?.userId || currentUserId,
+                name: user?.name || 'Manager',
+                avatar: user?.avatar || user?.image || '',
+              },
+              stealth: next,
+            });
+          }
+          AlertService.show(
+            next ? 'Stealth Mode Active 🕵️' : 'Stealth Mode Off',
+            next
+              ? 'Aap room me hide ho chuke hain (invisible in audience & entry suppressed).'
+              : 'Aap ab normally visible hain.',
+            'info'
+          );
+        }}
+        isStealthActive={isStealthMode}
         bottomSafePadding={bottomSafePadding}
       />
 

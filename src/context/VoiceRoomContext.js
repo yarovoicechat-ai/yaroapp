@@ -820,6 +820,28 @@ export const VoiceRoomProvider = ({ children }) => {
           setAdmins(Array.isArray(data?.admins) ? data.admins.map(String) : []);
           setBannedChatUsers(Array.isArray(data?.bannedChatUsers) ? data.bannedChatUsers.map(String) : []);
           setMutedUsers(Array.isArray(data?.mutedUsers) ? data.mutedUsers.map(String) : []);
+          if (!serverSaysOwner && currentUserId) {
+            setChatMessages((prev) => {
+              if (prev.some((m) => m.type === 'welcome')) return prev;
+              const hostName = data?.hostUser?.name || roomData.hostName || 'Host';
+              const hostAvatar = data?.hostUser?.avatar || data?.hostUser?.image || roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/male_default.webp';
+              return [
+                ...prev,
+                {
+                  id: `welcome-initial-${Date.now()}`,
+                  type: 'welcome',
+                  variant: 'joined',
+                  targetUserId: currentUserId,
+                  targetUserName: currentUser?.name || 'Friend',
+                  isOwner: false,
+                  roomHostName: hostName,
+                  avatar: hostAvatar,
+                  equippedFrame: null,
+                  timestamp: Date.now(),
+                },
+              ];
+            });
+          }
           if (data?.seats && Array.isArray(data.seats) && data.seats.length > 0) {
             const mapped = mapSeatsWithCurrentUser(data.seats, currentUserId);
             setSeats(mapped);
@@ -1105,18 +1127,22 @@ export const VoiceRoomProvider = ({ children }) => {
                 timestamp: Date.now(),
               });
             }
+            // User requirement: Do NOT show welcome greeting card to existing occupants in room.
+          } else if (isSelf && !actuallyOwner) {
+            // User requirement: Welcome greeting card & "Come on mic" banner is ONLY shown to the user who joins!
+            const joinEventId = data?.eventId || `join-self-${Date.now()}`;
             setChatMessages((prev) => [
               ...prev,
               {
                 id: `welcome-${joinEventId}`,
                 type: 'welcome',
                 variant: 'joined',
-                targetUserId: data.user.userId || data.user.id || data.user._id,
-                targetUserName: data.user.name,
+                targetUserId: currentUserId,
+                targetUserName: currentUser?.name || data?.user?.name || 'Friend',
                 isOwner: false,
-                roomHostName: actuallyOwner ? (currentUser?.name || 'Customer Service') : (roomData.hostName || 'Customer Service'),
-                avatar: data.user.image || data.user.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-                equippedFrame: data.user.equippedFrameAsset || data.user.equippedFrame || null,
+                roomHostName: roomData.hostName || 'Host',
+                avatar: roomData.coverImage || 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
+                equippedFrame: null,
                 timestamp: Date.now(),
               },
             ]);

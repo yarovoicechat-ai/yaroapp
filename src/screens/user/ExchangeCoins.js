@@ -25,15 +25,15 @@ const WP = (percent) => (width * percent) / 100;
 const HP = (percent) => (height * percent) / 100;
 
 const ExchangePackages = [
-  { id: 'ex_1k', coins: 1000, diamonds: 900, badge: '' },
-  { id: 'ex_2k', coins: 2000, diamonds: 1800, badge: 'POPULAR' },
-  { id: 'ex_5k', coins: 5000, diamonds: 4500, badge: '' },
-  { id: 'ex_10k', coins: 10000, diamonds: 9000, badge: '' },
-  { id: 'ex_20k', coins: 20000, diamonds: 18000, badge: 'BEST VALUE' },
-  { id: 'ex_50k', coins: 50000, diamonds: 45000, badge: '' },
-  { id: 'ex_100k', coins: 100000, diamonds: 90000, badge: '' },
-  { id: 'ex_200k', coins: 200000, diamonds: 180000, badge: '' },
-  { id: 'ex_500k', coins: 500000, diamonds: 450000, badge: '' },
+  { id: 'ex_100', coins: 100, diamonds: 95, price: 50, badge: 'STARTER' },
+  { id: 'ex_200', coins: 200, diamonds: 190, price: 100, badge: 'POPULAR' },
+  { id: 'ex_500', coins: 500, diamonds: 475, price: 250, badge: 'HOT' },
+  { id: 'ex_1k', coins: 1000, diamonds: 950, price: 500, badge: 'VALUE' },
+  { id: 'ex_2k', coins: 2000, diamonds: 1900, price: 1000, badge: 'BEST VALUE' },
+  { id: 'ex_5k', coins: 5000, diamonds: 4750, price: 2500, badge: 'VIP PRO' },
+  { id: 'ex_10k', coins: 10000, diamonds: 9500, price: 5000, badge: 'ROYAL' },
+  { id: 'ex_20k', coins: 20000, diamonds: 19000, price: 10000, badge: 'SUPREME' },
+  { id: 'ex_50k', coins: 50000, diamonds: 47500, price: 25000, badge: 'WHALE' },
 ];
 
 const ExchangeCoins = () => {
@@ -135,7 +135,7 @@ const ExchangeCoins = () => {
           <View style={styles.rateBanner}>
             <Icon name="swap-horiz" size={20} color="#059669" style={styles.rateIcon} />
             <Text style={styles.rateText}>
-              Exchange Rate: <Text style={styles.rateHighlight}>100 Beans = 90 Diamonds</Text>
+              Exchange Rate: <Text style={styles.rateHighlight}>100 Beans = 95 Diamonds</Text>
             </Text>
           </View>
         </View>
@@ -195,7 +195,7 @@ const ExchangeCoins = () => {
                   {loadingPack === pack.id ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.exchangeBtnText}>Exchange</Text>
+                    <Text style={styles.exchangeBtnText}>₹{pack.price}</Text>
                   )}
                 </TouchableOpacity>
               </View>

@@ -297,7 +297,7 @@ export default function SearchScreen() {
   };
 
   const renderRoomItem = ({ item }) => {
-    const hostId = item.hostId || item.id || item.roomId;
+    const hostId = item.uniqueId || item.customDisplayId || item.displayRoomId || item.displayId || item.hostId || item.id || item.roomId;
     return (
       <TouchableOpacity
         style={styles.roomCard}

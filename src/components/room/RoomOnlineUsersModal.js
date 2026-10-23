@@ -22,7 +22,16 @@ export default function RoomOnlineUsersModal({
   admins = [],
   bottomSafePadding = 16,
 }) {
-  if (!visible) return null;
+  const normalizeId = (id) => {
+    const s = String(id || '').trim();
+    if (/^10000\d{3}$/.test(s)) {
+      return `100000000${s.slice(5)}`.slice(-10);
+    }
+    return s;
+  };
+
+  const ownerIdStr = String(roomOwnerId || '');
+  const normalizedOwnerId = normalizeId(ownerIdStr);
 
   // Build combined unique list of users (online users + all seated users)
   const userMap = new Map();
@@ -32,7 +41,7 @@ export default function RoomOnlineUsersModal({
     if (seat?.user) {
       const uid = String(seat.user.userId || seat.user._id || seat.user.id || '');
       if (uid) {
-        userMap.set(uid, {
+        userMap.set(normalizeId(uid), {
           ...seat.user,
           isSeated: true,
           seatIndex: seat.seatIndex,
@@ -45,17 +54,17 @@ export default function RoomOnlineUsersModal({
   users.forEach((u) => {
     const uid = String(u.userId || u._id || u.id || '');
     if (uid) {
-      const existing = userMap.get(uid);
-      userMap.set(uid, {
+      const norm = normalizeId(uid);
+      const existing = userMap.get(norm);
+      userMap.set(norm, {
         ...u,
         ...(existing || {}),
+        isSeated: Boolean(existing?.isSeated || u.isSeated),
       });
     }
   });
 
   const memberList = Array.from(userMap.values());
-
-  const ownerIdStr = String(roomOwnerId || '');
 
   return (
     <Modal
@@ -92,11 +101,22 @@ export default function RoomOnlineUsersModal({
 
             {memberList.map((u) => {
               const uId = String(u.userId || u._id || u.id || '');
-              const isOwner = Boolean(ownerIdStr && uId === ownerIdStr);
-              const isAdmin = admins.some((adm) => String(adm) === uId);
+              const normUid = normalizeId(uId);
+              const isOwner = Boolean(
+                (ownerIdStr && (uId === ownerIdStr || normUid === normalizedOwnerId)) ||
+                u.isOwner
+              );
+              const isAdmin = admins.some((adm) => {
+                const sAdm = String(adm);
+                return sAdm === uId || normalizeId(sAdm) === normUid;
+              });
               const isSeated = Boolean(
                 u.isSeated ||
-                seats.some((s) => s.user && String(s.user.userId || s.user._id || s.user.id) === uId)
+                seats.some((s) => {
+                  if (!s?.user) return false;
+                  const sIds = [s.user.userId, s.user._id, s.user.id].filter(Boolean).map(String);
+                  return sIds.some((sid) => sid === uId || normalizeId(sid) === normUid);
+                })
               );
               const wealthLevel = u.wealthLevel ?? u.level ?? 1;
               const charmLevel = u.charmLevel ?? 1;

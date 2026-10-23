@@ -239,12 +239,15 @@ export default function VoiceRoomScreen() {
     isMusicPlaying,
     currentTrack,
     musicVolume,
+    bassLevel,
     micVolume,
     startMusicMixing,
     pauseMusicMixing,
     resumeMusicMixing,
     stopMusicMixing,
     setMusicVolume,
+    setBassLevel,
+    registerOnSongEnded,
     setMicVolume,
     setSpeakerphoneEnabled,
     currentRoomTheme,
@@ -433,7 +436,16 @@ export default function VoiceRoomScreen() {
 
   const handleShareRoom = async () => {
     try {
-      const shareRoomId = room.id || room.roomId || route.params?.roomId || '';
+      const shareRoomId =
+        room?.uniqueId ||
+        room?.customDisplayId ||
+        room?.displayId ||
+        user?.customDisplayId ||
+        user?.uniqueId ||
+        room.id ||
+        room.roomId ||
+        route.params?.roomId ||
+        '';
       if (!shareRoomId) {
         AlertService.show('Room unavailable', 'This room does not have a valid ID yet.', 'warning');
         return;
@@ -574,6 +586,43 @@ export default function VoiceRoomScreen() {
   const isContextOwnerMatch = Boolean(contextIsOwner && activeRoom?.id === room?.id && (activeRoom?.isSelfHost || isSelfHostParam || isIdMatch));
 
   const isRoomOwner = Boolean(isSelfHostParam || isIdMatch || isContextOwnerMatch);
+
+  const actualHostName =
+    room?.hostName ||
+    room?.owner?.name ||
+    room?.ownerName ||
+    room?.creatorName ||
+    seats[0]?.user?.name ||
+    (isRoomOwner ? (user?.name || 'You') : 'Room Host');
+
+  const actualHostAvatar =
+    currentRoomCover ||
+    room?.coverImage ||
+    room?.owner?.avatar ||
+    room?.owner?.image ||
+    seats[0]?.user?.avatar ||
+    (isRoomOwner ? (user?.avatar || user?.image) : 'https://api.yaroapp.in/uploads/avatars/female_default.webp');
+
+  const actualHostUserId =
+    roomHostId ||
+    room?.hostId ||
+    room?.ownerId ||
+    room?.owner?._id ||
+    room?.creatorId ||
+    seats[0]?.user?.userId ||
+    (isRoomOwner ? user?.userId : null);
+
+  const displayRoomId =
+    room?.uniqueId ||
+    room?.customDisplayId ||
+    room?.displayId ||
+    (isRoomOwner ? (user?.customDisplayId || user?.displayId || user?.uniqueId) : null) ||
+    seats[0]?.user?.uniqueId ||
+    seats[0]?.user?.customDisplayId ||
+    seats[0]?.user?.displayId ||
+    room?.id ||
+    room?.roomId ||
+    '—';
 
   // Stealth Mode & Official Moderation
   const isEffectiveGlobalRoomManager = Boolean(
@@ -1571,7 +1620,7 @@ export default function VoiceRoomScreen() {
               {currentRoomTitle || room.title}
             </Text>
             <View style={styles.headerRoomSubRow}>
-              <Text style={styles.headerRoomIdText}>ID:{room.id || room.roomId || '—'}</Text>
+              <Text style={styles.headerRoomIdText}>ID:{displayRoomId}</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setOnlineUsersModalVisible(true)}
@@ -2457,6 +2506,7 @@ export default function VoiceRoomScreen() {
         isMusicPlaying={isMusicPlaying}
         currentTrack={currentTrack}
         musicVolume={musicVolume}
+        bassLevel={bassLevel}
         micVolume={micVolume}
         onPlayTrack={(...args) => {
           if (isCurrentUserAdmin) startMusicMixing(...args);
@@ -2471,6 +2521,10 @@ export default function VoiceRoomScreen() {
         onSetMusicVolume={(volume) => {
           if (isCurrentUserAdmin) setMusicVolume(volume);
         }}
+        onSetBassLevel={(level) => {
+          if (isCurrentUserAdmin) setBassLevel(level);
+        }}
+        registerOnSongEnded={registerOnSongEnded}
         onSetMicVolume={setMicVolume}
         bottomSafePadding={bottomSafePadding}
       />
@@ -2593,6 +2647,9 @@ export default function VoiceRoomScreen() {
         }}
         bottomSafePadding={bottomSafePadding}
         users={onlineUsers}
+        seats={seats}
+        roomOwnerId={actualHostUserId}
+        admins={admins}
       />
 
 
@@ -2643,7 +2700,8 @@ export default function VoiceRoomScreen() {
         visible={roomDetailsModalVisible}
         onClose={() => setRoomDetailsModalVisible(false)}
         room={{
-          id: room.id || room.roomId || '',
+          id: displayRoomId,
+          uniqueId: room.uniqueId || user?.customDisplayId,
           title: currentRoomTitle || room.title || 'Voice Room',
           coverImage: currentRoomCover || room.coverImage,
           tag: room.tag || '',
@@ -2651,9 +2709,9 @@ export default function VoiceRoomScreen() {
           onlineCount: onlineCount,
         }}
         owner={{
-          name: room.hostName || user?.name,
-          avatar: currentRoomCover || room.coverImage || user?.avatar,
-          userId: room.hostId || room.ownerId || user?.userId,
+          name: actualHostName,
+          avatar: actualHostAvatar,
+          userId: actualHostUserId,
         }}
         onOpenSettings={() => setRoomSettingsModalVisible(true)}
         onOpenGroup={() => setGroupModalVisible(true)}
@@ -2668,17 +2726,20 @@ export default function VoiceRoomScreen() {
         visible={groupModalVisible}
         onClose={() => setGroupModalVisible(false)}
         room={{
-          id: room.id || room.roomId || '',
+          id: displayRoomId,
+          uniqueId: room.uniqueId || user?.customDisplayId,
           title: currentRoomTitle || room.title || 'Voice Room',
           coverImage: currentRoomCover || room.coverImage,
           tag: room.tag || '',
           about: currentRoomAbout || room.about || '',
         }}
         owner={{
-          name: room.hostName || user?.name,
-          avatar: currentRoomCover || room.coverImage || user?.avatar,
-          userId: room.hostId || room.ownerId || user?.userId,
+          name: actualHostName,
+          avatar: actualHostAvatar,
+          userId: actualHostUserId,
         }}
+        isRoomOwner={isRoomOwner}
+        currentUser={user}
         membersCount={onlineCount ?? 2737}
         members={onlineUsers}
         topContributors={topRoomContributors}

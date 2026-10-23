@@ -34,15 +34,15 @@ const WP = (percent) => (width * percent) / 100;
 const HP = (percent) => (height * percent) / 100;
 
 const CoinPacks = [
-  { id: 'ex_1k', coins: 1000, diamonds: 900, price: 100, badge: '' },
-  { id: 'ex_2k', coins: 2000, diamonds: 1800, price: 200, badge: 'POPULAR' },
-  { id: 'ex_5k', coins: 5000, diamonds: 4500, price: 500, badge: '' },
-  { id: 'ex_10k', coins: 10000, diamonds: 9000, price: 1000, badge: '' },
-  { id: 'ex_20k', coins: 20000, diamonds: 18000, price: 2000, badge: 'BEST VALUE' },
-  { id: 'ex_50k', coins: 50000, diamonds: 45000, price: 5000, badge: '' },
-  { id: 'ex_100k', coins: 100000, diamonds: 90000, price: 10000, badge: '' },
-  { id: 'ex_200k', coins: 200000, diamonds: 180000, price: 20000, badge: '' },
-  { id: 'ex_500k', coins: 500000, diamonds: 450000, price: 50000, badge: '' },
+  { id: 'ex_100', coins: 100, diamonds: 95, price: 50, badge: 'STARTER' },
+  { id: 'ex_200', coins: 200, diamonds: 190, price: 100, badge: 'POPULAR' },
+  { id: 'ex_500', coins: 500, diamonds: 475, price: 250, badge: 'HOT' },
+  { id: 'ex_1k', coins: 1000, diamonds: 950, price: 500, badge: 'VALUE' },
+  { id: 'ex_2k', coins: 2000, diamonds: 1900, price: 1000, badge: 'BEST VALUE' },
+  { id: 'ex_5k', coins: 5000, diamonds: 4750, price: 2500, badge: 'VIP PRO' },
+  { id: 'ex_10k', coins: 10000, diamonds: 9500, price: 5000, badge: 'ROYAL' },
+  { id: 'ex_20k', coins: 20000, diamonds: 19000, price: 10000, badge: 'SUPREME' },
+  { id: 'ex_50k', coins: 50000, diamonds: 47500, price: 25000, badge: 'WHALE' },
 ];
 
 const Wallet = () => {
@@ -494,14 +494,7 @@ const Wallet = () => {
                     )}
 
                     <View style={styles.packTop}>
-                      <Image source={diamondIcon} style={{ width: 22, height: 22 }} resizeMode="contain" />
-                      <Text style={styles.packLabelText}>{displayPrice}</Text>
-                    </View>
-
-                    <Icon name="keyboard-arrow-down" size={12} color="rgba(255,255,255,0.4)" style={styles.packArrow} />
-
-                    <View style={styles.packBottom}>
-                      <Image source={diamondIcon} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
+                      <Image source={diamondIcon} style={{ width: 28, height: 28, marginBottom: 4 }} resizeMode="contain" />
                       <Text style={styles.packDiamondsText}>{pack.diamonds.toLocaleString()}</Text>
                       <Text style={styles.packDiamondsSub}>Diamonds</Text>
                     </View>
@@ -560,7 +553,7 @@ const Wallet = () => {
                       <Icon name="stars" size={24} color="#10B981" style={styles.balanceIcon} />
                     </View>
                     <Text style={[styles.balanceValue, { color: '#059669' }]}>
-                      ≈ ₹{formatCompactBalance((user?.coins || 0) / 20)}
+                      ≈ ₹{formatCompactBalance((user?.coins || 0) / 2)}
                       {Number(user?.coins || 0) >= 1000000 ? ` (${(user?.coins || 0).toLocaleString()} 🌟)` : ''}
                     </Text>
                   </View>
@@ -658,11 +651,11 @@ const Wallet = () => {
 
                     {btnColors ? (
                       <LinearGradient colors={btnColors} style={styles.packButtonGradient}>
-                        <Text style={styles.packButtonText}>Convert</Text>
+                        <Text style={styles.packButtonText}>₹{pack.price}</Text>
                       </LinearGradient>
                     ) : (
                       <View style={[styles.packButtonBordered, { borderColor: '#10B981' }]}>
-                        <Text style={[styles.packButtonTextBordered, { color: '#047857' }]}>Convert</Text>
+                        <Text style={[styles.packButtonTextBordered, { color: '#047857' }]}>₹{pack.price}</Text>
                       </View>
                     )}
                   </TouchableOpacity>

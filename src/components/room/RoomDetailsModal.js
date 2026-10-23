@@ -24,7 +24,7 @@ export default function RoomDetailsModal({
   if (!visible) return null;
 
   const roomTitle = room?.title || room?.roomName || owner?.name || 'Voice Room';
-  const roomId = room?.id || room?.roomId || owner?.userId || '—';
+  const roomId = room?.uniqueId || room?.customDisplayId || room?.displayId || room?.id || room?.roomId || owner?.uniqueId || owner?.customDisplayId || owner?.displayId || owner?.userId || '—';
   const roomCover = room?.coverImage || owner?.avatar || owner?.image || '';
   const roomLanguage = room?.language || 'Hindi(हिंदी)';
   const roomCountry = room?.country || 'India';

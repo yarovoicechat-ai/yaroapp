@@ -55,9 +55,11 @@ export const VoiceRoomProvider = ({ children }) => {
   // Music Player State
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(null);
-  const [musicVolume, setMusicVolumeState] = useState(80);
+  const [musicVolume, setMusicVolumeState] = useState(150); // Default louder 150%
+  const [bassLevel, setBassLevelState] = useState(8); // Default punchy +8dB
   const [micVolume, setMicVolumeState] = useState(100);
   const [speakerphoneEnabled, setSpeakerphoneEnabledState] = useState(true);
+  const onSongEndedCallbackRef = useRef(null);
 
   // Speaking Indicators & Live Requests & Reactions State
   const [speakingSeatIndices, setSpeakingSeatIndices] = useState(new Set());
@@ -382,6 +384,25 @@ export const VoiceRoomProvider = ({ children }) => {
         onUserMuteAudio: (conn, remoteUid, muted) => {
           console.warn('🎙️ [VoiceRoom] Remote user audio mute state:', remoteUid, muted);
         },
+        onAudioMixingStateChanged: (state, reason) => {
+          console.warn('🎵 [VoiceRoom] Agora audio mixing state changed:', state, reason);
+          // State 710: Playing, 711: Paused, 713: Stopped, 714: Failed
+          // Reason 721: All loops completed
+          if (state === 713 || state === 714 || reason === 721) {
+            setIsMusicPlaying(false);
+            if (onSongEndedCallbackRef.current) {
+              try {
+                onSongEndedCallbackRef.current();
+              } catch (cbErr) {
+                console.warn('Error in onSongEnded callback:', cbErr);
+              }
+            }
+          } else if (state === 710) {
+            setIsMusicPlaying(true);
+          } else if (state === 711) {
+            setIsMusicPlaying(false);
+          }
+        },
         onError: (err, msg) => {
           if (!isCurrentSession() || agoraEngineRef.current !== engine) return;
           console.error('🎙️ [VoiceRoom] Agora engine event:', err, msg);
@@ -470,8 +491,16 @@ export const VoiceRoomProvider = ({ children }) => {
       const startTrack = (uri) => {
         const result = engine.startAudioMixing(uri, false, 1);
         if (typeof result === 'number' && result < 0) throw new Error(`Audio mixing could not start (${result})`);
-        engine.adjustAudioMixingPublishVolume(musicVolume);
-        engine.adjustAudioMixingVolume(musicVolume);
+        const vol = Math.max(100, Math.min(400, musicVolume));
+        try {
+          engine.adjustAudioMixingPublishVolume(vol);
+          engine.adjustAudioMixingVolume(vol);
+          engine.adjustAudioMixingPlayoutVolume(vol);
+          // Apply Bass Equalization (Bands 0, 1, 2)
+          engine.setLocalVoiceEqualization(0, bassLevel);
+          engine.setLocalVoiceEqualization(1, bassLevel);
+          engine.setLocalVoiceEqualization(2, Math.round(bassLevel * 0.7));
+        } catch (_) {}
         setIsMusicPlaying(true);
         setCurrentTrack(trackName || 'Audio Track');
       };
@@ -526,14 +555,31 @@ export const VoiceRoomProvider = ({ children }) => {
 
   const setMusicVolume = (vol) => {
     if (!canControlRoomMusic()) return;
-    const clamped = Math.max(0, Math.min(200, Math.round(vol)));
+    const clamped = Math.max(0, Math.min(400, Math.round(vol)));
     setMusicVolumeState(clamped);
     if (agoraEngineRef.current) {
       try {
         agoraEngineRef.current.adjustAudioMixingPublishVolume(clamped);
         agoraEngineRef.current.adjustAudioMixingVolume(clamped);
+        agoraEngineRef.current.adjustAudioMixingPlayoutVolume(clamped);
       } catch (err) {}
     }
+  };
+
+  const setBassLevel = (level) => {
+    const clamped = Math.max(-15, Math.min(15, Math.round(level)));
+    setBassLevelState(clamped);
+    if (agoraEngineRef.current) {
+      try {
+        agoraEngineRef.current.setLocalVoiceEqualization(0, clamped);
+        agoraEngineRef.current.setLocalVoiceEqualization(1, clamped);
+        agoraEngineRef.current.setLocalVoiceEqualization(2, Math.round(clamped * 0.7));
+      } catch (err) {}
+    }
+  };
+
+  const registerOnSongEnded = (callback) => {
+    onSongEndedCallbackRef.current = callback;
   };
 
   const setMicVolume = (vol) => {
@@ -867,6 +913,13 @@ export const VoiceRoomProvider = ({ children }) => {
           }
           if (data && Object.prototype.hasOwnProperty.call(data, 'about')) {
             setActiveRoom((prev) => (prev ? { ...prev, about: data.about || '' } : prev));
+          }
+          if (data?.uniqueId || data?.displayRoomId) {
+            setActiveRoom((prev) => (prev ? {
+              ...prev,
+              uniqueId: data.uniqueId || prev?.uniqueId,
+              displayRoomId: data.displayRoomId || data.uniqueId || prev?.displayRoomId,
+            } : prev));
           }
           if (Array.isArray(data?.onlineUsers)) {
             setOnlineUsers(data.onlineUsers);
@@ -2020,6 +2073,7 @@ export const VoiceRoomProvider = ({ children }) => {
         isMusicPlaying,
         currentTrack,
         musicVolume,
+        bassLevel,
         micVolume,
         speakerphoneEnabled,
         startMusicMixing,
@@ -2027,6 +2081,8 @@ export const VoiceRoomProvider = ({ children }) => {
         resumeMusicMixing,
         stopMusicMixing,
         setMusicVolume,
+        setBassLevel,
+        registerOnSongEnded,
         setMicVolume,
         setSpeakerphoneEnabled,
         setRoomSeatCount,

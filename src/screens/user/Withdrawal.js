@@ -27,7 +27,7 @@ import { AlertService } from '../../utils/AlertService';
 import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
-const COIN_TO_INR_RATIO = 20;
+const COIN_TO_INR_RATIO = 2;
 const MIN_WITHDRAWAL_INR = 200;
 const DEFAULT_PLATFORM_FEE_PERCENT = 5;
 const money = value => (Math.round(Number(value) * 100) / 100).toFixed(2);

@@ -21,6 +21,8 @@ export default function RoomGroupPrivilegeModal({
   onClose,
   room,
   owner,
+  isRoomOwner = false,
+  currentUser = null,
   membersCount = 2737,
   members = [],
   topContributors = [],
@@ -28,13 +30,16 @@ export default function RoomGroupPrivilegeModal({
   bottomSafePadding = 16,
 }) {
   const [view, setView] = useState('privilege'); // 'privilege' (Image 1) | 'members' (Image 2)
-  const [isJoined, setIsJoined] = useState(false);
+  const [isJoined, setIsJoined] = useState(Boolean(isRoomOwner));
 
   useEffect(() => {
     if (visible) {
       setView('privilege');
+      if (isRoomOwner) {
+        setIsJoined(true);
+      }
     }
-  }, [visible]);
+  }, [visible, isRoomOwner]);
 
   if (!visible) return null;
 
@@ -42,9 +47,20 @@ export default function RoomGroupPrivilegeModal({
   const coverImage = room?.coverImage || owner?.avatar || owner?.image || 'https://api.yaroapp.in/uploads/avatars/female_default.webp';
   const displayCount = membersCount || 2737;
 
+  const normalizeId = (id) => {
+    const s = String(id || '').trim();
+    if (/^10000\d{3}$/.test(s)) {
+      return `100000000${s.slice(5)}`.slice(-10);
+    }
+    return s;
+  };
+
+  const ownerIdStr = String(owner?.userId || owner?.id || owner?._id || '');
+  const ownerName = owner?.name || 'Room Host';
+
   // Build high-fidelity member ranking list for Image 2
   const fallbackMembers = [
-    { id: '1', name: '🎯 zuned', isOwner: true, exp: 0, avatar: owner?.avatar || coverImage, badge: '👑' },
+    { id: ownerIdStr || '1', name: ownerName, isOwner: true, exp: 0, avatar: owner?.avatar || coverImage, badge: '👑' },
     { id: '2', name: '°•M_x_ooy•°', isOwner: false, exp: 690936, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', badge: '💎' },
     { id: '3', name: 'OFFLINE ⭐', isOwner: false, exp: 655911, avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150', badge: '🛡️' },
     { id: '4', name: '†_D_evil_†', isOwner: false, exp: 642451, avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150', badge: '⚡' },
@@ -59,14 +75,36 @@ export default function RoomGroupPrivilegeModal({
   ];
 
   const rankingList = Array.isArray(members) && members.length > 0
-    ? members.map((m, idx) => ({
-        id: String(m.userId || m.id || m._id || idx + 1),
-        name: m.name || m.username || `User #${idx + 1}`,
-        isOwner: idx === 0,
-        exp: Number(m.exp || m.points || m.diamonds || Math.max(0, 700000 - idx * 45000)),
-        avatar: m.avatar || m.image,
-        badge: ['👑', '💎', '🛡️', '⚡', '🎖️', '🔥'][idx % 6],
-      }))
+    ? [
+        // Ensure owner is at top with Owner badge
+        ...(members.some((m) => {
+          const mId = String(m.userId || m.id || m._id || '');
+          return ownerIdStr && (mId === ownerIdStr || normalizeId(mId) === normalizeId(ownerIdStr));
+        })
+          ? []
+          : [{
+              id: ownerIdStr || 'owner',
+              name: ownerName,
+              isOwner: true,
+              exp: 0,
+              avatar: owner?.avatar || coverImage,
+              badge: '👑',
+            }]),
+        ...members.map((m, idx) => {
+          const mId = String(m.userId || m.id || m._id || idx + 1);
+          const isItemOwner = Boolean(
+            ownerIdStr && (mId === ownerIdStr || normalizeId(mId) === normalizeId(ownerIdStr))
+          );
+          return {
+            id: mId,
+            name: m.name || m.username || `User #${idx + 1}`,
+            isOwner: isItemOwner,
+            exp: Number(m.exp || m.points || m.diamonds || Math.max(0, 700000 - idx * 45000)),
+            avatar: m.avatar || m.image,
+            badge: ['👑', '💎', '🛡️', '⚡', '🎖️', '🔥'][idx % 6],
+          };
+        }),
+      ]
     : fallbackMembers;
 
   // 3 Preview avatars at top right in Image 1
@@ -224,21 +262,23 @@ export default function RoomGroupPrivilegeModal({
               </View>
             </LinearGradient>
 
-            {/* Full-width Golden Yellow Join Button */}
-            <TouchableOpacity
-              style={styles.joinBtnTouch}
-              activeOpacity={0.88}
-              onPress={handleJoinPress}
-            >
-              <LinearGradient
-                colors={['#FFB800', '#F59E0B']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.joinBtnGradient}
+            {/* Full-width Golden Yellow Join Button - ONLY shown to users who have NOT joined yet and are NOT owner */}
+            {!isRoomOwner && !isJoined && (
+              <TouchableOpacity
+                style={styles.joinBtnTouch}
+                activeOpacity={0.88}
+                onPress={handleJoinPress}
               >
-                <Text style={styles.joinBtnText}>{isJoined ? 'Joined ✓' : 'Join'}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+                <LinearGradient
+                  colors={['#FFB800', '#F59E0B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.joinBtnGradient}
+                >
+                  <Text style={styles.joinBtnText}>Join</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           /* ============================================================== */

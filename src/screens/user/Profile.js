@@ -9,7 +9,9 @@ import {
   Clipboard,
   StatusBar,
   Share,
+  Image,
 } from 'react-native';
+import { apiUtil } from '../../utils/apiUtil';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
@@ -49,9 +51,33 @@ export default function ProfileScreen() {
     ? (equippedMicWave || user?.equippedMicWave)
     : (equippedMicWave || user?.equippedMicWave)?.name || (equippedMicWave || user?.equippedMicWave)?.title || '';
 
+  const [honorSummary, setHonorSummary] = useState({
+    frames: [],
+    entries: [],
+    badges: [],
+    gifts: { received: [], sent: [] },
+  });
+  const [giftTab, setGiftTab] = useState('received'); // 'received' | 'sent'
+  const [loadingHonor, setLoadingHonor] = useState(false);
+
+  const fetchHonorSummary = useCallback(async () => {
+    try {
+      setLoadingHonor(true);
+      const res = await apiUtil.get('/user/profile/honor-summary');
+      if (res.data?.success && res.data?.data) {
+        setHonorSummary(res.data.data);
+      }
+    } catch (e) {
+      console.log('Error fetching honor summary:', e);
+    } finally {
+      setLoadingHonor(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchUserProfile();
-  }, [fetchUserProfile]);
+    fetchHonorSummary();
+  }, [fetchUserProfile, fetchHonorSummary]);
 
   const handleCopyId = () => {
     if (displayId) {
@@ -426,96 +452,243 @@ export default function ProfileScreen() {
         ) : (
           /* TAB 2: HONOR */
           <View style={styles.tabBody}>
-            {/* Honors & Medals Showcase */}
+            {/* 1. Avatar Frames Showcase */}
+            <View style={styles.infoCard}>
+              <View style={styles.cardHeaderRow}>
+                <MaterialCommunityIcons name="image-frame" size={20} color="#8B5CF6" />
+                <Text style={styles.cardHeaderTitle}>
+                  Avatar Frames ({honorSummary.frames?.length || (equippedFrameName ? 1 : 0)})
+                </Text>
+                <TouchableOpacity onPress={() => navigation.navigate('MyItems')} activeOpacity={0.7} style={{ marginLeft: 'auto' }}>
+                  <Text style={styles.cardHeaderLink}>Manage ›</Text>
+                </TouchableOpacity>
+              </View>
+
+              {honorSummary.frames && honorSummary.frames.length > 0 ? (
+                <View style={styles.decorGrid}>
+                  {honorSummary.frames.map((frame, index) => (
+                    <TouchableOpacity
+                      key={frame.id || index}
+                      style={[styles.decorCardItem, frame.isEquipped && styles.decorCardItemEquipped]}
+                      onPress={() => navigation.navigate('MyItems')}
+                      activeOpacity={0.8}
+                    >
+                      {frame.isEquipped && (
+                        <View style={styles.equippedBadgePill}>
+                          <Text style={styles.equippedBadgeText}>EQUIPPED</Text>
+                        </View>
+                      )}
+                      <View style={styles.decorFramePreviewWrapper}>
+                        {frame.imageUrl ? (
+                          <Image source={{ uri: frame.imageUrl }} style={styles.frameImgPreview} resizeMode="contain" />
+                        ) : (
+                          <Text style={{ fontSize: 32 }}>🖼️</Text>
+                        )}
+                      </View>
+                      <Text style={styles.decorCardName} numberOfLines={1}>{frame.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : equippedFrameName ? (
+                <View style={styles.decorGrid}>
+                  <TouchableOpacity
+                    style={[styles.decorCardItem, styles.decorCardItemEquipped]}
+                    onPress={() => navigation.navigate('MyItems')}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.equippedBadgePill}>
+                      <Text style={styles.equippedBadgeText}>EQUIPPED</Text>
+                    </View>
+                    <View style={styles.decorFramePreviewWrapper}>
+                      <Text style={{ fontSize: 32 }}>🌸</Text>
+                    </View>
+                    <Text style={styles.decorCardName} numberOfLines={1}>{equippedFrameName}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.emptyCardBox}>
+                  <Text style={styles.emptyProfileDataText}>No avatar frames owned yet.</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('Store')} style={styles.emptyActionBtn}>
+                    <Text style={styles.emptyActionBtnText}>Get Frames in Store</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* 2. Room Entry Effects & Vehicles */}
+            <View style={styles.infoCard}>
+              <View style={styles.cardHeaderRow}>
+                <MaterialCommunityIcons name="rocket-launch-outline" size={20} color="#EC4899" />
+                <Text style={styles.cardHeaderTitle}>
+                  Room Entry Effects & Vehicles ({honorSummary.entries?.length || 0})
+                </Text>
+                <TouchableOpacity onPress={() => navigation.navigate('MyItems')} activeOpacity={0.7} style={{ marginLeft: 'auto' }}>
+                  <Text style={styles.cardHeaderLink}>Manage ›</Text>
+                </TouchableOpacity>
+              </View>
+
+              {honorSummary.entries && honorSummary.entries.length > 0 ? (
+                <View style={styles.decorGrid}>
+                  {honorSummary.entries.map((entry, index) => (
+                    <TouchableOpacity
+                      key={entry.id || index}
+                      style={[styles.decorCardItem, entry.isEquipped && styles.decorCardItemEquipped]}
+                      onPress={() => navigation.navigate('MyItems')}
+                      activeOpacity={0.8}
+                    >
+                      {entry.isEquipped && (
+                        <View style={styles.equippedBadgePill}>
+                          <Text style={styles.equippedBadgeText}>EQUIPPED</Text>
+                        </View>
+                      )}
+                      <View style={styles.decorFramePreviewWrapper}>
+                        {entry.imageUrl ? (
+                          <Image source={{ uri: entry.imageUrl }} style={styles.entryImgPreview} resizeMode="contain" />
+                        ) : (
+                          <Text style={{ fontSize: 32 }}>🚀</Text>
+                        )}
+                      </View>
+                      <Text style={styles.decorCardName} numberOfLines={1}>{entry.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyCardBox}>
+                  <Text style={styles.emptyProfileDataText}>No entry effects owned yet.</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('Store')} style={styles.emptyActionBtn}>
+                    <Text style={styles.emptyActionBtnText}>Explore Store</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* 3. Honors & Badges */}
             <View style={styles.infoCard}>
               <View style={styles.cardHeaderRow}>
                 <MaterialCommunityIcons name="trophy-award" size={21} color="#F59E0B" />
                 <Text style={styles.cardHeaderTitle}>Honors & Badges</Text>
               </View>
 
-              {honors.length > 0 ? (
+              {((honorSummary.badges && honorSummary.badges.length > 0) || honors.length > 0) ? (
                 <View style={styles.honorGrid}>
-                  {honors.map((honor, index) => (
-                    <View key={String(honor?.id || honor?._id || honor?.name || honor || index)} style={styles.honorGridItem}>
-                      <LinearGradient colors={['#EDE9FE', '#DDD6FE']} style={styles.honorBadgeCircle}>
-                        <MaterialCommunityIcons name="medal-outline" size={26} color="#7C3AED" />
-                      </LinearGradient>
-                      <Text style={styles.honorBadgeTitle}>{typeof honor === 'string' ? honor : honor?.name || honor?.title || 'Badge'}</Text>
-                      <Text style={styles.honorBadgeSub}>{typeof honor === 'object' ? honor?.description || honor?.rarity || '' : ''}</Text>
-                    </View>
-                  ))}
+                  {(honorSummary.badges?.length > 0 ? honorSummary.badges : honors).map((honor, index) => {
+                    const badgeName = typeof honor === 'string' ? honor : honor?.name || honor?.title || 'Badge';
+                    const badgeDesc = typeof honor === 'object' ? honor?.description || honor?.rarity || '' : '';
+                    const badgeIcon = typeof honor === 'object' ? honor?.iconUrl || honor?.badgeUrl : null;
+                    return (
+                      <View key={String(honor?.id || honor?._id || badgeName || index)} style={styles.honorGridItem}>
+                        <LinearGradient colors={['#EDE9FE', '#DDD6FE']} style={styles.honorBadgeCircle}>
+                          {badgeIcon ? (
+                            <Image source={{ uri: badgeIcon }} style={{ width: 28, height: 28 }} resizeMode="contain" />
+                          ) : (
+                            <MaterialCommunityIcons name="medal-outline" size={26} color="#7C3AED" />
+                          )}
+                        </LinearGradient>
+                        <Text style={styles.honorBadgeTitle} numberOfLines={1}>{badgeName}</Text>
+                        {badgeDesc ? <Text style={styles.honorBadgeSub} numberOfLines={1}>{badgeDesc}</Text> : null}
+                      </View>
+                    );
+                  })}
                 </View>
-              ) : <Text style={styles.emptyProfileDataText}>No honor badges are available for this account.</Text>}
+              ) : (
+                <Text style={styles.emptyProfileDataText}>No honor badges are available for this account.</Text>
+              )}
             </View>
 
-            {/* Active Equipped Decor */}
+            {/* 4. Gift Collection (Received 🎁 & Sent 🚀 with count underneath) */}
             <View style={styles.infoCard}>
               <View style={styles.cardHeaderRow}>
-                <MaterialCommunityIcons name="diamond-stone" size={20} color="#7C3AED" />
-                <Text style={styles.cardHeaderTitle}>Active Equipped Decor</Text>
+                <MaterialCommunityIcons name="gift-outline" size={20} color="#F59E0B" />
+                <Text style={styles.cardHeaderTitle}>Gift Collection</Text>
               </View>
 
-              <View style={styles.decorItemsRow}>
-                {equippedFrameName ? <TouchableOpacity
-                  style={styles.decorItemCard}
-                  onPress={() => navigation.navigate('MyItems')}
+              {/* Sub Tabs: Received and Sent */}
+              <View style={styles.giftSubTabRow}>
+                <TouchableOpacity
+                  style={[styles.giftSubTabBtn, giftTab === 'received' && styles.giftSubTabBtnActive]}
+                  onPress={() => setGiftTab('received')}
                   activeOpacity={0.8}
                 >
-                  <View style={styles.decorIconContainer}>
-                    <Text style={{ fontSize: 28 }}>🌸</Text>
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.decorItemName}>{equippedFrameName}</Text>
-                    <Text style={styles.decorItemType}>Avatar Frame • Equipped</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
-                </TouchableOpacity> : null}
+                  <Text style={[styles.giftSubTabText, giftTab === 'received' && styles.giftSubTabTextActive]}>
+                    Received 🎁 ({honorSummary.gifts?.received?.length || 0})
+                  </Text>
+                </TouchableOpacity>
 
-                {equippedMicWaveName ? <TouchableOpacity
-                  style={styles.decorItemCard}
-                  onPress={() => navigation.navigate('MyItems')}
+                <TouchableOpacity
+                  style={[styles.giftSubTabBtn, giftTab === 'sent' && styles.giftSubTabBtnActive]}
+                  onPress={() => setGiftTab('sent')}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.decorIconContainer, { backgroundColor: '#EDE9FE' }]}>
-                    <Text style={{ fontSize: 28 }}>🎙️</Text>
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.decorItemName}>{equippedMicWaveName}</Text>
-                    <Text style={styles.decorItemType}>Mic Soundwave • Equipped</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
-                </TouchableOpacity> : null}
-                {!equippedFrameName && !equippedMicWaveName ? (
-                  <Text style={styles.emptyProfileDataText}>No equipped decor is available.</Text>
-                ) : null}
+                  <Text style={[styles.giftSubTabText, giftTab === 'sent' && styles.giftSubTabTextActive]}>
+                    Sent 🚀 ({honorSummary.gifts?.sent?.length || 0})
+                  </Text>
+                </TouchableOpacity>
               </View>
+
+              {/* Gift Grid */}
+              {(() => {
+                const currentGifts = giftTab === 'received' ? (honorSummary.gifts?.received || []) : (honorSummary.gifts?.sent || []);
+                if (currentGifts.length === 0) {
+                  return (
+                    <View style={styles.emptyCardBox}>
+                      <Text style={{ fontSize: 36, marginBottom: 6 }}>{giftTab === 'received' ? '🎁' : '🚀'}</Text>
+                      <Text style={styles.emptyProfileDataText}>
+                        {giftTab === 'received' ? 'No gifts received yet. Go live to earn gifts!' : 'No gifts sent yet. Send gifts to support friends!'}
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return (
+                  <View style={styles.giftsShowcaseGrid}>
+                    {currentGifts.map((giftItem, idx) => (
+                      <View key={giftItem.giftId || idx} style={styles.giftShowcaseCard}>
+                        <View style={styles.giftImgCircle}>
+                          {giftItem.icon ? (
+                            <Image source={{ uri: giftItem.icon }} style={styles.giftIconImg} resizeMode="contain" />
+                          ) : (
+                            <Text style={{ fontSize: 28 }}>🎁</Text>
+                          )}
+                        </View>
+                        <Text style={styles.giftShowcaseName} numberOfLines={1}>{giftItem.name}</Text>
+                        {/* Count underneath */}
+                        <View style={styles.giftCountBadge}>
+                          <Text style={styles.giftCountBadgeText}>x{giftItem.count}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })()}
             </View>
 
             {/* Fan Club & Room Ranking */}
-            {fanClub ? <View style={styles.infoCard}>
-              <View style={styles.cardHeaderRow}>
-                <Ionicons name="heart" size={19} color="#EC4899" />
-                <Text style={styles.cardHeaderTitle}>Fan Club & Room King</Text>
-              </View>
+            {fanClub ? (
+              <View style={styles.infoCard}>
+                <View style={styles.cardHeaderRow}>
+                  <Ionicons name="heart" size={19} color="#EC4899" />
+                  <Text style={styles.cardHeaderTitle}>Fan Club & Room King</Text>
+                </View>
 
-              <View style={styles.fanClubRow}>
-                <View style={styles.fanClubIcon}>
-                  <Text style={{ fontSize: 24 }}>💖</Text>
+                <View style={styles.fanClubRow}>
+                  <View style={styles.fanClubIcon}>
+                    <Text style={{ fontSize: 24 }}>💖</Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.fanClubTitle}>{fanClub.name || fanClub.title || 'Fan Club'}</Text>
+                    <Text style={styles.fanClubSub}>
+                      {fanClub.rank != null ? `Rank #${fanClub.rank}` : ''}{fanClub.memberCount != null ? ` • ${fanClub.memberCount} members` : ''}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.fanClubActionBtn}
+                    onPress={() => navigation.navigate('FanClub')}
+                  >
+                    <Text style={styles.fanClubActionText}>View</Text>
+                  </TouchableOpacity>
                 </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.fanClubTitle}>{fanClub.name || fanClub.title || 'Fan Club'}</Text>
-                  <Text style={styles.fanClubSub}>
-                    {fanClub.rank != null ? `Rank #${fanClub.rank}` : ''}{fanClub.memberCount != null ? ` • ${fanClub.memberCount} members` : ''}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.fanClubActionBtn}
-                  onPress={() => navigation.navigate('FanClub')}
-                >
-                  <Text style={styles.fanClubActionText}>View</Text>
-                </TouchableOpacity>
               </View>
-            </View> : null}
+            ) : null}
           </View>
         )}
       </ScrollView>
@@ -1034,5 +1207,169 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '800',
+  },
+
+  // Decor Grid (Frames & Entries)
+  cardHeaderLink: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  decorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  decorCardItem: {
+    width: '31%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 8,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  decorCardItemEquipped: {
+    borderColor: '#7C3AED',
+    backgroundColor: '#FAF5FF',
+  },
+  equippedBadgePill: {
+    position: 'absolute',
+    top: -6,
+    backgroundColor: '#7C3AED',
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    zIndex: 2,
+  },
+  equippedBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 7.5,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
+  decorFramePreviewWrapper: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  frameImgPreview: {
+    width: 52,
+    height: 52,
+  },
+  entryImgPreview: {
+    width: 48,
+    height: 48,
+  },
+  decorCardName: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1E293B',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  emptyCardBox: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  emptyActionBtn: {
+    marginTop: 8,
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  emptyActionBtnText: {
+    color: '#7C3AED',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+
+  // Gifts Collection Sub-Tabs & Grid
+  giftSubTabRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 14,
+  },
+  giftSubTabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  giftSubTabBtnActive: {
+    backgroundColor: '#FFFFFF',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+  },
+  giftSubTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  giftSubTabTextActive: {
+    color: '#7C3AED',
+    fontWeight: '800',
+  },
+  giftsShowcaseGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  giftShowcaseCard: {
+    width: '31%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 8,
+    alignItems: 'center',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  giftImgCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  giftIconImg: {
+    width: 36,
+    height: 36,
+  },
+  giftShowcaseName: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1E293B',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  giftCountBadge: {
+    backgroundColor: '#FEF08A',
+    borderColor: '#F59E0B',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 1,
+  },
+  giftCountBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#B45309',
   },
 });

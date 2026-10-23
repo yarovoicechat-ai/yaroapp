@@ -75,7 +75,7 @@ export default function RoomSettingsModal({
 
   const currentRoomName = room?.title || room?.roomName || roomNameInput || 'Voice Room';
   const currentAnnouncement = room?.about || room?.description || announcementInput || 'Welcome to my room...';
-  const roomId = room?.id || room?.roomId || user?.userId || '63076825';
+  const roomId = room?.uniqueId || room?.customDisplayId || room?.displayId || room?.id || room?.roomId || user?.customDisplayId || user?.uniqueId || user?.displayId || user?.userId || '—';
   const roomAvatar = room?.coverImage || user?.avatar || user?.image || 'https://api.yaroapp.in/uploads/avatars/female_default.webp';
 
   const handlePickCoverImage = async () => {

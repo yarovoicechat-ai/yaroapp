@@ -22,6 +22,8 @@ export default function RoomOnlineUsersModal({
   admins = [],
   bottomSafePadding = 16,
 }) {
+  if (!visible) return null;
+
   const normalizeId = (id) => {
     const s = String(id || '').trim();
     if (/^10000\d{3}$/.test(s)) {

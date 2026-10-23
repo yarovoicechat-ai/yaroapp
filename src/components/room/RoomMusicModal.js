@@ -307,6 +307,14 @@ export default function RoomMusicModal({
     }
   };
 
+  const toggleRepeatMode = () => {
+    setRepeatMode((prev) => {
+      if (prev === 'all') return 'one';
+      if (prev === 'one') return 'off';
+      return 'all';
+    });
+  };
+
   const handleNextTrackRef = useRef(handleNextTrack);
   handleNextTrackRef.current = handleNextTrack;
 
@@ -359,6 +367,8 @@ export default function RoomMusicModal({
       }
     } catch (_) {}
   };
+
+  if (!visible) return null;
 
   return (
     <Modal

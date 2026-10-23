@@ -579,6 +579,11 @@ export default function VoiceRoomScreen() {
   const isEffectiveGlobalRoomManager = Boolean(
     contextIsGlobalRoomManager ||
     user?.isGlobalRoomManager ||
+    user?.isSpecialId ||
+    user?.hasSpecialId ||
+    user?.specialCode ||
+    user?.specialId ||
+    user?.isOfficial ||
     user?.officialPowers?.isGlobalRoomManager ||
     user?.officialPowers?.canBanRoom ||
     user?.officialPowers?.canBanUser ||
@@ -612,7 +617,7 @@ export default function VoiceRoomScreen() {
   const handleOfficialBanRoom = () => {
     Alert.alert(
       'Terminate & Ban Room 🚫',
-      'Are you sure you want to ban and terminate this voice room? All users will be immediately ejected from the room.',
+      'Are you sure you want to ban and terminate this voice room? All users will be immediately ejected and this room will be recorded as BANNED in the system & panel.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -621,12 +626,14 @@ export default function VoiceRoomScreen() {
           onPress: () => {
             const sock = getSocket();
             const targetRoomId = room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
+            const mySpecialId = user?.specialCode || user?.specialId || user?.userId || 'Special ID';
             if (sock && targetRoomId) {
               sock.emit('voice_room:ban_room', {
                 roomId: targetRoomId,
-                reason: 'Terminated and banned by Official Room Manager.',
+                specialId: mySpecialId,
+                reason: `Terminated & banned by Special ID (${mySpecialId}).`,
               });
-              AlertService.show('Room Banned', 'Voice room has been terminated.', 'success');
+              AlertService.show('Room Banned 🚫', 'Voice room has been terminated & banned.', 'success');
               handleLeaveCompletely();
             }
           },

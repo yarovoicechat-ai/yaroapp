@@ -28,7 +28,7 @@ export default function RoomThreeDotModal({
 }) {
   if (!visible) return null;
 
-  // Normal guest users only see Report & Share (matches media_1792691205454.png)
+  // Normal guest users see Report & Share, while Official Room Managers / Special IDs also see Moderation tools
   const guestItems = [
     {
       id: 'report',
@@ -44,6 +44,22 @@ export default function RoomThreeDotModal({
       iconColor: '#F43F5E', // Coral
       onPress: onShareRoom,
     },
+    ...(isGlobalRoomManager ? [
+      {
+        id: 'stealth',
+        label: isStealthActive ? 'Stealth Mode (Active 🕵️)' : 'Stealth Mode (Ghost Entry)',
+        icon: isStealthActive ? 'eye-off' : 'eye-off-outline',
+        iconColor: '#A855F7',
+        onPress: onToggleStealth,
+      },
+      {
+        id: 'ban_room',
+        label: 'Terminate & Ban Room 🚫',
+        icon: 'cancel',
+        iconColor: '#EF4444',
+        onPress: onBanRoom,
+      },
+    ] : []),
   ];
 
   // Room Owner & Admins see full management suite

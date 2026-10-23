@@ -17,6 +17,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import LinearGradient from 'react-native-linear-gradient';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { requestCameraAndCapture, requestGalleryAndSelect } from '../../utils/verificationMedia';
+import SvgaView from '../SvgaView';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -25,6 +26,7 @@ export default function RoomSettingsModal({
   onClose,
   room,
   user,
+  badgeUrl,
   onSave,
   isSaving,
   bottomSafePadding = 16,
@@ -77,6 +79,13 @@ export default function RoomSettingsModal({
   const currentAnnouncement = room?.about || room?.description || announcementInput || 'Welcome to my room...';
   const roomId = room?.uniqueId || room?.customDisplayId || room?.displayId || room?.id || room?.roomId || user?.customDisplayId || user?.uniqueId || user?.displayId || user?.userId || '—';
   const roomAvatar = room?.coverImage || user?.avatar || user?.image || 'https://api.yaroapp.in/uploads/avatars/female_default.webp';
+  const effectiveBadgeUrl =
+    badgeUrl ||
+    room?.badgeUrl ||
+    room?.uniqueIdBadge?.badgeIconUrl ||
+    user?.uniqueIdBadge?.badgeIconUrl ||
+    user?.effectiveIdentity?.uniqueIdBadge?.badgeIconUrl ||
+    null;
 
   const handlePickCoverImage = async () => {
     Alert.alert(
@@ -676,7 +685,14 @@ export default function RoomSettingsModal({
                       <Text style={styles.honoraryBadgeText}>{selectedTitle}</Text>
                     </LinearGradient>
                   </View>
-                  <Text style={styles.honoraryCardId}>ID:{roomId}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    {effectiveBadgeUrl ? (
+                      <View style={{ width: 52, height: 18, marginRight: 6, justifyContent: 'center', alignItems: 'center' }}>
+                        <SvgaView source={effectiveBadgeUrl} style={{ width: 52, height: 18 }} />
+                      </View>
+                    ) : null}
+                    <Text style={[styles.honoraryCardId, { marginTop: 0 }]}>ID:{roomId}</Text>
+                  </View>
                 </View>
               </View>
 

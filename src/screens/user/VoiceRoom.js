@@ -43,6 +43,7 @@ import VipFloatingEntryEngine from '../../components/room/VipFloatingEntryEngine
 import ResponsiveChatBubble from '../../components/room/ResponsiveChatBubble';
 import VoiceRoomSeatGrid from '../../components/room/VoiceRoomSeatGrid';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
+import SvgaView from '../../components/SvgaView';
 import {
   GiftButton,
   GiftPanel,
@@ -623,6 +624,15 @@ export default function VoiceRoomScreen() {
     room?.id ||
     room?.roomId ||
     '—';
+
+  const roomBadgeUrl =
+    room?.badgeUrl ||
+    room?.uniqueIdBadge?.badgeIconUrl ||
+    activeRoom?.badgeUrl ||
+    activeRoom?.uniqueIdBadge?.badgeIconUrl ||
+    (isRoomOwner ? (user?.uniqueIdBadge?.badgeIconUrl || user?.effectiveIdentity?.uniqueIdBadge?.badgeIconUrl || user?.badgeUrl) : null) ||
+    seats[0]?.user?.uniqueIdBadge?.badgeIconUrl ||
+    null;
 
   // Stealth Mode & Official Moderation
   const isEffectiveGlobalRoomManager = Boolean(
@@ -1620,7 +1630,14 @@ export default function VoiceRoomScreen() {
               {currentRoomTitle || room.title}
             </Text>
             <View style={styles.headerRoomSubRow}>
-              <Text style={styles.headerRoomIdText}>ID:{displayRoomId}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {roomBadgeUrl ? (
+                  <View style={{ width: 44, height: 16, marginRight: 4, justifyContent: 'center', alignItems: 'center' }}>
+                    <SvgaView source={roomBadgeUrl} style={{ width: 44, height: 16 }} />
+                  </View>
+                ) : null}
+                <Text style={styles.headerRoomIdText}>ID:{displayRoomId}</Text>
+              </View>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setOnlineUsersModalVisible(true)}
@@ -2702,12 +2719,14 @@ export default function VoiceRoomScreen() {
         room={{
           id: displayRoomId,
           uniqueId: room.uniqueId || user?.customDisplayId,
+          badgeUrl: roomBadgeUrl,
           title: currentRoomTitle || room.title || 'Voice Room',
           coverImage: currentRoomCover || room.coverImage,
           tag: room.tag || '',
           about: currentRoomAbout || room.about || '',
           onlineCount: onlineCount,
         }}
+        badgeUrl={roomBadgeUrl}
         owner={{
           name: actualHostName,
           avatar: actualHostAvatar,
@@ -2752,12 +2771,15 @@ export default function VoiceRoomScreen() {
         visible={roomSettingsModalVisible}
         onClose={() => setRoomSettingsModalVisible(false)}
         room={{
-          id: room.id || room.roomId || '',
+          id: displayRoomId,
+          uniqueId: room.uniqueId || user?.customDisplayId,
+          badgeUrl: roomBadgeUrl,
           title: currentRoomTitle || room.title || 'Voice Room',
           coverImage: currentRoomCover || room.coverImage,
           tag: room.tag || '',
           about: currentRoomAbout || room.about || '',
         }}
+        badgeUrl={roomBadgeUrl}
         user={user}
         onSave={handleSaveRoomSettings}
         isSaving={isSavingRoomSettings}

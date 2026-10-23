@@ -7,16 +7,20 @@ import {
   Image,
   Modal,
   ScrollView,
+  Clipboard,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { getUserAvatar } from '../../utils/avatarUtil';
+import SvgaView from '../SvgaView';
+import { AlertService } from '../../utils/AlertService';
 
 export default function RoomDetailsModal({
   visible,
   onClose,
   room,
   owner,
+  badgeUrl,
   onOpenSettings,
   onOpenGroup,
   bottomSafePadding = 16,
@@ -25,12 +29,33 @@ export default function RoomDetailsModal({
 
   const roomTitle = room?.title || room?.roomName || owner?.name || 'Voice Room';
   const roomId = room?.uniqueId || room?.customDisplayId || room?.displayId || room?.id || room?.roomId || owner?.uniqueId || owner?.customDisplayId || owner?.displayId || owner?.userId || '—';
+  const effectiveBadgeUrl =
+    badgeUrl ||
+    room?.badgeUrl ||
+    room?.uniqueIdBadge?.badgeIconUrl ||
+    room?.uniqueIdBadge?.badgeUrl ||
+    room?.badgeIconUrl ||
+    owner?.badgeUrl ||
+    owner?.uniqueIdBadge?.badgeIconUrl ||
+    null;
+  const hasUnique = Boolean(
+    (room?.uniqueId && String(room?.uniqueId).trim()) ||
+    (room?.customDisplayId && String(room?.customDisplayId).trim()) ||
+    effectiveBadgeUrl
+  );
   const roomCover = room?.coverImage || owner?.avatar || owner?.image || '';
   const roomLanguage = room?.language || 'Hindi(हिंदी)';
   const roomCountry = room?.country || 'India';
   const roomAnnouncement = room?.about || room?.description || 'Welcome to my room, let\'s chat together!';
   const totalDiamonds = room?.totalDiamonds ?? room?.diamonds ?? 0;
   const membersCount = room?.onlineCount ?? room?.membersCount ?? 1;
+
+  const handleCopyRoomId = () => {
+    if (roomId && roomId !== '—') {
+      Clipboard.setString(String(roomId));
+      AlertService.show('Success', `Room ID ${roomId} copied!`, 'success');
+    }
+  };
 
   return (
     <Modal
@@ -88,7 +113,17 @@ export default function RoomDetailsModal({
             </Text>
 
             {/* ID */}
-            <Text style={styles.roomIdText}>ID:{roomId}</Text>
+            <View style={styles.idRow}>
+              {effectiveBadgeUrl ? (
+                <View style={styles.modalBadgeWrap}>
+                  <SvgaView source={effectiveBadgeUrl} style={styles.modalBadgeSvga} resizeMode="contain" />
+                </View>
+              ) : null}
+              <Text style={[styles.roomIdText, hasUnique && styles.roomIdTextVip]}>ID:{roomId}</Text>
+              <TouchableOpacity onPress={handleCopyRoomId} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Icon name="copy-outline" size={14} color="#94A3B8" style={{ marginLeft: 6 }} />
+              </TouchableOpacity>
+            </View>
 
             {/* Stats Row: Total Diamonds | Members */}
             <View style={styles.statsRow}>
@@ -227,12 +262,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 4,
   },
+  idRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    marginBottom: 20,
+  },
+  modalBadgeWrap: {
+    width: 22,
+    height: 22,
+    marginRight: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBadgeSvga: {
+    width: 22,
+    height: 22,
+  },
   roomIdText: {
     fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
-    marginBottom: 20,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  roomIdTextVip: {
+    color: '#D97706',
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   statsRow: {
     flexDirection: 'row',

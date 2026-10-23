@@ -914,11 +914,13 @@ export const VoiceRoomProvider = ({ children }) => {
           if (data && Object.prototype.hasOwnProperty.call(data, 'about')) {
             setActiveRoom((prev) => (prev ? { ...prev, about: data.about || '' } : prev));
           }
-          if (data?.uniqueId || data?.displayRoomId) {
+          if (data?.uniqueId || data?.displayRoomId || data?.badgeUrl || data?.uniqueIdBadge) {
             setActiveRoom((prev) => (prev ? {
               ...prev,
               uniqueId: data.uniqueId || prev?.uniqueId,
               displayRoomId: data.displayRoomId || data.uniqueId || prev?.displayRoomId,
+              badgeUrl: data.badgeUrl || data.uniqueIdBadge?.badgeIconUrl || prev?.badgeUrl,
+              uniqueIdBadge: data.uniqueIdBadge || prev?.uniqueIdBadge,
             } : prev));
           }
           if (Array.isArray(data?.onlineUsers)) {

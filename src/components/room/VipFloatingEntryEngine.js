@@ -8,6 +8,8 @@ import {
   Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import SvgaView from '../SvgaView';
+import { resolveEntryAssets } from '../../utils/cosmeticResolver';
 
 const { width, height } = Dimensions.get('window');
 
@@ -185,8 +187,43 @@ export default function VipFloatingEntryEngine({
     ? ['#7C3AED', '#A855F7', '#C084FC']
     : ['#B45309', '#F59E0B', '#FBBF24'];
 
+  const resolvedAssets = resolveEntryAssets(currentEntry);
+  const entry = resolvedAssets?.entry || resolvedAssets?.entrance || currentEntry.entry || currentEntry.effect || {};
+  const entrance = resolvedAssets?.entrance || currentEntry.entrance || {};
+  const animationUrl = entry.animationUrl || entrance.animationUrl || currentEntry.animationUrl || '';
+  const visualUrl =
+    animationUrl ||
+    entry.imageUrl ||
+    entry.image ||
+    entrance.imageUrl ||
+    entrance.image ||
+    currentEntry.imageUrl ||
+    currentEntry.image ||
+    vipExp.entryAnimation ||
+    '';
+
   return (
     <View style={styles.fullscreenOverlay} pointerEvents="none">
+      {/* 1. Dramatic Full-Screen Atmospheric Dimming & Radial Glow */}
+      <Animated.View style={[styles.fullScreenBackdrop, { opacity: containerOpacity }]}>
+        <LinearGradient
+          colors={['rgba(15, 23, 42, 0.78)', 'rgba(30, 27, 75, 0.85)', 'rgba(0, 0, 0, 0.72)']}
+          style={StyleSheet.absoluteFillObject}
+        />
+      </Animated.View>
+
+      {/* 2. Full-Screen SVGA / Vehicle / Ride Animation Layer */}
+      {visualUrl ? (
+        <Animated.View style={[styles.fullScreenSvgaWrap, { opacity: containerOpacity }]}>
+          <SvgaView
+            source={visualUrl}
+            style={StyleSheet.absoluteFillObject}
+            loops={1}
+            resizeMode="cover"
+          />
+        </Animated.View>
+      ) : null}
+
       <Animated.View
         style={[
           styles.entryContainer,
@@ -280,6 +317,16 @@ export default function VipFloatingEntryEngine({
 }
 
 const styles = StyleSheet.create({
+  fullScreenBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 99998,
+    elevation: 9998,
+  },
+  fullScreenSvgaWrap: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 99999,
+    elevation: 9999,
+  },
   fullscreenOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 100000,

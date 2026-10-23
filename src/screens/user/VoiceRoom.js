@@ -2656,6 +2656,7 @@ export default function VoiceRoomScreen() {
           userId: room.hostId || room.ownerId || user?.userId,
         }}
         onOpenSettings={() => setRoomSettingsModalVisible(true)}
+        onOpenGroup={() => setGroupModalVisible(true)}
         members={onlineUsers}
         onFollow={() => {}}
         onJoin={() => {}}
@@ -2678,7 +2679,9 @@ export default function VoiceRoomScreen() {
           avatar: currentRoomCover || room.coverImage || user?.avatar,
           userId: room.hostId || room.ownerId || user?.userId,
         }}
-        membersCount={onlineCount ?? 1}
+        membersCount={onlineCount ?? 2737}
+        members={onlineUsers}
+        topContributors={topRoomContributors}
         bottomSafePadding={bottomSafePadding}
       />
 

@@ -18,6 +18,7 @@ export default function RoomDetailsModal({
   room,
   owner,
   onOpenSettings,
+  onOpenGroup,
   bottomSafePadding = 16,
 }) {
   if (!visible) return null;
@@ -104,13 +105,20 @@ export default function RoomDetailsModal({
               <View style={styles.verticalDivider} />
 
               {/* Members */}
-              <View style={styles.statCol}>
+              <TouchableOpacity
+                style={styles.statCol}
+                activeOpacity={0.75}
+                onPress={() => {
+                  onClose();
+                  onOpenGroup && onOpenGroup();
+                }}
+              >
                 <View style={styles.statTopItem}>
                   <MaterialCommunityIcons name="account-heart" size={19} color="#F97316" style={{ marginRight: 4 }} />
                   <Text style={styles.statNumber}>{membersCount}</Text>
                 </View>
                 <Text style={styles.statLabel}>Members</Text>
-              </View>
+              </TouchableOpacity>
             </View>
 
             {/* Horizontal Divider */}

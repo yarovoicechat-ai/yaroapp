@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
 import { TouchableOpacity, StyleSheet, View, Animated, Text } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { SvgaPlayer } from '@dasimems/react-native-svga';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import SvgaView from '../SvgaView';
 
 export default function GiftButton({ onPress, badgeText, style }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -39,10 +40,12 @@ export default function GiftButton({ onPress, badgeText, style }) {
           style={styles.gradient}
         >
           <View style={styles.innerGlow}>
-            <SvgaPlayer
+            <MaterialCommunityIcons name="gift" size={22} color="#FFD700" style={styles.giftIconFallback} />
+            <SvgaView
               source="asset://animations/button_gift.svga"
               style={styles.giftAnimation}
               loops={0}
+              resizeMode="contain"
             />
           </View>
         </LinearGradient>
@@ -86,10 +89,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  giftIconFallback: {
+    position: 'absolute',
   },
   giftAnimation: {
-    width: 34,
-    height: 34,
+    width: 38,
+    height: 38,
+    position: 'absolute',
   },
   badge: {
     position: 'absolute',

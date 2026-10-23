@@ -92,27 +92,36 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
 
     sources[view] = source
 
-    try {
-      SVGAParser.shareParser().decodeFromURL(
-        URL(source),
-        object : SVGAParser.ParseCompletion {
-          override fun onComplete(videoItem: SVGAVideoEntity) {
-            view.post {
-              if (sources[view] != source) return@post
-              rView?.lastVideoItem = videoItem
-              val drawable = SVGADrawable(videoItem)
-              view.setImageDrawable(drawable)
-              if (rView?.isAutoPlaying != false) {
-                view.startAnimation()
-              }
-            }
+    val callback = object : SVGAParser.ParseCompletion {
+      override fun onComplete(videoItem: SVGAVideoEntity) {
+        view.post {
+          if (sources[view] != source) return@post
+          rView?.lastVideoItem = videoItem
+          val drawable = SVGADrawable(videoItem)
+          view.setImageDrawable(drawable)
+          if (rView?.isAutoPlaying != false) {
+            view.startAnimation()
           }
+        }
+      }
 
-          override fun onError() {
-            android.util.Log.e("SvgaPlayerViewManager", "Error decoding SVGA from URL: $source")
-          }
-        },
-      )
+      override fun onError() {
+        android.util.Log.e("SvgaPlayerViewManager", "Error decoding SVGA from source: $source")
+      }
+    }
+
+    try {
+      if (source.startsWith("http://", ignoreCase = true) || source.startsWith("https://", ignoreCase = true)) {
+        SVGAParser.shareParser().decodeFromURL(URL(source), callback)
+      } else {
+        var assetPath = source
+        if (assetPath.startsWith("asset://", ignoreCase = true)) {
+          assetPath = assetPath.substring("asset://".length)
+        } else if (assetPath.startsWith("assets/", ignoreCase = true)) {
+          assetPath = assetPath.substring("assets/".length)
+        }
+        SVGAParser.shareParser().decodeFromAssets(assetPath, callback)
+      }
     } catch (e: Exception) {
       android.util.Log.e("SvgaPlayerViewManager", "Exception loading SVGA: $source", e)
     }

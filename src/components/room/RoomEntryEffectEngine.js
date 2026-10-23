@@ -48,12 +48,27 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
       playedIdsRef.current.delete(first);
     }
 
-    const entry = resolvedAssets.entry || resolvedAssets.entrance || {};
-    const entrance = resolvedAssets.entrance || {};
-    const tassel = resolvedAssets.tassel || null;
-    const animationUrl = entry.animationUrl || entrance.animationUrl || '';
-    const visualUrl = animationUrl || entry.image || entrance.image || entry.imageUrl || entrance.imageUrl || '';
-    const isAnimatedAsset = Boolean(animationUrl);
+    const entry = resolvedAssets.entry || resolvedAssets.entrance || activeEntry.entry || activeEntry.effect || {};
+    const entrance = resolvedAssets.entrance || activeEntry.entrance || {};
+    const tassel = resolvedAssets.tassel || activeEntry.tassel || null;
+    const animationUrl =
+      entry.animationUrl ||
+      entrance.animationUrl ||
+      activeEntry.animationUrl ||
+      activeEntry.svgaUrl ||
+      activeEntry.mediaUrl ||
+      '';
+    const visualUrl =
+      animationUrl ||
+      entry.imageUrl ||
+      entry.image ||
+      entrance.imageUrl ||
+      entrance.image ||
+      activeEntry.imageUrl ||
+      activeEntry.image ||
+      activeEntry.visualUrl ||
+      '';
+    const isAnimatedAsset = Boolean(animationUrl || /\.svga|\.gif|\.webp|\.mp4/i.test(visualUrl));
 
     const hasVisualAsset = Boolean(visualUrl);
     const hasTassel = Boolean(
@@ -209,7 +224,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
             source={visualUrl}
             style={isAnimatedAsset ? styles.fullScreenSvga : styles.staticAssetImage}
             loops={1}
-            resizeMode="contain"
+            resizeMode="cover"
           />
         </Animated.View>
       ) : null}
@@ -278,11 +293,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   assetStage: {
-    position: 'absolute',
-    top: height * 0.22,
-    left: 0,
-    right: 0,
-    height: height * 0.52,
+    ...StyleSheet.absoluteFillObject,
+    width: width,
+    height: height,
     zIndex: 99999,
     elevation: 9999,
     alignItems: 'center',
@@ -290,12 +303,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   fullScreenSvga: {
-    width: '100%',
-    height: '100%',
+    width: width,
+    height: height,
   },
   staticAssetImage: {
-    width: width * 0.88,
-    height: height * 0.45,
+    width: width,
+    height: height,
+    resizeMode: 'contain',
   },
   banner: {
     position: 'absolute',

@@ -1491,19 +1491,37 @@ export default function VoiceRoomScreen() {
     bottomSeatRows.push(bottomRemainingSeats.slice(i, i + bottomSeatsPerRow));
   }
 
+  const resolvedThemeImage = (() => {
+    const raw = activeTheme?.coverImage;
+    if (raw) {
+      if (typeof raw === 'number') return raw;
+      if (typeof raw === 'object' && raw?.uri) {
+        const u = String(raw.uri).trim();
+        if (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:') || u.startsWith('file:') || u.startsWith('content:')) {
+          return { uri: u };
+        }
+        const clean = u.startsWith('/') ? u : `/${u}`;
+        return { uri: `https://api.yaroapp.in${clean}` };
+      }
+      if (typeof raw === 'string') {
+        const u = raw.trim();
+        if (u && u !== 'null' && u !== 'undefined' && u !== '[object Object]') {
+          if (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:') || u.startsWith('file:') || u.startsWith('content:')) {
+            return { uri: u };
+          }
+          const clean = u.startsWith('/') ? u : `/${u}`;
+          return { uri: `https://api.yaroapp.in${clean}` };
+        }
+      }
+    }
+    return (activeTheme?.id === 'default' || !activeTheme?.id) ? DEFAULT_ROOM_BG : null;
+  })();
+
+  const hasThemeWallpaper = Boolean(resolvedThemeImage);
+
   return (
     <ImageBackground
-      source={
-        (() => {
-          const themeImg = activeTheme?.coverImage;
-          if (themeImg) {
-            if (typeof themeImg === 'number') return themeImg;
-            if (typeof themeImg === 'string' && themeImg.trim().length > 0) return { uri: themeImg.trim() };
-            if (typeof themeImg === 'object' && themeImg?.uri) return themeImg;
-          }
-          return DEFAULT_ROOM_BG;
-        })()
-      }
+      source={resolvedThemeImage || DEFAULT_ROOM_BG}
       style={[
         styles.screenContainer,
         { backgroundColor: activeTheme?.bgColors?.[0] || '#1E0A3C' },
@@ -1520,9 +1538,11 @@ export default function VoiceRoomScreen() {
       {/* Ambient Gradient Overlay tuned for wallpaper clarity while preserving seat & chat readability */}
       <LinearGradient
         colors={
-          Array.isArray(activeTheme?.bgColors) && activeTheme.bgColors.length >= 2
-            ? activeTheme.bgColors
-            : ['rgba(15, 7, 32, 0.40)', 'rgba(10, 4, 22, 0.25)', 'rgba(8, 2, 18, 0.70)']
+          hasThemeWallpaper
+            ? ['rgba(15, 7, 32, 0.35)', 'rgba(10, 4, 22, 0.15)', 'rgba(8, 2, 18, 0.65)']
+            : (Array.isArray(activeTheme?.bgColors) && activeTheme.bgColors.length >= 2
+                ? activeTheme.bgColors
+                : ['rgba(15, 7, 32, 0.40)', 'rgba(10, 4, 22, 0.25)', 'rgba(8, 2, 18, 0.70)'])
         }
         style={StyleSheet.absoluteFillObject}
       />
@@ -2281,18 +2301,27 @@ export default function VoiceRoomScreen() {
           });
           setUgcReportModalVisible(true);
         }}
-        onOpenSeatSettings={() => setSeatLayoutModalVisible(true)}
+        onOpenSeatSettings={() => {
+          setToolsModalVisible(false);
+          setSeatLayoutModalVisible(true);
+        }}
         onLockSeats={() => {
           setToolsModalVisible(false);
           setRoomLockModalMode('set_pin');
           setRoomLockModalVisible(true);
         }}
-        onOpenThemeModal={() => setThemeModalVisible(true)}
+        onOpenThemeModal={() => {
+          setToolsModalVisible(false);
+          setThemeModalVisible(true);
+        }}
         onShareRoom={() => {
           setToolsModalVisible(false);
           setShareModalVisible(true);
         }}
-        onOpenAdminSettings={() => setAdminListModalVisible(true)}
+        onOpenAdminSettings={() => {
+          setToolsModalVisible(false);
+          setAdminListModalVisible(true);
+        }}
         onClearChat={clearChat}
         onGatherFollowers={() => {
           setToolsModalVisible(false);

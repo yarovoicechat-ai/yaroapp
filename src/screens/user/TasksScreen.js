@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { useNavigation } from '@react-navigation/native';
 import { apiUtil } from '../../utils/apiUtil';
+import { AuthContext } from '../../context/AuthProvider';
 
 const { width } = Dimensions.get('window');
 

@@ -23,6 +23,7 @@ import { apiUtil } from '../../utils/apiUtil';
 import CosmeticAsset from '../../components/cosmetics/CosmeticAsset';
 import CosmeticFormatBadge from '../../components/cosmetics/CosmeticFormatBadge';
 import SvgaView from '../../components/SvgaView';
+import InventoryItemPreviewModal from '../../components/inventory/InventoryItemPreviewModal';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
@@ -209,7 +210,7 @@ export default function MyItems() {
 
   const filteredItems = items.filter((item) => {
     if (selectedCategory === 'All') return true;
-    return item.type.toLowerCase() === selectedCategory.toLowerCase();
+    return String(item?.type || '').toLowerCase() === String(selectedCategory || '').toLowerCase();
   });
 
   const handleToggleUse = async (item) => {

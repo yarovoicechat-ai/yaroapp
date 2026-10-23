@@ -146,31 +146,108 @@ const THEME_SETS = [
   },
 ];
 
-const normalizeTheme = (inventoryItem) => {
-  const catalog = inventoryItem.catalogItem || inventoryItem.itemId || inventoryItem || {};
-  const metadata = catalog.metadata || inventoryItem.metadata || {};
-  const rawBg = catalog.bgColors || metadata.bgColors;
-  const safeBg = Array.isArray(rawBg) && rawBg.length >= 2 ? rawBg : ['#1E1B4B', '#0F172A'];
-  const rawCover = catalog.imageUrl || metadata.coverImage || inventoryItem.imageUrl || null;
-  const coverImage = typeof rawCover === 'string' && rawCover.trim() ? rawCover.trim() : (typeof rawCover === 'number' ? rawCover : null);
+const resolveThemeImageSource = (source) => {
+  if (!source) return null;
+  if (typeof source === 'number') return source;
+  if (typeof source === 'object' && source?.uri && typeof source.uri === 'string' && source.uri.trim()) {
+    const raw = source.uri.trim();
+    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:') || raw.startsWith('file:') || raw.startsWith('content:')) {
+      return { uri: raw };
+    }
+    const cleanPath = raw.startsWith('/') ? raw : `/${raw}`;
+    return { uri: `https://api.yaroapp.in${cleanPath}` };
+  }
+  if (typeof source === 'string') {
+    const trimmed = source.trim();
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined' || trimmed === '[object Object]') {
+      return null;
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('file:') || trimmed.startsWith('content:')) {
+      return { uri: trimmed };
+    }
+    const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    return { uri: `https://api.yaroapp.in${cleanPath}` };
+  }
+  return null;
+};
 
+const resolveSafeBgColors = (colors, fallback = ['#3A0E5C', '#1E0A3C']) => {
+  if (Array.isArray(colors) && colors.length >= 2 && colors.every((c) => typeof c === 'string' && c.trim().length > 0)) {
+    return colors;
+  }
+  return fallback;
+};
+
+const normalizeTheme = (inventoryItem) => {
+  if (!inventoryItem || typeof inventoryItem !== 'object') return null;
+  const catalog =
+    (inventoryItem.catalogItem && typeof inventoryItem.catalogItem === 'object' ? inventoryItem.catalogItem : null) ||
+    (inventoryItem.itemId && typeof inventoryItem.itemId === 'object' ? inventoryItem.itemId : null) ||
+    inventoryItem;
+  const metadata =
+    (catalog.metadata && typeof catalog.metadata === 'object' ? catalog.metadata : null) ||
+    (inventoryItem.metadata && typeof inventoryItem.metadata === 'object' ? inventoryItem.metadata : null) ||
+    {};
+  const rawBg = catalog.bgColors || metadata.bgColors || inventoryItem.bgColors;
+  const safeBg = resolveSafeBgColors(rawBg, ['#1E1B4B', '#0F172A']);
+  const rawCover = catalog.imageUrl || metadata.coverImage || catalog.coverImage || inventoryItem.imageUrl || inventoryItem.coverImage || null;
+  const coverImage = typeof rawCover === 'string' && rawCover.trim()
+    ? rawCover.trim()
+    : (typeof rawCover === 'number' ? rawCover : (typeof rawCover === 'object' && rawCover?.uri ? rawCover.uri : null));
+
+  const resolvedId = String(catalog._id || catalog.id || inventoryItem.itemId || inventoryItem.id || '');
   return {
     ...catalog,
-    itemId: String(catalog._id || catalog.id || inventoryItem.itemId || ''),
-    id: String(catalog._id || catalog.id || inventoryItem.itemId || ''),
+    itemId: resolvedId,
+    id: resolvedId,
     name: catalog.name || inventoryItem.name || 'Theme',
-    category: catalog.category || inventoryItem.category,
+    category: catalog.category || inventoryItem.category || 'Theme',
     coverImage,
     bgColors: safeBg,
     previewColor: catalog.previewColor || metadata.previewColor || '#8B5CF6',
-    desc: catalog.desc || metadata.description || '',
+    desc: catalog.desc || metadata.description || inventoryItem.desc || '',
     expiresAt: inventoryItem.expiresAt || null,
     isOwned: Boolean(inventoryItem.isOwned || inventoryItem.catalogItem),
     isFree: Boolean(inventoryItem.isFree || metadata.isFree || Number(catalog.price || 0) === 0),
   };
 };
 
-export default function RoomThemeModal({
+class RoomThemeModalErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, info) {
+    console.warn('RoomThemeModal error caught:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <TouchableOpacity
+            style={styles.errorBtn}
+            onPress={() => {
+              this.setState({ hasError: false });
+              if (this.props.onClose) this.props.onClose();
+            }}
+          >
+            <Text style={styles.errorBtnText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function RoomThemeModalInner({
   visible,
   onClose,
   currentTheme,
@@ -186,6 +263,13 @@ export default function RoomThemeModal({
   const [themes, setThemes] = useState(PRESET_THEMES);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // CRITICAL FIX: ALL HOOKS MUST BE DECLARED BEFORE ANY CONDITIONAL RETURN!
+  // Declaring useMemo here guarantees the hook count is strictly invariant between renders.
+  const displayThemeData = useMemo(() => {
+    const list = themes && themes.length > 0 ? themes : PRESET_THEMES;
+    return [{ isCustomCard: true, id: '__custom_card__' }, ...list];
+  }, [themes]);
 
   useEffect(() => {
     if (!visible) return;
@@ -204,7 +288,8 @@ export default function RoomThemeModal({
         const items = inventoryResponse?.data?.data?.items || [];
         const ownedThemes = items
           .filter((item) => ['theme', 'themes'].includes(String(item.catalogItem?.category || item.category || '').toLowerCase()))
-          .map((item) => normalizeTheme({ ...item, isOwned: true }));
+          .map((item) => normalizeTheme({ ...item, isOwned: true }))
+          .filter(Boolean);
 
         const catalogPayload = catalogResponse?.data?.data || catalogResponse?.data || {};
         const catalogItems = Array.isArray(catalogPayload) ? catalogPayload : (catalogPayload.items || []);
@@ -214,12 +299,19 @@ export default function RoomThemeModal({
             const isFree = item.metadata?.isFree === true || Number(item.price || 0) === 0;
             return isFree;
           })
-          .map((item) => normalizeTheme({ ...item, isFree: true }));
+          .map((item) => normalizeTheme({ ...item, isFree: true }))
+          .filter(Boolean);
 
         const byId = new Map();
         PRESET_THEMES.forEach((t) => byId.set(t.id, t));
-        ownedThemes.forEach((t) => byId.set(t.itemId, { ...(byId.get(t.itemId) || {}), ...t, isOwned: true }));
-        freeRoomToolThemes.forEach((t) => byId.set(t.itemId, { ...(byId.get(t.itemId) || {}), ...t, isFree: true }));
+        ownedThemes.forEach((t) => {
+          const key = t.itemId || t.id;
+          if (key) byId.set(key, { ...(byId.get(key) || {}), ...t, isOwned: true });
+        });
+        freeRoomToolThemes.forEach((t) => {
+          const key = t.itemId || t.id;
+          if (key) byId.set(key, { ...(byId.get(key) || {}), ...t, isFree: true });
+        });
 
         const merged = Array.from(byId.values());
         setThemes(merged.length > 0 ? merged : PRESET_THEMES);
@@ -279,12 +371,6 @@ export default function RoomThemeModal({
     AlertService.show('Privilege Required', 'Custom room decorations are unlocked at Wealth Level 10 or with SVIP membership.', 'info');
   };
 
-  // Prepend Custom card to the data list for "Room Theme" tab
-  const displayThemeData = useMemo(() => {
-    const list = themes && themes.length > 0 ? themes : PRESET_THEMES;
-    return [{ isCustomCard: true, id: '__custom_card__' }, ...list];
-  }, [themes]);
-
   return (
     <Modal
       visible={visible}
@@ -292,110 +378,149 @@ export default function RoomThemeModal({
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { paddingTop: topInset, paddingBottom: Math.max(bottomInset, bottomSafePadding, 16) }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <RoomThemeModalErrorBoundary onClose={onClose}>
+        <View style={[styles.container, { paddingTop: topInset, paddingBottom: Math.max(bottomInset, bottomSafePadding, 16) }]}>
+          <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-        {/* Top Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={onClose}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Icon name="chevron-back" size={26} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Room Decorations</Text>
-          <View style={{ width: 40 }} />
-        </View>
+          {/* Top Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={onClose}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Icon name="chevron-back" size={26} color="#1E293B" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Room Decorations</Text>
+            <View style={{ width: 40 }} />
+          </View>
 
-        {/* Tabs: Room Theme | Mic Theme | Theme Set */}
-        <View style={styles.tabsRow}>
-          {['Room Theme', 'Mic Theme', 'Theme Set'].map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.tabBtn, isActive && styles.tabBtnActive]}
-                onPress={() => setActiveTab(tab)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                  {tab}
-                </Text>
-                {isActive && <View style={styles.tabIndicator} />}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+          {/* Tabs: Room Theme | Mic Theme | Theme Set */}
+          <View style={styles.tabsRow}>
+            {['Room Theme', 'Mic Theme', 'Theme Set'].map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <TouchableOpacity
+                  key={tab}
+                  style={[styles.tabBtn, isActive && styles.tabBtnActive]}
+                  onPress={() => setActiveTab(tab)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                    {tab}
+                  </Text>
+                  {isActive && <View style={styles.tabIndicator} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
-        {/* Tab 1: Room Theme */}
-        {activeTab === 'Room Theme' && (
-          loading ? (
-            <View style={styles.loaderWrap}>
-              <ActivityIndicator size="large" color="#FB923C" />
-            </View>
-          ) : (
+          {/* Tab 1: Room Theme */}
+          {activeTab === 'Room Theme' && (
+            loading ? (
+              <View style={styles.loaderWrap}>
+                <ActivityIndicator size="large" color="#FB923C" />
+              </View>
+            ) : (
+              <FlatList
+                data={displayThemeData}
+                keyExtractor={(item, index) => String(item.id || item.itemId || index)}
+                numColumns={2}
+                columnWrapperStyle={styles.columnWrapper}
+                contentContainerStyle={styles.listContent}
+                renderItem={({ item }) => {
+                  if (item.isCustomCard) {
+                    return (
+                      <View style={styles.customCard}>
+                        <View style={styles.customPlusWrap}>
+                          <Icon name="add" size={48} color="#CBD5E1" />
+                        </View>
+                        <Text style={styles.customTitle}>Custom</Text>
+                        <Text style={styles.noPrivilegesText}>No Privileges</Text>
+                        <TouchableOpacity
+                          style={styles.uploadBtn}
+                          onPress={handleCustomUpload}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.uploadBtnText}>Upload</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  }
+
+                  const itemId = String(item.itemId || item.id || '');
+                  const isSelected = String(selected) === itemId || (itemId === 'default' && (!selected || selected === 'default'));
+                  const isCurrentInUse = String(currentTheme?.itemId || currentTheme?.id || 'default') === itemId;
+                  const safeBgColors = resolveSafeBgColors(item.bgColors, ['#3A0E5C', '#1E0A3C']);
+                  const imageSource = resolveThemeImageSource(item.coverImage);
+
+                  return (
+                    <TouchableOpacity
+                      style={[styles.themeCard, isSelected && styles.themeCardSelected]}
+                      onPress={() => handleApplyTheme(item)}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.imagePreviewWrap}>
+                        {imageSource ? (
+                          <Image
+                            source={imageSource}
+                            style={styles.previewImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <LinearGradient colors={safeBgColors} style={styles.previewImage} />
+                        )}
+                        {isCurrentInUse && (
+                          <View style={styles.inUseBadge}>
+                            <Text style={styles.inUseText}>USING</Text>
+                          </View>
+                        )}
+                        {isSelected && (
+                          <View style={styles.checkCircle}>
+                            <Icon name="checkmark" size={14} color="#FFFFFF" />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.themeName} numberOfLines={1}>{item.name}</Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )
+          )}
+
+          {/* Tab 2: Mic Theme (Seat Skins) */}
+          {activeTab === 'Mic Theme' && (
             <FlatList
-              data={displayThemeData}
+              data={SEAT_SKIN_CATALOG || []}
               keyExtractor={(item, index) => String(item.id || item.itemId || index)}
               numColumns={2}
               columnWrapperStyle={styles.columnWrapper}
               contentContainerStyle={styles.listContent}
               renderItem={({ item }) => {
-                if (item.isCustomCard) {
-                  return (
-                    <View style={styles.customCard}>
-                      <View style={styles.customPlusWrap}>
-                        <Icon name="add" size={48} color="#CBD5E1" />
-                      </View>
-                      <Text style={styles.customTitle}>Custom</Text>
-                      <Text style={styles.noPrivilegesText}>No Privileges</Text>
-                      <TouchableOpacity
-                        style={styles.uploadBtn}
-                        onPress={handleCustomUpload}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.uploadBtnText}>Upload</Text>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                }
-
-                const itemId = String(item.itemId || item.id || '');
-                const isSelected = String(selected) === itemId || (itemId === 'default' && (!selected || selected === 'default'));
-                const isCurrentInUse = String(currentTheme?.itemId || currentTheme?.id || 'default') === itemId;
-                const safeBgColors = Array.isArray(item.bgColors) && item.bgColors.length >= 2
-                  ? item.bgColors
-                  : ['#3A0E5C', '#1E0A3C'];
+                const itemId = String(item.itemId || item.id || 'default');
+                const isCurrentInUse = String(currentSeatSkin?.itemId || currentSeatSkin?.id || 'default') === itemId;
+                const imageSource = resolveThemeImageSource(item.imageUrl || item.image);
 
                 return (
                   <TouchableOpacity
-                    style={[styles.themeCard, isSelected && styles.themeCardSelected]}
-                    onPress={() => handleApplyTheme(item)}
+                    style={[styles.themeCard, isCurrentInUse && styles.themeCardSelected]}
+                    onPress={() => handleApplySeatSkin(item)}
                     activeOpacity={0.85}
                   >
-                    <View style={styles.imagePreviewWrap}>
-                      {item.coverImage ? (
+                    <View style={[styles.imagePreviewWrap, { backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' }]}>
+                      {imageSource ? (
                         <Image
-                          source={
-                            typeof item.coverImage === 'number'
-                              ? item.coverImage
-                              : { uri: String(item.coverImage) }
-                          }
+                          source={imageSource}
                           style={styles.previewImage}
                           resizeMode="cover"
                         />
                       ) : (
-                        <LinearGradient colors={safeBgColors} style={styles.previewImage} />
+                        <MaterialCommunityIcons name={item.icon || 'chair-rolling'} size={52} color={item.previewColor || '#F59E0B'} />
                       )}
                       {isCurrentInUse && (
                         <View style={styles.inUseBadge}>
                           <Text style={styles.inUseText}>USING</Text>
-                        </View>
-                      )}
-                      {isSelected && (
-                        <View style={styles.checkCircle}>
-                          <Icon name="checkmark" size={14} color="#FFFFFF" />
                         </View>
                       )}
                     </View>
@@ -404,80 +529,49 @@ export default function RoomThemeModal({
                 );
               }}
             />
-          )
-        )}
+          )}
 
-        {/* Tab 2: Mic Theme (Seat Skins) */}
-        {activeTab === 'Mic Theme' && (
-          <FlatList
-            data={SEAT_SKIN_CATALOG || []}
-            keyExtractor={(item, index) => String(item.id || item.itemId || index)}
-            numColumns={2}
-            columnWrapperStyle={styles.columnWrapper}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => {
-              const itemId = String(item.itemId || item.id || 'default');
-              const isCurrentInUse = String(currentSeatSkin?.itemId || currentSeatSkin?.id || 'default') === itemId;
-              return (
+          {/* Tab 3: Theme Set */}
+          {activeTab === 'Theme Set' && (
+            <FlatList
+              data={THEME_SETS}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              columnWrapperStyle={styles.columnWrapper}
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[styles.themeCard, isCurrentInUse && styles.themeCardSelected]}
-                  onPress={() => handleApplySeatSkin(item)}
+                  style={styles.themeCard}
+                  onPress={() => handleApplyThemeSet(item)}
                   activeOpacity={0.85}
                 >
-                  <View style={[styles.imagePreviewWrap, { backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' }]}>
-                    {item.imageUrl || item.image ? (
-                      <Image
-                        source={typeof (item.imageUrl || item.image) === 'number' ? (item.imageUrl || item.image) : { uri: String(item.imageUrl || item.image) }}
-                        style={styles.previewImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <MaterialCommunityIcons name={item.icon || 'chair-rolling'} size={52} color={item.previewColor || '#F59E0B'} />
-                    )}
-                    {isCurrentInUse && (
-                      <View style={styles.inUseBadge}>
-                        <Text style={styles.inUseText}>USING</Text>
+                  <View style={styles.imagePreviewWrap}>
+                    <LinearGradient colors={resolveSafeBgColors(item.bgColors)} style={styles.previewImage}>
+                      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <MaterialCommunityIcons name="palette" size={30} color={item.previewColor} style={{ marginBottom: 6 }} />
+                        <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '700', textAlign: 'center', paddingHorizontal: 8 }}>
+                          Theme + Mic
+                        </Text>
                       </View>
-                    )}
+                    </LinearGradient>
                   </View>
                   <Text style={styles.themeName} numberOfLines={1}>{item.name}</Text>
                 </TouchableOpacity>
-              );
-            }}
-          />
-        )}
-
-        {/* Tab 3: Theme Set */}
-        {activeTab === 'Theme Set' && (
-          <FlatList
-            data={THEME_SETS}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            columnWrapperStyle={styles.columnWrapper}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.themeCard}
-                onPress={() => handleApplyThemeSet(item)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.imagePreviewWrap}>
-                  <LinearGradient colors={item.bgColors} style={styles.previewImage}>
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                      <MaterialCommunityIcons name="palette" size={30} color={item.previewColor} />
-                      <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '700', textAlign: 'center', paddingHorizontal: 8 }}>
-                        Theme + Mic
-                      </Text>
-                    </View>
-                  </LinearGradient>
-                </View>
-                <Text style={styles.themeName} numberOfLines={1}>{item.name}</Text>
-              </TouchableOpacity>
-            )}
-          />
-        )}
-      </View>
+              )}
+            />
+          )}
+        </View>
+      </RoomThemeModalErrorBoundary>
     </Modal>
+  );
+}
+
+export default function RoomThemeModal(props) {
+  if (!props?.visible) return null;
+  return (
+    <RoomThemeModalErrorBoundary onClose={props?.onClose}>
+      <RoomThemeModalInner {...props} />
+    </RoomThemeModalErrorBoundary>
   );
 }
 
@@ -651,4 +745,30 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '500',
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#FFFFFF',
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  errorBtn: {
+    backgroundColor: '#F97316',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  errorBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
 });
+

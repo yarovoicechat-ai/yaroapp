@@ -138,10 +138,18 @@ export default function RoomThreeDotModal({
               <TouchableOpacity
                 style={styles.toolRow}
                 onPress={() => {
-                  onClose();
-                  setTimeout(() => {
-                    if (item.onPress) item.onPress();
-                  }, 120);
+                  try {
+                    if (onClose) onClose();
+                    setTimeout(() => {
+                      try {
+                        if (item.onPress) item.onPress();
+                      } catch (e) {
+                        console.warn('[RoomThreeDotModal] Action failed:', e);
+                      }
+                    }, 350);
+                  } catch (err) {
+                    console.warn('[RoomThreeDotModal] Press error:', err);
+                  }
                 }}
                 activeOpacity={0.7}
               >

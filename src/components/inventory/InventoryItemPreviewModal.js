@@ -1,34 +1,38 @@
 import React from 'react';
 import { Modal, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import CosmeticFormatBadge from '../cosmetics/CosmeticFormatBadge';
+import { getCosmeticFormatBadge } from '../cosmetics/CosmeticAsset';
 
-export default function InventoryItemPreviewModal({ visible, onClose, item, renderShowcase, equippableTypes, onToggleUse, styles }) {
+export default function InventoryItemPreviewModal({ visible, onClose, item, renderShowcase, equippableTypes = [], onToggleUse, styles }) {
+  const badge = item ? (getCosmeticFormatBadge ? getCosmeticFormatBadge(item) : { bg: '#8B5CF620', color: '#8B5CF6', label: 'ASSET' }) : null;
+
   return (
-<Modal
-        visible={visible}
-        transparent
-        animationType="fade"
-        onRequestClose={onClose}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => onClose()}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => onClose()}
+          style={styles.modalContent}
+          onPress={(e) => e?.stopPropagation?.()}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={styles.modalContent}
-            onPress={(e) => e?.stopPropagation?.()}
-          >
-            {item && (
-              <>
-                <View style={styles.modalHeader}>
-                  <View style={[styles.previewFormatTag, { backgroundColor: getFormatBadge(item).bg }]}>
-                    <Text style={[styles.previewFormatTagText, { color: getFormatBadge(item).color }]}>
-                      {getFormatBadge(item).label}
+          {item && (
+            <>
+              <View style={styles.modalHeader}>
+                {badge && (
+                  <View style={[styles.previewFormatTag, { backgroundColor: badge.bg }]}>
+                    <Text style={[styles.previewFormatTagText, { color: badge.color }]}>
+                      {badge.label}
                     </Text>
                   </View>
+                )}
                   <TouchableOpacity
                     onPress={() => onClose()}
                     style={styles.modalCloseBtn}

@@ -25,9 +25,11 @@ const { width } = Dimensions.get('window');
 const SVIP4_BADGE = require('../../assets/svip/svip4_badge.png');
 const SVIP5_BADGE = require('../../assets/svip/svip5_badge.png');
 const SVIP3_TAG = require('../../assets/svip/svip3_tag.png');
+const VISCOUNT_BADGE = require('../../assets/king/viscount_badge.png');
 
-// Prestige Medals including SVIP 5 Lion, SVIP 4 Tiger Badge and SVIP 3 Wolf Crest
+// Prestige Medals including Viscount, SVIP 5 Lion, SVIP 4 Tiger Badge and SVIP 3 Wolf Crest
 const PRESTIGE_MEDALS = [
+  { id: 'king_viscount', label: 'Viscount', isCustomImage: true, image: VISCOUNT_BADGE, colors: ['#A855F7', '#7C3AED'] },
   { id: 'svip5_lion', label: 'SVIP 5 Lion', isCustomImage: true, image: SVIP5_BADGE, colors: ['#F59E0B', '#B45309'] },
   { id: 'svip4_tiger', label: 'SVIP 4 Tiger', isCustomImage: true, image: SVIP4_BADGE, colors: ['#F59E0B', '#B45309'] },
   { id: 'svip3_wolf', label: 'SVIP 3 Wolf', isCustomImage: true, image: SVIP3_TAG, colors: ['#8B5CF6', '#6D28D9'] },

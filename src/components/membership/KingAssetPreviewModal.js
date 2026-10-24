@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Text, TouchableOpacity, View, Image } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 
@@ -10,7 +10,11 @@ export default function KingAssetPreviewModal({ visible, onClose, asset, styles 
         <View style={styles.assetModalCard}>
           <LinearGradient colors={['#2A1807', '#150C03']} style={styles.assetModalGradient}>
             <View style={styles.assetModalIconCircle}>
-              <Icon name={asset?.icon || 'sparkles'} size={36} color="#FDE047" />
+              {asset?.image ? (
+                <Image source={asset.image} style={{ width: 68, height: 68 }} resizeMode="contain" />
+              ) : (
+                <Icon name={asset?.icon || 'sparkles'} size={36} color="#FDE047" />
+              )}
             </View>
             <Text style={styles.assetModalTitle}>{asset?.name}</Text>
             <Text style={styles.assetModalStatus}>

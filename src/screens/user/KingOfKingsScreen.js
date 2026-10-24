@@ -26,6 +26,9 @@ import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 
+// Dedicated Nobility Assets
+const VISCOUNT_BADGE = require('../../assets/king/viscount_badge.png');
+
 // Fallback Nobility tiers matching screenshot 2
 const FALLBACK_KING_TIERS = [
   {
@@ -71,10 +74,10 @@ const FALLBACK_KING_TIERS = [
     ],
   },
   {
-    tierKey: 'count',
-    name: 'Count',
+    tierKey: 'viscount',
+    name: 'Viscount',
     level: 2,
-    title: 'Royal Count',
+    title: 'Royal Viscount',
     coinsPrice: 249000,
     dailyRewardCoins: 2500,
     durationDays: 30,
@@ -82,19 +85,20 @@ const FALLBACK_KING_TIERS = [
     totalRewards: 11,
     privilegeCount: 6,
     totalPrivileges: 13,
-    heroBadgeUrl: 'https://cdn-icons-png.flaticon.com/512/2583/2583319.png',
+    heroBadge: VISCOUNT_BADGE,
+    heroBadgeUrl: '/king/viscount_badge.png',
     rewards: [
       { key: 'daily_coins', name: 'Daily coins', desc: 'Claim 2,500 coins every day upon login', icon: 'cash', unlocked: true, previewUrl: '' },
-      { key: 'notification_broadcast', name: 'Broadcast', desc: 'Count royal trumpet arrival announcement', icon: 'megaphone', unlocked: true, previewUrl: '' },
-      { key: 'kings_logo', name: 'Logo', desc: 'Amethyst & Gold Count Coat of Arms', icon: 'shield-star', unlocked: true, previewUrl: '' },
-      { key: 'kings_badge', name: 'Kings badge', desc: 'Shimmering Purple Crest Nobility Badge', icon: 'medal', unlocked: true, previewUrl: '' },
-      { key: 'avatar_frame', name: 'Avatar frame', desc: 'Count Regal Amethyst Wings Frame', icon: 'color-wand', unlocked: true, previewUrl: '' },
+      { key: 'notification_broadcast', name: 'Broadcast', desc: 'Viscount royal trumpet arrival announcement', icon: 'megaphone', unlocked: true, previewUrl: '' },
+      { key: 'kings_logo', name: 'Logo', desc: 'Amethyst & Gold Viscount Coat of Arms', icon: 'shield-star', unlocked: true, previewUrl: '' },
+      { key: 'kings_badge', name: 'Kings badge', desc: 'Shimmering Purple & Gold Viscount Nobility Badge', icon: 'medal', unlocked: true, previewUrl: '', image: VISCOUNT_BADGE },
+      { key: 'avatar_frame', name: 'Avatar frame', desc: 'Viscount Regal Amethyst Wings Frame', icon: 'color-wand', unlocked: true, previewUrl: '' },
       { key: 'entry_effect', name: 'Entry effect', desc: 'Supercar Phantom Entry with fireworks', icon: 'car-sport', unlocked: true, previewUrl: '' },
       { key: 'barrage', name: 'Barrage', desc: 'Purple neon bullet comments in room', icon: 'chatbubbles', unlocked: true, previewUrl: '' },
-      { key: 'chat_bubble', name: 'Chat bubble', desc: 'Count Purple Velvet chat bubble', icon: 'chatbubble-ellipses', unlocked: true, previewUrl: '' },
+      { key: 'chat_bubble', name: 'Chat bubble', desc: 'Viscount Purple Velvet chat bubble', icon: 'chatbubble-ellipses', unlocked: true, previewUrl: '' },
       { key: 'mic_seat_aura', name: 'Mic aura', desc: 'Violet crystal pulsing mic aura', icon: 'radio', unlocked: false, previewUrl: '' },
       { key: 'profile_card', name: 'Profile theme', desc: 'Midnight amethyst nobility card theme', icon: 'card', unlocked: false, previewUrl: '' },
-      { key: 'custom_gift', name: 'Exclusive gift', desc: 'Count Royal Crown 3D animated gift', icon: 'gift', unlocked: false, previewUrl: '' },
+      { key: 'custom_gift', name: 'Exclusive gift', desc: 'Viscount Royal Crown 3D animated gift', icon: 'gift', unlocked: false, previewUrl: '' },
     ],
     privileges: [
       { key: 'rank_the_top', name: 'Rank Top', desc: 'Priority pinning in room members and contributors', icon: 'trophy', unlocked: true },
@@ -261,9 +265,21 @@ export default function KingOfKingsScreen() {
       const res = await apiUtil.get('/king-plans', { suppressGlobalError: true });
       const payload = res?.data?.data || res?.data;
       if (res?.data?.success && Array.isArray(payload?.plans) && payload.plans.length > 0) {
-        setTiers(payload.plans);
-        if (!payload.plans.some((t) => t.tierKey === activeTierKey)) {
-          setActiveTierKey(payload.plans[0].tierKey);
+        const enriched = payload.plans.map((p) => {
+          if (p.tierKey === 'viscount' || p.slug === 'viscount' || p.tierKey === 'count' || p.slug === 'count') {
+            return {
+              ...p,
+              name: 'Viscount',
+              tierKey: 'viscount',
+              title: p.title?.includes('Count') ? 'Royal Viscount' : (p.title || 'Royal Viscount'),
+              heroBadge: VISCOUNT_BADGE,
+            };
+          }
+          return p;
+        });
+        setTiers(enriched);
+        if (!enriched.some((t) => t.tierKey === activeTierKey)) {
+          setActiveTierKey(enriched[0].tierKey);
         }
       }
     } catch (_) {
@@ -355,38 +371,44 @@ export default function KingOfKingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Nobility Tabs Row (Knight, Count, Duke, Prince, King) */}
-      <View style={styles.tabsRow}>
-        {tiers.map((t) => {
-          const isActive = t.tierKey === activeTierKey;
-          return (
-            <TouchableOpacity
-              key={t.tierKey}
-              style={[styles.tabBtn, isActive && styles.tabBtnActive]}
-              onPress={() => setActiveTierKey(t.tierKey)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
-                {t.name}
-              </Text>
-              {isActive && (
-                <LinearGradient
-                  colors={['#FDE047', '#EAB308']}
-                  style={styles.tabActiveBar}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                />
-              )}
-            </TouchableOpacity>
-          );
-        })}
+      {/* Nobility Tabs Row (Knight, Viscount, Duke, Prince, King) */}
+      <View style={styles.tabsRowContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsScrollContent}
+        >
+          {tiers.map((t) => {
+            const isActive = (t.tierKey === activeTierKey) || (t.slug === activeTierKey);
+            return (
+              <TouchableOpacity
+                key={t.tierKey || t.slug}
+                style={[styles.tabBtn, isActive && styles.tabBtnActive]}
+                onPress={() => setActiveTierKey(t.tierKey || t.slug)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
+                  {t.name}
+                </Text>
+                {isActive && (
+                  <LinearGradient
+                    colors={['#FDE047', '#EAB308']}
+                    style={styles.tabActiveBar}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 85 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Crest Section: Golden Winged Stag Emblem */}
+        {/* Hero Crest Section: Golden Winged Stag / Royal Viscount Emblem */}
         <View style={styles.heroCrestSection}>
           <LinearGradient
             colors={['rgba(217, 119, 6, 0.25)', 'rgba(30, 20, 10, 0.4)', 'transparent']}
@@ -396,40 +418,70 @@ export default function KingOfKingsScreen() {
           />
 
           <View style={styles.crestContainer}>
-            {/* Crowned Golden Stag Insignia */}
-            <View style={styles.crestCircleWrap}>
-              <LinearGradient
-                colors={['#FDE047', '#D97706', '#92400E']}
-                style={styles.crestBorderGradient}
-              >
-                <View style={styles.crestInner}>
-                  {currentTier.heroBadgeUrl ? (
-                    <Image
-                      source={{ uri: currentTier.heroBadgeUrl }}
-                      style={styles.heroBadgeImg}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <MaterialCommunityIcons name="shield-crown" size={68} color="#FDE047" />
-                  )}
-                </View>
-              </LinearGradient>
+            {/* Custom High-Res Nobility Badge or Circular Insignia */}
+            {currentTier.heroBadge ? (
+              <View style={styles.heroBadgeBox}>
+                <Image
+                  source={currentTier.heroBadge}
+                  style={styles.heroBadgeImage}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : (
+              <View style={styles.crestCircleWrap}>
+                <LinearGradient
+                  colors={['#FDE047', '#D97706', '#92400E']}
+                  style={styles.crestBorderGradient}
+                >
+                  <View style={styles.crestInner}>
+                    {currentTier.heroBadgeUrl ? (
+                      <Image
+                        source={{ uri: currentTier.heroBadgeUrl }}
+                        style={styles.heroBadgeImg}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <MaterialCommunityIcons name="shield-crown" size={68} color="#FDE047" />
+                    )}
+                  </View>
+                </LinearGradient>
 
-              {/* Bottom Plaque Badge Ribbon */}
-              <LinearGradient
-                colors={['#CA8A04', '#78350F', '#451A03']}
-                style={styles.plaqueRibbon}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.plaqueRibbonText}>{currentTier.name.toUpperCase()}</Text>
-              </LinearGradient>
-            </View>
+                {/* Bottom Plaque Badge Ribbon */}
+                <LinearGradient
+                  colors={['#CA8A04', '#78350F', '#451A03']}
+                  style={styles.plaqueRibbon}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.plaqueRibbonText}>{currentTier.name.toUpperCase()}</Text>
+                </LinearGradient>
+              </View>
+            )}
 
             <Text style={styles.heroTierTitle}>{currentTier.title}</Text>
             <Text style={styles.heroTierSubtitle}>
               Daily {formatCompactBalance(currentTier.dailyRewardCoins)} Coins • {currentTier.privilegeCount || currentTier.privileges?.filter(p => p.unlocked)?.length || 4} Unlocked Powers
             </Text>
+
+            {/* Tier Indicator Dots ("encator add karo") */}
+            <View style={styles.tierIndicatorWrap}>
+              {tiers.map((t, idx) => {
+                const isActive = (t.tierKey === activeTierKey) || (t.slug === activeTierKey);
+                return (
+                  <TouchableOpacity
+                    key={t.tierKey || t.slug || idx}
+                    onPress={() => setActiveTierKey(t.tierKey || t.slug)}
+                    activeOpacity={0.8}
+                    hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                  >
+                    <LinearGradient
+                      colors={isActive ? ['#FDE047', '#EAB308', '#D97706'] : ['#475569', '#334155']}
+                      style={[styles.indicatorDot, isActive && styles.indicatorDotActive]}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </View>
 
@@ -676,17 +728,19 @@ const styles = StyleSheet.create({
     color: '#FDE047',
     letterSpacing: 0.5,
   },
-  tabsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 8,
+  tabsRowContainer: {
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(217, 119, 6, 0.2)',
+    paddingVertical: 2,
+  },
+  tabsScrollContent: {
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 6,
   },
   tabBtn: {
     paddingVertical: 10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 14,
     alignItems: 'center',
     position: 'relative',
   },
@@ -703,8 +757,8 @@ const styles = StyleSheet.create({
   tabActiveBar: {
     position: 'absolute',
     bottom: 0,
-    height: 2.5,
-    width: '80%',
+    height: 3,
+    width: '85%',
     borderRadius: 2,
   },
   scrollContent: {
@@ -714,13 +768,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    paddingVertical: 16,
+    paddingVertical: 14,
   },
   heroGlowGradient: {
     ...StyleSheet.absoluteFillObject,
   },
   crestContainer: {
     alignItems: 'center',
+  },
+  heroBadgeBox: {
+    width: 220,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#A855F7',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.75,
+    shadowRadius: 20,
+    elevation: 12,
+    marginBottom: 6,
+  },
+  heroBadgeImage: {
+    width: 215,
+    height: 195,
+  },
+  tierIndicatorWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    gap: 8,
+  },
+  indicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#334155',
+  },
+  indicatorDotActive: {
+    width: 26,
+    height: 8,
+    borderRadius: 4,
+    shadowColor: '#FDE047',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 4,
   },
   crestCircleWrap: {
     position: 'relative',

@@ -14,6 +14,7 @@ import { resolveEntryAssets } from '../../utils/cosmeticResolver';
 const SVIP4_BADGE = require('../../assets/svip/svip4_badge.png');
 const SVIP5_BADGE = require('../../assets/svip/svip5_badge.png');
 const SVIP3_TAG = require('../../assets/svip/svip3_tag.png');
+const VISCOUNT_BADGE = require('../../assets/king/viscount_badge.png');
 
 const { width, height } = Dimensions.get('window');
 
@@ -312,6 +313,10 @@ export default function VipFloatingEntryEngine({
           ) : currentEntry?.svipLevel === 5 || currentEntry?.tagText?.includes('SVIP 5') || entryTagText?.includes('SVIP 5') || entryTagText?.includes('LION') ? (
             <View style={{ alignItems: 'center' }}>
               <Image source={SVIP5_BADGE} style={{ width: 100, height: 85 }} resizeMode="contain" />
+            </View>
+          ) : currentEntry?.kingKey === 'viscount' || currentEntry?.tagText?.includes('VISCOUNT') || entryTagText?.includes('VISCOUNT') ? (
+            <View style={{ alignItems: 'center' }}>
+              <Image source={VISCOUNT_BADGE} style={{ width: 110, height: 95 }} resizeMode="contain" />
             </View>
           ) : (
             <LinearGradient

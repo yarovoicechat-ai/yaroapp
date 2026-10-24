@@ -112,14 +112,14 @@ export default function RoomGroupPrivilegeModal({
 
   const handleJoinPress = () => {
     setIsJoined(true);
-    AlertService.show('Group Joined! 🎉', 'You have successfully joined the room group and unlocked all privileges!', 'success');
+    AlertService.show('Fan Club Joined! 🎉', 'You have successfully joined the room Fan Club and unlocked all privileges!', 'success');
     onJoinGroup && onJoinGroup();
   };
 
   const handleHelpPress = () => {
     Alert.alert(
       'Member Privileges 💡',
-      'Joining this room group grants exclusive badges, priority mic access, room group logo, and boosts your follower engagement!',
+      'Joining this room Fan Club grants exclusive badges, priority mic access, room Fan Club logo, and boosts your follower engagement!',
       [{ text: 'Got it', style: 'default' }]
     );
   };
@@ -297,13 +297,13 @@ export default function RoomGroupPrivilegeModal({
               </TouchableOpacity>
 
               <Text style={styles.membersTopTitle}>
-                Group Members<Text style={styles.membersTopTitleCount}>({displayCount} members)</Text>
+                Fan Club Members<Text style={styles.membersTopTitleCount}>({displayCount} members)</Text>
               </Text>
 
               <TouchableOpacity
                 style={styles.dotsBtnTouch}
                 activeOpacity={0.7}
-                onPress={() => AlertService.show('Group Info', `${roomTitle} - ${displayCount} members`, 'info')}
+                onPress={() => AlertService.show('Fan Club Info', `${roomTitle} - ${displayCount} members`, 'info')}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
                 <MaterialCommunityIcons name="dots-horizontal" size={26} color="#334155" />

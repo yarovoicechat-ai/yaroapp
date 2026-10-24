@@ -40,9 +40,9 @@ export default function VoiceRoomSeatGrid({
                 {isOccupied ? (
                   <View style={styles.occupiedSeatWrapper}>
                     <VipMicWave
-                      state={seat.isMuted ? 'MUTED' : ((speakingSeatIndices?.has?.(seat.seatIndex) || seat.isSpeaking) ? 'SPEAKING' : 'IDLE')}
-                      waveColors={isHostSeat ? ['#F59E0B', '#FBBF24'] : ['#EC4899', '#F472B6']}
-                      intensity={1.1}
+                      state={seat.isMuted ? 'MUTED' : ((seat.isSpeaking || speakingSeatIndices?.has?.(seat.seatIndex) || speakingSeatIndices?.has?.(Number(seat.seatIndex)) || speakingSeatIndices?.has?.(String(seat.seatIndex))) ? 'SPEAKING' : 'IDLE')}
+                      waveColors={isHostSeat ? ['#F59E0B', '#FBBF24', '#D97706'] : ['#EC4899', '#F472B6', '#DB2777']}
+                      intensity={1.15}
                       size={56}
                     >
                       <View
@@ -65,13 +65,6 @@ export default function VoiceRoomSeatGrid({
                           size={50}
                           showOnlineDot={false}
                         />
-                        <View style={[styles.avatarCrestFrame, isHostSeat ? styles.hostCrest : styles.cpCrest]}>
-                          <MaterialCommunityIcons
-                            name={isHostSeat ? 'crown' : 'heart'}
-                            size={11}
-                            color={isHostSeat ? '#FBBF24' : '#F472B6'}
-                          />
-                        </View>
                         {seat.isMuted && (
                           <View style={styles.micMuteBadge}>
                             <Icon name="mic-off" size={7} color="#FFF" />
@@ -144,8 +137,9 @@ export default function VoiceRoomSeatGrid({
                   {isOccupied ? (
                     <View style={styles.occupiedSeatWrapper}>
                       <VipMicWave
-                        state={seat.isMuted ? 'MUTED' : ((speakingSeatIndices?.has?.(seat.seatIndex) || seat.isSpeaking) ? 'SPEAKING' : 'IDLE')}
-                        waveColors={activeSeatSkin?.ringColors || ['#38BDF8', '#0284C7']}
+                        state={seat.isMuted ? 'MUTED' : ((seat.isSpeaking || speakingSeatIndices?.has?.(seat.seatIndex) || speakingSeatIndices?.has?.(Number(seat.seatIndex)) || speakingSeatIndices?.has?.(String(seat.seatIndex))) ? 'SPEAKING' : 'IDLE')}
+                        waveColors={activeSeatSkin?.ringColors || ['#10B981', '#06B6D4', '#3B82F6']}
+                        intensity={1.1}
                         size={circleSize}
                       >
                         <View

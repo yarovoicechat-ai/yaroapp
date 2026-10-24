@@ -621,7 +621,7 @@ export default function RoomUserProfileModal({
                       <Text style={styles.moderationLabel}>Remove</Text>
                     </TouchableOpacity>
 
-                    {/* Group */}
+                    {/* Fan Club */}
                     <TouchableOpacity
                       style={styles.moderationItem}
                       onPress={() => {
@@ -631,24 +631,26 @@ export default function RoomUserProfileModal({
                       activeOpacity={0.7}
                     >
                       <MaterialCommunityIcons name="account-group-outline" size={28} color="#64748B" />
-                      <Text style={styles.moderationLabel}>Group</Text>
+                      <Text style={styles.moderationLabel}>Fan Club</Text>
                     </TouchableOpacity>
 
-                    {/* Admin Toggle */}
-                    <TouchableOpacity
-                      style={styles.moderationItem}
-                      onPress={() => onToggleAdmin && onToggleAdmin(user)}
-                      activeOpacity={0.7}
-                    >
-                      <MaterialCommunityIcons
-                        name={isTargetAdmin ? 'account-minus-outline' : 'account-plus-outline'}
-                        size={28}
-                        color="#64748B"
-                      />
-                      <Text style={styles.moderationLabel}>
-                        {isTargetAdmin ? 'Remove Admin' : 'Admin'}
-                      </Text>
-                    </TouchableOpacity>
+                    {/* Admin Toggle - Room Owner Only */}
+                    {isRoomOwner && (
+                      <TouchableOpacity
+                        style={styles.moderationItem}
+                        onPress={() => onToggleAdmin && onToggleAdmin(user)}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialCommunityIcons
+                          name={isTargetAdmin ? 'account-minus-outline' : 'account-plus-outline'}
+                          size={28}
+                          color="#64748B"
+                        />
+                        <Text style={styles.moderationLabel}>
+                          {isTargetAdmin ? 'Remove Admin' : 'Admin'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
 

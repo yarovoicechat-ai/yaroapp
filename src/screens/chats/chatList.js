@@ -26,7 +26,6 @@ const INBOX_SUB_TABS = [
   { id: 'all_messages', label: 'All Messages', icon: 'chatbubbles-outline' },
   { id: 'calls', label: 'Calls', icon: 'call-outline' },
   { id: 'gifts', label: 'Gifts', icon: 'gift-outline' },
-  { id: 'system', label: 'System', icon: 'shield-checkmark-outline' },
 ];
 
 const SYSTEM_NOTICE_ENTRY = {
@@ -214,7 +213,15 @@ export default function ChatListScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.cardWrapper}
-          onPress={() => handleSubTabPress(item.actionTab || 'system')}
+          onPress={() => {
+            if (item.id === 'm_system_notice') {
+              navigation.navigate('SystemNoticeScreen');
+              return;
+            }
+            if (item.actionTab) {
+              handleSubTabPress(item.actionTab);
+            }
+          }}
         >
           <View style={[styles.specialIconBox, { backgroundColor: item.actionTab ? '#FEF3C7' : '#F3E8FF' }]}>
             <Icon name={item.icon} size={24} color={item.actionTab ? '#D97706' : '#8B5CF6'} />

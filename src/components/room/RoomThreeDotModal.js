@@ -12,6 +12,7 @@ export default function RoomThreeDotModal({
   visible,
   onClose,
   canModerate = true,
+  isRoomOwner = false,
   onReportRoom,
   onOpenSeatSettings,
   onLockSeats,
@@ -20,6 +21,11 @@ export default function RoomThreeDotModal({
   onOpenAdminSettings,
   onClearChat,
   onGatherFollowers,
+  onKickUser,
+  onInviteUser,
+  onMuteUser,
+  onBanChat,
+  onRemoveSeat,
   isGlobalRoomManager = false,
   onBanRoom,
   onToggleStealth,
@@ -62,8 +68,8 @@ export default function RoomThreeDotModal({
     ] : []),
   ];
 
-  // Room Owner & Admins see full management suite
-  const adminItems = [
+  // Room Owner sees full management suite
+  const ownerItems = [
     {
       id: 'mic_count',
       label: 'Number of Mic',
@@ -131,7 +137,55 @@ export default function RoomThreeDotModal({
     ] : []),
   ];
 
-  const toolItems = canModerate ? adminItems : guestItems;
+  // Room Admin ONLY gets: kick, invite, mute, seat lock/unlock, ban chat, remove seat
+  const roomAdminItems = [
+    {
+      id: 'kick',
+      label: 'Kick',
+      icon: 'logout-variant',
+      iconColor: '#EF4444',
+      onPress: onKickUser || onOpenAdminSettings,
+    },
+    {
+      id: 'invite',
+      label: 'Invite',
+      icon: 'account-plus-outline',
+      iconColor: '#10B981',
+      onPress: onInviteUser || onShareRoom,
+    },
+    {
+      id: 'mute',
+      label: 'Mute',
+      icon: 'microphone-off',
+      iconColor: '#F59E0B',
+      onPress: onMuteUser,
+    },
+    {
+      id: 'lock_seats',
+      label: 'Seat Lock / Unlock',
+      icon: 'lock-outline',
+      iconColor: '#F97316',
+      onPress: onLockSeats,
+    },
+    {
+      id: 'ban_chat',
+      label: 'Ban Chat',
+      icon: 'comment-off-outline',
+      iconColor: '#6366F1',
+      onPress: onBanChat,
+    },
+    {
+      id: 'remove_seat',
+      label: 'Remove Seat',
+      icon: 'seat-passenger',
+      iconColor: '#EC4899',
+      onPress: onRemoveSeat,
+    },
+  ];
+
+  const toolItems = isRoomOwner
+    ? ownerItems
+    : (canModerate ? roomAdminItems : guestItems);
 
   return (
     <Modal

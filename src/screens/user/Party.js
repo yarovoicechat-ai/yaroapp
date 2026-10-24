@@ -31,6 +31,7 @@ import { ROOM_CATEGORY_TAGS, ROOM_SEAT_OPTIONS } from '../../constants/party';
 import AdminBannerCarousel from '../../components/AdminBannerCarousel';
 import CountryPickerModal from '../../components/party/CountryPickerModal';
 import CreateRoomModal from '../../components/party/CreateRoomModal';
+import RoomLockModal from '../../components/room/RoomLockModal';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 44) / 2;
@@ -38,7 +39,7 @@ const cardWidth = (width - 44) / 2;
 const TOP_NAV_TABS = ['Follow', 'Explore', 'Nearby', 'Beauty', 'New'];
 
 const POPULAR_COUNTRY_CHIPS = [
-  { id: 'all', name: '', label: '🔥 All / Popular', flag: '🔥' },
+  { id: 'all', name: '', label: 'All', flag: '' },
   { id: 'in', name: 'India', label: 'India', flag: '🇮🇳' },
   { id: 'pk', name: 'Pakistan', label: 'Pakistan', flag: '🇵🇰' },
   { id: 'bd', name: 'Bangladesh', label: 'Bangladesh', flag: '🇧🇩' },
@@ -110,10 +111,19 @@ export default function PartyScreen() {
 
   useFocusEffect(useCallback(() => { fetchRooms(); }, [fetchRooms]));
 
-  // Direct room entry on click - No annoying popups!
+  const [lockedRoomTarget, setLockedRoomTarget] = useState(null);
+
+  // Direct room entry on click - Locked rooms prompt for PIN
   const handleRoomCardPress = (roomItem) => {
+    const isLocked = Boolean(roomItem.isLocked || /private\s*\(pin\)/i.test(roomItem.mode || ''));
+    const myId = String(user?.userId || user?.meethiId || user?._id || user?.id || '');
+    const isOwner = roomItem.isSelfHost || String(roomItem.ownerId || roomItem.hostId || '') === myId;
+    if (isLocked && !isOwner) {
+      setLockedRoomTarget(roomItem);
+      return;
+    }
     enterRoom(roomItem, roomItem.isSelfHost, roomItem.seatCount || 8, user);
-    navigation.navigate('VoiceRoom', { room: roomItem });
+    navigation.navigate('VoiceRoom', { room: roomItem, isPinVerified: isOwner });
   };
 
   const launchRoomWithConfig = (config) => {
@@ -300,7 +310,7 @@ export default function PartyScreen() {
                   style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
                 />
               ) : null}
-              <Text style={{ fontSize: 13, marginRight: 4 }}>{chip.flag}</Text>
+              {Boolean(chip.flag) ? <Text style={{ fontSize: 13, marginRight: 4 }}>{chip.flag}</Text> : null}
               <Text
                 style={{
                   color: isSelected ? '#FFFFFF' : '#475569',
@@ -549,6 +559,21 @@ export default function PartyScreen() {
         onCreateRoom={handleCreateRoom}
         onCoverSelected={(image, source) => AlertService.show(source === 'gallery' ? 'Cover Selected' : 'Photo Captured', source === 'gallery' ? 'Cover image selected from gallery' : 'New cover photo captured', 'success')}
         onCoverError={(error, source) => AlertService.show(source === 'gallery' ? 'Upload Error' : 'Camera Error', error?.message || (source === 'gallery' ? 'Failed to select image' : 'Failed to capture photo'), 'error')}
+      />
+
+      <RoomLockModal
+        visible={Boolean(lockedRoomTarget)}
+        onClose={() => setLockedRoomTarget(null)}
+        mode="enter_pin"
+        roomId={lockedRoomTarget?.id || lockedRoomTarget?.roomId || lockedRoomTarget?.channelName}
+        onSuccess={() => {
+          const target = lockedRoomTarget;
+          setLockedRoomTarget(null);
+          if (target) {
+            enterRoom(target, target.isSelfHost, target.seatCount || 8, user);
+            navigation.navigate('VoiceRoom', { room: target, isPinVerified: true });
+          }
+        }}
       />
 
     </ScreenBackgroundView>

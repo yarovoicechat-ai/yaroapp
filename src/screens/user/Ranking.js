@@ -222,10 +222,20 @@ export default function Ranking() {
     return formatCompactBalance(num);
   };
 
+  const defaultPodium = (rank) => ({
+    id: `placeholder_${rank}`,
+    rank,
+    name: 'Unknown',
+    scoreText: '0',
+    score: 0,
+    level: '—',
+    isPlaceholder: true,
+  });
+
   // Top 3 for podium
-  const rank1 = rankingData.find((r) => r.rank === 1) || rankingData[0];
-  const rank2 = rankingData.find((r) => r.rank === 2) || rankingData[1];
-  const rank3 = rankingData.find((r) => r.rank === 3) || rankingData[2];
+  const rank1 = rankingData.find((r) => r.rank === 1) || rankingData[0] || defaultPodium(1);
+  const rank2 = rankingData.find((r) => r.rank === 2) || rankingData[1] || defaultPodium(2);
+  const rank3 = rankingData.find((r) => r.rank === 3) || rankingData[2] || defaultPodium(3);
 
   // Ranks 4+
   const listRanks = rankingData.filter((r) => r.rank > 3);
@@ -330,7 +340,13 @@ export default function Ranking() {
             <View style={styles.podiumColSide}>
               <View style={styles.podiumAvatarWrap}>
                 <BlueWingsSvg />
-                <Image source={getUserAvatar(rank2)} style={styles.avatarImgSide} />
+                {rank2.isPlaceholder ? (
+                  <View style={[styles.avatarImgSide, styles.placeholderAvatarCircle]}>
+                    <MaterialCommunityIcons name="account" size={32} color="#64748B" />
+                  </View>
+                ) : (
+                  <Image source={getUserAvatar(rank2)} style={styles.avatarImgSide} />
+                )}
                 <LinearGradient colors={['#0284C7', '#38BDF8']} style={styles.ribbonBadgeSide}>
                   <Text style={styles.ribbonText}>TOP2</Text>
                 </LinearGradient>
@@ -349,7 +365,13 @@ export default function Ranking() {
             <View style={styles.podiumColCenter}>
               <View style={styles.podiumAvatarWrapCenter}>
                 <GoldenLaurelCrownSvg />
-                <Image source={getUserAvatar(rank1)} style={styles.avatarImgCenter} />
+                {rank1.isPlaceholder ? (
+                  <View style={[styles.avatarImgCenter, styles.placeholderAvatarCircle]}>
+                    <MaterialCommunityIcons name="account" size={40} color="#64748B" />
+                  </View>
+                ) : (
+                  <Image source={getUserAvatar(rank1)} style={styles.avatarImgCenter} />
+                )}
                 <LinearGradient colors={['#DC2626', '#EF4444', '#F87171']} style={styles.ribbonBadgeCenter}>
                   <Text style={styles.crownGlyph}>👑</Text>
                   <Text style={styles.ribbonTextCenter}>TOP1</Text>
@@ -369,7 +391,13 @@ export default function Ranking() {
             <View style={styles.podiumColSide}>
               <View style={styles.podiumAvatarWrap}>
                 <PurpleCrystalSvg />
-                <Image source={getUserAvatar(rank3)} style={styles.avatarImgSide} />
+                {rank3.isPlaceholder ? (
+                  <View style={[styles.avatarImgSide, styles.placeholderAvatarCircle]}>
+                    <MaterialCommunityIcons name="account" size={32} color="#64748B" />
+                  </View>
+                ) : (
+                  <Image source={getUserAvatar(rank3)} style={styles.avatarImgSide} />
+                )}
                 <LinearGradient colors={['#7E22CE', '#C084FC']} style={styles.ribbonBadgeSide}>
                   <Text style={styles.ribbonText}>TOP3</Text>
                 </LinearGradient>
@@ -710,6 +738,11 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     backgroundColor: '#F1F5F9',
+  },
+  placeholderAvatarCircle: {
+    backgroundColor: '#0F172A',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   ribbonBadgeSide: {
     position: 'absolute',

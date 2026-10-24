@@ -813,6 +813,52 @@ export default function VoiceRoomScreen() {
 
   }, [room?.hostId, room?.ownerId, room?.hostName, seats, seatCount, topSafeInset]);
 
+  const [roomContributors, setRoomContributors] = useState([]);
+
+  const recordContribution = useCallback((senderUser, diamondsCount) => {
+    if (!senderUser || !diamondsCount) return;
+    const sId = String(senderUser.userId || senderUser.id || senderUser._id || '');
+    if (!sId) return;
+    const addedPoints = Number(diamondsCount) || 0;
+    if (addedPoints <= 0) return;
+
+    setRoomContributors((prev) => {
+      const existingIdx = prev.findIndex((u) => {
+        const uId = String(u.userId || u.id || u._id || '');
+        return uId === sId;
+      });
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        const cur = updated[existingIdx];
+        const newPoints = Number(cur.points || cur.wealthPoints || cur.diamonds || 0) + addedPoints;
+        updated[existingIdx] = {
+          ...cur,
+          points: newPoints,
+          wealthPoints: newPoints,
+          diamonds: newPoints,
+          totalDiamonds: newPoints,
+          totalSent: newPoints,
+        };
+        return updated.sort((a, b) => (b.points || 0) - (a.points || 0));
+      } else {
+        const newUser = {
+          userId: sId,
+          id: sId,
+          _id: sId,
+          name: senderUser.name || 'User',
+          avatar: senderUser.avatar || senderUser.image || '',
+          level: senderUser.level || 1,
+          points: addedPoints,
+          wealthPoints: addedPoints,
+          diamonds: addedPoints,
+          totalDiamonds: addedPoints,
+          totalSent: addedPoints,
+        };
+        return [...prev, newUser].sort((a, b) => (b.points || 0) - (a.points || 0));
+      }
+    });
+  }, []);
+
   const giftHook = useGift({
     roomId: currentRoomId,
     diamondBalance,
@@ -824,6 +870,14 @@ export default function VoiceRoomScreen() {
         ? data.receivers.map((r) => r.name).join(', ')
         : 'Host';
       const txId = data.transactionId || ('gift-local-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4));
+      
+      const sentDiamonds = Number(
+        data.totalDiamonds ||
+        data.totalPrice ||
+        (Number(data.gift?.price || data.gift?.cost || 0) * (data.quantity || 1) * Math.max(1, Array.isArray(data.receivers) ? data.receivers.length : 1))
+      ) || 0;
+      recordContribution(user, sentDiamonds);
+
       setChatMessages((prev) => {
         if (prev.some((m) => m.id === txId || (data.transactionId && m.transactionId === data.transactionId))) {
           return prev;
@@ -897,6 +951,13 @@ export default function VoiceRoomScreen() {
         const receiverText = Array.isArray(payload.receivers) && payload.receivers.length > 0
           ? payload.receivers.map((r) => r.name || 'Recipient').join(', ')
           : payload.receiver?.name || 'Everyone';
+        const recDiamonds = Number(
+          payload.totalDiamonds ||
+          payload.totalPrice ||
+          (Number(payload.gift?.price || payload.gift?.cost || 0) * (payload.quantity || 1))
+        ) || 0;
+        recordContribution(payload.sender, recDiamonds);
+
         const giftVisual = resolveGiftVisual({
           ...payload.gift,
           giftImage: payload.gift.image || payload.gift.giftImage || payload.giftImage,
@@ -982,12 +1043,18 @@ export default function VoiceRoomScreen() {
   const [selfSeatModalVisible, setSelfSeatModalVisible] = useState(false);
   const [wealthModalVisible, setWealthModalVisible] = useState(false);
   const [onlineUsersModalVisible, setOnlineUsersModalVisible] = useState(false);
-  const topRoomContributors = [...(Array.isArray(onlineUsers) ? onlineUsers : [])]
-    .sort((a, b) =>
-      Number(b.wealthPoints || b.points || b.diamonds || 0) -
-      Number(a.wealthPoints || a.points || a.diamonds || 0),
-    )
-    .slice(0, 3);
+  const topRoomContributors = useMemo(() => {
+    const list = Array.isArray(roomContributors) && roomContributors.length > 0
+      ? roomContributors
+      : (Array.isArray(onlineUsers) ? onlineUsers : []);
+    return [...list]
+      .filter((u) => Number(u.points || u.wealthPoints || u.diamonds || u.totalDiamonds || u.totalSent || 0) > 0)
+      .sort((a, b) =>
+        Number(b.wealthPoints || b.points || b.diamonds || b.totalDiamonds || b.totalSent || 0) -
+        Number(a.wealthPoints || a.points || a.diamonds || a.totalDiamonds || a.totalSent || 0),
+      )
+      .slice(0, 3);
+  }, [roomContributors, onlineUsers]);
 
   // Room Details and Settings Modals
   const [currentRoomTitle, setCurrentRoomTitle] = useState(room.title);
@@ -995,15 +1062,17 @@ export default function VoiceRoomScreen() {
   const [currentRoomAbout, setCurrentRoomAbout] = useState(room.about || '');
   const [currentSeatCount, setCurrentSeatCount] = useState(room.seatCount || 8);
   const [currentRoomLocked, setCurrentRoomLocked] = useState(Boolean(room.isLocked || /private\s*\(pin\)/i.test(room.mode || '')));
-  const [hasRoomPin, setHasRoomPin] = useState(Boolean(room.hasPin || room.pin));
+  const [hasRoomPin, setHasRoomPin] = useState(Boolean(room.hasPin || room.pin || room.isLocked || /private\s*\(pin\)/i.test(room.mode || '')));
+  const [isPinVerified, setIsPinVerified] = useState(Boolean(route?.params?.isPinVerified));
 
   // Prompt PIN when a non-admin enters a locked room
   useEffect(() => {
-    if (currentRoomLocked && hasRoomPin && !isCurrentUserAdmin && !isRoomOwner) {
+    const isLocked = Boolean(currentRoomLocked || room.isLocked || /private\s*\(pin\)/i.test(room.mode || ''));
+    if (isLocked && !isCurrentUserAdmin && !isRoomOwner && !isPinVerified) {
       setRoomLockModalMode('enter_pin');
       setRoomLockModalVisible(true);
     }
-  }, [currentRoomLocked, hasRoomPin, isCurrentUserAdmin, isRoomOwner]);
+  }, [currentRoomLocked, room.isLocked, room.mode, isCurrentUserAdmin, isRoomOwner, isPinVerified]);
 
   const [roomDetailsModalVisible, setRoomDetailsModalVisible] = useState(false);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
@@ -1706,7 +1775,7 @@ export default function VoiceRoomScreen() {
           onPress={() => setGroupModalVisible(true)}
         >
           <Text style={{ fontSize: 11, marginRight: 3 }}>💜</Text>
-          <Text style={styles.groupPillText}>Group 1</Text>
+          <Text style={styles.groupPillText}>Fan Club</Text>
         </TouchableOpacity>
 
         {/* Keep Top 3 and place Tasks directly underneath it. */}
@@ -1975,6 +2044,12 @@ export default function VoiceRoomScreen() {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           style={styles.chatFlatList}
+          onContentSizeChange={() => {
+            chatListRef.current?.scrollToEnd({ animated: true });
+          }}
+          onLayout={() => {
+            chatListRef.current?.scrollToEnd({ animated: false });
+          }}
           renderItem={({ item }) => {
             if (item.type === 'system') {
               return (
@@ -2364,6 +2439,27 @@ export default function VoiceRoomScreen() {
         visible={toolsModalVisible}
         onClose={() => setToolsModalVisible(false)}
         canModerate={isCurrentUserAdmin}
+        isRoomOwner={isRoomOwner}
+        onKickUser={() => {
+          setToolsModalVisible(false);
+          setOnlineUsersModalVisible(true);
+        }}
+        onInviteUser={() => {
+          setToolsModalVisible(false);
+          setShareModalVisible(true);
+        }}
+        onMuteUser={() => {
+          setToolsModalVisible(false);
+          setOnlineUsersModalVisible(true);
+        }}
+        onBanChat={() => {
+          setToolsModalVisible(false);
+          setOnlineUsersModalVisible(true);
+        }}
+        onRemoveSeat={() => {
+          setToolsModalVisible(false);
+          setOnlineUsersModalVisible(true);
+        }}
         onReportRoom={() => {
           setToolsModalVisible(false);
           setUgcReportTargetUser({
@@ -2444,13 +2540,15 @@ export default function VoiceRoomScreen() {
         visible={roomLockModalVisible}
         onClose={() => {
           setRoomLockModalVisible(false);
-          if (roomLockModalMode === 'enter_pin' && !isCurrentUserAdmin && !isRoomOwner) {
+          if (roomLockModalMode === 'enter_pin' && !isCurrentUserAdmin && !isRoomOwner && !isPinVerified) {
             handleLeaveRoom();
+            navigation.goBack();
           }
         }}
         mode={roomLockModalMode}
         roomId={room?.id || room?.roomId || route?.params?.roomId}
         onSuccess={(pin) => {
+          setIsPinVerified(true);
           if (roomLockModalMode === 'set_pin') {
             setCurrentRoomLocked(true);
             setHasRoomPin(true);
@@ -2651,7 +2749,7 @@ export default function VoiceRoomScreen() {
         currentUser={user}
         onOpenGiftPanel={() => setGiftPanelVisible(true)}
         bottomSafePadding={bottomSafePadding}
-        users={onlineUsers}
+        users={roomContributors.length > 0 ? roomContributors : onlineUsers}
       />
 
       {/* MODAL: ROOM ONLINE USERS LIST */}

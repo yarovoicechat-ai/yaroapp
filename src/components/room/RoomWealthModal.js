@@ -32,6 +32,7 @@ export default function RoomWealthModal({
           member.wealthPoints ||
           member.points ||
           member.diamonds ||
+          member.totalDiamonds ||
           member.totalSent ||
           member.contribution ||
           0

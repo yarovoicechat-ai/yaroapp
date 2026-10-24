@@ -43,9 +43,16 @@ const Notifications = () => {
                 const seenCallTransactions = new Set();
                 const activityItems = list.filter((item) => {
                     if (String(item?.type || 'system').toLowerCase() === 'system') return false;
+                    const titleText = String(item?.title || '').toLowerCase();
+                    const bodyText = String(item?.message || item?.body || '').toLowerCase();
+                    if (titleText.includes('dummy') || titleText.includes('test alert') || bodyText.includes('dummy') || bodyText.includes('test alert')) {
+                        return false;
+                    }
                     if (String(item?.type || '').toLowerCase() !== 'call') return true;
+                    const targetUserId = item?.data?.targetUserId || item?.data?.callerId || item?.data?.hostId;
+                    if (!targetUserId) return false;
                     const transactionId = String(item?.data?.transactionId || '');
-                    if (!transactionId) return true;
+                    if (!transactionId) return false;
                     if (seenCallTransactions.has(transactionId)) return false;
                     seenCallTransactions.add(transactionId);
                     return true;

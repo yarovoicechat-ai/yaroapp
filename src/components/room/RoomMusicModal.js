@@ -141,8 +141,8 @@ export default function RoomMusicModal({
   onClose,
   isMusicPlaying = false,
   currentTrack = null,
-  musicVolume = 150,
-  bassLevel = 8,
+  musicVolume = 100,
+  bassLevel = 6,
   micVolume = 100,
   onPlayTrack,
   onPauseTrack,
@@ -256,8 +256,12 @@ export default function RoomMusicModal({
   // Play a selected song
   const handleSelectSong = (song) => {
     if (!song) return;
+    const isDirect = (p) => typeof p === 'string' && (p.startsWith('/') || p.startsWith('file://'));
+    const directPath = isDirect(song.path) ? song.path : null;
+    const primary = directPath || song.uri || song.contentUri;
+    const fallback = directPath ? (song.contentUri || song.uri) : song.path;
     if (onPlayTrack) {
-      onPlayTrack(song.uri, song.title, song.path || song.contentUri);
+      onPlayTrack(primary, song.title, fallback);
     }
   };
 
@@ -322,26 +326,12 @@ export default function RoomMusicModal({
     if (registerOnSongEnded) {
       registerOnSongEnded(() => {
         if (autoNext) {
-          console.warn('🎵 Song finished, automatically playing next track in list...');
+          console.warn('🎵 Song finished naturally, playing next track in list...');
           handleNextTrackRef.current();
         }
       });
     }
   }, [registerOnSongEnded, autoNext]);
-
-  // Fallback watchdog: if track was playing and stops or ends, auto next
-  const wasPlayingRef = useRef(isMusicPlaying);
-  useEffect(() => {
-    if (wasPlayingRef.current && !isMusicPlaying && autoNext) {
-      const timer = setTimeout(() => {
-        if (!isMusicPlaying) {
-          handleNextTrackRef.current();
-        }
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-    wasPlayingRef.current = isMusicPlaying;
-  }, [isMusicPlaying, autoNext]);
 
   // Pick individual file from file manager fallback
   const handlePickCustomFile = async () => {
@@ -497,19 +487,14 @@ export default function RoomMusicModal({
               <View style={styles.volumeLabelCol}>
                 <View style={styles.volumeIconRow}>
                   <MaterialCommunityIcons name="volume-high" size={17} color="#A78BFA" />
-                  <Text style={styles.volumeLabel}>Music Volume: <Text style={{ color: musicVolume > 100 ? '#F59E0B' : '#FFF', fontWeight: '800' }}>{musicVolume}%</Text></Text>
-                  {musicVolume > 100 && (
-                    <View style={styles.boostBadge}>
-                      <Text style={styles.boostBadgeText}>{musicVolume > 200 ? '400% ULTRA LOUD' : 'BOOST'}</Text>
-                    </View>
-                  )}
+                  <Text style={styles.volumeLabel}>Music Volume: <Text style={{ color: '#A855F7', fontWeight: '800' }}>{musicVolume}%</Text></Text>
                 </View>
               </View>
 
               <View style={styles.stepperRow}>
                 <TouchableOpacity
                   style={styles.stepperBtn}
-                  onPress={() => onSetMusicVolume && onSetMusicVolume(Math.max(0, musicVolume - 25))}
+                  onPress={() => onSetMusicVolume && onSetMusicVolume(Math.max(0, musicVolume - 10))}
                 >
                   <MaterialCommunityIcons name="minus" size={15} color="#FFF" />
                 </TouchableOpacity>
@@ -519,8 +504,8 @@ export default function RoomMusicModal({
                     style={[
                       styles.volumeBarFill,
                       {
-                        width: `${Math.min(100, (musicVolume / 400) * 100)}%`,
-                        backgroundColor: musicVolume > 200 ? '#EF4444' : musicVolume > 100 ? '#F59E0B' : '#8B5CF6',
+                        width: `${Math.min(100, Math.max(0, musicVolume))}%`,
+                        backgroundColor: '#8B5CF6',
                       },
                     ]}
                   />
@@ -528,16 +513,16 @@ export default function RoomMusicModal({
 
                 <TouchableOpacity
                   style={styles.stepperBtn}
-                  onPress={() => onSetMusicVolume && onSetMusicVolume(Math.min(400, musicVolume + 25))}
+                  onPress={() => onSetMusicVolume && onSetMusicVolume(Math.min(100, musicVolume + 10))}
                 >
                   <MaterialCommunityIcons name="plus" size={15} color="#FFF" />
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Quick volume presets up to 400% */}
+            {/* Quick volume presets (20%, 40%, 60%, 80%, 100%) */}
             <View style={styles.quickVolRow}>
-              {[50, 100, 150, 200, 300, 400].map((v) => (
+              {[20, 40, 60, 80, 100].map((v) => (
                 <TouchableOpacity
                   key={`vol-preset-${v}`}
                   style={[styles.volPresetPill, musicVolume === v && styles.volPresetPillActive]}

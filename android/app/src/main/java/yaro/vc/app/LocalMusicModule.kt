@@ -96,7 +96,7 @@ class LocalMusicModule(private val reactContext: ReactApplicationContext) :
 
                         val id = if (idCol >= 0) it.getLong(idCol) else 0L
                         val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString()
-                        val playUri = if (contentUri.isNotBlank()) contentUri else path
+                        val playUri = if (path.isNotBlank() && java.io.File(path).exists()) path else (if (contentUri.isNotBlank()) contentUri else path)
 
                         val map = Arguments.createMap()
                         map.putString("id", id.toString())

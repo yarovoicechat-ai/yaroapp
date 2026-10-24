@@ -23,10 +23,12 @@ const { width } = Dimensions.get('window');
 
 // SVIP Assets
 const SVIP4_BADGE = require('../../assets/svip/svip4_badge.png');
+const SVIP5_BADGE = require('../../assets/svip/svip5_badge.png');
 const SVIP3_TAG = require('../../assets/svip/svip3_tag.png');
 
-// Prestige Medals including SVIP 4 Tiger Badge and SVIP 3 Wolf Crest
+// Prestige Medals including SVIP 5 Lion, SVIP 4 Tiger Badge and SVIP 3 Wolf Crest
 const PRESTIGE_MEDALS = [
+  { id: 'svip5_lion', label: 'SVIP 5 Lion', isCustomImage: true, image: SVIP5_BADGE, colors: ['#F59E0B', '#B45309'] },
   { id: 'svip4_tiger', label: 'SVIP 4 Tiger', isCustomImage: true, image: SVIP4_BADGE, colors: ['#F59E0B', '#B45309'] },
   { id: 'svip3_wolf', label: 'SVIP 3 Wolf', isCustomImage: true, image: SVIP3_TAG, colors: ['#8B5CF6', '#6D28D9'] },
   { id: 'm1', label: 'Heart', icon: 'heart', colors: ['#EF4444', '#DC2626'] },
@@ -273,6 +275,11 @@ export default function RoomUserProfileModal({
                   <View style={styles.modalSvip4TigerWrap}>
                     <Image source={SVIP4_BADGE} style={styles.modalTigerBadgeImg} resizeMode="contain" />
                     <Text style={styles.modalSvip4Text}>SVIP 4</Text>
+                  </View>
+                ) : targetSvipLevel === 5 ? (
+                  <View style={styles.modalSvip4TigerWrap}>
+                    <Image source={SVIP5_BADGE} style={styles.modalTigerBadgeImg} resizeMode="contain" />
+                    <Text style={styles.modalSvip4Text}>SVIP 5</Text>
                   </View>
                 ) : (
                   <LinearGradient

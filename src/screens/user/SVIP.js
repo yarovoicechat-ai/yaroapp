@@ -62,6 +62,7 @@ const ALL_NOBILITY_PRIVILEGES = [
 
 // Dedicated SVIP Assets
 const SVIP4_BADGE = require('../../assets/svip/svip4_badge.png');
+const SVIP5_BADGE = require('../../assets/svip/svip5_badge.png');
 const VIP4_CHAT_BUBBLE = require('../../assets/svip/chat_bubble_vip4.png');
 const SVIP3_TAG = require('../../assets/svip/svip3_tag.png');
 
@@ -222,7 +223,8 @@ const SVIP_TIERS = [
     price: 1500000,
     originalPrice: 2250000,
     discount: '33% OFF',
-    heroBadge: SVIP4_BADGE, // Gold Shield Crest
+    heroBadge: SVIP5_BADGE, // Sovereign Lion Crest Badge
+    badgeImage: SVIP5_BADGE, // "SVIP 5 Me Niche Bhi Badge Option Add Hoga"
     tagText: 'SVIP 5',
     tagColors: ['#F59E0B', '#D97706'],
     bubbleColors: ['#4C1D95', '#7C3AED'],
@@ -355,28 +357,23 @@ export default function SVIPScreen() {
 
       {/* Horizontal Tabs: SVIP+ | SVIP1 | SVIP2 | SVIP3 | SVIP4 | SVIP5 */}
       <View style={styles.tierTabsContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tierTabsScrollContent}
-        >
-          {SVIP_TIERS.map((tier) => {
-            const isActive = tier.id === activeTierId;
-            return (
-              <TouchableOpacity
-                key={tier.id}
-                style={[styles.tierTab, isActive && styles.tierTabActive]}
-                onPress={() => setActiveTierId(tier.id)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.tierTabText, isActive && styles.tierTabTextActive]}>
-                  {tier.tabLabel}
-                </Text>
-                {isActive && <View style={styles.tierActiveDot} />}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        {SVIP_TIERS.map((tier) => {
+          const isActive = tier.id === activeTierId;
+          return (
+            <TouchableOpacity
+              key={tier.id}
+              style={[styles.tierTab, isActive && styles.tierTabActive]}
+              onPress={() => setActiveTierId(tier.id)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 6, right: 6 }}
+            >
+              <Text style={[styles.tierTabText, isActive && styles.tierTabTextActive]}>
+                {tier.tabLabel}
+              </Text>
+              {isActive && <View style={styles.tierActiveDot} />}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Scrollable Content */}
@@ -431,6 +428,7 @@ export default function SVIPScreen() {
         <View style={styles.previewCardsOuterWrap}>
           <ScrollView
             horizontal
+            nestedScrollEnabled={true}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.previewCardsScrollContent}
             style={styles.previewCardsScrollView}
@@ -551,7 +549,11 @@ export default function SVIPScreen() {
               <View style={styles.previewCard}>
                 <View style={styles.previewCardInner}>
                   <View style={styles.badgeOptionWrap}>
-                    <Image source={SVIP4_BADGE} style={styles.badgeOptionImage} resizeMode="contain" />
+                    <Image
+                      source={currentTier.badgeImage || SVIP5_BADGE}
+                      style={styles.badgeOptionImage}
+                      resizeMode="contain"
+                    />
                   </View>
                   <Text style={styles.previewCardLabel}>Badge</Text>
                 </View>
@@ -686,37 +688,38 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tierTabsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(251, 191, 36, 0.15)',
-    zIndex: 10,
-    paddingVertical: 4,
-  },
-  tierTabsScrollContent: {
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    gap: 8,
+    zIndex: 20,
+    paddingVertical: 2,
+    paddingHorizontal: 2,
   },
   tierTab: {
+    flex: 1,
     paddingVertical: 8,
-    paddingHorizontal: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   tierTabActive: {},
   tierTabText: {
     color: '#94A3B8',
-    fontSize: 14,
+    fontSize: 12.5,
     fontWeight: '700',
   },
   tierTabTextActive: {
     color: '#FDE047',
     fontWeight: '900',
+    fontSize: 13,
   },
   tierActiveDot: {
     width: 5,
     height: 5,
     borderRadius: 2.5,
     backgroundColor: '#FDE047',
-    marginTop: 4,
+    marginTop: 3,
   },
   scrollContent: {
     alignItems: 'center',
@@ -968,15 +971,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(251, 191, 36, 0.4)',
   },
   badgeOptionWrap: {
-    width: 44,
-    height: 44,
+    width: 50,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
   },
   badgeOptionImage: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 46,
   },
   previewCardLabel: {
     color: '#94A3B8',

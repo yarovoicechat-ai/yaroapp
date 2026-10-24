@@ -13,6 +13,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/Ionicons';
+import RankAvatar from '../ranking/RankAvatar';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { AlertService } from '../../utils/AlertService';
 
@@ -324,10 +325,19 @@ export default function RoomGroupPrivilegeModal({
                     <Text style={styles.rankNumberText}>{rankNumber}</Text>
 
                     {/* Circular Avatar */}
-                    <Image
-                      source={getUserAvatar(item)}
-                      style={styles.memberRowAvatar}
-                    />
+                    {rankNumber <= 3 ? (
+                      <RankAvatar
+                        rank={rankNumber}
+                        user={item}
+                        size={50}
+                        style={{ marginHorizontal: 12 }}
+                      />
+                    ) : (
+                      <Image
+                        source={getUserAvatar(item)}
+                        style={styles.memberRowAvatar}
+                      />
+                    )}
 
                     {/* Member Details */}
                     <View style={styles.memberInfoCol}>

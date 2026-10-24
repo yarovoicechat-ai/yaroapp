@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import RankingRulesModal from '../../components/ranking/RankingRulesModal';
+import RankAvatar from '../../components/ranking/RankAvatar';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle, Defs, Stop, G, LinearGradient as SvgGradient } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -339,17 +340,12 @@ export default function Ranking() {
           {rank2 && (
             <View style={styles.podiumColSide}>
               <View style={styles.podiumAvatarWrap}>
-                <BlueWingsSvg />
-                {rank2.isPlaceholder ? (
-                  <View style={[styles.avatarImgSide, styles.placeholderAvatarCircle]}>
-                    <MaterialCommunityIcons name="account" size={32} color="#64748B" />
-                  </View>
-                ) : (
-                  <Image source={getUserAvatar(rank2)} style={styles.avatarImgSide} />
-                )}
-                <LinearGradient colors={['#0284C7', '#38BDF8']} style={styles.ribbonBadgeSide}>
-                  <Text style={styles.ribbonText}>TOP2</Text>
-                </LinearGradient>
+                <RankAvatar
+                  rank={2}
+                  user={rank2}
+                  isPlaceholder={rank2.isPlaceholder}
+                  size={58}
+                />
               </View>
               <Text style={styles.podiumUserName} numberOfLines={1}>{rank2.name}</Text>
               <LevelBadge level={rank2.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
@@ -364,18 +360,12 @@ export default function Ranking() {
           {rank1 && (
             <View style={styles.podiumColCenter}>
               <View style={styles.podiumAvatarWrapCenter}>
-                <GoldenLaurelCrownSvg />
-                {rank1.isPlaceholder ? (
-                  <View style={[styles.avatarImgCenter, styles.placeholderAvatarCircle]}>
-                    <MaterialCommunityIcons name="account" size={40} color="#64748B" />
-                  </View>
-                ) : (
-                  <Image source={getUserAvatar(rank1)} style={styles.avatarImgCenter} />
-                )}
-                <LinearGradient colors={['#DC2626', '#EF4444', '#F87171']} style={styles.ribbonBadgeCenter}>
-                  <Text style={styles.crownGlyph}>👑</Text>
-                  <Text style={styles.ribbonTextCenter}>TOP1</Text>
-                </LinearGradient>
+                <RankAvatar
+                  rank={1}
+                  user={rank1}
+                  isPlaceholder={rank1.isPlaceholder}
+                  size={72}
+                />
               </View>
               <Text style={styles.podiumUserNameCenter} numberOfLines={1}>{rank1.name}</Text>
               <LevelBadge level={rank1.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
@@ -390,17 +380,12 @@ export default function Ranking() {
           {rank3 && (
             <View style={styles.podiumColSide}>
               <View style={styles.podiumAvatarWrap}>
-                <PurpleCrystalSvg />
-                {rank3.isPlaceholder ? (
-                  <View style={[styles.avatarImgSide, styles.placeholderAvatarCircle]}>
-                    <MaterialCommunityIcons name="account" size={32} color="#64748B" />
-                  </View>
-                ) : (
-                  <Image source={getUserAvatar(rank3)} style={styles.avatarImgSide} />
-                )}
-                <LinearGradient colors={['#7E22CE', '#C084FC']} style={styles.ribbonBadgeSide}>
-                  <Text style={styles.ribbonText}>TOP3</Text>
-                </LinearGradient>
+                <RankAvatar
+                  rank={3}
+                  user={rank3}
+                  isPlaceholder={rank3.isPlaceholder}
+                  size={58}
+                />
               </View>
               <Text style={styles.podiumUserName} numberOfLines={1}>{rank3.name}</Text>
               <LevelBadge level={rank3.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
@@ -475,7 +460,15 @@ export default function Ranking() {
                   </View>
 
                   {/* User Avatar */}
-                  <Image source={getUserAvatar(item)} style={styles.rowAvatarImg} />
+                  {rankNum <= 3 ? (
+                    <RankAvatar
+                      rank={rankNum}
+                      user={item}
+                      size={44}
+                    />
+                  ) : (
+                    <Image source={getUserAvatar(item)} style={styles.rowAvatarImg} />
+                  )}
 
                   {/* Details (Name + Level Badge) */}
                   <View style={styles.rowDetailsCol}>
@@ -523,10 +516,18 @@ export default function Ranking() {
 
           {/* Self Avatar */}
           <View style={styles.selfAvatarWrap}>
-            <Image
-              source={getUserAvatar(selfUserRank)}
-              style={styles.selfAvatarImg}
-            />
+            {selfUserRank?.rank >= 1 && selfUserRank?.rank <= 3 ? (
+              <RankAvatar
+                rank={selfUserRank.rank}
+                user={selfUserRank}
+                size={42}
+              />
+            ) : (
+              <Image
+                source={getUserAvatar(selfUserRank)}
+                style={styles.selfAvatarImg}
+              />
+            )}
           </View>
 
           {/* Self Details */}

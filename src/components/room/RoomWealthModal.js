@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import RankAvatar from '../ranking/RankAvatar';
 import { formatCompactBalance } from '../../utils/numberUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
 
@@ -68,6 +69,15 @@ export default function RoomWealthModal({
     );
     if (!found) return '99+';
     return found.rank > 99 ? '99+' : `#${found.rank}`;
+  }, [currentUser, rankedUsers]);
+
+  const myRankNum = useMemo(() => {
+    if (!currentUser) return 0;
+    const myId = String(currentUser.userId || currentUser._id || currentUser.id || '');
+    const found = rankedUsers.find(
+      (u) => String(u.userId || u._id || u.id || '') === myId
+    );
+    return found ? found.rank : 0;
   }, [currentUser, rankedUsers]);
 
   if (!visible) return null;
@@ -174,35 +184,11 @@ export default function RoomWealthModal({
                   >
                     {/* Golden Laurel Frame & Avatar Container */}
                     <View style={styles.heroAvatarContainer}>
-                      {/* Top Crown with Orange Badge */}
-                      <View style={styles.heroCrownWrap}>
-                        <MaterialCommunityIcons name="crown" size={32} color="#F59E0B" />
-                        <View style={styles.crownMiniBadge}>
-                          <MaterialCommunityIcons name="crown" size={8} color="#FFF" style={{ marginRight: 1 }} />
-                          <Text style={styles.crownMiniBadgeText}>1</Text>
-                        </View>
-                      </View>
-
-                      {/* Golden Laurel Ring */}
-                      <LinearGradient
-                        colors={['#FFD700', '#FFA500', '#F59E0B']}
-                        style={styles.heroAvatarRing}
-                      >
-                        <Image
-                          source={getUserAvatar(top1User)}
-                          style={styles.heroAvatar}
-                        />
-                      </LinearGradient>
-
-                      {/* TOP 1 Ribbon Badge at Bottom */}
-                      <LinearGradient
-                        colors={['#EF4444', '#DC2626', '#B91C1C']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.top1Ribbon}
-                      >
-                        <Text style={styles.top1RibbonText}>TOP 1</Text>
-                      </LinearGradient>
+                      <RankAvatar
+                        rank={1}
+                        user={top1User}
+                        size={72}
+                      />
                     </View>
 
                     {/* User Name */}
@@ -287,14 +273,24 @@ export default function RoomWealthModal({
 
                       {/* Avatar with Crown Tag on Top Right */}
                       <View style={styles.avatarWrapper}>
-                        <Image
-                          source={getUserAvatar(member)}
-                          style={styles.userAvatar}
-                        />
-                        <View style={styles.avatarCrownTag}>
-                          <MaterialCommunityIcons name="crown" size={7} color="#FFF" style={{ marginRight: 1 }} />
-                          <Text style={styles.avatarCrownTagText}>{member.rank}</Text>
-                        </View>
+                        {isRank2 || isRank3 ? (
+                          <RankAvatar
+                            rank={isRank2 ? 2 : 3}
+                            user={member}
+                            size={44}
+                          />
+                        ) : (
+                          <>
+                            <Image
+                              source={getUserAvatar(member)}
+                              style={styles.userAvatar}
+                            />
+                            <View style={styles.avatarCrownTag}>
+                              <MaterialCommunityIcons name="crown" size={7} color="#FFF" style={{ marginRight: 1 }} />
+                              <Text style={styles.avatarCrownTagText}>{member.rank}</Text>
+                            </View>
+                          </>
+                        )}
                       </View>
 
                       {/* User Info Column */}
@@ -359,10 +355,18 @@ export default function RoomWealthModal({
             <Text style={styles.myRankNum}>{myRank}</Text>
 
             {/* Avatar */}
-            <Image
-              source={getUserAvatar(currentUser)}
-              style={styles.myAvatar}
-            />
+            {myRankNum >= 1 && myRankNum <= 3 ? (
+              <RankAvatar
+                rank={myRankNum}
+                user={currentUser}
+                size={38}
+              />
+            ) : (
+              <Image
+                source={getUserAvatar(currentUser)}
+                style={styles.myAvatar}
+              />
+            )}
 
             {/* Name & Levels */}
             <View style={styles.myInfoCol}>

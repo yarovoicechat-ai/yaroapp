@@ -6,6 +6,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { getUserAvatar } from '../utils/avatarUtil';
 import { normalizeCosmeticAsset, resolveFrameAsset } from '../utils/cosmeticResolver';
 import SvgaView from './SvgaView';
+import { getRankFrame, HOLE_CONFIG } from './ranking/RankAvatar';
 
 /**
  * Premium Avatar Component with Animated / Decorative Frame Overlays
@@ -25,11 +26,14 @@ export default function AvatarWithFrame({
   avatarSource,
   avatarUri,
   frame,
+  rank,
   size = 80,
   showOnlineDot = true,
   isOnline = true,
   style,
 }) {
+  const rankNum = Number(rank || (typeof frame === 'string' && /top\s*1/i.test(frame) ? 1 : typeof frame === 'string' && /top\s*2/i.test(frame) ? 2 : typeof frame === 'string' && /top\s*3/i.test(frame) ? 3 : 0));
+  const rankFrameSource = getRankFrame(rankNum);
   const resolvedFrame = resolveFrameAsset(user, frame);
   const frameName = String(resolvedFrame?.name || resolvedFrame?.id || '').toLowerCase();
   const inventoryFrame = normalizeCosmeticAsset(
@@ -249,8 +253,29 @@ export default function AvatarWithFrame({
         />
       </View>
 
-      {/* Uploaded frame overlay scales with the avatar without shrinking it. */}
-      {uploadedFrame?.animationUrl ? (
+      {/* Rank Frame or Uploaded frame overlay */}
+      {rankFrameSource ? (
+        (() => {
+          const cfg = HOLE_CONFIG[rankNum] || { holeRatio: 0.62, aspect: 1.0 };
+          const fW = Math.round(size / cfg.holeRatio);
+          const fH = Math.round(fW * cfg.aspect);
+          return (
+            <Image
+              source={rankFrameSource}
+              style={{
+                position: 'absolute',
+                top: Math.round((size - fH) / 2),
+                left: Math.round((size - fW) / 2),
+                width: fW,
+                height: fH,
+                zIndex: 10,
+              }}
+              resizeMode="contain"
+              pointerEvents="none"
+            />
+          );
+        })()
+      ) : uploadedFrame?.animationUrl ? (
         <View
           style={{
             position: 'absolute',

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import RankAvatar from '../../components/ranking/RankAvatar';
 import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
@@ -174,48 +175,58 @@ export default function FamilyScreen() {
             ) : filteredFamilies.length === 0 ? (
               <Text style={styles.emptyFamiliesText}>No families are available from the server.</Text>
             ) : (
-              filteredFamilies.map((fam, idx) => (
-                <View key={fam._id || idx} style={styles.familyCard}>
-                  <View style={styles.rankPill}>
-                    <Text style={styles.rankText}>#{fam.ranking || idx + 1}</Text>
-                  </View>
-
-                  {fam.avatar ? (
-                    <Image source={{ uri: fam.avatar }} style={styles.famAvatar} />
-                  ) : (
-                    <View style={[styles.famAvatar, styles.famAvatarPlaceholder]}>
-                      <MaterialCommunityIcons name="shield-account-outline" size={26} color="#A5B4FC" />
+              filteredFamilies.map((fam, idx) => {
+                const rankNum = Number(fam.ranking || idx + 1);
+                return (
+                  <View key={fam._id || idx} style={styles.familyCard}>
+                    <View style={styles.rankPill}>
+                      <Text style={styles.rankText}>#{rankNum}</Text>
                     </View>
-                  )}
 
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={styles.famName}>{fam.name}</Text>
-                      <View style={styles.badgePill}>
-                        <Text style={styles.badgePillText}>{fam.badge}</Text>
+                    {rankNum <= 3 ? (
+                      <RankAvatar
+                        rank={rankNum}
+                        avatarSource={fam.avatar ? { uri: fam.avatar } : null}
+                        size={48}
+                        style={{ marginLeft: 10 }}
+                      />
+                    ) : fam.avatar ? (
+                      <Image source={{ uri: fam.avatar }} style={styles.famAvatar} />
+                    ) : (
+                      <View style={[styles.famAvatar, styles.famAvatarPlaceholder]}>
+                        <MaterialCommunityIcons name="shield-account-outline" size={26} color="#A5B4FC" />
+                      </View>
+                    )}
+
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.famName}>{fam.name}</Text>
+                        <View style={styles.badgePill}>
+                          <Text style={styles.badgePillText}>{fam.badge}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.famSlogan} numberOfLines={1}>
+                        {fam.slogan || ''}
+                      </Text>
+                      <View style={styles.famStatsRow}>
+                        <Text style={styles.famMembers}>
+                          👥 {fam.memberCount ?? 0}/{fam.maxMembers ?? 0}
+                        </Text>
+                        <Text style={styles.famDiamonds}>
+                          💎 {(fam.diamondsEarned || 0).toLocaleString()}
+                        </Text>
                       </View>
                     </View>
-                    <Text style={styles.famSlogan} numberOfLines={1}>
-                      {fam.slogan || ''}
-                    </Text>
-                    <View style={styles.famStatsRow}>
-                      <Text style={styles.famMembers}>
-                        👥 {fam.memberCount ?? 0}/{fam.maxMembers ?? 0}
-                      </Text>
-                      <Text style={styles.famDiamonds}>
-                        💎 {(fam.diamondsEarned || 0).toLocaleString()}
-                      </Text>
-                    </View>
-                  </View>
 
-                  <TouchableOpacity
-                    onPress={() => handleJoinFamily(fam)}
-                    style={styles.joinBtn}
-                  >
-                    <Text style={styles.joinBtnText}>Join</Text>
-                  </TouchableOpacity>
-                </View>
-              ))
+                    <TouchableOpacity
+                      onPress={() => handleJoinFamily(fam)}
+                      style={styles.joinBtn}
+                    >
+                      <Text style={styles.joinBtnText}>Join</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })
             )}
           </View>
         )}

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -30,6 +31,8 @@ export default function RoomThreeDotModal({
   onBanRoom,
   onToggleStealth,
   isStealthActive = false,
+  isRoomLocked = false,
+  onUnlockRoom,
   bottomSafePadding = 16,
 }) {
   if (!visible) return null;
@@ -79,10 +82,27 @@ export default function RoomThreeDotModal({
     },
     {
       id: 'lock',
-      label: 'Lock',
-      icon: 'lock-outline',
-      iconColor: '#F97316', // Orange
-      onPress: onLockSeats,
+      label: isRoomLocked ? 'Unlock Room' : 'Lock',
+      icon: isRoomLocked ? 'lock-open-variant-outline' : 'lock-outline',
+      iconColor: isRoomLocked ? '#10B981' : '#F97316',
+      onPress: () => {
+        if (isRoomLocked) {
+          Alert.alert(
+            'Unlock Room',
+            'Do you want to unlock the room and make it public?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Unlock',
+                style: 'destructive',
+                onPress: () => onUnlockRoom && onUnlockRoom(),
+              },
+            ]
+          );
+        } else {
+          onLockSeats && onLockSeats();
+        }
+      },
     },
     {
       id: 'decorations',

@@ -27,7 +27,9 @@ export default function RoomLockModal({
   onClose,
   mode = 'set_pin',
   roomId,
+  isRoomLocked = false,
   onSuccess,
+  onUnlockRoom,
   onBuyLock,
 }) {
   const [pin, setPin] = useState('');
@@ -84,6 +86,27 @@ export default function RoomLockModal({
       }
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Operation failed';
+      AlertService.show('Notice', msg, 'info');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnlock = async () => {
+    setLoading(true);
+    try {
+      const res = await apiUtil.post(`/voice-club/rooms/${roomId}/lock`, {
+        isLocked: false,
+      });
+      if (res.data?.success) {
+        AlertService.show('Room Unlocked', 'Room is now public and unlocked', 'success');
+        if (onUnlockRoom) onUnlockRoom();
+        onClose();
+      } else {
+        AlertService.show('Notice', res.data?.message || 'Failed to unlock room', 'info');
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to unlock room';
       AlertService.show('Notice', msg, 'info');
     } finally {
       setLoading(false);
@@ -217,6 +240,18 @@ export default function RoomLockModal({
                   )}
                 </LinearGradient>
               </TouchableOpacity>
+
+              {/* Unlock Room Button (When room is already locked) */}
+              {mode === 'set_pin' && isRoomLocked && (
+                <TouchableOpacity
+                  style={styles.unlockDirectBtn}
+                  onPress={handleUnlock}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.unlockDirectText}>🔓 Unlock Room (Remove Password)</Text>
+                </TouchableOpacity>
+              )}
 
               {/* Cancel Link */}
               <TouchableOpacity
@@ -366,5 +401,21 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  unlockDirectBtn: {
+    width: '100%',
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1.5,
+    borderColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  unlockDirectText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#059669',
   },
 });

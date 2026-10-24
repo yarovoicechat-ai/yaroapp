@@ -731,6 +731,26 @@ export default function VoiceRoomScreen() {
     );
   };
 
+  const handleUnlockRoom = async () => {
+    try {
+      const targetRoomId = room?.id || room?.roomId || route?.params?.roomId;
+      const res = await apiUtil.post(`/voice-club/rooms/${targetRoomId}/lock`, {
+        isLocked: false,
+      });
+      if (res.data?.success) {
+        setCurrentRoomLocked(false);
+        setHasRoomPin(false);
+        setEditRoomLocked(false);
+        setIsPinVerified(true);
+        AlertService.show('Room Unlocked', 'Room is now public and unlocked', 'success');
+      } else {
+        AlertService.show('Notice', res.data?.message || 'Failed to unlock room', 'info');
+      }
+    } catch (e) {
+      AlertService.show('Notice', e?.response?.data?.message || e?.message || 'Failed to unlock room', 'info');
+    }
+  };
+
   // Balance & Chat
   const [inputText, setInputText] = useState('');
   const chatListRef = useRef(null);
@@ -2523,6 +2543,8 @@ export default function VoiceRoomScreen() {
           );
         }}
         isStealthActive={isStealthMode}
+        isRoomLocked={currentRoomLocked}
+        onUnlockRoom={handleUnlockRoom}
         bottomSafePadding={bottomSafePadding}
       />
 
@@ -2546,6 +2568,8 @@ export default function VoiceRoomScreen() {
         }}
         mode={roomLockModalMode}
         roomId={room?.id || room?.roomId || route?.params?.roomId}
+        isRoomLocked={currentRoomLocked}
+        onUnlockRoom={handleUnlockRoom}
         onSuccess={(pin) => {
           setIsPinVerified(true);
           if (roomLockModalMode === 'set_pin') {

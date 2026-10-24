@@ -198,44 +198,34 @@ export default function RoomUserProfileModal({
           onPress={onClose}
         />
 
-        {/* Bottom Sheet Card matching Screenshots 1, 2, 3 */}
-        <View style={[styles.bottomSheetCard, { paddingBottom: Math.max(bottomSafePadding, 20) }]}>
-          {/* Top Report Button (Only shown when not self) */}
-          {!isSelf && (
-            <TouchableOpacity
-              style={styles.topReportBtn}
-              onPress={() => {
-                onClose();
-                onReport && onReport(user);
-              }}
-              activeOpacity={0.7}
+        {/* Bottom Sheet Card matching Screenshots 1, 2, 3 & media_1792863692214.png */}
+        <View style={styles.sheetWrapper}>
+          <View style={[styles.bottomSheetCard, { paddingBottom: Math.max(bottomSafePadding, 20) }]}>
+            {/* Top Report Button (Only shown when not self) */}
+            {!isSelf && (
+              <TouchableOpacity
+                style={styles.topReportBtn}
+                onPress={() => {
+                  onClose();
+                  onReport && onReport(user);
+                }}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="alert-outline" size={20} color="#94A3B8" />
+                <Text style={styles.topReportText}>Report</Text>
+              </TouchableOpacity>
+            )}
+
+            <ScrollView
+              style={styles.profileContentScroll}
+              contentContainerStyle={styles.profileContentContainer}
+              showsVerticalScrollIndicator={false}
             >
-              <MaterialCommunityIcons name="alert-outline" size={20} color="#94A3B8" />
-              <Text style={styles.topReportText}>Report</Text>
-            </TouchableOpacity>
-          )}
+              {/* Spacer so content starts cleanly below the floating avatar */}
+              <View style={styles.avatarFloatingSpacer} />
 
-          <ScrollView
-            style={styles.profileContentScroll}
-            contentContainerStyle={styles.profileContentContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* 1. Center Avatar */}
-            <View style={styles.avatarCenterWrap}>
-              <AvatarWithFrame
-                user={isSelf ? (authUser || user) : user}
-                frame={
-                  (isSelf
-                    ? (authUser?.equippedFrameAsset || authUser?.equippedFrame || equippedFrame || currentUserFrame)
-                    : (user?.equippedFrameAsset || user?.equippedFrame)) || null
-                }
-                size={84}
-                showOnlineDot={false}
-              />
-            </View>
-
-            {/* 2. User Name + Gender Badge */}
-            <View style={styles.nameRow}>
+              {/* 2. User Name + Gender Badge */}
+              <View style={styles.nameRow}>
               <Text style={styles.userName} numberOfLines={1}>
                 {targetName}
               </Text>
@@ -688,6 +678,29 @@ export default function RoomUserProfileModal({
               </>
             )}
           </ScrollView>
+          </View>
+
+          {/* Floating Avatar centered on card's top edge (50% outside above card, 50% inside) matching media_1792863692214.png */}
+          <View style={styles.floatingAvatarWrap} pointerEvents="box-none">
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => {
+                onClose();
+                onOpenFullProfile && onOpenFullProfile(isSelf ? (authUser || user) : user);
+              }}
+            >
+              <AvatarWithFrame
+                user={isSelf ? (authUser || user) : user}
+                frame={
+                  (isSelf
+                    ? (authUser?.equippedFrameAsset || authUser?.equippedFrame || equippedFrame || currentUserFrame)
+                    : (user?.equippedFrameAsset || user?.equippedFrame)) || null
+                }
+                size={84}
+                showOnlineDot={false}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -700,12 +713,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end',
   },
+  sheetWrapper: {
+    width: '100%',
+    position: 'relative',
+  },
   bottomSheetCard: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 16,
     maxHeight: '92%',
     position: 'relative',
     shadowColor: '#000',
@@ -713,7 +730,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 14,
     elevation: 20,
-    overflow: 'hidden',
+    overflow: 'visible',
+  },
+  floatingAvatarWrap: {
+    position: 'absolute',
+    top: -42,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 99,
+    elevation: 25,
+  },
+  avatarFloatingSpacer: {
+    height: 48,
   },
   topReportBtn: {
     position: 'absolute',
@@ -734,12 +764,6 @@ const styles = StyleSheet.create({
   profileContentContainer: {
     alignItems: 'center',
     paddingBottom: 10,
-  },
-  avatarCenterWrap: {
-    marginTop: 8,
-    marginBottom: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   idPillRow: {
     flexDirection: 'row',

@@ -287,7 +287,176 @@ export default function ResponsiveChatBubble({
     );
   }
 
-  // 3. SVIP 3 Emerald Green & Gold Luxury Bubble (Bubble 2 in Image 1)
+  // 3. VIP 4 / SVIP 4 Luxury Gold & Ruby Chat Bubble (Uploaded by user)
+  if (
+    !customBubble &&
+    (svipLevel === 4 ||
+      vipLevel === 4 ||
+      bubbleName.includes('vip4') ||
+      bubbleName.includes('vip 4') ||
+      bubbleName.includes('tiger'))
+  ) {
+    return (
+      <View style={styles.luxuryBubbleContainer}>
+        <View style={styles.vip4BubbleWrapper}>
+          {/* Top-Left Ruby Gem Wing Emblem */}
+          <View style={styles.vip4RubyWingEmblem}>
+            <LinearGradient
+              colors={['#F59E0B', '#D97706']}
+              style={styles.vip4WingGoldBase}
+            >
+              <LinearGradient
+                colors={['#EF4444', '#DC2626', '#991B1B']}
+                style={styles.vip4RubyDiamond}
+              >
+                <MaterialCommunityIcons name="diamond-stone" size={13} color="#FFF" />
+              </LinearGradient>
+            </LinearGradient>
+          </View>
+
+          {/* Main Gold-Bordered Bubble Body */}
+          <LinearGradient
+            colors={['#334155', '#1E293B', '#0F172A']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.vip4BubbleBody}
+          >
+            {/* Header */}
+            <View style={styles.royalTopHeader}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
+                style={styles.vip4AvatarBorder}
+              >
+                <Image source={avatarSource} style={styles.royalAvatarImg} />
+              </TouchableOpacity>
+
+              <View style={styles.royalUserMetaCol}>
+                <View style={styles.royalNameRow}>
+                  {isOwner && (
+                    <LinearGradient
+                      colors={['#EF4444', '#DC2626']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.ownerPillTag}
+                    >
+                      <Text style={styles.ownerPillText}>Owner</Text>
+                    </LinearGradient>
+                  )}
+                  <Text style={styles.vip4GoldName} numberOfLines={1}>
+                    👑 {senderName}
+                  </Text>
+                </View>
+
+                {/* Badges Row */}
+                <View style={styles.badgesRow}>
+                  <LinearGradient
+                    colors={['#DC2626', '#EF4444', '#F59E0B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.vip4BadgePill}
+                  >
+                    <MaterialCommunityIcons name="crown" size={10} color="#FEF08A" />
+                    <Text style={styles.svipBadgeText}>VIP 4</Text>
+                  </LinearGradient>
+
+                  <View style={styles.levelBadgeGreen}>
+                    <Text style={styles.levelBadgeIcon}>⭐</Text>
+                    <Text style={styles.levelBadgeText}>{userLevel != null ? `Lv.${userLevel}` : ''}</Text>
+                  </View>
+
+                  <View style={styles.levelBadgeBlue}>
+                    <Text style={styles.levelBadgeIcon}>🌸</Text>
+                    <Text style={styles.levelBadgeText}>{charmLevel != null ? `Lv.${charmLevel}` : ''}</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Message Text */}
+            <Text style={styles.vip4MessageText}>{text}</Text>
+
+            {/* Bottom-Right Hexagonal VIP4 Plaque with Sparkle */}
+            <View style={styles.vip4PlaqueWrap}>
+              <LinearGradient
+                colors={['#DC2626', '#B91C1C', '#7F1D1D']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.vip4PlaqueInner}
+              >
+                <Text style={styles.vip4PlaqueText}>VIP4</Text>
+                <MaterialCommunityIcons name="sparkles" size={11} color="#FFF" style={styles.vip4Sparkle} />
+              </LinearGradient>
+            </View>
+          </LinearGradient>
+        </View>
+      </View>
+    );
+  }
+
+  // 3.2 SVIP 3 Wolf Sovereign Amethyst & Cyan Bubble
+  if (!customBubble && svipLevel === 3) {
+    return (
+      <View style={styles.luxuryBubbleContainer}>
+        <LinearGradient
+          colors={['#0F172A', '#082F49', '#0369A1']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.svip3Bubble}
+        >
+          {/* Header */}
+          <View style={styles.royalTopHeader}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
+              style={styles.svip3AvatarBorder}
+            >
+              <Image source={avatarSource} style={styles.royalAvatarImg} />
+            </TouchableOpacity>
+
+            <View style={styles.royalUserMetaCol}>
+              <View style={styles.royalNameRow}>
+                <Text style={styles.svip3CyanName} numberOfLines={1}>
+                  🐺 {senderName} 🐺
+                </Text>
+              </View>
+
+              <View style={styles.badgesRow}>
+                <LinearGradient
+                  colors={['#06B6D4', '#0284C7']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.svipBadgePill}
+                >
+                  <Text style={styles.svipBadgeText}>🐺 SVIP 3</Text>
+                </LinearGradient>
+
+                <View style={styles.levelBadgeGreen}>
+                  <Text style={styles.levelBadgeIcon}>⭐</Text>
+                  <Text style={styles.levelBadgeText}>{userLevel != null ? `Lv.${userLevel}` : ''}</Text>
+                </View>
+
+                <View style={styles.levelBadgeBlue}>
+                  <Text style={styles.levelBadgeIcon}>🌸</Text>
+                  <Text style={styles.levelBadgeText}>{charmLevel != null ? `Lv.${charmLevel}` : ''}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Message Text */}
+          <Text style={styles.svip3MessageText}>{text}</Text>
+
+          {/* Corner Wing Emblem */}
+          <View style={styles.svip3CornerBadge}>
+            <Text style={styles.svip3CornerText}>SVIP 3</Text>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  // 3.3 SVIP 2 Emerald Green & Gold Luxury Bubble
   if (!customBubble && svipLevel && svipLevel >= 2) {
     return (
       <View style={styles.luxuryBubbleContainer}>
@@ -907,5 +1076,163 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '600',
     lineHeight: 17,
+  },
+  // VIP 4 Luxury Chat Bubble Styles
+  vip4BubbleWrapper: {
+    position: 'relative',
+    maxWidth: MAX_BUBBLE_WIDTH + 14,
+    marginVertical: 4,
+  },
+  vip4RubyWingEmblem: {
+    position: 'absolute',
+    top: -8,
+    left: -4,
+    zIndex: 10,
+  },
+  vip4WingGoldBase: {
+    padding: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FDE047',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.7,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  vip4RubyDiamond: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FEF08A',
+  },
+  vip4BubbleBody: {
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 14,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  vip4AvatarBorder: {
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+    borderRadius: 20,
+    padding: 1,
+  },
+  vip4GoldName: {
+    color: '#FDE047',
+    fontSize: 12.5,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(245, 158, 11, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  vip4BadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 8,
+    gap: 3,
+    borderWidth: 0.8,
+    borderColor: '#FDE047',
+  },
+  vip4MessageText: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
+    marginTop: 6,
+    paddingRight: 55,
+  },
+  vip4PlaqueWrap: {
+    position: 'absolute',
+    bottom: -6,
+    right: 4,
+    zIndex: 10,
+  },
+  vip4PlaqueInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1.2,
+    borderColor: '#FDE047',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 3,
+    elevation: 4,
+    gap: 2,
+  },
+  vip4PlaqueText: {
+    color: '#FDE047',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  vip4Sparkle: {
+    marginLeft: 1,
+  },
+  // SVIP 3 Wolf Sovereign Bubble Styles
+  svip3Bubble: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#06B6D4',
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
+    maxWidth: MAX_BUBBLE_WIDTH + 14,
+    marginVertical: 4,
+    shadowColor: '#06B6D4',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+  },
+  svip3AvatarBorder: {
+    borderWidth: 1.5,
+    borderColor: '#06B6D4',
+    borderRadius: 20,
+    padding: 1,
+  },
+  svip3CyanName: {
+    color: '#67E8F9',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+  svip3MessageText: {
+    color: '#F0FDFA',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
+    marginTop: 6,
+    paddingRight: 45,
+  },
+  svip3CornerBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 6,
+    backgroundColor: 'rgba(6, 182, 212, 0.25)',
+    borderWidth: 0.8,
+    borderColor: '#22D3EE',
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  svip3CornerText: {
+    color: '#A5F3FC',
+    fontSize: 8.5,
+    fontWeight: '800',
   },
 });

@@ -42,11 +42,32 @@ export default function IdentityBadge({
 
   // SVIP / VIP badge configuration
   if (type === 'vip' || type === 'svip' || vipLevel) {
-    const colors = isSvip
-      ? ['#FF007A', '#7928CA', '#0070F3']
-      : ['#FFE259', '#FFA751'];
-    const title = isSvip
-      ? `SVIP ${vipLevel || ''}`.trim()
+    const numericLevel = Number(vipLevel);
+    let colors = ['#FFE259', '#FFA751'];
+    let iconPrefix = '👑';
+    if (isSvip || type === 'svip') {
+      if (numericLevel === 1) {
+        colors = ['#2563EB', '#3B82F6', '#60A5FA'];
+        iconPrefix = '🛡️';
+      } else if (numericLevel === 2) {
+        colors = ['#7C3AED', '#A855F7', '#C084FC'];
+        iconPrefix = '👑';
+      } else if (numericLevel === 3) {
+        colors = ['#0891B2', '#06B6D4', '#38BDF8'];
+        iconPrefix = '🐺';
+      } else if (numericLevel === 4) {
+        colors = ['#DC2626', '#EF4444', '#F59E0B'];
+        iconPrefix = '🐯';
+      } else if (numericLevel >= 5) {
+        colors = ['#F59E0B', '#FBBF24', '#7C3AED'];
+        iconPrefix = '👑👑';
+      } else {
+        colors = ['#3B82F6', '#1D4ED8'];
+        iconPrefix = '👑';
+      }
+    }
+    const title = (isSvip || type === 'svip')
+      ? (numericLevel === 0 ? 'SVIP+' : `SVIP ${vipLevel || ''}`.trim())
       : `VIP ${vipLevel || ''}`.trim();
 
     return (
@@ -61,7 +82,7 @@ export default function IdentityBadge({
         ]}
       >
         <Text style={[styles.badgeText, isSm && styles.badgeTextSm, isLg && styles.badgeTextLg]}>
-          {isSvip ? '⚡' : '👑'} {title}
+          {iconPrefix} {title}
         </Text>
       </LinearGradient>
     );

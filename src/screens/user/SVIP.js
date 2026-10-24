@@ -60,14 +60,19 @@ const ALL_NOBILITY_PRIVILEGES = [
   { key: 'room_secret_lord', title: 'Room Secret Lord', icon: 'eye-outline', desc: 'Stealth room entrance without alerting regular guests.' },
 ];
 
-// Dedicated SVIP Tiers (Strictly NO King of Kings mixed here)
+// Dedicated SVIP Assets
+const SVIP4_BADGE = require('../../assets/svip/svip4_badge.png');
+const VIP4_CHAT_BUBBLE = require('../../assets/svip/chat_bubble_vip4.png');
+const SVIP3_TAG = require('../../assets/svip/svip3_tag.png');
+
+// Dedicated SVIP Tiers (SVIP+ to SVIP 5)
 const SVIP_TIERS = [
   {
     id: 'vip-plus',
     slug: 'vip-plus',
     level: 0,
-    tabLabel: 'VIP+',
-    ribbonLabel: 'VIP+',
+    tabLabel: 'SVIP+',
+    ribbonLabel: 'SVIP+',
     name: 'VIP+ Lynx',
     price: 49000,
     originalPrice: 75000,
@@ -75,6 +80,7 @@ const SVIP_TIERS = [
     tagText: 'VIP+',
     tagColors: ['#3B82F6', '#1D4ED8'],
     bubbleColors: ['#1E3A8A', '#1E40AF'],
+    previewOptions: ['tag', 'bubble'],
     privilegeKeys: [
       'rank_the_top', 'colorful_nickname', 'view_more_visitors',
       'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
@@ -101,6 +107,8 @@ const SVIP_TIERS = [
     tagText: 'SVIP 1',
     tagColors: ['#F59E0B', '#D97706'],
     bubbleColors: ['#451A03', '#78350F'],
+    frameColors: ['#F59E0B', '#FBBF24'],
+    previewOptions: ['tag', 'bubble', 'frame'], // "SVIP 1 Me ek Option Frame Ka Add HO Jayega"
     privilegeKeys: [
       'rank_the_top', 'colorful_nickname', 'view_more_visitors',
       'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
@@ -127,6 +135,8 @@ const SVIP_TIERS = [
     tagText: 'SVIP 2',
     tagColors: ['#A855F7', '#7C3AED'],
     bubbleColors: ['#3B0764', '#581C87'],
+    frameColors: ['#C084FC', '#A855F7'],
+    previewOptions: ['tag', 'bubble', 'frame'], // "SVIP2 me 1 Jaisa Hi Rahega"
     privilegeKeys: [
       'rank_the_top', 'colorful_nickname', 'view_more_visitors',
       'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
@@ -151,8 +161,76 @@ const SVIP_TIERS = [
     originalPrice: 500000,
     discount: '30% OFF',
     tagText: 'SVIP 3',
+    tagImage: SVIP3_TAG, // "svip 3 wala tag hai"
     tagColors: ['#06B6D4', '#0284C7'],
     bubbleColors: ['#082F49', '#0369A1'],
+    frameColors: ['#38BDF8', '#0284C7'],
+    roomCardColors: ['#1E1B4B', '#4338CA'],
+    previewOptions: ['tag', 'bubble', 'frame', 'room_card'], // "SVIP 3 Me Room Personal Card Add Hoga"
+    privilegeKeys: [
+      'rank_the_top', 'colorful_nickname', 'view_more_visitors',
+      'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
+      'send_pictures_private_chat', 'modify_profile_gender', 'hide_last_online',
+      'profile_vehicle', 'anti_tracking', 'send_pictures_chat_room',
+      'customized_profile_bg', 'gif_avatar', 'level_exp_speedup',
+      'svip_customized_gift', 'id_freeze_protection', 'hide_online_status',
+      'anti_kick', 'upgrade_app_notification', 'unique_3_digit_sid',
+      'unban_account', 'anti_ban_chatting', 'badge_svip_achievement',
+      'anonymous_ranking', 'customized_start_page', 'ban_account_power',
+      'unique_2_digit_sid', 'room_secret_lord'
+    ],
+  },
+  {
+    id: 'svip-4',
+    slug: 'svip-4',
+    level: 4,
+    tabLabel: 'SVIP4',
+    ribbonLabel: 'SVIP 4',
+    name: 'SVIP 4 Monarch',
+    price: 700000,
+    originalPrice: 1000000,
+    discount: '30% OFF',
+    heroBadge: SVIP4_BADGE, // "SVIP Me ye Badge Rakho"
+    tagText: 'SVIP 4',
+    tagColors: ['#EF4444', '#DC2626'],
+    bubbleImage: VIP4_CHAT_BUBBLE, // "vip 4 wala chat Bubble hai"
+    bubbleColors: ['#450A0A', '#7F1D1D'],
+    frameColors: ['#F43F5E', '#E11D48'],
+    roomCardColors: ['#4C0519', '#881337'],
+    micColors: ['#EF4444', '#F59E0B', '#DC2626'],
+    previewOptions: ['tag', 'bubble', 'frame', 'room_card', 'mic_theme'], // "SVIP 4 Me Luxury Mic Theme Ye option Add Hoga"
+    privilegeKeys: [
+      'rank_the_top', 'colorful_nickname', 'view_more_visitors',
+      'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
+      'send_pictures_private_chat', 'modify_profile_gender', 'hide_last_online',
+      'profile_vehicle', 'anti_tracking', 'send_pictures_chat_room',
+      'customized_profile_bg', 'gif_avatar', 'level_exp_speedup',
+      'svip_customized_gift', 'id_freeze_protection', 'hide_online_status',
+      'anti_kick', 'upgrade_app_notification', 'unique_3_digit_sid',
+      'unban_account', 'anti_ban_chatting', 'badge_svip_achievement',
+      'anonymous_ranking', 'customized_start_page', 'ban_account_power',
+      'unique_2_digit_sid', 'room_secret_lord'
+    ],
+  },
+  {
+    id: 'svip-5',
+    slug: 'svip-5',
+    level: 5,
+    tabLabel: 'SVIP5',
+    ribbonLabel: 'SVIP 5',
+    name: 'SVIP 5 Sovereign Supreme',
+    price: 1500000,
+    originalPrice: 2250000,
+    discount: '33% OFF',
+    heroBadge: SVIP4_BADGE, // Gold Shield Crest
+    tagText: 'SVIP 5',
+    tagColors: ['#F59E0B', '#D97706'],
+    bubbleColors: ['#4C1D95', '#7C3AED'],
+    frameColors: ['#FDE047', '#EAB308'],
+    roomCardColors: ['#3B0764', '#1E1B4B'],
+    micColors: ['#FDE047', '#EAB308', '#CA8A04', '#A855F7'],
+    badgeColors: ['#FBBF24', '#D97706', '#78350F'],
+    previewOptions: ['tag', 'bubble', 'frame', 'room_card', 'mic_theme', 'badge'], // "SVIP 5 Me Niche Bhi Badge Option Add Hoga"
     privilegeKeys: [
       'rank_the_top', 'colorful_nickname', 'view_more_visitors',
       'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
@@ -275,24 +353,30 @@ export default function SVIPScreen() {
         </View>
       </View>
 
-      {/* Horizontal Tabs: VIP+ | SVIP1 | SVIP2 | SVIP3 matching Screenshot 1 */}
+      {/* Horizontal Tabs: SVIP+ | SVIP1 | SVIP2 | SVIP3 | SVIP4 | SVIP5 */}
       <View style={styles.tierTabsContainer}>
-        {SVIP_TIERS.map((tier) => {
-          const isActive = tier.id === activeTierId;
-          return (
-            <TouchableOpacity
-              key={tier.id}
-              style={[styles.tierTab, isActive && styles.tierTabActive]}
-              onPress={() => setActiveTierId(tier.id)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.tierTabText, isActive && styles.tierTabTextActive]}>
-                {tier.tabLabel}
-              </Text>
-              {isActive && <View style={styles.tierActiveDot} />}
-            </TouchableOpacity>
-          );
-        })}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tierTabsScrollContent}
+        >
+          {SVIP_TIERS.map((tier) => {
+            const isActive = tier.id === activeTierId;
+            return (
+              <TouchableOpacity
+                key={tier.id}
+                style={[styles.tierTab, isActive && styles.tierTabActive]}
+                onPress={() => setActiveTierId(tier.id)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tierTabText, isActive && styles.tierTabTextActive]}>
+                  {tier.tabLabel}
+                </Text>
+                {isActive && <View style={styles.tierActiveDot} />}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Scrollable Content */}
@@ -300,69 +384,180 @@ export default function SVIPScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 90 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Noble Mascot Emblem Ring matching Screenshot 1 */}
+        {/* Noble Mascot Emblem Ring / Hero Badge ("SVIP Me ye Badge Rakho") */}
         <View style={styles.mascotEmblemContainer}>
-          {/* Metallic Silver/Gold Medallion Ring */}
-          <LinearGradient
-            colors={['#E2E8F0', '#94A3B8', '#CBD5E1', '#64748B']}
-            style={styles.mascotRingBorder}
-          >
-            <LinearGradient
-              colors={['#1E3A8A', '#172554', '#0F172A']}
-              style={styles.mascotRingInner}
-            >
-              {/* Lynx / Noble Mascot Portrait */}
+          {currentTier.heroBadge ? (
+            <View style={styles.heroBadgeBox}>
               <Image
-                source={getUserAvatar(user)}
-                style={styles.mascotImage}
-                resizeMode="cover"
+                source={currentTier.heroBadge}
+                style={styles.heroBadgeImage}
+                resizeMode="contain"
               />
-            </LinearGradient>
-          </LinearGradient>
-
-          {/* Curved 3D Metallic Blue/Gold Ribbon */}
-          <LinearGradient
-            colors={['#1E40AF', '#2563EB', '#3B82F6', '#1E3A8A']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.ribbonBadge}
-          >
-            <Text style={styles.ribbonText}>{currentTier.ribbonLabel}</Text>
-          </LinearGradient>
-        </View>
-
-        {/* Two Preview Cards: SVIP Tag & SVIP Bubble matching Screenshot 1 */}
-        <View style={styles.tagBubbleRow}>
-          {/* Card 1: SVIP Tag */}
-          <View style={styles.previewCard}>
-            <View style={styles.previewCardInner}>
+            </View>
+          ) : (
+            <>
+              {/* Metallic Silver/Gold Medallion Ring */}
               <LinearGradient
-                colors={currentTier.tagColors}
+                colors={['#E2E8F0', '#94A3B8', '#CBD5E1', '#64748B']}
+                style={styles.mascotRingBorder}
+              >
+                <LinearGradient
+                  colors={['#1E3A8A', '#172554', '#0F172A']}
+                  style={styles.mascotRingInner}
+                >
+                  {/* Lynx / Noble Mascot Portrait */}
+                  <Image
+                    source={getUserAvatar(user)}
+                    style={styles.mascotImage}
+                    resizeMode="cover"
+                  />
+                </LinearGradient>
+              </LinearGradient>
+
+              {/* Curved 3D Metallic Blue/Gold Ribbon */}
+              <LinearGradient
+                colors={['#1E40AF', '#2563EB', '#3B82F6', '#1E3A8A']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={styles.tagPillPreview}
+                style={styles.ribbonBadge}
               >
-                <Text style={styles.tagPillText}>🐱 {currentTier.tagText}</Text>
+                <Text style={styles.ribbonText}>{currentTier.ribbonLabel}</Text>
               </LinearGradient>
-              <Text style={styles.previewCardLabel}>SVIP Tag</Text>
-            </View>
-          </View>
+            </>
+          )}
+        </View>
 
-          {/* Card 2: SVIP Bubble */}
-          <View style={styles.previewCard}>
-            <View style={styles.previewCardInner}>
-              <LinearGradient
-                colors={currentTier.bubbleColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.bubblePreview}
-              >
-                <View style={styles.bubbleCornerGold} />
-                <Text style={styles.bubblePreviewText}>Chat ✨</Text>
-              </LinearGradient>
-              <Text style={styles.previewCardLabel}>SVIP Bubble</Text>
-            </View>
-          </View>
+        {/* Dynamic Preview Cards Row for current tier */}
+        <View style={styles.previewCardsOuterWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.previewCardsScrollContent}
+            style={styles.previewCardsScrollView}
+          >
+            {/* 1. SVIP Tag */}
+            {currentTier.previewOptions?.includes('tag') && (
+              <View style={styles.previewCard}>
+                <View style={styles.previewCardInner}>
+                  {currentTier.tagImage ? (
+                    <View style={styles.tagImageWrap}>
+                      <Image source={currentTier.tagImage} style={styles.tagCustomImage} resizeMode="contain" />
+                    </View>
+                  ) : (
+                    <LinearGradient
+                      colors={currentTier.tagColors || ['#3B82F6', '#1D4ED8']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.tagPillPreview}
+                    >
+                      <Text style={styles.tagPillText}>🐱 {currentTier.tagText}</Text>
+                    </LinearGradient>
+                  )}
+                  <Text style={styles.previewCardLabel}>SVIP Tag</Text>
+                </View>
+              </View>
+            )}
+
+            {/* 2. SVIP Bubble */}
+            {currentTier.previewOptions?.includes('bubble') && (
+              <View style={styles.previewCard}>
+                <View style={styles.previewCardInner}>
+                  {currentTier.bubbleImage ? (
+                    <View style={styles.bubbleImageWrap}>
+                      <Image source={currentTier.bubbleImage} style={styles.bubbleCustomImage} resizeMode="contain" />
+                    </View>
+                  ) : (
+                    <LinearGradient
+                      colors={currentTier.bubbleColors || ['#1E3A8A', '#1E40AF']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.bubblePreview}
+                    >
+                      <View style={styles.bubbleCornerGold} />
+                      <Text style={styles.bubblePreviewText}>Chat ✨</Text>
+                    </LinearGradient>
+                  )}
+                  <Text style={styles.previewCardLabel}>SVIP Bubble</Text>
+                </View>
+              </View>
+            )}
+
+            {/* 3. Frame ("SVIP 1 Me ek Option Frame Ka Add HO Jayega", "SVIP2 me 1 Jaisa Hi Rahega") */}
+            {currentTier.previewOptions?.includes('frame') && (
+              <View style={styles.previewCard}>
+                <View style={styles.previewCardInner}>
+                  <View style={styles.framePreviewWrap}>
+                    <LinearGradient
+                      colors={currentTier.frameColors || ['#F59E0B', '#FBBF24']}
+                      style={styles.frameOuterRing}
+                    >
+                      <View style={styles.frameInnerHole}>
+                        <Image source={getUserAvatar(user)} style={styles.frameAvatarImg} resizeMode="cover" />
+                      </View>
+                    </LinearGradient>
+                    <MaterialCommunityIcons name="crown" size={13} color="#FDE047" style={styles.frameCrownIcon} />
+                  </View>
+                  <Text style={styles.previewCardLabel}>Frame</Text>
+                </View>
+              </View>
+            )}
+
+            {/* 4. Room Personal Card ("SVIP 3 Me Room Personal Card Add Hoga") */}
+            {currentTier.previewOptions?.includes('room_card') && (
+              <View style={styles.previewCard}>
+                <View style={styles.previewCardInner}>
+                  <LinearGradient
+                    colors={currentTier.roomCardColors || ['#1E1B4B', '#4338CA']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.roomCardPreview}
+                  >
+                    <View style={styles.roomCardTopRow}>
+                      <MaterialCommunityIcons name="home-sound-in-out" size={14} color="#FDE047" />
+                      <Text style={styles.roomCardIdText}>ID: 8888</Text>
+                    </View>
+                    <View style={styles.roomCardWaveRow}>
+                      <View style={[styles.roomCardWaveBar, { height: 6 }]} />
+                      <View style={[styles.roomCardWaveBar, { height: 11 }]} />
+                      <View style={[styles.roomCardWaveBar, { height: 8 }]} />
+                      <View style={[styles.roomCardWaveBar, { height: 12 }]} />
+                    </View>
+                  </LinearGradient>
+                  <Text style={styles.previewCardLabel}>Room Card</Text>
+                </View>
+              </View>
+            )}
+
+            {/* 5. Luxury Mic Theme ("SVIP 4 Me Luxury Mic Theme Ye option Add Hoga") */}
+            {currentTier.previewOptions?.includes('mic_theme') && (
+              <View style={styles.previewCard}>
+                <View style={styles.previewCardInner}>
+                  <View style={styles.micThemeWrap}>
+                    <LinearGradient
+                      colors={currentTier.micColors || ['#EF4444', '#F59E0B']}
+                      style={styles.micCircleGlow}
+                    >
+                      <MaterialCommunityIcons name="microphone-variant" size={16} color="#FFF" />
+                    </LinearGradient>
+                    <View style={styles.micWaveRingOuter} />
+                  </View>
+                  <Text style={styles.previewCardLabel}>Luxury Mic</Text>
+                </View>
+              </View>
+            )}
+
+            {/* 6. Badge ("SVIP 5 Me Niche Bhi Badge Option Add Hoga") */}
+            {currentTier.previewOptions?.includes('badge') && (
+              <View style={styles.previewCard}>
+                <View style={styles.previewCardInner}>
+                  <View style={styles.badgeOptionWrap}>
+                    <Image source={SVIP4_BADGE} style={styles.badgeOptionImage} resizeMode="contain" />
+                  </View>
+                  <Text style={styles.previewCardLabel}>Badge</Text>
+                </View>
+              </View>
+            )}
+          </ScrollView>
         </View>
 
         {/* Section Title: "5 Exclusive Privileges" matching Screenshot 1 */}
@@ -491,16 +686,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tierTabsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(251, 191, 36, 0.15)',
     zIndex: 10,
+    paddingVertical: 4,
+  },
+  tierTabsScrollContent: {
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    gap: 8,
   },
   tierTab: {
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     alignItems: 'center',
   },
@@ -528,9 +725,24 @@ const styles = StyleSheet.create({
   mascotEmblemContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 16,
+    marginVertical: 12,
     position: 'relative',
     zIndex: 5,
+  },
+  heroBadgeBox: {
+    width: 170,
+    height: 145,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  heroBadgeImage: {
+    width: 165,
+    height: 140,
   },
   mascotRingBorder: {
     width: 140,
@@ -578,21 +790,26 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  tagBubbleRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    width: '92%',
-    marginTop: 20,
-    marginBottom: 20,
+  previewCardsOuterWrap: {
+    width: '100%',
+    marginTop: 14,
+    marginBottom: 16,
+  },
+  previewCardsScrollView: {
+    width: '100%',
+  },
+  previewCardsScrollContent: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    gap: 12,
   },
   previewCard: {
-    flex: 1,
-    height: 105,
+    width: 110,
+    height: 108,
     borderRadius: 18,
-    backgroundColor: 'rgba(30, 20, 10, 0.75)',
+    backgroundColor: 'rgba(30, 20, 10, 0.85)',
     borderWidth: 1.2,
-    borderColor: 'rgba(251, 191, 36, 0.25)',
+    borderColor: 'rgba(251, 191, 36, 0.3)',
     padding: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -603,26 +820,48 @@ const styles = StyleSheet.create({
     height: '100%',
     width: '100%',
   },
+  tagImageWrap: {
+    width: '100%',
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  tagCustomImage: {
+    width: 96,
+    height: 34,
+  },
   tagPillPreview: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
-    marginTop: 8,
+    marginTop: 6,
   },
   tagPillText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
   },
+  bubbleImageWrap: {
+    width: '100%',
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  bubbleCustomImage: {
+    width: 96,
+    height: 42,
+  },
   bubblePreview: {
-    width: '84%',
-    height: 38,
+    width: '90%',
+    height: 36,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#60A5FA',
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    marginTop: 8,
+    paddingHorizontal: 6,
+    marginTop: 6,
     position: 'relative',
   },
   bubbleCornerGold: {
@@ -636,8 +875,108 @@ const styles = StyleSheet.create({
   },
   bubblePreviewText: {
     color: '#E2E8F0',
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '700',
+  },
+  framePreviewWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    position: 'relative',
+  },
+  frameOuterRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 2.5,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+  },
+  frameInnerHole: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    overflow: 'hidden',
+    backgroundColor: '#0F172A',
+  },
+  frameAvatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  frameCrownIcon: {
+    position: 'absolute',
+    top: -6,
+  },
+  roomCardPreview: {
+    width: '94%',
+    height: 42,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FDE047',
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  roomCardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  roomCardIdText: {
+    color: '#FDE047',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  roomCardWaveRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 3,
+  },
+  roomCardWaveBar: {
+    width: 3,
+    backgroundColor: '#38BDF8',
+    borderRadius: 1.5,
+  },
+  micThemeWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    position: 'relative',
+  },
+  micCircleGlow: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 5,
+  },
+  micWaveRingOuter: {
+    position: 'absolute',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
+  },
+  badgeOptionWrap: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  badgeOptionImage: {
+    width: 44,
+    height: 44,
   },
   previewCardLabel: {
     color: '#94A3B8',

@@ -21,8 +21,14 @@ import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
 
-// 9 Prestige Medals strictly matching Screenshot 2
+// SVIP Assets
+const SVIP4_BADGE = require('../../assets/svip/svip4_badge.png');
+const SVIP3_TAG = require('../../assets/svip/svip3_tag.png');
+
+// Prestige Medals including SVIP 4 Tiger Badge and SVIP 3 Wolf Crest
 const PRESTIGE_MEDALS = [
+  { id: 'svip4_tiger', label: 'SVIP 4 Tiger', isCustomImage: true, image: SVIP4_BADGE, colors: ['#F59E0B', '#B45309'] },
+  { id: 'svip3_wolf', label: 'SVIP 3 Wolf', isCustomImage: true, image: SVIP3_TAG, colors: ['#8B5CF6', '#6D28D9'] },
   { id: 'm1', label: 'Heart', icon: 'heart', colors: ['#EF4444', '#DC2626'] },
   { id: 'm2', label: 'Verified', icon: 'shield-check', colors: ['#F59E0B', '#D97706'] },
   { id: 'm3', label: 'Golden Heart', icon: 'heart-multiple', colors: ['#F59E0B', '#B45309'] },
@@ -145,6 +151,7 @@ export default function RoomUserProfileModal({
   const targetGender = displayData.gender || 'female';
   const targetAge = displayData.age || 24;
   const wealthLevel = displayData.wealthLevel ?? displayData.level ?? 4;
+  const targetSvipLevel = Number(displayData.svipLevel ?? displayData.svip ?? (displayData.isSvip ? 1 : 0));
   const followersCount = currentFollowersCount || displayData.followersCount || 0;
   const userBio = displayData.bio || displayData.about || (isSelf ? 'Adding Information can gain more followers.' : '');
 
@@ -256,12 +263,32 @@ export default function RoomUserProfileModal({
                 <Text style={styles.levelText}>Lv.0</Text>
               </View>
 
-              {/* VIP+ badge if not self */}
-              {!isSelf && (
+              {/* VIP+ / SVIP badge */}
+              {targetSvipLevel > 0 ? (
+                targetSvipLevel === 3 ? (
+                  <View style={styles.modalSvip3Wrap}>
+                    <Image source={SVIP3_TAG} style={styles.modalSvip3Tag} resizeMode="contain" />
+                  </View>
+                ) : targetSvipLevel === 4 ? (
+                  <View style={styles.modalSvip4TigerWrap}>
+                    <Image source={SVIP4_BADGE} style={styles.modalTigerBadgeImg} resizeMode="contain" />
+                    <Text style={styles.modalSvip4Text}>SVIP 4</Text>
+                  </View>
+                ) : (
+                  <LinearGradient
+                    colors={['#7C3AED', '#A855F7']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.modalSvipGeneralPill}
+                  >
+                    <Text style={styles.modalSvipGeneralText}>👑 SVIP {targetSvipLevel}</Text>
+                  </LinearGradient>
+                )
+              ) : !isSelf ? (
                 <View style={styles.vipPill}>
                   <Text style={styles.vipText}>VIP+</Text>
                 </View>
-              )}
+              ) : null}
 
               {/* Agency Tag if any */}
               {!isSelf && (
@@ -299,7 +326,11 @@ export default function RoomUserProfileModal({
                         end={{ x: 1, y: 1 }}
                         style={styles.medalCircle}
                       >
-                        <MaterialCommunityIcons name={medal.icon} size={15} color="#FFFFFF" />
+                        {medal.isCustomImage ? (
+                          <Image source={medal.image} style={styles.medalCustomImg} resizeMode="contain" />
+                        ) : (
+                          <MaterialCommunityIcons name={medal.icon} size={15} color="#FFFFFF" />
+                        )}
                       </LinearGradient>
                     </View>
                   ))}
@@ -873,6 +904,48 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '800',
     color: '#FACC15',
+  },
+  modalSvip3Wrap: {
+    height: 20,
+    justifyContent: 'center',
+  },
+  modalSvip3Tag: {
+    width: 65,
+    height: 20,
+  },
+  modalSvip4TigerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.25)',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 10,
+    gap: 3,
+  },
+  modalTigerBadgeImg: {
+    width: 16,
+    height: 16,
+  },
+  modalSvip4Text: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FDE047',
+  },
+  modalSvipGeneralPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  modalSvipGeneralText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  medalCustomImg: {
+    width: 22,
+    height: 22,
   },
   agencyPill: {
     backgroundColor: '#0F172A',

@@ -11,6 +11,9 @@ import LinearGradient from 'react-native-linear-gradient';
 import SvgaView from '../SvgaView';
 import { resolveEntryAssets } from '../../utils/cosmeticResolver';
 
+const SVIP4_BADGE = require('../../assets/svip/svip4_badge.png');
+const SVIP3_TAG = require('../../assets/svip/svip3_tag.png');
+
 const { width, height } = Dimensions.get('window');
 
 /**
@@ -299,17 +302,25 @@ export default function VipFloatingEntryEngine({
             },
           ]}
         >
-          <LinearGradient
-            colors={tagGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.tagGradientPill}
-          >
-            <Text style={styles.tagIcon}>{crownIcon}</Text>
-            <Text style={styles.tagLabelText}>
-              {entryTagText}
-            </Text>
-          </LinearGradient>
+          {currentEntry?.svipLevel === 3 || currentEntry?.tagText?.includes('SVIP 3') || entryTagText?.includes('SVIP 3') || entryTagText?.includes('WOLF') ? (
+            <Image source={SVIP3_TAG} style={{ width: 140, height: 46 }} resizeMode="contain" />
+          ) : currentEntry?.svipLevel === 4 || currentEntry?.tagText?.includes('SVIP 4') || entryTagText?.includes('SVIP 4') || entryTagText?.includes('TIGER') ? (
+            <View style={{ alignItems: 'center' }}>
+              <Image source={SVIP4_BADGE} style={{ width: 100, height: 85 }} resizeMode="contain" />
+            </View>
+          ) : (
+            <LinearGradient
+              colors={tagGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.tagGradientPill}
+            >
+              <Text style={styles.tagIcon}>{crownIcon}</Text>
+              <Text style={styles.tagLabelText}>
+                {entryTagText}
+              </Text>
+            </LinearGradient>
+          )}
         </Animated.View>
       </Animated.View>
     </View>

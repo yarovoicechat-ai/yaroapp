@@ -5,8 +5,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 
 const RULES = [
   'Nobility is valid for 30 days upon activation.',
-  'As your rank advances from Knight to King, you unlock more assets (up to 11/11) and exclusive privileges (up to 13/13).',
-  'Daily coins can be claimed once every 24 hours.',
+  'As your rank advances through Viscount, Count, Marquis, Duke, and King, you unlock the 15 royal privileges shown in the membership grid.',
+  'Bonus coins are credited once on each paid activation. Membership privileges last for 30 days.',
   'Custom Vanity IDs, Animated Badges, and Anti-Kick protections remain active throughout your subscription duration.',
 ];
 

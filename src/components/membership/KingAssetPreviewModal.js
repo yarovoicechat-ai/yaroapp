@@ -13,12 +13,12 @@ export default function KingAssetPreviewModal({ visible, onClose, asset, styles 
               {asset?.image ? (
                 <Image source={asset.image} style={{ width: 68, height: 68 }} resizeMode="contain" />
               ) : (
-                <Icon name={asset?.icon || 'sparkles'} size={36} color="#FDE047" />
+                <Icon name={asset?.icon === 'shield-star' ? 'shield-checkmark' : (asset?.icon || 'sparkles')} size={36} color="#FDE047" />
               )}
             </View>
             <Text style={styles.assetModalTitle}>{asset?.name}</Text>
             <Text style={styles.assetModalStatus}>
-              {asset?.unlocked ? 'âœ¨ UNLOCKED IN THIS TIER' : 'ðŸ”’ UNLOCKS IN HIGHER NOBILITY'}
+              {asset?.unlocked ? 'INCLUDED IN THIS RANK' : 'AVAILABLE AT A HIGHER RANK'}
             </Text>
             <Text style={styles.assetModalDesc}>{asset?.desc}</Text>
             <TouchableOpacity style={styles.modalCloseBtn} onPress={onClose}>

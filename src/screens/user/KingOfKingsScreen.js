@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Dimensions,
+  useWindowDimensions,
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
@@ -14,7 +14,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import KingAssetPreviewModal from '../../components/membership/KingAssetPreviewModal';
 import KingRulesModal from '../../components/membership/KingRulesModal';
 import Icon from 'react-native-vector-icons/Ionicons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
@@ -24,7 +23,7 @@ import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
 import { formatCompactBalance } from '../../utils/numberUtil';
 
-const { width } = Dimensions.get('window');
+
 
 // Dedicated Nobility Assets
 const VISCOUNT_BADGE = require('../../assets/king/viscount_badge.png');
@@ -32,12 +31,12 @@ const VISCOUNT_BADGE = require('../../assets/king/viscount_badge.png');
 // Fallback Nobility tiers matching screenshot 2
 const FALLBACK_KING_TIERS = [
   {
-    tierKey: 'knight',
-    name: 'Knight',
+    tierKey: 'viscount',
+    name: 'Viscount',
     level: 1,
-    title: 'Imperial Knight',
+    title: 'Imperial Viscount',
     coinsPrice: 99000,
-    dailyRewardCoins: 1000,
+    bonusCoins: 1000,
     durationDays: 30,
     rewardCount: 7,
     totalRewards: 11,
@@ -45,14 +44,14 @@ const FALLBACK_KING_TIERS = [
     totalPrivileges: 13,
     heroBadgeUrl: 'https://cdn-icons-png.flaticon.com/512/2583/2583344.png',
     rewards: [
-      { key: 'daily_coins', name: 'Daily coins', desc: 'Claim 1,000 coins every day upon login', icon: 'cash', unlocked: true, previewUrl: '' },
+      { key: 'activation_bonus', name: 'Activation bonus', desc: 'Receive 1,000 coins once on activation', icon: 'cash', unlocked: true, previewUrl: '' },
       { key: 'notification_broadcast', name: 'Broadcast', desc: 'App-wide banner when entering rooms', icon: 'megaphone', unlocked: true, previewUrl: '' },
-      { key: 'kings_logo', name: 'Logo', desc: 'Exclusive Knight heraldic emblem on profile', icon: 'shield-star', unlocked: true, previewUrl: '' },
-      { key: 'kings_badge', name: 'Kings badge', desc: 'Dynamic glowing 3D Knight nobility badge', icon: 'medal', unlocked: true, previewUrl: '' },
+      { key: 'kings_logo', name: 'Logo', desc: 'Exclusive Viscount heraldic emblem on profile', icon: 'shield-star', unlocked: true, previewUrl: '' },
+      { key: 'kings_badge', name: 'Kings badge', desc: 'Dynamic glowing 3D Viscount nobility badge', icon: 'medal', unlocked: true, previewUrl: '' },
       { key: 'avatar_frame', name: 'Avatar frame', desc: 'Golden Winged Stag animated frame', icon: 'color-wand', unlocked: true, previewUrl: '' },
       { key: 'entry_effect', name: 'Entry effect', desc: 'Royal golden sports car arrival effect', icon: 'car-sport', unlocked: true, previewUrl: '' },
       { key: 'barrage', name: 'Barrage', desc: 'Golden bullet screen text in live party', icon: 'chatbubbles', unlocked: true, previewUrl: '' },
-      { key: 'chat_bubble', name: 'Chat bubble', desc: 'Knight amber glass message bubble', icon: 'chatbubble-ellipses', unlocked: false, previewUrl: '' },
+      { key: 'chat_bubble', name: 'Chat bubble', desc: 'Viscount amber glass message bubble', icon: 'chatbubble-ellipses', unlocked: false, previewUrl: '' },
       { key: 'mic_seat_aura', name: 'Mic aura', desc: 'Floating golden aura when on mic seat', icon: 'radio', unlocked: false, previewUrl: '' },
       { key: 'profile_card', name: 'Profile theme', desc: 'Gold leaf prestige profile card background', icon: 'card', unlocked: false, previewUrl: '' },
       { key: 'custom_gift', name: 'Exclusive gift', desc: 'Send exclusive 3D animated nobility gifts', icon: 'gift', unlocked: false, previewUrl: '' },
@@ -74,12 +73,12 @@ const FALLBACK_KING_TIERS = [
     ],
   },
   {
-    tierKey: 'viscount',
-    name: 'Viscount',
+    tierKey: 'count',
+    name: 'Count',
     level: 2,
-    title: 'Royal Viscount',
+    title: 'Royal Count',
     coinsPrice: 249000,
-    dailyRewardCoins: 2500,
+    bonusCoins: 2500,
     durationDays: 30,
     rewardCount: 8,
     totalRewards: 11,
@@ -88,17 +87,17 @@ const FALLBACK_KING_TIERS = [
     heroBadge: VISCOUNT_BADGE,
     heroBadgeUrl: '/king/viscount_badge.png',
     rewards: [
-      { key: 'daily_coins', name: 'Daily coins', desc: 'Claim 2,500 coins every day upon login', icon: 'cash', unlocked: true, previewUrl: '' },
-      { key: 'notification_broadcast', name: 'Broadcast', desc: 'Viscount royal trumpet arrival announcement', icon: 'megaphone', unlocked: true, previewUrl: '' },
-      { key: 'kings_logo', name: 'Logo', desc: 'Amethyst & Gold Viscount Coat of Arms', icon: 'shield-star', unlocked: true, previewUrl: '' },
-      { key: 'kings_badge', name: 'Kings badge', desc: 'Shimmering Purple & Gold Viscount Nobility Badge', icon: 'medal', unlocked: true, previewUrl: '', image: VISCOUNT_BADGE },
-      { key: 'avatar_frame', name: 'Avatar frame', desc: 'Viscount Regal Amethyst Wings Frame', icon: 'color-wand', unlocked: true, previewUrl: '' },
+      { key: 'activation_bonus', name: 'Activation bonus', desc: 'Receive 2,500 coins once on activation', icon: 'cash', unlocked: true, previewUrl: '' },
+      { key: 'notification_broadcast', name: 'Broadcast', desc: 'Count royal trumpet arrival announcement', icon: 'megaphone', unlocked: true, previewUrl: '' },
+      { key: 'kings_logo', name: 'Logo', desc: 'Amethyst & Gold Count Coat of Arms', icon: 'shield-star', unlocked: true, previewUrl: '' },
+      { key: 'kings_badge', name: 'Kings badge', desc: 'Shimmering Purple & Gold Count Nobility Badge', icon: 'medal', unlocked: true, previewUrl: '', image: VISCOUNT_BADGE },
+      { key: 'avatar_frame', name: 'Avatar frame', desc: 'Count Regal Amethyst Wings Frame', icon: 'color-wand', unlocked: true, previewUrl: '' },
       { key: 'entry_effect', name: 'Entry effect', desc: 'Supercar Phantom Entry with fireworks', icon: 'car-sport', unlocked: true, previewUrl: '' },
       { key: 'barrage', name: 'Barrage', desc: 'Purple neon bullet comments in room', icon: 'chatbubbles', unlocked: true, previewUrl: '' },
-      { key: 'chat_bubble', name: 'Chat bubble', desc: 'Viscount Purple Velvet chat bubble', icon: 'chatbubble-ellipses', unlocked: true, previewUrl: '' },
+      { key: 'chat_bubble', name: 'Chat bubble', desc: 'Count Purple Velvet chat bubble', icon: 'chatbubble-ellipses', unlocked: true, previewUrl: '' },
       { key: 'mic_seat_aura', name: 'Mic aura', desc: 'Violet crystal pulsing mic aura', icon: 'radio', unlocked: false, previewUrl: '' },
       { key: 'profile_card', name: 'Profile theme', desc: 'Midnight amethyst nobility card theme', icon: 'card', unlocked: false, previewUrl: '' },
-      { key: 'custom_gift', name: 'Exclusive gift', desc: 'Viscount Royal Crown 3D animated gift', icon: 'gift', unlocked: false, previewUrl: '' },
+      { key: 'custom_gift', name: 'Exclusive gift', desc: 'Count Royal Crown 3D animated gift', icon: 'gift', unlocked: false, previewUrl: '' },
     ],
     privileges: [
       { key: 'rank_the_top', name: 'Rank Top', desc: 'Priority pinning in room members and contributors', icon: 'trophy', unlocked: true },
@@ -117,12 +116,12 @@ const FALLBACK_KING_TIERS = [
     ],
   },
   {
-    tierKey: 'duke',
-    name: 'Duke',
+    tierKey: 'marquis',
+    name: 'Marquis',
     level: 3,
-    title: 'Sovereign Duke',
+    title: 'Sovereign Marquis',
     coinsPrice: 499000,
-    dailyRewardCoins: 6000,
+    bonusCoins: 6000,
     durationDays: 30,
     rewardCount: 9,
     totalRewards: 11,
@@ -130,17 +129,17 @@ const FALLBACK_KING_TIERS = [
     totalPrivileges: 13,
     heroBadgeUrl: 'https://cdn-icons-png.flaticon.com/512/2583/2583345.png',
     rewards: [
-      { key: 'daily_coins', name: 'Daily coins', desc: 'Claim 6,000 coins every day upon login', icon: 'cash', unlocked: true, previewUrl: '' },
+      { key: 'activation_bonus', name: 'Activation bonus', desc: 'Receive 6,000 coins once on activation', icon: 'cash', unlocked: true, previewUrl: '' },
       { key: 'notification_broadcast', name: 'Broadcast', desc: 'Sovereign banner broadcast across the whole app', icon: 'megaphone', unlocked: true, previewUrl: '' },
-      { key: 'kings_logo', name: 'Logo', desc: 'Ruby Duke Crest with Diamond Insignia', icon: 'shield-star', unlocked: true, previewUrl: '' },
-      { key: 'kings_badge', name: 'Kings badge', desc: '3D Golden Lion & Eagle Duke Medal', icon: 'medal', unlocked: true, previewUrl: '' },
-      { key: 'avatar_frame', name: 'Avatar frame', desc: 'Duke Imperial Golden Eagle Crown Frame', icon: 'color-wand', unlocked: true, previewUrl: '' },
+      { key: 'kings_logo', name: 'Logo', desc: 'Ruby Marquis Crest with Diamond Insignia', icon: 'shield-star', unlocked: true, previewUrl: '' },
+      { key: 'kings_badge', name: 'Kings badge', desc: '3D Golden Lion & Eagle Marquis Medal', icon: 'medal', unlocked: true, previewUrl: '' },
+      { key: 'avatar_frame', name: 'Avatar frame', desc: 'Marquis Imperial Golden Eagle Crown Frame', icon: 'color-wand', unlocked: true, previewUrl: '' },
       { key: 'entry_effect', name: 'Entry effect', desc: 'Golden Chariot & Dragon landing entry effect', icon: 'car-sport', unlocked: true, previewUrl: '' },
       { key: 'barrage', name: 'Barrage', desc: 'Crimson Red Laser bullet screen', icon: 'chatbubbles', unlocked: true, previewUrl: '' },
-      { key: 'chat_bubble', name: 'Chat bubble', desc: 'Duke Ruby Blaze glass bubble', icon: 'chatbubble-ellipses', unlocked: true, previewUrl: '' },
+      { key: 'chat_bubble', name: 'Chat bubble', desc: 'Marquis Ruby Blaze glass bubble', icon: 'chatbubble-ellipses', unlocked: true, previewUrl: '' },
       { key: 'mic_seat_aura', name: 'Mic aura', desc: 'Golden Winged mic pedestal aura', icon: 'radio', unlocked: true, previewUrl: '' },
-      { key: 'profile_card', name: 'Profile theme', desc: 'Imperial Duke velvet theme', icon: 'card', unlocked: false, previewUrl: '' },
-      { key: 'custom_gift', name: 'Exclusive gift', desc: 'Duke Sovereign Scepter 3D Gift', icon: 'gift', unlocked: false, previewUrl: '' },
+      { key: 'profile_card', name: 'Profile theme', desc: 'Imperial Marquis velvet theme', icon: 'card', unlocked: false, previewUrl: '' },
+      { key: 'custom_gift', name: 'Exclusive gift', desc: 'Marquis Sovereign Scepter 3D Gift', icon: 'gift', unlocked: false, previewUrl: '' },
     ],
     privileges: [
       { key: 'rank_the_top', name: 'Rank Top', desc: 'Priority pinning in room members and contributors', icon: 'trophy', unlocked: true },
@@ -159,12 +158,12 @@ const FALLBACK_KING_TIERS = [
     ],
   },
   {
-    tierKey: 'prince',
-    name: 'Prince',
+    tierKey: 'duke',
+    name: 'Duke',
     level: 4,
-    title: 'Crown Prince',
+    title: 'Crown Duke',
     coinsPrice: 999000,
-    dailyRewardCoins: 15000,
+    bonusCoins: 15000,
     durationDays: 30,
     rewardCount: 10,
     totalRewards: 11,
@@ -172,17 +171,17 @@ const FALLBACK_KING_TIERS = [
     totalPrivileges: 13,
     heroBadgeUrl: 'https://cdn-icons-png.flaticon.com/512/2583/2583342.png',
     rewards: [
-      { key: 'daily_coins', name: 'Daily coins', desc: 'Claim 15,000 coins every day upon login', icon: 'cash', unlocked: true, previewUrl: '' },
+      { key: 'activation_bonus', name: 'Activation bonus', desc: 'Receive 15,000 coins once on activation', icon: 'cash', unlocked: true, previewUrl: '' },
       { key: 'notification_broadcast', name: 'Broadcast', desc: 'Royal herald horn fanfare across all servers', icon: 'megaphone', unlocked: true, previewUrl: '' },
-      { key: 'kings_logo', name: 'Logo', desc: 'Crown Prince Golden Wing Crest', icon: 'shield-star', unlocked: true, previewUrl: '' },
-      { key: 'kings_badge', name: 'Kings badge', desc: 'Rotating Diamond Crown Prince Seal', icon: 'medal', unlocked: true, previewUrl: '' },
-      { key: 'avatar_frame', name: 'Avatar frame', desc: 'Crown Prince Platinum Dragon Frame', icon: 'color-wand', unlocked: true, previewUrl: '' },
+      { key: 'kings_logo', name: 'Logo', desc: 'Crown Duke Golden Wing Crest', icon: 'shield-star', unlocked: true, previewUrl: '' },
+      { key: 'kings_badge', name: 'Kings badge', desc: 'Rotating Diamond Crown Duke Seal', icon: 'medal', unlocked: true, previewUrl: '' },
+      { key: 'avatar_frame', name: 'Avatar frame', desc: 'Crown Duke Platinum Dragon Frame', icon: 'color-wand', unlocked: true, previewUrl: '' },
       { key: 'entry_effect', name: 'Entry effect', desc: 'Supersonic Royal Jet entrance animation', icon: 'car-sport', unlocked: true, previewUrl: '' },
       { key: 'barrage', name: 'Barrage', desc: 'Electric Rainbow laser barrage', icon: 'chatbubbles', unlocked: true, previewUrl: '' },
-      { key: 'chat_bubble', name: 'Chat bubble', desc: 'Platinum Prince crystal bubble', icon: 'chatbubble-ellipses', unlocked: true, previewUrl: '' },
+      { key: 'chat_bubble', name: 'Chat bubble', desc: 'Platinum Duke crystal bubble', icon: 'chatbubble-ellipses', unlocked: true, previewUrl: '' },
       { key: 'mic_seat_aura', name: 'Mic aura', desc: 'Electric dragon aura circling mic seat', icon: 'radio', unlocked: true, previewUrl: '' },
-      { key: 'profile_card', name: 'Profile theme', desc: 'Diamond encrusted prince profile theme', icon: 'card', unlocked: true, previewUrl: '' },
-      { key: 'custom_gift', name: 'Exclusive gift', desc: 'Prince Pegasus 3D Animated Gift', icon: 'gift', unlocked: false, previewUrl: '' },
+      { key: 'profile_card', name: 'Profile theme', desc: 'Diamond encrusted duke profile theme', icon: 'card', unlocked: true, previewUrl: '' },
+      { key: 'custom_gift', name: 'Exclusive gift', desc: 'Duke Pegasus 3D Animated Gift', icon: 'gift', unlocked: false, previewUrl: '' },
     ],
     privileges: [
       { key: 'rank_the_top', name: 'Rank Top', desc: 'Guaranteed top #1 placement in visitor lists', icon: 'trophy', unlocked: true },
@@ -206,7 +205,7 @@ const FALLBACK_KING_TIERS = [
     level: 5,
     title: 'Supreme King of Kings',
     coinsPrice: 1999000,
-    dailyRewardCoins: 35000,
+    bonusCoins: 35000,
     durationDays: 30,
     rewardCount: 11,
     totalRewards: 11,
@@ -214,7 +213,7 @@ const FALLBACK_KING_TIERS = [
     totalPrivileges: 13,
     heroBadgeUrl: 'https://cdn-icons-png.flaticon.com/512/2583/2583434.png',
     rewards: [
-      { key: 'daily_coins', name: 'Daily coins', desc: 'Claim 35,000 coins every day upon login', icon: 'cash', unlocked: true, previewUrl: '' },
+      { key: 'activation_bonus', name: 'Activation bonus', desc: 'Receive 35,000 coins once on activation', icon: 'cash', unlocked: true, previewUrl: '' },
       { key: 'notification_broadcast', name: 'Broadcast', desc: 'Supreme emperor app-wide golden fanfare banner', icon: 'megaphone', unlocked: true, previewUrl: '' },
       { key: 'kings_logo', name: 'Logo', desc: 'Imperial King of Kings Sun & Crown Emblem', icon: 'shield-star', unlocked: true, previewUrl: '' },
       { key: 'kings_badge', name: 'Kings badge', desc: 'Golden Winged Stag Imperial Crown Badge', icon: 'medal', unlocked: true, previewUrl: '' },
@@ -244,7 +243,27 @@ const FALLBACK_KING_TIERS = [
   },
 ];
 
+// Reference layout: exactly 15 privileges, displayed in five rows of three.
+const ROYAL_PRIVILEGES = [
+  {key: 'kings_badge', name: 'Aristocracy Badge', icon: 'ribbon', desc: 'Exclusive nobility badge on your profile.', level: 1},
+  {key: 'exclusive_gifts', name: 'Aristocracy Gifts', icon: 'gift', desc: 'Exclusive gifts for nobility members.', level: 1},
+  {key: 'room_list_badge', name: 'Room List Badge', icon: 'home', desc: 'Nobility badge on the room list.', level: 1},
+  {key: 'rank_the_top', name: 'Ranking Surprise', icon: 'podium', desc: 'Priority position in the room member list.', level: 1},
+  {key: 'entry_effect', name: 'Dazzling Entry', icon: 'sparkles', desc: 'Enter the room with a dazzling effect.', level: 1},
+  {key: 'chat_bubble', name: 'Room Text Bubble', icon: 'chatbubble-ellipses', desc: 'Exclusive text bubble in the room.', level: 2},
+  {key: 'profile_card', name: 'Profile Cover', icon: 'person-circle', desc: 'Exclusive nobility profile cover.', level: 2},
+  {key: 'coloured_message', name: 'Coloured Message', icon: 'chatbubbles', desc: 'Send coloured messages in the room.', level: 2},
+  {key: 'mic_seat_aura', name: 'Unique Voice Wave', icon: 'radio', desc: 'A unique voice wave while speaking on mic.', level: 3},
+  {key: 'room_theme', name: 'Room Theme', icon: 'color-palette', desc: 'Exclusive nobility theme for your room.', level: 3},
+  {key: 'apply_mic', name: 'Apply Mic', icon: 'mic', desc: 'Apply for a mic when the seat is locked.', level: 3},
+  {key: 'vehicle', name: 'Vehicle', icon: 'car-sport', desc: 'Arrive in the room with a special vehicle.', level: 4},
+  {key: 'colorful_nick', name: 'Coloured Mic Name', icon: 'text', desc: 'A coloured name while on the mic.', level: 4},
+  {key: 'room_lock', name: 'Room Lock', icon: 'lock-closed', desc: 'Set a password for friends to enter your room.', level: 5},
+  {key: 'store_discount', name: 'Store Discount', icon: 'pricetags', desc: 'Member discounts in the store.', level: 5},
+];
+
 export default function KingOfKingsScreen() {
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 16);
@@ -252,12 +271,29 @@ export default function KingOfKingsScreen() {
   const { user, fetchUserProfile } = useContext(AuthContext);
 
   const [tiers, setTiers] = useState(FALLBACK_KING_TIERS);
-  const [activeTierKey, setActiveTierKey] = useState('knight');
+  const [activeTierKey, setActiveTierKey] = useState('viscount');
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
-  const [isClaiming, setIsClaiming] = useState(false);
   const [showRuleModal, setShowRuleModal] = useState(false);
+
+  const touchStartX = useRef(0);
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.nativeEvent.pageX;
+  };
+  const handleTouchEnd = (e) => {
+    const dx = e.nativeEvent.pageX - touchStartX.current;
+    if (Math.abs(dx) > 35) {
+      const currentIndex = tiers.findIndex((t) => (t.tierKey === activeTierKey) || (t.slug === activeTierKey));
+      if (dx < 0 && currentIndex < tiers.length - 1) {
+        // Swipe left -> next nobility rank
+        setActiveTierKey(tiers[currentIndex + 1].tierKey || tiers[currentIndex + 1].slug);
+      } else if (dx > 0 && currentIndex > 0) {
+        // Swipe right -> previous nobility rank
+        setActiveTierKey(tiers[currentIndex - 1].tierKey || tiers[currentIndex - 1].slug);
+      }
+    }
+  };
 
   const loadKingPlans = async () => {
     try {
@@ -265,17 +301,20 @@ export default function KingOfKingsScreen() {
       const res = await apiUtil.get('/king-plans', { suppressGlobalError: true });
       const payload = res?.data?.data || res?.data;
       if (res?.data?.success && Array.isArray(payload?.plans) && payload.plans.length > 0) {
-        const enriched = payload.plans.map((p) => {
-          if (p.tierKey === 'viscount' || p.slug === 'viscount' || p.tierKey === 'count' || p.slug === 'count') {
-            return {
-              ...p,
-              name: 'Viscount',
-              tierKey: 'viscount',
-              title: p.title?.includes('Count') ? 'Royal Viscount' : (p.title || 'Royal Viscount'),
-              heroBadge: VISCOUNT_BADGE,
-            };
-          }
-          return p;
+        const enriched = payload.plans.map((raw) => {
+          const mapBenefit = item => ({...item, name: item.name || item.title, desc: item.desc || item.description, unlocked: item.unlocked ?? item.isEnabled});
+          const p = {...raw, tierKey: raw.tierKey || raw.slug, level: raw.level || raw.tierLevel, coinsPrice: raw.coinsPrice ?? raw.priceCoins, bonusCoins: raw.bonusCoins ?? raw.totalReturnCoins ?? 0,
+            rewards: (raw.rewards || []).map(item => ['daily_free_coins', 'daily_coins', 'activation_bonus'].includes(item.key) ? {...mapBenefit(item), key: 'activation_bonus', name: 'Activation bonus', desc: 'Bonus coins credited once when you activate this membership.'} : mapBenefit(item)),
+            privileges: (raw.privileges || []).map(mapBenefit)};
+          const isViscount = (p.tierKey === 'viscount' || p.slug === 'viscount' || p.tierKey === 'count' || p.slug === 'count' || p.level === 2);
+          const rankName = isViscount ? 'Viscount' : (p.name || ['Knight', 'Viscount', 'Duke', 'Prince', 'King'][(p.level || 1) - 1] || 'Nobility');
+          return {
+            ...p,
+            tierKey: isViscount ? 'viscount' : p.tierKey,
+            name: rankName,
+            title: isViscount ? 'Royal Viscount' : (rankName + ' Nobility'),
+            heroBadge: isViscount ? VISCOUNT_BADGE : p.heroBadge,
+          };
         });
         setTiers(enriched);
         if (!enriched.some((t) => t.tierKey === activeTierKey)) {
@@ -294,9 +333,10 @@ export default function KingOfKingsScreen() {
   }, []);
 
   const currentTier = tiers.find((t) => t.tierKey === activeTierKey) || tiers[0];
+  const referencePrivileges = ROYAL_PRIVILEGES.map(item => ({...item, unlocked: (currentTier.level || currentTier.tierLevel || 1) >= item.level}));
   const userCoins = user?.coins || 0;
   const isEquipped = Boolean(
-    user?.equippedKingNobilityKey && user.equippedKingNobilityKey === currentTier.tierKey
+    (user?.equippedKingTierId || user?.equippedKingNobilityKey) === currentTier.tierKey && new Date(user?.kingExpiresAt || 0).getTime() > Date.now()
   );
 
   const handlePurchase = async () => {
@@ -311,10 +351,10 @@ export default function KingOfKingsScreen() {
 
     try {
       setIsPurchasing(true);
-      const res = await apiUtil.post('/king-plans/purchase', { tierKey: currentTier.tierKey });
+      const res = await apiUtil.post('/king-plans/purchase', { planIdOrSlug: currentTier.slug || currentTier.tierKey });
       if (res?.data?.success) {
         AlertService.show(
-          'Nobility Crowned! 👑',
+          'Nobility Crowned!',
           `You have successfully activated ${currentTier.name} Nobility! All rewards & privileges are now unlocked.`,
           'success'
         );
@@ -326,23 +366,6 @@ export default function KingOfKingsScreen() {
       AlertService.show('Error', err?.response?.data?.message || err?.message || 'Transaction failed', 'error');
     } finally {
       setIsPurchasing(false);
-    }
-  };
-
-  const handleClaimDaily = async () => {
-    try {
-      setIsClaiming(true);
-      const res = await apiUtil.post('/king-plans/claim-daily');
-      if (res?.data?.success) {
-        AlertService.show('Coins Claimed! 🪙', `Claimed ${res.data.coinsAdded || currentTier.dailyRewardCoins} coins!`, 'success');
-        if (fetchUserProfile) await fetchUserProfile();
-      } else {
-        AlertService.show('Notice', res?.data?.message || 'Daily coins already claimed today.', 'info');
-      }
-    } catch (err) {
-      AlertService.show('Notice', err?.response?.data?.message || 'Claim unavailable right now.', 'info');
-    } finally {
-      setIsClaiming(false);
     }
   };
 
@@ -360,7 +383,7 @@ export default function KingOfKingsScreen() {
           <Icon name="chevron-back" size={24} color="#FDE047" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>King of Kings</Text>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}><Text style={styles.headerTitle}>King of Kings</Text>{loading && <ActivityIndicator size="small" color="#E9C889" />}</View>
 
         <TouchableOpacity
           style={styles.iconCircleBtn}
@@ -371,7 +394,7 @@ export default function KingOfKingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Nobility Tabs Row (Knight, Viscount, Duke, Prince, King) */}
+      {/* Nobility Tabs Row (Viscount, Count, Marquis, Duke, King) */}
       <View style={styles.tabsRowContainer}>
         <ScrollView
           horizontal
@@ -405,20 +428,15 @@ export default function KingOfKingsScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 85 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 90 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Crest Section: Golden Winged Stag / Royal Viscount Emblem */}
-        <View style={styles.heroCrestSection}>
-          <LinearGradient
-            colors={['rgba(217, 119, 6, 0.25)', 'rgba(30, 20, 10, 0.4)', 'transparent']}
-            style={styles.heroGlowGradient}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-          />
-
-          <View style={styles.crestContainer}>
-            {/* Custom High-Res Nobility Badge or Circular Insignia */}
+        <View
+          style={styles.royalHero}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <View style={styles.royalEmblem}>
             {currentTier.heroBadge ? (
               <View style={styles.heroBadgeBox}>
                 <Image
@@ -428,195 +446,78 @@ export default function KingOfKingsScreen() {
                 />
               </View>
             ) : (
-              <View style={styles.crestCircleWrap}>
-                <LinearGradient
-                  colors={['#FDE047', '#D97706', '#92400E']}
-                  style={styles.crestBorderGradient}
-                >
-                  <View style={styles.crestInner}>
-                    {currentTier.heroBadgeUrl ? (
-                      <Image
-                        source={{ uri: currentTier.heroBadgeUrl }}
-                        style={styles.heroBadgeImg}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <MaterialCommunityIcons name="shield-crown" size={68} color="#FDE047" />
-                    )}
-                  </View>
-                </LinearGradient>
+              <LinearGradient colors={['#FFE5A4', '#BA7B38', '#57371F']} style={styles.emblemOuter}>
+                <View style={styles.emblemInner}>
+                  <MaterialCommunityIcons name="shield-crown" size={76} color="#F5D49A" />
+                </View>
+              </LinearGradient>
+            )}
+            <Text style={styles.emblemLevel}>NOBILITY {currentTier.level || tiers.indexOf(currentTier) + 1}</Text>
+          </View>
+          <View style={styles.heroDetails}>
+            <Text style={styles.eyebrow}>THE ROYAL COLLECTION</Text>
+            <Text style={styles.royalTitle}>{currentTier.name}</Text>
+            <Text style={styles.royalSubtitle}>{currentTier.title}</Text>
+            <View style={styles.dailyPill}>
+              <Icon name="gift-outline" size={14} color="#E9C889" />
+              <Text style={styles.dailyPillText}>{formatCompactBalance(currentTier.bonusCoins)} bonus coins</Text>
+            </View>
+            <Text style={styles.heroDuration}>{currentTier.durationDays || 30} days • bonus paid once</Text>
+          </View>
+        </View>
 
-                {/* Bottom Plaque Badge Ribbon */}
+        {/* Nobility Tier Indicators ("encator add karo") */}
+        <View style={styles.tierIndicatorWrap}>
+          {tiers.map((t, idx) => {
+            const isActive = (t.tierKey === activeTierKey) || (t.slug === activeTierKey);
+            return (
+              <TouchableOpacity
+                key={t.tierKey || t.slug || idx}
+                onPress={() => setActiveTierKey(t.tierKey || t.slug)}
+                activeOpacity={0.8}
+                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+              >
                 <LinearGradient
-                  colors={['#CA8A04', '#78350F', '#451A03']}
-                  style={styles.plaqueRibbon}
+                  colors={isActive ? ['#FDE047', '#EAB308', '#D97706'] : ['rgba(255, 255, 255, 0.28)', 'rgba(255, 255, 255, 0.15)']}
+                  style={[styles.indicatorDot, isActive && styles.indicatorDotActive]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.plaqueRibbonText}>{currentTier.name.toUpperCase()}</Text>
-                </LinearGradient>
-              </View>
-            )}
-
-            <Text style={styles.heroTierTitle}>{currentTier.title}</Text>
-            <Text style={styles.heroTierSubtitle}>
-              Daily {formatCompactBalance(currentTier.dailyRewardCoins)} Coins • {currentTier.privilegeCount || currentTier.privileges?.filter(p => p.unlocked)?.length || 4} Unlocked Powers
-            </Text>
-
-            {/* Tier Indicator Dots ("encator add karo") */}
-            <View style={styles.tierIndicatorWrap}>
-              {tiers.map((t, idx) => {
-                const isActive = (t.tierKey === activeTierKey) || (t.slug === activeTierKey);
-                return (
-                  <TouchableOpacity
-                    key={t.tierKey || t.slug || idx}
-                    onPress={() => setActiveTierKey(t.tierKey || t.slug)}
-                    activeOpacity={0.8}
-                    hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-                  >
-                    <LinearGradient
-                      colors={isActive ? ['#FDE047', '#EAB308', '#D97706'] : ['#475569', '#334155']}
-                      style={[styles.indicatorDot, isActive && styles.indicatorDotActive]}
-                    />
-                  </TouchableOpacity>
-                );
-              })}
+                />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.benefitsPanel}>
+          <View style={styles.panelHeading}>
+            <View>
+              <Text style={styles.panelEyebrow}>YOUR NOBILITY, ELEVATED</Text>
+              <Text style={styles.panelTitle}>Royal privileges</Text>
             </View>
+            <View style={styles.countPill}><Text style={styles.countText}>{referencePrivileges.filter(item => item.unlocked).length}/15</Text></View>
           </View>
-        </View>
-
-        {/* Blue Crystalline Curved Divider (From Screenshot 2) */}
-        <View style={styles.crystalDividerWrap}>
-          <LinearGradient
-            colors={['#0284C7', '#38BDF8', '#818CF8', '#38BDF8', '#0284C7']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.crystalDividerLine}
-          />
-          <View style={styles.crystalDiamond}>
-            <LinearGradient
-              colors={['#38BDF8', '#1E40AF']}
-              style={styles.crystalDiamondInner}
-            />
-          </View>
-        </View>
-
-        {/* Section 1: Reward (7/11) Asset Cards Grid */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>
-              Reward ({currentTier.rewards?.filter((r) => r.unlocked)?.length || currentTier.rewardCount || 7}/{currentTier.rewards?.length || 11})
-            </Text>
-            <TouchableOpacity onPress={() => setShowRuleModal(true)}>
-              <Text style={styles.sectionHintText}>Asset Rules ›</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Grid of 11 items */}
-          <View style={styles.rewardsGrid}>
-            {(currentTier.rewards || []).map((reward, idx) => {
-              const isUnlocked = Boolean(reward.unlocked);
-              return (
-                <TouchableOpacity
-                  key={reward.key || idx}
-                  style={[styles.rewardCard, !isUnlocked && styles.rewardCardLocked]}
-                  onPress={() => setSelectedAsset({ ...reward, type: 'reward' })}
-                  activeOpacity={0.8}
+          <Text style={styles.panelDescription}>Discover everything included with {currentTier.name}. Tap a benefit to explore.</Text>
+          {[{items: referencePrivileges, type: 'privilege'}].map(section => (
+            <View key={section.type}>
+              <View style={styles.benefitGrid}>
+                {section.items.map((item, index) => <TouchableOpacity
+                  key={item.key || index}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.name + (item.unlocked ? ', included in this rank' : ', available at a higher rank')}
+                  onPress={() => setSelectedAsset({...item, type: section.type})}
+                  activeOpacity={0.7}
+                  style={[styles.benefitTile, {width: (width - 64) / 3}]}
                 >
-                  <LinearGradient
-                    colors={
-                      isUnlocked
-                        ? ['#3B240B', '#1E1306']
-                        : ['#1E1E24', '#121216']
-                    }
-                    style={styles.rewardCardInner}
-                  >
-                    {/* Item Icon */}
-                    <View style={[styles.rewardIconWrap, isUnlocked && styles.rewardIconWrapUnlocked]}>
-                      <Icon
-                        name={reward.icon || 'star'}
-                        size={24}
-                        color={isUnlocked ? '#FDE047' : '#64748B'}
-                      />
-                    </View>
-
-                    {/* Reward Name */}
-                    <Text
-                      style={[styles.rewardNameText, isUnlocked && styles.rewardNameTextUnlocked]}
-                      numberOfLines={1}
-                    >
-                      {reward.name}
-                    </Text>
-
-                    {/* Lock indicator */}
-                    {!isUnlocked ? (
-                      <View style={styles.lockBadge}>
-                        <Icon name="lock-closed" size={10} color="#94A3B8" />
-                      </View>
-                    ) : (
-                      <View style={styles.unlockedDot} />
-                    )}
+                  <LinearGradient colors={item.unlocked ? ['#F7DFAB', '#D7A75F'] : ['#E8E4DD', '#D8D3CA']} style={styles.benefitIcon}>
+                    <Icon name={item.icon === 'shield-star' ? 'shield-checkmark' : (item.icon || 'sparkles')} size={25} color={item.unlocked ? '#795021' : '#999388'} />
+                    {!item.unlocked && <View style={styles.benefitLock}><Icon name="lock-closed" size={9} color="#FFFFFF" /></View>}
                   </LinearGradient>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Section 2: Exclusive Privileges (4/13) Circular Badges */}
-        <View style={[styles.sectionCard, { marginTop: 14 }]}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>
-              Exclusive privileges ({currentTier.privileges?.filter((p) => p.unlocked)?.length || currentTier.privilegeCount || 4}/{currentTier.privileges?.length || 13})
-            </Text>
-            <Text style={styles.sectionSub}>Progresses with nobility rank</Text>
-          </View>
-
-          <View style={styles.privilegesWrap}>
-            {(currentTier.privileges || []).map((priv, idx) => {
-              const isUnlocked = Boolean(priv.unlocked);
-              return (
-                <TouchableOpacity
-                  key={priv.key || idx}
-                  style={styles.privilegeItem}
-                  onPress={() => setSelectedAsset({ ...priv, type: 'privilege' })}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.privilegeCircleWrap}>
-                    <LinearGradient
-                      colors={
-                        isUnlocked
-                          ? ['#FDE047', '#D97706', '#78350F']
-                          : ['#475569', '#334155', '#1E293B']
-                      }
-                      style={styles.privilegeBorder}
-                    >
-                      <View style={[styles.privilegeInner, !isUnlocked && styles.privilegeInnerLocked]}>
-                        <Icon
-                          name={priv.icon || 'ribbon-outline'}
-                          size={22}
-                          color={isUnlocked ? '#FEF08A' : '#64748B'}
-                        />
-                      </View>
-                    </LinearGradient>
-
-                    {!isUnlocked && (
-                      <View style={styles.privilegeMiniLock}>
-                        <Icon name="lock-closed" size={8} color="#FFFFFF" />
-                      </View>
-                    )}
-                  </View>
-
-                  <Text
-                    style={[styles.privilegeText, isUnlocked && styles.privilegeTextUnlocked]}
-                    numberOfLines={2}
-                  >
-                    {priv.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                  <Text style={[styles.benefitName, !item.unlocked && styles.benefitNameLocked]} numberOfLines={2}>{item.name}</Text>
+                  <Text style={styles.benefitDescription} numberOfLines={3}>{item.desc}</Text>
+                </TouchableOpacity>)}
+              </View>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.rulesLink} onPress={() => setShowRuleModal(true)}><Text style={styles.rulesLinkText}>Membership rules & details</Text><Icon name="chevron-forward" size={14} color="#98703C" /></TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -624,40 +525,16 @@ export default function KingOfKingsScreen() {
       <View style={[styles.bottomBar, { paddingBottom: bottomPadding + 6 }]}>
         <View style={styles.bottomPriceCol}>
           <View style={styles.priceRow}>
-            <Text style={styles.coinSymbol}>🪙</Text>
+            <Icon name="ellipse" size={13} color="#E9C889" style={styles.coinSymbol} />
             <Text style={styles.priceText}>{formatCompactBalance(currentTier.coinsPrice)}</Text>
-            <Text style={styles.priceDuration}>/ 30 days</Text>
+            <Text style={styles.priceDuration}>/ {currentTier.durationDays || 30} days</Text>
           </View>
           <Text style={styles.balanceText}>
-            Your Balance: 🪙 {formatCompactBalance(userCoins)}
+            Your Balance: {formatCompactBalance(userCoins)} coins
           </Text>
         </View>
 
         <View style={styles.actionBtnsRow}>
-          {isEquipped && (
-            <TouchableOpacity
-              style={styles.claimDailyBtn}
-              onPress={handleClaimDaily}
-              disabled={isClaiming}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={['#059669', '#10B981']}
-                style={styles.claimDailyGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                {isClaiming ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Icon name="gift-outline" size={15} color="#FFFFFF" />
-                    <Text style={styles.claimDailyBtnText}>Claim Daily</Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
 
           <TouchableOpacity
             style={styles.activateBtn}
@@ -702,9 +579,76 @@ export default function KingOfKingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  royalHero: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 18, paddingBottom: 12, gap: 18},
+  royalEmblem: {alignItems: 'center', justifyContent: 'center'},
+  heroBadgeBox: {
+    width: 128,
+    height: 128,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#A855F7',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  heroBadgeImage: {
+    width: 128,
+    height: 128,
+  },
+  tierIndicatorWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 16,
+    gap: 8,
+  },
+  indicatorDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  indicatorDotActive: {
+    width: 24,
+    height: 7,
+    borderRadius: 3.5,
+    shadowColor: '#FDE047',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  emblemOuter: {width: 112, height: 124, borderRadius: 36, padding: 2, transform: [{rotate: '-4deg'}]},
+  emblemInner: {flex: 1, backgroundColor: '#241D2D', borderRadius: 34, alignItems: 'center', justifyContent: 'center'},
+  emblemImage: {width: 106, height: 112},
+  emblemLevel: {color: '#D4B77E', fontSize: 8, fontWeight: '800', letterSpacing: 1.8, marginTop: 8},
+  heroDetails: {flex: 1},
+  eyebrow: {color: '#B59F82', fontSize: 8, letterSpacing: 1.5, fontWeight: '700'},
+  royalTitle: {fontSize: 32, fontWeight: '800', color: '#F9E6C0', marginTop: 5},
+  royalSubtitle: {fontSize: 12, color: '#BAA9C8', marginTop: 2},
+  dailyPill: {flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12},
+  dailyPillText: {color: '#E9C889', fontSize: 12, fontWeight: '700', flexShrink: 1},
+  heroDuration: {color: '#9E91AC', fontSize: 10, marginTop: 7},
+  benefitsPanel: {backgroundColor: '#FCF8F0', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 20, paddingTop: 25, paddingBottom: 24, minHeight: 500},
+  panelHeading: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+  panelEyebrow: {fontSize: 8, letterSpacing: 1.8, color: '#A1845A', fontWeight: '800'},
+  panelTitle: {fontSize: 23, fontWeight: '800', color: '#32283B', marginTop: 5},
+  countPill: {paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#EFE2C9', borderRadius: 14},
+  countText: {color: '#8A612C', fontSize: 12, fontWeight: '800'},
+  panelDescription: {fontSize: 11, lineHeight: 17, color: '#9B9082', marginTop: 10, marginBottom: 24},
+  benefitSectionTitle: {fontSize: 12, fontWeight: '800', color: '#75614A', marginTop: 18, marginBottom: 18},
+  benefitGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 12},
+  benefitTile: {alignItems: 'center', paddingBottom: 16},
+  benefitIcon: {width: 52, height: 55, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#EDD6AD'},
+  benefitLock: {position: 'absolute', bottom: -3, right: -3, backgroundColor: '#A49B8F', borderRadius: 8, padding: 3},
+  benefitName: {fontSize: 11, fontWeight: '700', color: '#4A3C2E', textAlign: 'center', minHeight: 28},
+  benefitNameLocked: {color: '#9B948A'},
+  benefitDescription: {fontSize: 9, lineHeight: 13, color: '#A29788', textAlign: 'center', marginTop: 3},
+  rulesLink: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#EDE3D3', marginTop: 10},
+  rulesLinkText: {fontSize: 11, color: '#98703C'},
   container: {
     flex: 1,
-    backgroundColor: '#0F0904',
+    backgroundColor: '#191321',
   },
   headerBar: {
     flexDirection: 'row',
@@ -712,7 +656,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 8,
-    backgroundColor: '#0F0904',
+    backgroundColor: '#191321',
   },
   iconCircleBtn: {
     width: 36,
@@ -744,7 +688,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  tabBtnActive: {},
+  tabBtnActive: {backgroundColor: 'rgba(232,199,140,0.09)', borderRadius: 12},
   tabBtnText: {
     fontSize: 14,
     fontWeight: '700',
@@ -883,7 +827,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   crystalDividerLine: {
-    width: width - 40,
+    width: '90%',
     height: 2,
     borderRadius: 1,
   },
@@ -934,7 +878,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rewardCard: {
-    width: (width - 56) / 3,
+    width: '30%',
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -995,7 +939,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   privilegeItem: {
-    width: (width - 76) / 4,
+    width: '22%',
     alignItems: 'center',
     marginBottom: 6,
   },
@@ -1048,7 +992,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#140C04',
+    backgroundColor: '#211929',
     borderTopWidth: 1,
     borderTopColor: 'rgba(217, 119, 6, 0.3)',
     flexDirection: 'row',
@@ -1085,8 +1029,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   actionBtnsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     gap: 8,
   },
   claimDailyBtn: {

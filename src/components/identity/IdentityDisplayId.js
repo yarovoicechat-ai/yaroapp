@@ -47,12 +47,17 @@ export default function IdentityDisplayId({
       : customDisplayId || officialDisplayId || permanentIdStr
   ).trim();
 
+  // Sanitize badgeUrl so that avatar frames are never displayed as ID badges
+  const isFrameAsset = Boolean(badgeUrl && /frame/i.test(String(badgeUrl)));
+  const cleanBadgeUrl = isFrameAsset ? null : badgeUrl;
+  const hasSvgaBadge = Boolean(showBadge && cleanBadgeUrl);
+
   // Determine if user has a VIP / Vanity / Official ID
   const isVanity = Boolean(
     isOfficial ||
     customDisplayId ||
     (officialDisplayId && String(officialDisplayId) !== permanentIdStr) ||
-    badgeUrl ||
+    cleanBadgeUrl ||
     (badgeText && !['ID'].includes(String(badgeText).toUpperCase()))
   );
 
@@ -98,14 +103,18 @@ export default function IdentityDisplayId({
     } catch (_) {}
   };
 
-  // 1. VIP / Vanity Unique ID Presentation (transparent, animated ID text)
+  // 1. VIP / Vanity Unique ID Presentation
   if (isVanity) {
     return (
       <View style={[styles.outerRow, style]}>
-        {showBadge && badgeUrl ? (
-          <View style={styles.vipIconWrap}>
-            <SvgaView source={badgeUrl} style={styles.customBadgeImg} resizeMode="contain" />
-          </View>
+        {hasSvgaBadge ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={showCopy ? handleCopy : undefined}
+            style={styles.vipIconWrap}
+          >
+            <SvgaView source={cleanBadgeUrl} style={styles.customBadgeImg} resizeMode="contain" />
+          </TouchableOpacity>
         ) : showBadge && badgeText ? (
           <MaterialCommunityIcons
             name="crown"
@@ -115,15 +124,18 @@ export default function IdentityDisplayId({
           />
         ) : null}
 
-        <Animated.Text
-          style={[
-            styles.vipIdText,
-            { fontSize: Math.max(14, fontSize + 2), color: animatedIdColor },
-          ]}
-          numberOfLines={1}
-        >
-          {effectiveId}
-        </Animated.Text>
+        {/* When SVGA badge is shown, do NOT render plain ID text after it */}
+        {!hasSvgaBadge && (
+          <Animated.Text
+            style={[
+              styles.vipIdText,
+              { fontSize: Math.max(14, fontSize + 2), color: animatedIdColor },
+            ]}
+            numberOfLines={1}
+          >
+            {effectiveId}
+          </Animated.Text>
+        )}
 
         {/* Copy Button */}
         {showCopy && (
@@ -142,14 +154,19 @@ export default function IdentityDisplayId({
   // 2. Standard ID Presentation (when user has regular numeric ID)
   return (
     <View style={[styles.container, style]}>
-      {showPrefix && (
+      {showPrefix && !hasSvgaBadge && (
         <Text style={[styles.prefixText, { fontSize }]}>{prefix}</Text>
       )}
 
       {showBadge && (
         <View style={styles.badgeWrapper}>
-          {badgeUrl ? (
-            <SvgaView source={badgeUrl} style={styles.customBadgeImg} resizeMode="contain" />
+          {hasSvgaBadge ? (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={showCopy ? handleCopy : undefined}
+            >
+              <SvgaView source={cleanBadgeUrl} style={styles.customBadgeImg} resizeMode="contain" />
+            </TouchableOpacity>
           ) : (
             <LinearGradient
               colors={['#64748B', '#475569']}
@@ -163,16 +180,19 @@ export default function IdentityDisplayId({
         </View>
       )}
 
-      <Text
-        style={[
-          styles.regularIdText,
-          textColor ? { color: textColor } : null,
-          { fontSize: fontSize + 1 },
-        ]}
-        numberOfLines={1}
-      >
-        {effectiveId}
-      </Text>
+      {/* When SVGA badge is shown, do NOT render plain ID text after it */}
+      {!hasSvgaBadge && (
+        <Text
+          style={[
+            styles.regularIdText,
+            textColor ? { color: textColor } : null,
+            { fontSize: fontSize + 1 },
+          ]}
+          numberOfLines={1}
+        >
+          {effectiveId}
+        </Text>
+      )}
 
       {showCopy && (
         <TouchableOpacity
@@ -206,8 +226,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   customBadgeImg: {
-    width: 28,
-    height: 28,
+    width: 58,
+    height: 20,
   },
   vipIdText: {
     fontWeight: '900',

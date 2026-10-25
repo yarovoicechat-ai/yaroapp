@@ -17,4 +17,7 @@ export { default as RoomThreeDotModal } from './RoomThreeDotModal';
 export { default as SeatLayoutModal } from './SeatLayoutModal';
 export { default as RoomThemeModal } from './RoomThemeModal';
 export { default as RoomSeatActionModal } from './RoomSeatActionModal';
+export { default as RoomGroupPrivilegeModal } from './RoomGroupPrivilegeModal';
+export { default as FanClubBadge } from './FanClubBadge';
+export { default as FanClubIntroModal } from './FanClubIntroModal';
 

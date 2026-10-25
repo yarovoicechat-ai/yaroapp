@@ -43,21 +43,23 @@ export default function AvatarWithFrame({
         (item?.animationUrl || item?.frameOverlayUrl || item?.overlayUrl || item?.frameImageUrl || item?.imageUrl || item?.image || item?.catalogItem),
     ),
   );
-  // imageUrl/image are commonly opaque store covers. Only dedicated overlay
-  // fields are accepted for static images so they cannot hide the avatar.
   const hasResolvedOverlay = Boolean(
     resolvedFrame?.animationUrl ||
     resolvedFrame?.frameOverlayUrl ||
     resolvedFrame?.overlayUrl ||
     resolvedFrame?.frameImageUrl ||
-    resolvedFrame?.transparentImageUrl,
+    resolvedFrame?.transparentImageUrl ||
+    resolvedFrame?.imageUrl ||
+    resolvedFrame?.image,
   );
   const hasInventoryOverlay = Boolean(
     inventoryFrame?.animationUrl ||
     inventoryFrame?.frameOverlayUrl ||
     inventoryFrame?.overlayUrl ||
     inventoryFrame?.frameImageUrl ||
-    inventoryFrame?.transparentImageUrl,
+    inventoryFrame?.transparentImageUrl ||
+    inventoryFrame?.imageUrl ||
+    inventoryFrame?.image,
   );
   const uploadedFrame = hasResolvedOverlay
     ? resolvedFrame
@@ -69,6 +71,8 @@ export default function AvatarWithFrame({
     uploadedFrame?.overlayUrl ||
     uploadedFrame?.frameImageUrl ||
     uploadedFrame?.transparentImageUrl ||
+    uploadedFrame?.imageUrl ||
+    uploadedFrame?.image ||
     null;
 
   // Resolve user avatar strictly - never let the frame image or SVGA become the user's avatar
@@ -275,7 +279,7 @@ export default function AvatarWithFrame({
             />
           );
         })()
-      ) : uploadedFrame?.animationUrl ? (
+      ) : (uploadedFrame?.animationUrl || (typeof frameOverlaySource === 'string' && frameOverlaySource.toLowerCase().includes('.svga'))) ? (
         <View
           style={{
             position: 'absolute',
@@ -290,7 +294,7 @@ export default function AvatarWithFrame({
           pointerEvents="none"
         >
           <SvgaView
-            source={uploadedFrame.animationUrl}
+            source={uploadedFrame?.animationUrl || frameOverlaySource}
             style={StyleSheet.absoluteFillObject}
             loops={0}
             resizeMode="contain"

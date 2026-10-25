@@ -7,7 +7,7 @@ import com.facebook.react.uimanager.ViewManager
 
 class LocalMusicPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        return listOf(LocalMusicModule(reactContext))
+        return listOf(LocalMusicModule(reactContext), MusicAudioProcessor(reactContext))
     }
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {

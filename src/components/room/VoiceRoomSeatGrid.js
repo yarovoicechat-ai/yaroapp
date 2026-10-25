@@ -43,7 +43,7 @@ export default function VoiceRoomSeatGrid({
                       state={seat.isMuted ? 'MUTED' : ((seat.isSpeaking || speakingSeatIndices?.has?.(seat.seatIndex) || speakingSeatIndices?.has?.(Number(seat.seatIndex)) || speakingSeatIndices?.has?.(String(seat.seatIndex))) ? 'SPEAKING' : 'IDLE')}
                       waveColors={isHostSeat ? ['#F59E0B', '#FBBF24', '#D97706'] : ['#EC4899', '#F472B6', '#DB2777']}
                       intensity={1.15}
-                      size={56}
+                      size={62}
                     >
                       <View
                         ref={(ref) => registerGiftAvatarPosition(ref, [
@@ -57,12 +57,12 @@ export default function VoiceRoomSeatGrid({
                           seat.seatIndex === 0 ? room?.ownerId : null,
                           seat.seatIndex === 0 ? room?.hostName : null,
                         ])}
-                        style={styles.topFeaturedAvatarBox}
+                        style={[styles.topFeaturedAvatarBox, { width: 60, height: 60, borderRadius: 30 }]}
                       >
                         <AvatarWithFrame
                           user={seat.user}
                           frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame) : null)}
-                          size={50}
+                          size={54}
                           showOnlineDot={false}
                         />
                         {seat.isMuted && (
@@ -84,17 +84,17 @@ export default function VoiceRoomSeatGrid({
                   </View>
                 ) : (
                   <View style={styles.emptySeatWrapper}>
-                    <View style={[styles.topFeaturedEmptyCircle, { borderWidth: 0, borderColor: 'transparent', backgroundColor: 'transparent', overflow: 'hidden' }]}>
+                    <View style={[styles.topFeaturedEmptyCircle, { width: 62, height: 62, borderRadius: 31, borderWidth: 0, borderColor: 'transparent', backgroundColor: 'transparent', overflow: 'hidden' }]}>
                       {seat.isLocked ? (
                         <Image
                           source={LOCK_SEAT_IMAGE}
-                          style={{ width: 50, height: 50, borderRadius: 25 }}
+                          style={{ width: 56, height: 56, borderRadius: 28 }}
                           resizeMode="cover"
                         />
                       ) : (
                         <Image
                           source={DEFAULT_SEAT_IMAGE}
-                          style={{ width: 50, height: 50, borderRadius: 25 }}
+                          style={{ width: 56, height: 56, borderRadius: 28 }}
                           resizeMode="cover"
                         />
                       )}
@@ -122,8 +122,8 @@ export default function VoiceRoomSeatGrid({
               const seatNum = `No.${seat.seatIndex + 1}`;
               const isOccupied = Boolean(seat.user);
               const seatWidth = isCompactLayout ? (width - 16) / 5 : (width - 24) / 4;
-              const circleSize = isCompactLayout ? 42 : 50;
-              const avatarSize = isCompactLayout ? 38 : 46;
+              const circleSize = isCompactLayout ? 50 : 58;
+              const avatarSize = isCompactLayout ? 46 : 54;
 
               return (
                 <TouchableOpacity
@@ -157,6 +157,7 @@ export default function VoiceRoomSeatGrid({
                             borderRadius: circleSize / 2,
                             borderWidth: 0,
                             borderColor: 'transparent',
+                            overflow: 'visible',
                           },
                         ]}
                         >
@@ -173,7 +174,7 @@ export default function VoiceRoomSeatGrid({
                           )}
                         </View>
                       </VipMicWave>
-                      <Text style={[styles.seatUserName, isCompactLayout && { fontSize: 8.5, maxWidth: 54 }]} numberOfLines={1}>
+                      <Text style={[styles.seatUserName, isCompactLayout && { fontSize: 9.5, maxWidth: 66 }]} numberOfLines={1}>
                         {seat.user.name}
                       </Text>
                       {showSeatCharm && (

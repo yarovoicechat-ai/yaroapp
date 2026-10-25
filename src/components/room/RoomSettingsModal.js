@@ -79,13 +79,15 @@ export default function RoomSettingsModal({
   const currentAnnouncement = room?.about || room?.description || announcementInput || 'Welcome to my room...';
   const roomId = room?.uniqueId || room?.customDisplayId || room?.displayId || room?.id || room?.roomId || user?.customDisplayId || user?.uniqueId || user?.displayId || user?.userId || '—';
   const roomAvatar = room?.coverImage || user?.avatar || user?.image || 'https://api.yaroapp.in/uploads/avatars/female_default.webp';
-  const effectiveBadgeUrl =
+  const rawBadgeUrl =
     badgeUrl ||
     room?.badgeUrl ||
     room?.uniqueIdBadge?.badgeIconUrl ||
     user?.uniqueIdBadge?.badgeIconUrl ||
     user?.effectiveIdentity?.uniqueIdBadge?.badgeIconUrl ||
     null;
+  const effectiveBadgeUrl =
+    rawBadgeUrl && !/frame/i.test(String(rawBadgeUrl)) ? rawBadgeUrl : null;
 
   const handlePickCoverImage = async () => {
     Alert.alert(
@@ -687,11 +689,12 @@ export default function RoomSettingsModal({
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                     {effectiveBadgeUrl ? (
-                      <View style={{ width: 52, height: 18, marginRight: 6, justifyContent: 'center', alignItems: 'center' }}>
-                        <SvgaView source={effectiveBadgeUrl} style={{ width: 52, height: 18 }} />
+                      <View style={{ height: 18, marginRight: 6, justifyContent: 'center', alignItems: 'center' }}>
+                        <SvgaView source={effectiveBadgeUrl} style={{ width: 56, height: 18 }} resizeMode="contain" />
                       </View>
-                    ) : null}
-                    <Text style={[styles.honoraryCardId, { marginTop: 0 }]}>ID:{roomId}</Text>
+                    ) : (
+                      <Text style={[styles.honoraryCardId, { marginTop: 0 }]}>ID:{roomId}</Text>
+                    )}
                   </View>
                 </View>
               </View>

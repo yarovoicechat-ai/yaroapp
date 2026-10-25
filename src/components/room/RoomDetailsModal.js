@@ -29,7 +29,7 @@ export default function RoomDetailsModal({
 
   const roomTitle = room?.title || room?.roomName || owner?.name || 'Voice Room';
   const roomId = room?.uniqueId || room?.customDisplayId || room?.displayId || room?.id || room?.roomId || owner?.uniqueId || owner?.customDisplayId || owner?.displayId || owner?.userId || '—';
-  const effectiveBadgeUrl =
+  const rawBadgeUrl =
     badgeUrl ||
     room?.badgeUrl ||
     room?.uniqueIdBadge?.badgeIconUrl ||
@@ -38,6 +38,8 @@ export default function RoomDetailsModal({
     owner?.badgeUrl ||
     owner?.uniqueIdBadge?.badgeIconUrl ||
     null;
+  const effectiveBadgeUrl =
+    rawBadgeUrl && !/frame/i.test(String(rawBadgeUrl)) ? rawBadgeUrl : null;
   const hasUnique = Boolean(
     (room?.uniqueId && String(room?.uniqueId).trim()) ||
     (room?.customDisplayId && String(room?.customDisplayId).trim()) ||
@@ -115,11 +117,16 @@ export default function RoomDetailsModal({
             {/* ID */}
             <View style={styles.idRow}>
               {effectiveBadgeUrl ? (
-                <View style={styles.modalBadgeWrap}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleCopyRoomId}
+                  style={styles.modalBadgeWrap}
+                >
                   <SvgaView source={effectiveBadgeUrl} style={styles.modalBadgeSvga} resizeMode="contain" />
-                </View>
-              ) : null}
-              <Text style={[styles.roomIdText, hasUnique && styles.roomIdTextVip]}>ID:{roomId}</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={[styles.roomIdText, hasUnique && styles.roomIdTextVip]}>ID:{roomId}</Text>
+              )}
               <TouchableOpacity onPress={handleCopyRoomId} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Icon name="copy-outline" size={14} color="#94A3B8" style={{ marginLeft: 6 }} />
               </TouchableOpacity>
@@ -270,14 +277,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalBadgeWrap: {
-    width: 22,
     height: 22,
     marginRight: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalBadgeSvga: {
-    width: 22,
+    width: 60,
     height: 22,
   },
   roomIdText: {

@@ -237,6 +237,10 @@ export default function VoiceRoomScreen() {
     agoraStatus,
     agoraErrorMessage,
     isMusicPlaying,
+    isMusicLoading,
+    getMusicProgress,
+    musicEnhancementStatus,
+    seekMusicMixing,
     currentTrack,
     musicVolume,
     bassLevel,
@@ -295,6 +299,18 @@ export default function VoiceRoomScreen() {
 
     return () => clearInterval(micHeartbeatInterval);
   }, [isUserOnSeat, isMuted, room?.id, room?.roomId, route?.params?.roomId]);
+
+  // Periodic stay heartbeat for Fan Club EXP (1 min stay = 10 EXP)
+  useEffect(() => {
+    const activeRoomId = currentRoomId || room?.id || room?.roomId || route?.params?.roomId;
+    if (!activeRoomId) return;
+
+    const stayInterval = setInterval(() => {
+      apiUtil.post(`/voice-club/rooms/${activeRoomId}/fan-club/stay`, { minutes: 1 }).catch(() => {});
+    }, 60000);
+
+    return () => clearInterval(stayInterval);
+  }, [currentRoomId, room?.id, room?.roomId, route?.params?.roomId]);
 
   // Android Keyboard Tracker for clean chat positioning
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -624,7 +640,7 @@ export default function VoiceRoomScreen() {
     room?.roomId ||
     '—';
 
-  const roomBadgeUrl =
+  const rawRoomBadgeUrl =
     room?.badgeUrl ||
     room?.uniqueIdBadge?.badgeIconUrl ||
     activeRoom?.badgeUrl ||
@@ -632,6 +648,8 @@ export default function VoiceRoomScreen() {
     (isRoomOwner ? (user?.uniqueIdBadge?.badgeIconUrl || user?.effectiveIdentity?.uniqueIdBadge?.badgeIconUrl || user?.badgeUrl) : null) ||
     seats[0]?.user?.uniqueIdBadge?.badgeIconUrl ||
     null;
+  const roomBadgeUrl =
+    rawRoomBadgeUrl && !/frame/i.test(String(rawRoomBadgeUrl)) ? rawRoomBadgeUrl : null;
 
   // Stealth Mode & Official Moderation
   const isEffectiveGlobalRoomManager = Boolean(
@@ -834,6 +852,21 @@ export default function VoiceRoomScreen() {
 
   const [roomContributors, setRoomContributors] = useState([]);
 
+  const fetchRoomContributors = useCallback(async () => {
+    const activeRoomId = currentRoomId || room?.id || room?.roomId || route?.params?.roomId;
+    if (!activeRoomId) return;
+    try {
+      const res = await apiUtil.get(`/voice-club/rooms/${activeRoomId}/contributors?period=daily`);
+      if (res?.data?.success && Array.isArray(res.data.data?.contributors)) {
+        setRoomContributors(res.data.data.contributors);
+      }
+    } catch (_) {}
+  }, [currentRoomId, room?.id, room?.roomId, route?.params?.roomId]);
+
+  useEffect(() => {
+    fetchRoomContributors();
+  }, [fetchRoomContributors]);
+
   const recordContribution = useCallback((senderUser, diamondsCount) => {
     if (!senderUser || !diamondsCount) return;
     const sId = String(senderUser.userId || senderUser.id || senderUser._id || '');
@@ -876,7 +909,12 @@ export default function VoiceRoomScreen() {
         return [...prev, newUser].sort((a, b) => (b.points || 0) - (a.points || 0));
       }
     });
-  }, []);
+
+    // Re-fetch from server to ensure accurate daily aggregation
+    setTimeout(() => {
+      fetchRoomContributors();
+    }, 1000);
+  }, [fetchRoomContributors]);
 
   const giftHook = useGift({
     roomId: currentRoomId,
@@ -1720,11 +1758,12 @@ export default function VoiceRoomScreen() {
             <View style={styles.headerRoomSubRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 {roomBadgeUrl ? (
-                  <View style={{ width: 44, height: 16, marginRight: 4, justifyContent: 'center', alignItems: 'center' }}>
-                    <SvgaView source={roomBadgeUrl} style={{ width: 44, height: 16 }} />
+                  <View style={{ height: 16, marginRight: 4, justifyContent: 'center', alignItems: 'center' }}>
+                    <SvgaView source={roomBadgeUrl} style={{ width: 48, height: 16 }} resizeMode="contain" />
                   </View>
-                ) : null}
-                <Text style={styles.headerRoomIdText}>ID:{displayRoomId}</Text>
+                ) : (
+                  <Text style={styles.headerRoomIdText}>ID:{displayRoomId}</Text>
+                )}
               </View>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -2642,6 +2681,10 @@ export default function VoiceRoomScreen() {
         visible={musicModalVisible && isCurrentUserAdmin}
         onClose={() => setMusicModalVisible(false)}
         isMusicPlaying={isMusicPlaying}
+        isMusicLoading={isMusicLoading}
+        musicEnhancementStatus={musicEnhancementStatus}
+        getMusicProgress={getMusicProgress}
+        onSeekTrack={seekMusicMixing}
         currentTrack={currentTrack}
         musicVolume={musicVolume}
         bassLevel={bassLevel}
@@ -2770,6 +2813,7 @@ export default function VoiceRoomScreen() {
           setProfileModalVisible(true);
         }}
         currentUser={user}
+        roomId={currentRoomId || room?.id || room?.roomId || route?.params?.roomId}
         onOpenGiftPanel={() => setGiftPanelVisible(true)}
         bottomSafePadding={bottomSafePadding}
         users={roomContributors.length > 0 ? roomContributors : onlineUsers}
@@ -2866,7 +2910,7 @@ export default function VoiceRoomScreen() {
         visible={groupModalVisible}
         onClose={() => setGroupModalVisible(false)}
         room={{
-          id: displayRoomId,
+          id: currentRoomId || room?.id || room?.roomId || route?.params?.roomId || displayRoomId,
           uniqueId: room.uniqueId || user?.customDisplayId,
           title: currentRoomTitle || room.title || 'Voice Room',
           coverImage: currentRoomCover || room.coverImage,
@@ -2880,9 +2924,10 @@ export default function VoiceRoomScreen() {
         }}
         isRoomOwner={isRoomOwner}
         currentUser={user}
-        membersCount={onlineCount ?? 2737}
+        membersCount={onlineCount || 0}
         members={onlineUsers}
         topContributors={topRoomContributors}
+        onJoinGroup={() => {}}
         bottomSafePadding={bottomSafePadding}
       />
 

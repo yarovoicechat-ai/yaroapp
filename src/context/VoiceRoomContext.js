@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { AppState } from 'react-native';
+import { AppState, NativeModules } from 'react-native';
 import { navigationRef } from '../utils/navigationRef';
 import { AlertService } from '../utils/AlertService';
 import { getSocket, initSocket } from '../sockets';
@@ -9,6 +9,8 @@ import {
   createAgoraRtcEngine,
   ChannelProfileType,
   ClientRoleType,
+  AudioMixingStateType,
+  AudioMixingReasonType,
 } from 'react-native-agora';
 import InCallManager from 'react-native-incall-manager';
 import { AgoraClientService } from '../services/agoraService';
@@ -55,7 +57,10 @@ export const VoiceRoomProvider = ({ children }) => {
   // Music Player State
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(null);
-  const [musicVolume, setMusicVolumeState] = useState(100);
+  const [isMusicLoading, setIsMusicLoading] = useState(false);
+  const [musicEnhancementStatus, setMusicEnhancementStatus] = useState(null);
+  const musicIntentRef = useRef("stopped");
+  const [musicVolume, setMusicVolumeState] = useState(500);
   const [bassLevel, setBassLevelState] = useState(6);
   const [micVolume, setMicVolumeState] = useState(100);
   const [speakerphoneEnabled, setSpeakerphoneEnabledState] = useState(true);
@@ -98,6 +103,16 @@ export const VoiceRoomProvider = ({ children }) => {
   const desiredLocalAudioRef = useRef({ isOnSeat: false, isMuted: true });
   const musicSwitchTimerRef = useRef(null);
   const musicSwitchRequestRef = useRef(0);
+  const musicLoadTimeoutRef = useRef(null);
+  const musicFailureHandlerRef = useRef(null);
+  const musicSelectionRef = useRef(null);
+  const musicVolumeRef = useRef(musicVolume);
+  musicVolumeRef.current = musicVolume;
+  const bassLevelRef = useRef(bassLevel);
+  const musicEnhancedRef = useRef(false);
+  const musicEnhanceRequestRef = useRef(0);
+  const musicEnhanceHandlerRef = useRef(null);
+  const musicPendingEnhancementRef = useRef(null);
 
   const currentSeatsRef = useRef(seats);
   currentSeatsRef.current = seats;
@@ -250,7 +265,7 @@ export const VoiceRoomProvider = ({ children }) => {
         syncLocalMicState(desired.isOnSeat, desired.isMuted);
       }
 
-      if (Boolean(desired.isOnSeat && !desired.isMuted) === isPublisherAuthorized) {
+      if (Boolean(desired.isOnSeat && !desired.isMuted) === agoraPublisherAuthorizedRef.current) {
         agoraAuthRefreshAttemptsRef.current = 0;
       } else if (agoraAuthRefreshAttemptsRef.current < 2) {
         agoraAuthRefreshAttemptsRef.current += 1;
@@ -387,25 +402,55 @@ export const VoiceRoomProvider = ({ children }) => {
           console.warn('🎙️ [VoiceRoom] Remote user audio mute state:', remoteUid, muted);
         },
         onAudioMixingStateChanged: (state, reason) => {
-          console.warn('🎵 [VoiceRoom] Agora audio mixing state changed:', state, reason);
-          // State 710: Playing, 711: Paused, 713: Stopped, 714: Failed
-          // Reason 721: All loops completed
-          if (reason === 721) {
+          if (!isCurrentSession() || agoraEngineRef.current !== engine || musicIntentRef.current === 'stopped') return;
+          // Events from the old track must not change the pending selection.
+          if (musicSwitchTimerRef.current) return;
+          if (state === AudioMixingStateType.AudioMixingStateStopped && reason === AudioMixingReasonType.AudioMixingReasonAllLoopsCompleted) {
+            if (isSwitchingTrackRef.current) return;
+            const advance = musicIntentRef.current === 'playing' && !isSwitchingTrackRef.current;
+            musicIntentRef.current = 'stopped';
             setIsMusicPlaying(false);
-            if (!isSwitchingTrackRef.current && onSongEndedCallbackRef.current) {
+            setIsMusicLoading(false);
+            setCurrentTrack(null);
+            if (advance) onSongEndedCallbackRef.current?.();
+          } else if (state === AudioMixingStateType.AudioMixingStatePlaying) {
+            clearTimeout(musicLoadTimeoutRef.current);
+            musicFailureHandlerRef.current = null;
+            if (musicIntentRef.current === 'paused') {
+              isSwitchingTrackRef.current = false;
+              setIsMusicLoading(false);
+              setIsMusicPlaying(false);
               try {
-                onSongEndedCallbackRef.current();
-              } catch (cbErr) {
-                console.warn('Error in onSongEnded callback:', cbErr);
-              }
+                if (engine.pauseAudioMixing() < 0) stopMusicMixing();
+              } catch (_) { stopMusicMixing(); }
+              const pending = musicPendingEnhancementRef.current;
+              musicPendingEnhancementRef.current = null;
+              pending?.();
+              return;
             }
-          } else if (state === 710) {
             setIsMusicPlaying(true);
+            setIsMusicLoading(false);
             isSwitchingTrackRef.current = false;
-          } else if (state === 711) {
+            const pending = musicPendingEnhancementRef.current;
+            musicPendingEnhancementRef.current = null;
+            pending?.();
+          } else if (state === AudioMixingStateType.AudioMixingStatePaused) {
+            if (musicIntentRef.current !== 'paused') return;
+            clearTimeout(musicLoadTimeoutRef.current);
+            isSwitchingTrackRef.current = false;
             setIsMusicPlaying(false);
-          } else if (state === 713 || state === 714) {
+            setIsMusicLoading(false);
+          } else if (state === AudioMixingStateType.AudioMixingStateFailed) {
+            clearTimeout(musicLoadTimeoutRef.current);
+            if (musicFailureHandlerRef.current) {
+              musicFailureHandlerRef.current();
+              return;
+            }
+            musicIntentRef.current = 'stopped';
+            isSwitchingTrackRef.current = false;
             setIsMusicPlaying(false);
+            setIsMusicLoading(false);
+            setCurrentTrack(null);
           }
         },
         onError: (err, msg) => {
@@ -476,84 +521,170 @@ export const VoiceRoomProvider = ({ children }) => {
     );
   };
 
-  const startMusicMixing = (audioUri, trackName, fallbackUri = null) => {
-    if (!canControlRoomMusic() || !audioUri || !agoraEngineRef.current) return;
-    const engine = agoraEngineRef.current;
-    if (musicSwitchTimerRef.current) {
-      clearTimeout(musicSwitchTimerRef.current);
-      musicSwitchTimerRef.current = null;
+  const startMusicMixing = (audioUri, trackName, fallbackUri = null, startPosition = 0, intent = 'playing') => {
+    if (!canControlRoomMusic()) return;
+    if (!audioUri || !agoraEngineRef.current) {
+      AlertService.show('Music unavailable', 'Please select an audio file while room audio is connected.', 'warning');
+      return;
     }
+    const engine = agoraEngineRef.current;
+    clearTimeout(musicSwitchTimerRef.current);
+    clearTimeout(musicLoadTimeoutRef.current);
+    NativeModules.MusicAudioProcessor?.cancel?.();
     const requestId = ++musicSwitchRequestRef.current;
+    musicEnhanceRequestRef.current += 1;
+    musicEnhancedRef.current = false;
+    musicPendingEnhancementRef.current = null;
+    musicSelectionRef.current = { audioUri, trackName, fallbackUri, startPosition };
+    musicFailureHandlerRef.current = null;
+    musicIntentRef.current = intent;
     isSwitchingTrackRef.current = true;
-    try {
-      engine.stopAudioMixing();
-    } catch (_) {}
+    setIsMusicLoading(true);
     setIsMusicPlaying(false);
     setCurrentTrack(trackName || 'Audio Track');
+    setMusicEnhancementStatus('preparing');
+    try { engine.stopAudioMixing(); } catch (_) {}
 
-    musicSwitchTimerRef.current = setTimeout(() => {
-      if (
-        !canControlRoomMusic() ||
-        requestId !== musicSwitchRequestRef.current ||
-        agoraEngineRef.current !== engine
-      ) return;
-
-      const isDirectFile = (u) => typeof u === 'string' && (u.startsWith('/') || u.startsWith('file://'));
-      const targetUri = isDirectFile(audioUri) ? audioUri : (isDirectFile(fallbackUri) ? fallbackUri : audioUri);
-
-      const startTrack = (uri) => {
-        const result = engine.startAudioMixing(uri, false, 1);
-        if (typeof result === 'number' && result < 0) {
-          throw new Error(`Audio mixing could not start (${result})`);
-        }
-        const safeVol = Math.max(0, Math.min(100, Number(musicVolume) || 100));
-        try {
-          engine.adjustAudioMixingPublishVolume(safeVol);
-          engine.adjustAudioMixingPlayoutVolume(safeVol);
-        } catch (_) {}
-        setIsMusicPlaying(true);
-        setCurrentTrack(trackName || 'Audio Track');
-        isSwitchingTrackRef.current = false;
-      };
-
-      try {
-        startTrack(targetUri);
-      } catch (err) {
-        console.warn('Start audio mixing primary error:', err?.message);
-        if (fallbackUri && fallbackUri !== targetUri) {
-          try {
-            startTrack(fallbackUri);
-          } catch (retryErr) {
-            console.warn('Audio mixing fallback error:', retryErr?.message);
-            isSwitchingTrackRef.current = false;
-          }
-        } else {
-          isSwitchingTrackRef.current = false;
-        }
+    let playbackUri = audioUri;
+    let started = false;
+    let retried = false;
+    let lastPosition = startPosition;
+    const isActive = () => requestId === musicSwitchRequestRef.current && agoraEngineRef.current === engine && musicIntentRef.current !== 'stopped';
+    const schedule = (callback) => {
+      clearTimeout(musicSwitchTimerRef.current);
+      musicSwitchTimerRef.current = setTimeout(() => {
+        musicSwitchTimerRef.current = null;
+        if (isActive()) callback();
+      }, 600);
+    };
+    const recover = () => {
+      if (!isActive()) return;
+      clearTimeout(musicLoadTimeoutRef.current);
+      musicFailureHandlerRef.current = null;
+      if (!retried && canControlRoomMusic()) {
+        retried = true;
+        musicEnhancedRef.current = false;
+        musicPendingEnhancementRef.current = null;
+        setMusicEnhancementStatus('unavailable');
+        schedule(() => startTrack(fallbackUri || audioUri, lastPosition));
+        try { engine.stopAudioMixing(); } catch (_) {}
+      } else {
+        stopMusicMixing();
+        AlertService.show('Unable to play this song', 'Please select another song or check access to the audio file.', 'warning');
       }
-    }, 250);
+    };
+    const startTrack = (uri, position = startPosition) => {
+      started = true;
+      lastPosition = position;
+      musicFailureHandlerRef.current = recover;
+      musicLoadTimeoutRef.current = setTimeout(recover, 8000);
+      try {
+        const result = engine.startAudioMixing(uri, false, 1, Math.max(0, Math.round(position)));
+        if (typeof result === 'number' && result < 0) throw new Error('Audio mixing could not start (' + result + ')');
+        const selected = Math.max(0, Math.min(500, Number(musicVolumeRef.current) || 0));
+        const safeVol = musicEnhancedRef.current ? Math.round(selected / 5) : Math.min(100, selected);
+        engine.adjustAudioMixingPublishVolume(safeVol);
+        engine.adjustAudioMixingPlayoutVolume(safeVol);
+      } catch (error) {
+        console.warn('Audio mixing start error:', error?.message);
+        recover();
+      }
+    };
+    const applyEnhanced = (uri, enhancementId) => {
+      if (!isActive() || enhancementId !== musicEnhanceRequestRef.current) return;
+      if (isSwitchingTrackRef.current) {
+        musicPendingEnhancementRef.current = () => applyEnhanced(uri, enhancementId);
+        return;
+      }
+      let position = lastPosition;
+      try { position = Math.max(0, engine.getAudioMixingCurrentPosition()); } catch (_) {}
+      musicEnhancedRef.current = true;
+      setMusicEnhancementStatus('ready');
+      isSwitchingTrackRef.current = true;
+      setIsMusicLoading(true);
+      clearTimeout(musicLoadTimeoutRef.current);
+      schedule(() => startTrack(uri, position));
+      try { engine.stopAudioMixing(); } catch (_) {}
+    };
+    const prepareEnhancement = async () => {
+      const enhancementId = ++musicEnhanceRequestRef.current;
+      musicPendingEnhancementRef.current = null;
+      setMusicEnhancementStatus('preparing');
+      try {
+        if (!NativeModules.MusicAudioProcessor?.prepare) throw new Error('Music enhancement requires the latest Android app.');
+        let uri;
+        try { uri = await NativeModules.MusicAudioProcessor.prepare(audioUri, bassLevelRef.current); }
+        catch (error) {
+          if (!isActive() || enhancementId !== musicEnhanceRequestRef.current) return;
+          if (!fallbackUri || fallbackUri === audioUri) throw error;
+          uri = await NativeModules.MusicAudioProcessor.prepare(fallbackUri, bassLevelRef.current);
+        }
+        if (!isActive() || enhancementId !== musicEnhanceRequestRef.current) return;
+        if (!started) {
+          playbackUri = uri;
+          musicEnhancedRef.current = true;
+          setMusicEnhancementStatus('ready');
+        } else applyEnhanced(uri, enhancementId);
+      } catch (error) {
+        if (!isActive() || enhancementId !== musicEnhanceRequestRef.current) return;
+        setMusicEnhancementStatus('unavailable');
+        console.warn('Background music enhancement:', error?.message);
+      }
+    };
+    musicEnhanceHandlerRef.current = prepareEnhancement;
+    // Original audio starts without waiting for decoding or bass processing.
+    schedule(() => {
+      if (!canControlRoomMusic()) { stopMusicMixing(); return; }
+      startTrack(playbackUri);
+    });
+    prepareEnhancement();
   };
   const pauseMusicMixing = () => {
     if (!canControlRoomMusic()) return;
+    musicIntentRef.current = "paused";
+    setIsMusicPlaying(false);
+    if (isSwitchingTrackRef.current) return;
     if (agoraEngineRef.current) {
       try {
-        agoraEngineRef.current.pauseAudioMixing();
-        setIsMusicPlaying(false);
-      } catch (err) {}
+        const result = agoraEngineRef.current.pauseAudioMixing();
+        if (result < 0) stopMusicMixing();
+      } catch (err) { stopMusicMixing(); }
     }
   };
 
   const resumeMusicMixing = () => {
     if (!canControlRoomMusic()) return;
+    musicIntentRef.current = "playing";
+    if (isSwitchingTrackRef.current) return;
     if (agoraEngineRef.current) {
       try {
-        agoraEngineRef.current.resumeAudioMixing();
+        const result = agoraEngineRef.current.resumeAudioMixing();
+        if (result < 0) throw new Error('Resume failed');
         setIsMusicPlaying(true);
-      } catch (err) {}
+      } catch (err) {
+        const selection = musicSelectionRef.current;
+        if (selection) startMusicMixing(selection.audioUri, selection.trackName, selection.fallbackUri);
+        else stopMusicMixing();
+      }
+    } else {
+      stopMusicMixing();
     }
   };
 
   const stopMusicMixing = () => {
+    NativeModules.MusicAudioProcessor?.cancel?.();
+    musicEnhanceRequestRef.current += 1;
+    musicEnhanceHandlerRef.current = null;
+    musicPendingEnhancementRef.current = null;
+    musicEnhancedRef.current = false;
+    setMusicEnhancementStatus(null);
+    musicSelectionRef.current = null;
+    clearTimeout(musicLoadTimeoutRef.current);
+    musicFailureHandlerRef.current = null;
+    musicIntentRef.current = "stopped";
+    setIsMusicLoading(false);
+    setIsMusicPlaying(false);
+    setCurrentTrack(null);
     musicSwitchRequestRef.current += 1;
     isSwitchingTrackRef.current = false;
     if (musicSwitchTimerRef.current) {
@@ -571,14 +702,16 @@ export const VoiceRoomProvider = ({ children }) => {
 
   const setMusicVolume = (vol) => {
     if (!canControlRoomMusic()) return;
-    const safeVol = Math.max(0, Math.min(100, Math.round(vol)));
+    const safeVol = Math.max(0, Math.min(500, Math.round(vol)));
+    musicVolumeRef.current = safeVol;
     setMusicVolumeState(safeVol);
     if (agoraEngineRef.current) {
       if (volumeThrottleTimerRef.current) clearTimeout(volumeThrottleTimerRef.current);
       volumeThrottleTimerRef.current = setTimeout(() => {
         try {
-          agoraEngineRef.current?.adjustAudioMixingPublishVolume(safeVol);
-          agoraEngineRef.current?.adjustAudioMixingPlayoutVolume(safeVol);
+          const volume = musicEnhancedRef.current ? Math.round(safeVol / 5) : Math.min(100, safeVol);
+          agoraEngineRef.current?.adjustAudioMixingPublishVolume(volume);
+          agoraEngineRef.current?.adjustAudioMixingPlayoutVolume(volume);
         } catch (err) {}
       }, 50);
     }
@@ -586,18 +719,36 @@ export const VoiceRoomProvider = ({ children }) => {
 
   const setBassLevel = (level) => {
     const clamped = Math.max(-15, Math.min(15, Math.round(level)));
+    if (clamped === bassLevelRef.current) return;
+    bassLevelRef.current = clamped;
     setBassLevelState(clamped);
-    if (agoraEngineRef.current) {
-      try {
-        agoraEngineRef.current.setLocalVoiceEqualization(0, clamped);
-        agoraEngineRef.current.setLocalVoiceEqualization(1, clamped);
-        agoraEngineRef.current.setLocalVoiceEqualization(2, Math.round(clamped * 0.7));
-      } catch (err) {}
+    const selection = musicSelectionRef.current;
+    if (selection && musicIntentRef.current !== 'stopped') {
+      return musicEnhanceHandlerRef.current?.();
     }
   };
 
+  const getMusicProgress = React.useCallback(() => {
+    const engine = agoraEngineRef.current;
+    if (!engine || musicIntentRef.current === 'stopped' || isSwitchingTrackRef.current) return { position: 0, duration: 0 };
+    try {
+      return { position: Math.max(0, engine.getAudioMixingCurrentPosition()), duration: Math.max(0, engine.getAudioMixingDuration()) };
+    } catch (_) { return { position: 0, duration: 0 }; }
+  }, []);
+
   const registerOnSongEnded = (callback) => {
     onSongEndedCallbackRef.current = callback;
+  };
+
+  const seekMusicMixing = (position) => {
+    const engine = agoraEngineRef.current;
+    if (!canControlRoomMusic() || !engine || isSwitchingTrackRef.current || musicIntentRef.current === 'stopped') return false;
+    try {
+      const duration = engine.getAudioMixingDuration();
+      if (duration <= 0 || !Number.isFinite(position)) return false;
+      const target = Math.max(0, Math.min(duration - 1, Math.round(position)));
+      return engine.setAudioMixingPosition(target) === 0;
+    } catch (_) { return false; }
   };
 
   const setMicVolume = (vol) => {
@@ -1722,6 +1873,22 @@ export const VoiceRoomProvider = ({ children }) => {
       musicSwitchTimerRef.current = null;
     }
     musicSwitchRequestRef.current += 1;
+    musicIntentRef.current = "stopped";
+    clearTimeout(musicLoadTimeoutRef.current);
+    musicFailureHandlerRef.current = null;
+    setIsMusicLoading(false);
+    musicSelectionRef.current = null;
+    isSwitchingTrackRef.current = false;
+    musicEnhanceRequestRef.current += 1;
+    musicEnhanceHandlerRef.current = null;
+    musicPendingEnhancementRef.current = null;
+    musicEnhancedRef.current = false;
+    setMusicEnhancementStatus(null);
+    NativeModules.MusicAudioProcessor?.cancel?.();
+    if (volumeThrottleTimerRef.current) {
+      clearTimeout(volumeThrottleTimerRef.current);
+      volumeThrottleTimerRef.current = null;
+    }
     desiredLocalAudioRef.current = { isOnSeat: false, isMuted: true };
     isMutedRef.current = true;
     currentSeatIndexRef.current = null;
@@ -2091,6 +2258,10 @@ export const VoiceRoomProvider = ({ children }) => {
         agoraStatus,
         agoraErrorMessage,
         isMusicPlaying,
+        isMusicLoading,
+        musicEnhancementStatus,
+        getMusicProgress,
+        seekMusicMixing,
         currentTrack,
         musicVolume,
         bassLevel,

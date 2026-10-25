@@ -5,7 +5,7 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
   TextInput,
   Dimensions,
   Platform,
@@ -136,12 +136,51 @@ const isLikelyRecording = (title = '', path = '') => {
   return false;
 };
 
+const SongRow = React.memo(function SongRow({ song, isPlayingThis, onSelect }) {
+  return (
+    <TouchableOpacity
+      style={[styles.songItem, isPlayingThis && styles.songItemActive]}
+      activeOpacity={0.8}
+      onPress={() => onSelect(song)}
+    >
+      <View style={[styles.songIconWrap, isPlayingThis && styles.songIconWrapActive]}>
+        <MaterialCommunityIcons
+          name={isPlayingThis ? 'volume-high' : (song.icon || 'music')}
+          size={20}
+          color={isPlayingThis ? '#A78BFA' : 'rgba(255, 255, 255, 0.7)'}
+        />
+      </View>
+
+      <View style={styles.songMetaCol}>
+        <Text style={[styles.songTitle, isPlayingThis && styles.songTitleActive]} numberOfLines={1}>
+          {song.title}
+        </Text>
+        <Text style={styles.songArtist}>
+          {song.artist} • {song.duration}
+        </Text>
+      </View>
+
+      <View style={styles.playActionBtn}>
+        <MaterialCommunityIcons
+          name={isPlayingThis ? 'pause-circle' : 'play-circle'}
+          size={26}
+          color={isPlayingThis ? '#A78BFA' : '#FFF'}
+        />
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 export default function RoomMusicModal({
   visible,
   onClose,
   isMusicPlaying = false,
+  isMusicLoading = false,
+  musicEnhancementStatus = null,
+  getMusicProgress,
+  onSeekTrack,
   currentTrack = null,
-  musicVolume = 100,
+  musicVolume = 500,
   bassLevel = 6,
   micVolume = 100,
   onPlayTrack,
@@ -154,6 +193,35 @@ export default function RoomMusicModal({
   onSetMicVolume,
   bottomSafePadding = 16,
 }) {
+  const [progress, setProgress] = useState({ position: 0, duration: 0 });
+  const seekWidthRef = useRef(0);
+  const isSeekingRef = useRef(false);
+  const seekPositionRef = useRef(0);
+  const seekTo = (position) => {
+    if (!onSeekTrack || isMusicLoading || progress.duration <= 0) return;
+    const target = Math.max(0, Math.min(progress.duration - 1, Math.round(position)));
+    if (onSeekTrack(target)) setProgress((previous) => ({ ...previous, position: target }));
+    else if (getMusicProgress) setProgress(getMusicProgress());
+  };
+  const previewSeek = (event) => {
+    if (!seekWidthRef.current || progress.duration <= 0) return;
+    const fraction = Math.max(0, Math.min(1, event.nativeEvent.locationX / seekWidthRef.current));
+    seekPositionRef.current = Math.min(progress.duration - 1, Math.round(fraction * progress.duration));
+    setProgress((previous) => ({ ...previous, position: seekPositionRef.current }));
+  };
+  useEffect(() => {
+    if (!currentTrack || isMusicLoading) { isSeekingRef.current = false; setProgress({ position: 0, duration: 0 }); return; }
+    if (!visible || !getMusicProgress) return;
+    const update = () => { if (!isSeekingRef.current) setProgress(getMusicProgress()); };
+    update();
+    if (!isMusicPlaying) return;
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [visible, currentTrack, isMusicPlaying, isMusicLoading, getMusicProgress]);
+  const formatTime = (ms) => {
+    const seconds = Math.floor(Math.max(0, Number(ms) || 0) / 1000);
+    return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+  };
   const [activeTab, setActiveTab] = useState('local'); // 'presets' | 'local'
   const [deviceSongs, setDeviceSongs] = useState([]);
   const [loadingDeviceSongs, setLoadingDeviceSongs] = useState(false);
@@ -162,12 +230,20 @@ export default function RoomMusicModal({
   const [autoNext, setAutoNext] = useState(true); // Automatic song change enabled by default
   const isScanningRef = useRef(false);
   const hasScannedRef = useRef(false);
+  const onPlayTrackRef = useRef(onPlayTrack);
+  onPlayTrackRef.current = onPlayTrack;
+  const selectedTitleRef = useRef(currentTrack);
+  useEffect(() => {
+    // Keep the last selection after a load failure so Next can skip that file.
+    if (currentTrack) selectedTitleRef.current = currentTrack;
+  }, [currentTrack]);
 
   // Scan phone storage audio using native module
   const scanDeviceMusic = useCallback(async () => {
     if (isScanningRef.current) return;
     isScanningRef.current = true;
     setLoadingDeviceSongs(true);
+    let scanTimeout;
     try {
       if (Platform.OS === 'android') {
         const isApi33OrHigher = Number(Platform.Version) >= 33;
@@ -201,7 +277,12 @@ export default function RoomMusicModal({
         }
 
         if (LocalMusicModule && LocalMusicModule.getAudioFiles) {
-          const files = await LocalMusicModule.getAudioFiles();
+          const files = await Promise.race([
+            LocalMusicModule.getAudioFiles(),
+            new Promise((_, reject) => {
+              scanTimeout = setTimeout(() => reject(new Error('Music scan timed out. Tap refresh to try again.')), 10000);
+            }),
+          ]);
           if (Array.isArray(files)) {
             const formatted = files
               .filter((f) => !isLikelyRecording(f.title, f.path || f.uri || f.contentUri))
@@ -229,6 +310,7 @@ export default function RoomMusicModal({
         'Device music scan me issue aaya: ' + (err?.message || 'Storage error')
       );
     } finally {
+      clearTimeout(scanTimeout);
       setLoadingDeviceSongs(false);
       isScanningRef.current = false;
     }
@@ -254,21 +336,22 @@ export default function RoomMusicModal({
   }, [activeTab, deviceSongs, searchQuery]);
 
   // Play a selected song
-  const handleSelectSong = (song) => {
+  const handleSelectSong = useCallback((song) => {
     if (!song) return;
     const isDirect = (p) => typeof p === 'string' && (p.startsWith('/') || p.startsWith('file://'));
     const directPath = isDirect(song.path) ? song.path : null;
-    const primary = directPath || song.uri || song.contentUri;
-    const fallback = directPath ? (song.contentUri || song.uri) : song.path;
-    if (onPlayTrack) {
-      onPlayTrack(primary, song.title, fallback);
+    const primary = song.contentUri || song.uri || directPath;
+    const fallback = directPath && directPath !== primary ? directPath : null;
+    if (onPlayTrackRef.current) {
+      selectedTitleRef.current = song.title;
+      onPlayTrackRef.current(primary, song.title, fallback);
     }
-  };
+  }, []);
 
   // Next Track (⏩ आगे)
   const handleNextTrack = () => {
     if (currentList.length === 0) return;
-    const currentIndex = currentList.findIndex((s) => s.title === currentTrack);
+    const currentIndex = currentList.findIndex((s) => s.title === selectedTitleRef.current);
     let nextIndex = 0;
     if (currentIndex >= 0) {
       nextIndex = (currentIndex + 1) % currentList.length;
@@ -282,7 +365,7 @@ export default function RoomMusicModal({
   // Previous Track (⏪ पीछे)
   const handlePrevTrack = () => {
     if (currentList.length === 0) return;
-    const currentIndex = currentList.findIndex((s) => s.title === currentTrack);
+    const currentIndex = currentList.findIndex((s) => s.title === selectedTitleRef.current);
     let prevIndex = currentList.length - 1;
     if (currentIndex > 0) {
       prevIndex = currentIndex - 1;
@@ -300,7 +383,7 @@ export default function RoomMusicModal({
       handleSelectSong(currentList[0]);
       return;
     }
-    const currentIndex = currentList.findIndex((s) => s.title === currentTrack);
+    const currentIndex = currentList.findIndex((s) => s.title === selectedTitleRef.current);
     let randIndex = Math.floor(Math.random() * currentList.length);
     if (randIndex === currentIndex) {
       randIndex = (currentIndex + 1) % currentList.length;
@@ -319,19 +402,18 @@ export default function RoomMusicModal({
     });
   };
 
-  const handleNextTrackRef = useRef(handleNextTrack);
-  handleNextTrackRef.current = handleNextTrack;
-
+  const songEndedRef = useRef(null);
+  songEndedRef.current = () => {
+    if (!autoNext) return;
+    const index = currentList.findIndex((song) => song.title === selectedTitleRef.current);
+    if (repeatMode === 'one' && index >= 0) handleSelectSong(currentList[index]);
+    else if (repeatMode === 'all' || index < currentList.length - 1) handleNextTrack();
+  };
   useEffect(() => {
-    if (registerOnSongEnded) {
-      registerOnSongEnded(() => {
-        if (autoNext) {
-          console.warn('🎵 Song finished naturally, playing next track in list...');
-          handleNextTrackRef.current();
-        }
-      });
-    }
-  }, [registerOnSongEnded, autoNext]);
+    if (!registerOnSongEnded) return;
+    registerOnSongEnded(() => songEndedRef.current?.());
+    return () => registerOnSongEnded(null);
+  }, [registerOnSongEnded]);
 
   // Pick individual file from file manager fallback
   const handlePickCustomFile = async () => {
@@ -355,7 +437,11 @@ export default function RoomMusicModal({
           handleSelectSong(customSong);
         }
       }
-    } catch (_) {}
+    } catch (error) {
+      if (!DocumentPicker?.isCancel?.(error) && error?.code !== 'OPERATION_CANCELED') {
+        Alert.alert('Unable to open audio file', error?.message || 'Please try selecting the file again.');
+      }
+    }
   };
 
   if (!visible) return null;
@@ -401,9 +487,34 @@ export default function RoomMusicModal({
                   {currentTrack || (isMusicPlaying ? 'Music Playing' : 'No track selected')}
                 </Text>
                 <Text style={styles.nowPlayingStatus}>
-                  {isMusicPlaying ? '🔊 Live to all room listeners' : 'Select any song to play'}
+                  {isMusicLoading ? 'Loading audio...' : isMusicPlaying ? 'Live to all room listeners' : currentTrack ? 'Paused' : 'Stopped'}
                 </Text>
               </View>
+            </View>
+
+            <View
+              style={styles.progressTouchArea}
+              accessibilityRole="adjustable"
+              accessibilityLabel="Song progress"
+              accessibilityValue={{ min: 0, max: Math.floor(progress.duration / 1000), now: Math.floor(progress.position / 1000) }}
+              accessibilityActions={[{ name: 'increment', label: 'Forward 10 seconds' }, { name: 'decrement', label: 'Back 10 seconds' }]}
+              onAccessibilityAction={({ nativeEvent }) => seekTo(progress.position + (nativeEvent.actionName === 'increment' ? 10000 : -10000))}
+              onLayout={({ nativeEvent }) => { seekWidthRef.current = nativeEvent.layout.width; }}
+              onStartShouldSetResponder={() => Boolean(onSeekTrack && currentTrack && !isMusicLoading && progress.duration > 0)}
+              onResponderGrant={(event) => { isSeekingRef.current = true; previewSeek(event); }}
+              onResponderMove={previewSeek}
+              onResponderRelease={(event) => { previewSeek(event); isSeekingRef.current = false; seekTo(seekPositionRef.current); }}
+              onResponderTerminationRequest={() => false}
+              onResponderTerminate={() => { isSeekingRef.current = false; if (getMusicProgress) setProgress(getMusicProgress()); }}
+            >
+              <View style={styles.progressTrack} pointerEvents="none">
+                <View style={[styles.progressFill, { width: progress.duration > 0 ? Math.min(100, progress.position / progress.duration * 100) + '%' : '0%' }]} />
+              </View>
+              <View pointerEvents="none" style={[styles.seekThumb, { left: progress.duration > 0 ? Math.min(100, progress.position / progress.duration * 100) + '%' : '0%' }]} />
+            </View>
+            <View style={styles.timeRow}>
+              <Text style={styles.timeText}>{formatTime(progress.position)} elapsed</Text>
+              <Text style={styles.timeText}>{progress.duration > 0 ? formatTime(Math.max(0, progress.duration - progress.position)) + ' left / ' + formatTime(progress.duration) : '--:-- left'}</Text>
             </View>
 
             {/* Playback Controls (Prev, Play/Pause, Next, Repeat) */}
@@ -412,16 +523,22 @@ export default function RoomMusicModal({
               <TouchableOpacity
                 style={styles.controlPillBtn}
                 onPress={handlePrevTrack}
+                accessibilityLabel="Previous song"
                 activeOpacity={0.75}
               >
                 <MaterialCommunityIcons name="skip-previous" size={22} color="#E2E8F0" />
               </TouchableOpacity>
 
               {/* Play / Pause */}
-              {isMusicPlaying ? (
+              {isMusicLoading ? (
+                <TouchableOpacity style={styles.controlPillBtn} onPress={onStopTrack} accessibilityLabel="Cancel loading music">
+                  <ActivityIndicator size="small" color="#C084FC" pointerEvents="none" />
+                </TouchableOpacity>
+              ) : isMusicPlaying ? (
                 <TouchableOpacity
                   style={[styles.controlPillBtn, styles.pauseBtn]}
                   onPress={onPauseTrack}
+                  accessibilityLabel="Pause music"
                   activeOpacity={0.75}
                 >
                   <MaterialCommunityIcons name="pause" size={22} color="#FFF" />
@@ -429,6 +546,7 @@ export default function RoomMusicModal({
               ) : (
                 <TouchableOpacity
                   style={[styles.controlPillBtn, styles.playBtn]}
+                  accessibilityLabel="Play music"
                   onPress={() => {
                     if (currentTrack && onResumeTrack) onResumeTrack();
                     else handleNextTrack();
@@ -439,10 +557,20 @@ export default function RoomMusicModal({
                 </TouchableOpacity>
               )}
 
+              <TouchableOpacity
+                style={styles.controlPillBtn}
+                onPress={onStopTrack}
+                accessibilityLabel="Stop music"
+                disabled={!currentTrack && !isMusicLoading}
+              >
+                <MaterialCommunityIcons name="stop" size={22} color="#F87171" />
+              </TouchableOpacity>
+
               {/* Next */}
               <TouchableOpacity
                 style={styles.controlPillBtn}
                 onPress={handleNextTrack}
+                accessibilityLabel="Next song"
                 activeOpacity={0.75}
               >
                 <MaterialCommunityIcons name="skip-next" size={22} color="#E2E8F0" />
@@ -452,6 +580,7 @@ export default function RoomMusicModal({
               <TouchableOpacity
                 style={[styles.controlPillBtn, repeatMode !== 'off' && styles.repeatActiveBtn]}
                 onPress={toggleRepeatMode}
+                accessibilityLabel={`Repeat ${repeatMode}`}
                 activeOpacity={0.75}
               >
                 <MaterialCommunityIcons
@@ -482,19 +611,23 @@ export default function RoomMusicModal({
 
           {/* Volume & Equalizer Section (Up to 400% Loud Boost & Bass Manager) */}
           <View style={styles.volumeCard}>
-            {/* Music Volume (0 - 400% Ultra Loud Boost) */}
+            {/* Music gain: processed 5x PCM, scaled through Agora's 0-100 range. */}
             <View style={styles.volumeRow}>
               <View style={styles.volumeLabelCol}>
                 <View style={styles.volumeIconRow}>
                   <MaterialCommunityIcons name="volume-high" size={17} color="#A78BFA" />
                   <Text style={styles.volumeLabel}>Music Volume: <Text style={{ color: '#A855F7', fontWeight: '800' }}>{musicVolume}%</Text></Text>
                 </View>
+                <Text style={styles.enhancementStatus}>
+                  {musicEnhancementStatus === 'preparing' ? 'Applying boost & bass...' : musicEnhancementStatus === 'unavailable' ? 'Original audio • boost unavailable' : musicEnhancementStatus === 'ready' ? 'Boost & bass active' : 'Up to 500% music gain'}
+                </Text>
               </View>
 
               <View style={styles.stepperRow}>
                 <TouchableOpacity
                   style={styles.stepperBtn}
                   onPress={() => onSetMusicVolume && onSetMusicVolume(Math.max(0, musicVolume - 10))}
+                  accessibilityLabel="Decrease music volume"
                 >
                   <MaterialCommunityIcons name="minus" size={15} color="#FFF" />
                 </TouchableOpacity>
@@ -504,7 +637,7 @@ export default function RoomMusicModal({
                     style={[
                       styles.volumeBarFill,
                       {
-                        width: `${Math.min(100, Math.max(0, musicVolume))}%`,
+                        width: `${Math.min(100, Math.max(0, musicVolume / 5))}%`,
                         backgroundColor: '#8B5CF6',
                       },
                     ]}
@@ -513,7 +646,8 @@ export default function RoomMusicModal({
 
                 <TouchableOpacity
                   style={styles.stepperBtn}
-                  onPress={() => onSetMusicVolume && onSetMusicVolume(Math.min(100, musicVolume + 10))}
+                  onPress={() => onSetMusicVolume && onSetMusicVolume(Math.min(500, musicVolume + 10))}
+                  accessibilityLabel="Increase music volume"
                 >
                   <MaterialCommunityIcons name="plus" size={15} color="#FFF" />
                 </TouchableOpacity>
@@ -522,7 +656,7 @@ export default function RoomMusicModal({
 
             {/* Quick volume presets (20%, 40%, 60%, 80%, 100%) */}
             <View style={styles.quickVolRow}>
-              {[20, 40, 60, 80, 100].map((v) => (
+              {[100, 200, 300, 400, 500].map((v) => (
                 <TouchableOpacity
                   key={`vol-preset-${v}`}
                   style={[styles.volPresetPill, musicVolume === v && styles.volPresetPillActive]}
@@ -540,7 +674,7 @@ export default function RoomMusicModal({
               <View style={styles.volumeLabelCol}>
                 <View style={styles.volumeIconRow}>
                   <MaterialCommunityIcons name="speaker-wireless" size={17} color="#EC4899" />
-                  <Text style={styles.volumeLabel}>Bass Boost: <Text style={{ color: '#F472B6', fontWeight: '800' }}>+{bassLevel} dB</Text></Text>
+                  <Text style={styles.volumeLabel}>Bass Boost: <Text style={{ color: '#F472B6', fontWeight: '800' }}>{bassLevel > 0 ? '+' : ''}{bassLevel} dB</Text></Text>
                   <View style={[styles.boostBadge, { backgroundColor: 'rgba(236, 72, 153, 0.25)', borderColor: '#EC4899' }]}>
                     <Text style={[styles.boostBadgeText, { color: '#F472B6' }]}>SUB-BASS EQ</Text>
                   </View>
@@ -551,6 +685,7 @@ export default function RoomMusicModal({
                 <TouchableOpacity
                   style={styles.stepperBtn}
                   onPress={() => onSetBassLevel && onSetBassLevel(Math.max(-5, bassLevel - 2))}
+                  accessibilityLabel="Decrease bass"
                 >
                   <MaterialCommunityIcons name="minus" size={15} color="#FFF" />
                 </TouchableOpacity>
@@ -570,6 +705,7 @@ export default function RoomMusicModal({
                 <TouchableOpacity
                   style={styles.stepperBtn}
                   onPress={() => onSetBassLevel && onSetBassLevel(Math.min(15, bassLevel + 2))}
+                  accessibilityLabel="Increase bass"
                 >
                   <MaterialCommunityIcons name="plus" size={15} color="#FFF" />
                 </TouchableOpacity>
@@ -637,6 +773,7 @@ export default function RoomMusicModal({
                 <TouchableOpacity
                   style={styles.stepperBtn}
                   onPress={() => onSetMicVolume && onSetMicVolume(Math.max(0, micVolume - 10))}
+                  accessibilityLabel="Decrease microphone volume"
                 >
                   <MaterialCommunityIcons name="minus" size={15} color="#FFF" />
                 </TouchableOpacity>
@@ -656,6 +793,7 @@ export default function RoomMusicModal({
                 <TouchableOpacity
                   style={styles.stepperBtn}
                   onPress={() => onSetMicVolume && onSetMicVolume(Math.min(200, micVolume + 10))}
+                  accessibilityLabel="Increase microphone volume"
                 >
                   <MaterialCommunityIcons name="plus" size={15} color="#FFF" />
                 </TouchableOpacity>
@@ -739,17 +877,30 @@ export default function RoomMusicModal({
           </View>
 
           {/* Song List */}
-          <ScrollView
+          <FlatList
             style={styles.songsScroll}
+            data={loadingDeviceSongs && activeTab === 'local' ? [] : currentList}
+            keyExtractor={(song) => String(song.id)}
+            extraData={currentTrack + ':' + isMusicPlaying}
+            renderItem={({ item }) => (
+              <SongRow
+                song={item}
+                isPlayingThis={isMusicPlaying && currentTrack === item.title}
+                onSelect={handleSelectSong}
+              />
+            )}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={5}
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 16 }}
-          >
-            {loadingDeviceSongs ? (
+            ListEmptyComponent={loadingDeviceSongs && activeTab === 'local' ? (
               <View style={styles.loadingBox}>
                 <ActivityIndicator size="large" color="#8B5CF6" />
                 <Text style={styles.loadingText}>Scanning phone storage for audio tracks...</Text>
               </View>
-            ) : currentList.length === 0 ? (
+            ) : (
               <View style={styles.emptyBox}>
                 <MaterialCommunityIcons name="music-note-off" size={40} color="#64748B" />
                 <Text style={styles.emptyTitle}>
@@ -769,45 +920,8 @@ export default function RoomMusicModal({
                   </TouchableOpacity>
                 )}
               </View>
-            ) : (
-              currentList.map((song) => {
-                const isPlayingThis = isMusicPlaying && currentTrack === song.title;
-                return (
-                  <TouchableOpacity
-                    key={song.id}
-                    style={[styles.songItem, isPlayingThis && styles.songItemActive]}
-                    activeOpacity={0.8}
-                    onPress={() => handleSelectSong(song)}
-                  >
-                    <View style={[styles.songIconWrap, isPlayingThis && styles.songIconWrapActive]}>
-                      <MaterialCommunityIcons
-                        name={isPlayingThis ? 'volume-high' : (song.icon || 'music')}
-                        size={20}
-                        color={isPlayingThis ? '#A78BFA' : 'rgba(255, 255, 255, 0.7)'}
-                      />
-                    </View>
-
-                    <View style={styles.songMetaCol}>
-                      <Text style={[styles.songTitle, isPlayingThis && styles.songTitleActive]} numberOfLines={1}>
-                        {song.title}
-                      </Text>
-                      <Text style={styles.songArtist}>
-                        {song.artist} • {song.duration}
-                      </Text>
-                    </View>
-
-                    <View style={styles.playActionBtn}>
-                      <MaterialCommunityIcons
-                        name={isPlayingThis ? 'pause-circle' : 'play-circle'}
-                        size={26}
-                        color={isPlayingThis ? '#A78BFA' : '#FFF'}
-                      />
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
             )}
-          </ScrollView>
+          />
         </View>
       </View>
     </Modal>
@@ -815,6 +929,13 @@ export default function RoomMusicModal({
 }
 
 const styles = StyleSheet.create({
+  enhancementStatus: { color: '#94A3B8', fontSize: 10, marginTop: 3 },
+  progressTouchArea: { height: 32, justifyContent: 'center', marginTop: 4 },
+  progressTrack: { height: 5, borderRadius: 3, backgroundColor: '#334155', overflow: 'hidden' },
+  seekThumb: { position: 'absolute', width: 14, height: 14, borderRadius: 7, marginLeft: -7, backgroundColor: '#C084FC' },
+  progressFill: { height: '100%', backgroundColor: '#A78BFA' },
+  timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 },
+  timeText: { color: '#94A3B8', fontSize: 11 },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,17 @@ import {
   TouchableOpacity,
   Modal,
   Image,
-  ScrollView,
   FlatList,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/Ionicons';
-import RankAvatar from '../ranking/RankAvatar';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { AlertService } from '../../utils/AlertService';
+import { apiUtil } from '../../utils/apiUtil';
+import FanClubBadge from './FanClubBadge';
+import FanClubIntroModal from './FanClubIntroModal';
 
 export default function RoomGroupPrivilegeModal({
   visible,
@@ -24,29 +25,21 @@ export default function RoomGroupPrivilegeModal({
   owner,
   isRoomOwner = false,
   currentUser = null,
-  membersCount = 2737,
+  membersCount = 0,
   members = [],
   topContributors = [],
   onJoinGroup,
   bottomSafePadding = 16,
 }) {
-  const [view, setView] = useState('privilege'); // 'privilege' (Image 1) | 'members' (Image 2)
+  const [view, setView] = useState('privilege'); // 'privilege' (View 1) | 'members' (View 2)
   const [isJoined, setIsJoined] = useState(Boolean(isRoomOwner));
+  const [joining, setJoining] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [realMembers, setRealMembers] = useState([]);
+  const [realCount, setRealCount] = useState(membersCount || 0);
+  const [showIntroModal, setShowIntroModal] = useState(false);
 
-  useEffect(() => {
-    if (visible) {
-      setView('privilege');
-      if (isRoomOwner) {
-        setIsJoined(true);
-      }
-    }
-  }, [visible, isRoomOwner]);
-
-  if (!visible) return null;
-
-  const roomTitle = room?.title || room?.roomName || owner?.name || '🔥GAMING🔥 PARTY ROOM';
-  const coverImage = room?.coverImage || owner?.avatar || owner?.image || 'https://api.yaroapp.in/uploads/avatars/female_default.webp';
-  const displayCount = membersCount || 2737;
+  const roomId = room?.id || room?.roomId || room?.channelName || '';
 
   const normalizeId = (id) => {
     const s = String(id || '').trim();
@@ -58,322 +51,381 @@ export default function RoomGroupPrivilegeModal({
 
   const ownerIdStr = String(owner?.userId || owner?.id || owner?._id || '');
   const ownerName = owner?.name || 'Room Host';
+  const roomTitle = room?.title || room?.roomName || ownerName || 'Voice Room';
+  const coverImage =
+    room?.coverImage ||
+    owner?.avatar ||
+    owner?.image ||
+    'https://api.yaroapp.in/uploads/avatars/female_default.webp';
 
-  // Build high-fidelity member ranking list for Image 2
-  const fallbackMembers = [
-    { id: ownerIdStr || '1', name: ownerName, isOwner: true, exp: 0, avatar: owner?.avatar || coverImage, badge: '👑' },
-    { id: '2', name: '°•M_x_ooy•°', isOwner: false, exp: 690936, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', badge: '💎' },
-    { id: '3', name: 'OFFLINE ⭐', isOwner: false, exp: 655911, avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150', badge: '🛡️' },
-    { id: '4', name: '†_D_evil_†', isOwner: false, exp: 642451, avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150', badge: '⚡' },
-    { id: '5', name: 'im zuned', isOwner: false, exp: 622925, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', badge: '🎖️' },
-    { id: '6', name: '•+Raja+•', isOwner: false, exp: 488528, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150', badge: '🔥' },
-    { id: '7', name: 'zuned 👑', isOwner: false, exp: 486180, avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150', badge: '🌟' },
-    { id: '8', name: 'Sweety ✍️', isOwner: false, exp: 414085, avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', badge: '🏵️' },
-    { id: '9', name: 'Mahi 🦋', isOwner: false, exp: 412817, avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150', badge: '🌺' },
-    { id: '10', name: 'Liza Cute 🐱', isOwner: false, exp: 374573, avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150', badge: '✨' },
-    { id: '11', name: '•MANVI• 🔥', isOwner: false, exp: 374400, avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150', badge: '🏆' },
-    { id: '12', name: 'ZohaN Khan', isOwner: false, exp: 362100, avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150', badge: '💎' },
-  ];
+  // Fetch real Fan Club data (real members, real EXP, membership status) from server
+  const fetchFanClubData = useCallback(async () => {
+    if (!roomId) return;
+    try {
+      setLoadingMembers(true);
+      const res = await apiUtil.get(`/voice-club/rooms/${roomId}/fan-club`);
+      if (res?.data?.success && res.data.data) {
+        const d = res.data.data;
+        if (isRoomOwner || d.isJoined) {
+          setIsJoined(true);
+        } else {
+          setIsJoined(Boolean(d.isJoined));
+        }
+        if (Array.isArray(d.members)) {
+          setRealMembers(d.members);
+        }
+        setRealCount(Number(d.membersCount) || (d.members ? d.members.length : 0));
+      }
+    } catch (err) {
+      console.warn('[RoomGroupPrivilegeModal] Fetch error:', err?.message);
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, [roomId, isRoomOwner]);
 
-  const rankingList = Array.isArray(members) && members.length > 0
-    ? [
-        // Ensure owner is at top with Owner badge
-        ...(members.some((m) => {
-          const mId = String(m.userId || m.id || m._id || '');
-          return ownerIdStr && (mId === ownerIdStr || normalizeId(mId) === normalizeId(ownerIdStr));
-        })
-          ? []
-          : [{
-              id: ownerIdStr || 'owner',
-              name: ownerName,
-              isOwner: true,
-              exp: 0,
-              avatar: owner?.avatar || coverImage,
-              badge: '👑',
-            }]),
-        ...members.map((m, idx) => {
-          const mId = String(m.userId || m.id || m._id || idx + 1);
-          const isItemOwner = Boolean(
-            ownerIdStr && (mId === ownerIdStr || normalizeId(mId) === normalizeId(ownerIdStr))
-          );
-          return {
-            id: mId,
-            name: m.name || m.username || `User #${idx + 1}`,
-            isOwner: isItemOwner,
-            exp: Number(m.exp || m.points || m.diamonds || Math.max(0, 700000 - idx * 45000)),
-            avatar: m.avatar || m.image,
-            badge: ['👑', '💎', '🛡️', '⚡', '🎖️', '🔥'][idx % 6],
-          };
-        }),
-      ]
-    : fallbackMembers;
+  useEffect(() => {
+    if (visible) {
+      setView('privilege');
+      if (isRoomOwner) {
+        setIsJoined(true);
+      }
+      fetchFanClubData();
+    }
+  }, [visible, isRoomOwner, fetchFanClubData]);
 
-  // 3 Preview avatars at top right in Image 1
-  const previewAvatars = (rankingList.length >= 3 ? rankingList.slice(0, 3) : fallbackMembers.slice(0, 3));
+  if (!visible) return null;
 
-  const handleJoinPress = () => {
-    setIsJoined(true);
-    AlertService.show('Fan Club Joined! 🎉', 'You have successfully joined the room Fan Club and unlocked all privileges!', 'success');
-    onJoinGroup && onJoinGroup();
+  // Real ranking list from server (strictly NO fake mock members, NO fake EXP)
+  const rankingList = realMembers.length > 0
+    ? realMembers
+    : (Array.isArray(members) && members.length > 0 ? members : [
+        {
+          id: ownerIdStr || 'owner',
+          userId: ownerIdStr || 'owner',
+          name: ownerName,
+          isOwner: true,
+          exp: 0,
+          avatar: owner?.avatar || coverImage,
+        },
+      ]);
+
+  const displayCount = realCount || rankingList.length || 1;
+
+  // 3 Preview avatars at top right in View 1
+  const previewAvatars = rankingList.slice(0, 3);
+
+  const handleJoinPress = async () => {
+    if (joining || isJoined) return;
+    setJoining(true);
+    try {
+      const res = await apiUtil.post(`/voice-club/rooms/${roomId}/fan-club/join`, {
+        plan: '1_month',
+      });
+      if (res?.data?.success) {
+        setIsJoined(true);
+        AlertService.show(
+          'Fan Club Joined! 🎉',
+          'You have successfully joined the room Fan Club! Your membership badge is active.',
+          'success'
+        );
+        fetchFanClubData();
+        onJoinGroup && onJoinGroup();
+      } else {
+        AlertService.show('Join Failed', res?.data?.message || 'Could not join Fan Club', 'error');
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Could not join Fan Club';
+      AlertService.show('Insufficient Diamonds', msg, 'error');
+    } finally {
+      setJoining(false);
+    }
   };
 
   const handleHelpPress = () => {
-    Alert.alert(
-      'Member Privileges 💡',
-      'Joining this room Fan Club grants exclusive badges, priority mic access, room Fan Club logo, and boosts your follower engagement!',
-      [{ text: 'Got it', style: 'default' }]
-    );
+    setShowIntroModal(true);
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalBackdrop}>
-        <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+    <>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={onClose}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={onClose}
+          />
 
-        {view === 'privilege' ? (
-          /* ============================================================== */
-          /* VIEW 1: IMAGE 1 - ROOM GROUP PRIVILEGE MODAL                    */
-          /* ============================================================== */
-          <View style={[styles.privilegeSheetCard, { paddingBottom: Math.max(bottomSafePadding, 20) }]}>
-            {/* Top Close Button (X) */}
-            <TouchableOpacity
-              style={styles.closeBtn}
-              onPress={onClose}
-              activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Icon name="close" size={24} color="#94A3B8" />
-            </TouchableOpacity>
-
-            {/* Header: Room Logo + Info + 3 Overlapping Avatars with Chevron */}
-            <View style={styles.groupHeaderRow}>
-              {/* Room DP */}
-              <View style={styles.avatarBorderGlow}>
-                <Image
-                  source={getUserAvatar({ avatar: coverImage, image: coverImage })}
-                  style={styles.groupAvatar}
-                />
-              </View>
-
-              {/* Title & Count */}
-              <View style={styles.groupHeaderInfo}>
-                <View style={styles.groupNameRow}>
-                  <Text style={styles.groupNameText} numberOfLines={1}>
-                    {roomTitle}
-                  </Text>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={handleHelpPress}
-                    style={styles.helpIconBtn}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <MaterialCommunityIcons name="help-circle-outline" size={19} color="#F59E0B" />
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.membersCountText}>Members: {displayCount}</Text>
-              </View>
-
-              {/* Right: 3 Overlapping Member Avatars + Chevron Arrow */}
+          {view === 'privilege' ? (
+            /* ============================================================== */
+            /* VIEW 1: ROOM GROUP PRIVILEGE MODAL                             */
+            /* ============================================================== */
+            <View style={[styles.privilegeSheetCard, { paddingBottom: Math.max(bottomSafePadding, 20) }]}>
+              {/* Top Close Button (X) */}
               <TouchableOpacity
-                style={styles.overlappingAvatarsTouch}
-                activeOpacity={0.75}
-                onPress={() => setView('members')}
+                style={styles.closeBtn}
+                onPress={onClose}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
-                <View style={styles.overlappingStack}>
-                  {previewAvatars.map((item, idx) => (
-                    <Image
-                      key={item.id || idx}
-                      source={getUserAvatar(item)}
-                      style={[
-                        styles.previewMemberAvatar,
-                        {
-                          marginLeft: idx === 0 ? 0 : -10,
-                          zIndex: 10 - idx,
-                        },
-                      ]}
-                    />
-                  ))}
-                </View>
-                <MaterialCommunityIcons name="chevron-right" size={22} color="#CBD5E1" style={styles.chevronIcon} />
+                <Icon name="close" size={24} color="#94A3B8" />
               </TouchableOpacity>
-            </View>
 
-            {/* Divider */}
-            <View style={styles.horizontalDivider} />
+              {/* Header: Room Logo + Info + 3 Overlapping Avatars with Chevron */}
+              <View style={styles.groupHeaderRow}>
+                {/* Room DP */}
+                <View style={styles.avatarBorderGlow}>
+                  <Image
+                    source={getUserAvatar({ avatar: coverImage, image: coverImage })}
+                    style={styles.groupAvatar}
+                  />
+                </View>
 
-            {/* Title: Member Privilege */}
-            <Text style={styles.memberPrivilegeHeading}>Member Privilege</Text>
-
-            {/* Card 1: Own Member Logo (Coral / Pink Gradient with Medal Badge) */}
-            <LinearGradient
-              colors={['#FB7185', '#FED7AA']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.privilegeCard}
-            >
-              <Text style={styles.privilegeCardTitle}>Own Member Logo</Text>
-              <View style={styles.privilegeRightGraphic}>
-                <View style={styles.pedestalBlockPink}>
-                  <View style={styles.goldenMedalCircle}>
-                    <MaterialCommunityIcons name="heart" size={16} color="#FFFFFF" />
+                {/* Title & Count */}
+                <View style={styles.groupHeaderInfo}>
+                  <View style={styles.groupNameRow}>
+                    <Text style={styles.groupNameText} numberOfLines={1}>
+                      {roomTitle}
+                    </Text>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={handleHelpPress}
+                      style={styles.helpIconBtn}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <MaterialCommunityIcons name="help-circle-outline" size={20} color="#F59E0B" />
+                    </TouchableOpacity>
                   </View>
-                  <MaterialCommunityIcons name="medal" size={40} color="#F59E0B" style={styles.medalWingGraphic} />
+                  <Text style={styles.membersCountText}>Members: {displayCount}</Text>
                 </View>
-              </View>
-            </LinearGradient>
 
-            {/* Card 2: Take mic freely (Purple / Magenta Gradient with Golden Mic on Pedestal) */}
-            <LinearGradient
-              colors={['#A855F7', '#E9D5FF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.privilegeCard}
-            >
-              <Text style={styles.privilegeCardTitle}>Take mic freely</Text>
-              <View style={styles.privilegeRightGraphic}>
-                <View style={styles.pedestalBlockPurple}>
-                  <MaterialCommunityIcons name="microphone-variant" size={38} color="#FBBF24" />
-                </View>
-              </View>
-            </LinearGradient>
-
-            {/* Card 3: Have more followers (Blue / Cyan Gradient with Follower Hearts) */}
-            <LinearGradient
-              colors={['#3B82F6', '#BFDBFE']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.privilegeCard}
-            >
-              <Text style={styles.privilegeCardTitle}>Have more followers</Text>
-              <View style={styles.privilegeRightGraphic}>
-                <View style={styles.pedestalBlockBlue}>
-                  <MaterialCommunityIcons name="account-group" size={36} color="#EC4899" />
-                  <MaterialCommunityIcons name="heart" size={16} color="#FFFFFF" style={styles.heartSmallBadge} />
-                </View>
-              </View>
-            </LinearGradient>
-
-            {/* Full-width Golden Yellow Join Button - ONLY shown to users who have NOT joined yet and are NOT owner */}
-            {!isRoomOwner && !isJoined && (
-              <TouchableOpacity
-                style={styles.joinBtnTouch}
-                activeOpacity={0.88}
-                onPress={handleJoinPress}
-              >
-                <LinearGradient
-                  colors={['#FFB800', '#F59E0B']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.joinBtnGradient}
+                {/* Right: 3 Overlapping Member Avatars + Chevron Arrow */}
+                <TouchableOpacity
+                  style={styles.overlappingAvatarsTouch}
+                  activeOpacity={0.75}
+                  onPress={() => setView('members')}
                 >
-                  <Text style={styles.joinBtnText}>Join</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-          /* ============================================================== */
-          /* VIEW 2: IMAGE 2 - GROUP MEMBERS RANKING LIST                    */
-          /* ============================================================== */
-          <View style={[styles.membersFullSheet, { paddingBottom: Math.max(bottomSafePadding, 16) }]}>
-            {/* Top Bar: Back Chevron, Title, Options dots */}
-            <View style={styles.membersTopBar}>
-              <TouchableOpacity
-                style={styles.backBtnTouch}
-                activeOpacity={0.7}
-                onPress={() => setView('privilege')}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <Icon name="chevron-back" size={26} color="#1E293B" />
-              </TouchableOpacity>
-
-              <Text style={styles.membersTopTitle}>
-                Fan Club Members<Text style={styles.membersTopTitleCount}>({displayCount} members)</Text>
-              </Text>
-
-              <TouchableOpacity
-                style={styles.dotsBtnTouch}
-                activeOpacity={0.7}
-                onPress={() => AlertService.show('Fan Club Info', `${roomTitle} - ${displayCount} members`, 'info')}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <MaterialCommunityIcons name="dots-horizontal" size={26} color="#334155" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Ranked Member List */}
-            <FlatList
-              data={rankingList}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.membersListContent}
-              renderItem={({ item, index }) => {
-                const rankNumber = index + 1;
-                return (
-                  <View style={styles.memberRowItem}>
-                    {/* Rank Number */}
-                    <Text style={styles.rankNumberText}>{rankNumber}</Text>
-
-                    {/* Circular Avatar */}
-                    {rankNumber <= 3 ? (
-                      <RankAvatar
-                        rank={rankNumber}
-                        user={item}
-                        size={50}
-                        style={{ marginHorizontal: 12 }}
-                      />
-                    ) : (
+                  <View style={styles.overlappingStack}>
+                    {previewAvatars.map((item, idx) => (
                       <Image
+                        key={String(item.id || item._id || item.userId || idx)}
                         source={getUserAvatar(item)}
-                        style={styles.memberRowAvatar}
+                        style={[
+                          styles.previewMemberAvatar,
+                          {
+                            marginLeft: idx === 0 ? 0 : -10,
+                            zIndex: 10 - idx,
+                          },
+                        ]}
                       />
-                    )}
-
-                    {/* Member Details */}
-                    <View style={styles.memberInfoCol}>
-                      {/* Name & Badges Row */}
-                      <View style={styles.memberNameRow}>
-                        <Text style={styles.shieldBadgeIcon}>{item.badge || '🛡️'}</Text>
-                        <Text style={styles.memberNameText} numberOfLines={1}>
-                          {item.name}
-                        </Text>
-
-                        {/* Owner Badge on Rank 1 */}
-                        {item.isOwner && (
-                          <LinearGradient
-                            colors={['#FF6B6B', '#FA5252']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.ownerBadgePill}
-                          >
-                            <Text style={styles.ownerBadgeText}>Owner</Text>
-                          </LinearGradient>
-                        )}
-                      </View>
-
-                      {/* Contributed Exp Subtitle */}
-                      <Text style={styles.contributedExpText}>
-                        Contributed {item.exp ? item.exp.toLocaleString() : '0'} Exp
-                      </Text>
-                    </View>
+                    ))}
                   </View>
-                );
-              }}
-            />
-          </View>
-        )}
-      </View>
-    </Modal>
+                  <MaterialCommunityIcons name="chevron-right" size={22} color="#CBD5E1" style={styles.chevronIcon} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Divider */}
+              <View style={styles.horizontalDivider} />
+
+              {/* Title: Member Privilege */}
+              <Text style={styles.memberPrivilegeHeading}>Member Privilege</Text>
+
+              {/* Card 1: Own Member Logo (Coral / Pink Gradient with Medal Badge) */}
+              <LinearGradient
+                colors={['#FB7185', '#FED7AA']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.privilegeCard}
+              >
+                <Text style={styles.privilegeCardTitle}>Own Member Logo</Text>
+                <View style={styles.privilegeRightGraphic}>
+                  <View style={styles.pedestalBlockPink}>
+                    <View style={styles.goldenMedalCircle}>
+                      <MaterialCommunityIcons name="heart" size={16} color="#FFFFFF" />
+                    </View>
+                    <MaterialCommunityIcons name="medal" size={40} color="#F59E0B" style={styles.medalWingGraphic} />
+                  </View>
+                </View>
+              </LinearGradient>
+
+              {/* Card 2: Take mic freely (Purple / Magenta Gradient with Golden Mic on Pedestal) */}
+              <LinearGradient
+                colors={['#A855F7', '#E9D5FF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.privilegeCard}
+              >
+                <Text style={styles.privilegeCardTitle}>Take mic freely</Text>
+                <View style={styles.privilegeRightGraphic}>
+                  <View style={styles.pedestalBlockPurple}>
+                    <MaterialCommunityIcons name="microphone-variant" size={38} color="#FBBF24" />
+                  </View>
+                </View>
+              </LinearGradient>
+
+              {/* Card 3: Have more followers (Blue / Cyan Gradient with Follower Hearts) */}
+              <LinearGradient
+                colors={['#3B82F6', '#BFDBFE']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.privilegeCard}
+              >
+                <Text style={styles.privilegeCardTitle}>Have more followers</Text>
+                <View style={styles.privilegeRightGraphic}>
+                  <View style={styles.pedestalBlockBlue}>
+                    <MaterialCommunityIcons name="account-group" size={36} color="#EC4899" />
+                    <MaterialCommunityIcons name="heart" size={16} color="#FFFFFF" style={styles.heartSmallBadge} />
+                  </View>
+                </View>
+              </LinearGradient>
+
+              {/* BOTTOM ACTION BUTTON:
+                  - If not joined: Full-width Golden Yellow Join Button (99 💎 / month)
+                  - If already joined: "Joined ✓" Status Pill (never shows Join button again) */}
+              {!isRoomOwner && !isJoined ? (
+                <TouchableOpacity
+                  style={styles.joinBtnTouch}
+                  activeOpacity={0.88}
+                  disabled={joining}
+                  onPress={handleJoinPress}
+                >
+                  <LinearGradient
+                    colors={['#FFB800', '#F59E0B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.joinBtnGradient}
+                  >
+                    {joining ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.joinBtnText}>Join (99 💎)</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.joinedStatusBadgeWrap}>
+                  <LinearGradient
+                    colors={['#10B981', '#059669']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.joinedStatusGradient}
+                  >
+                    <MaterialCommunityIcons name="check-decagram" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.joinedStatusText}>
+                      {isRoomOwner ? 'Club Host (Owner)' : 'Club Member Active'}
+                    </Text>
+                  </LinearGradient>
+                </View>
+              )}
+            </View>
+          ) : (
+            /* ============================================================== */
+            /* VIEW 2: GROUP MEMBERS RANKING LIST (NO LUXURY RANK FRAMES)      */
+            /* ============================================================== */
+            <View style={[styles.membersFullSheet, { paddingBottom: Math.max(bottomSafePadding, 16) }]}>
+              {/* Top Bar: Back Chevron, Title, Help/Options */}
+              <View style={styles.membersTopBar}>
+                <TouchableOpacity
+                  style={styles.backBtnTouch}
+                  activeOpacity={0.7}
+                  onPress={() => setView('privilege')}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Icon name="chevron-back" size={26} color="#1E293B" />
+                </TouchableOpacity>
+
+                <Text style={styles.membersTopTitle}>
+                  Fan Club Members<Text style={styles.membersTopTitleCount}> ({displayCount} members)</Text>
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.dotsBtnTouch}
+                  activeOpacity={0.7}
+                  onPress={handleHelpPress}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <MaterialCommunityIcons name="help-circle-outline" size={24} color="#F59E0B" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Ranked Member List with Real EXP (NO FRAMES on avatars) */}
+              {loadingMembers ? (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <ActivityIndicator size="large" color="#F59E0B" />
+                </View>
+              ) : (
+                <FlatList
+                  data={rankingList}
+                  keyExtractor={(item) => String(item.id || item._id || item.userId)}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.membersListContent}
+                  renderItem={({ item, index }) => {
+                    const rankNumber = index + 1;
+                    const memberExp = Number(item.exp || 0);
+
+                    return (
+                      <View style={styles.memberRowItem}>
+                        {/* Rank Number */}
+                        <Text style={styles.rankNumberText}>{rankNumber}</Text>
+
+                        {/* Clean Circular Avatar (STRICTLY NO RANK FRAMES) */}
+                        <View style={styles.avatarNoFrameWrap}>
+                          <Image
+                            source={getUserAvatar(item)}
+                            style={styles.memberRowAvatar}
+                          />
+                        </View>
+
+                        {/* Member Details */}
+                        <View style={styles.memberInfoCol}>
+                          {/* Name & Badge Row */}
+                          <View style={styles.memberNameRow}>
+                            {/* Dynamic Fan Club Medal Badge based on Real EXP */}
+                            <FanClubBadge exp={memberExp} size={24} style={{ marginRight: 6 }} />
+
+                            <Text style={styles.memberNameText} numberOfLines={1}>
+                              {item.name}
+                            </Text>
+
+                            {/* Owner Badge */}
+                            {item.isOwner && (
+                              <LinearGradient
+                                colors={['#FF6B6B', '#FA5252']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.ownerBadgePill}
+                              >
+                                <Text style={styles.ownerBadgeText}>Owner</Text>
+                              </LinearGradient>
+                            )}
+                          </View>
+
+                          {/* Contributed Real Exp (earned from sending and stay) */}
+                          <Text style={styles.contributedExpText}>
+                            Contributed {memberExp ? memberExp.toLocaleString() : '0'} Exp
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  }}
+                />
+              )}
+            </View>
+          )}
+        </View>
+      </Modal>
+
+      {/* Fan Club Introduction Modal (Matching exact user screenshot) */}
+      <FanClubIntroModal
+        visible={showIntroModal}
+        onClose={() => setShowIntroModal(false)}
+      />
+    </>
   );
 }
 
@@ -452,22 +504,21 @@ const styles = StyleSheet.create({
   overlappingAvatarsTouch: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 8,
   },
   overlappingStack: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   previewMemberAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
     backgroundColor: '#E2E8F0',
   },
   chevronIcon: {
-    marginLeft: 4,
+    marginLeft: 2,
   },
   horizontalDivider: {
     height: 1,
@@ -475,118 +526,127 @@ const styles = StyleSheet.create({
     marginVertical: 14,
   },
   memberPrivilegeHeading: {
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 15,
+    fontWeight: '800',
     color: '#0F172A',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   privilegeCard: {
-    height: 82,
-    borderRadius: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: 20,
-    paddingRight: 16,
-    marginBottom: 14,
-    overflow: 'hidden',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 10,
+    height: 64,
   },
   privilegeCardTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
+    color: '#1E293B',
+    maxWidth: '60%',
   },
   privilegeRightGraphic: {
-    width: 90,
-    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pedestalBlockPink: {
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
-  pedestalBlockPink: {
-    width: 60,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   goldenMedalCircle: {
-    position: 'absolute',
-    top: 14,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#EF4444',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#EC4899',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FDE047',
     zIndex: 2,
   },
   medalWingGraphic: {
-    shadowColor: '#F59E0B',
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    position: 'absolute',
+    top: 4,
+    opacity: 0.9,
   },
   pedestalBlockPurple: {
-    width: 60,
-    height: 60,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pedestalBlockBlue: {
-    width: 60,
-    height: 60,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   heartSmallBadge: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
+    top: 2,
+    right: 2,
+    backgroundColor: '#EC4899',
+    borderRadius: 8,
+    padding: 1,
   },
   joinBtnTouch: {
-    width: '100%',
-    marginTop: 10,
-    marginBottom: 6,
-    borderRadius: 16,
+    marginTop: 14,
+    borderRadius: 25,
     overflow: 'hidden',
     shadowColor: '#F59E0B',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 8,
   },
   joinBtnGradient: {
-    paddingVertical: 15,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   joinBtnText: {
-    fontSize: 17,
-    fontWeight: '900',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
+  joinedStatusBadgeWrap: {
+    marginTop: 14,
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  joinedStatusGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  joinedStatusText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
 
-  // VIEW 2: GROUP MEMBERS RANKING LIST STYLES
+  // View 2: Group Members Full Sheet
   membersFullSheet: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    height: '90%',
+    height: '75%',
     paddingTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 14,
-    elevation: 24,
   },
   membersTopBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
@@ -594,14 +654,14 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   membersTopTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     color: '#0F172A',
   },
   membersTopTitleCount: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
     color: '#94A3B8',
+    fontWeight: '600',
   },
   dotsBtnTouch: {
     padding: 4,
@@ -614,22 +674,24 @@ const styles = StyleSheet.create({
   memberRowItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F8FAFC',
   },
   rankNumberText: {
-    width: 32,
-    fontSize: 16,
+    width: 24,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#475569',
+    color: '#64748B',
     textAlign: 'center',
   },
+  avatarNoFrameWrap: {
+    marginHorizontal: 10,
+  },
   memberRowAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginHorizontal: 12,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: '#E2E8F0',
   },
   memberInfoCol: {
@@ -639,31 +701,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  shieldBadgeIcon: {
-    fontSize: 14,
-    marginRight: 4,
-  },
   memberNameText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#1E293B',
-    maxWidth: '65%',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    flexShrink: 1,
+    marginRight: 6,
   },
   ownerBadgePill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 1.5,
+    borderRadius: 10,
   },
   ownerBadgeText: {
-    fontSize: 10.5,
-    fontWeight: '800',
     color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '800',
   },
   contributedExpText: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#94A3B8',
-    marginTop: 4,
-    fontWeight: '500',
+    marginTop: 3,
+    fontWeight: '600',
   },
 });

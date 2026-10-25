@@ -162,7 +162,7 @@ export default function RoomUserProfileModal({
   const uniqueId = displayData.equippedCustomId || displayData.uniqueId || displayData.customId || null;
   const hasUniqueId = Boolean(uniqueId && String(uniqueId).trim());
   const displayId = displayData.displayId || displayData.customDisplayId || targetUserId || '—';
-  const uniqueIdBadgeUrl =
+  const rawUniqueBadgeUrl =
     displayData.uniqueIdBadge?.badgeIconUrl ||
     displayData.uniqueIdBadge?.badgeUrl ||
     displayData.badgeIconUrl ||
@@ -171,6 +171,8 @@ export default function RoomUserProfileModal({
     resolvedProfile?.badgeIconUrl ||
     user?.uniqueIdBadge?.badgeIconUrl ||
     null;
+  const uniqueIdBadgeUrl =
+    rawUniqueBadgeUrl && !/frame/i.test(String(rawUniqueBadgeUrl)) ? rawUniqueBadgeUrl : null;
   const uniqueIdBadgeText =
     displayData.uniqueIdBadge?.badgeName ||
     resolvedProfile?.uniqueIdBadge?.badgeName ||
@@ -227,11 +229,7 @@ export default function RoomUserProfileModal({
               </TouchableOpacity>
             )}
 
-            <ScrollView
-              style={styles.profileContentScroll}
-              contentContainerStyle={styles.profileContentContainer}
-              showsVerticalScrollIndicator={false}
-            >
+            <View style={styles.profileContentContainer}>
               {/* Spacer so content starts cleanly below the floating avatar */}
               <View style={styles.avatarFloatingSpacer} />
 
@@ -322,11 +320,7 @@ export default function RoomUserProfileModal({
             {/* 4. Prestigious Medals Row (Screenshot 2: only for another user when regular guest) */}
             {!isSelf && !canModerate && (
               <View style={styles.medalsShelfContainer}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.medalsScroll}
-                >
+                <View style={styles.medalsScroll}>
                   {PRESTIGE_MEDALS.map((medal) => (
                     <View key={medal.id} style={styles.medalItemWrap}>
                       <LinearGradient
@@ -343,7 +337,7 @@ export default function RoomUserProfileModal({
                       </LinearGradient>
                     </View>
                   ))}
-                </ScrollView>
+                </View>
               </View>
             )}
 
@@ -717,8 +711,8 @@ export default function RoomUserProfileModal({
                 </View>
               </>
             )}
-          </ScrollView>
           </View>
+        </View>
 
           {/* Floating Avatar centered on card's top edge (50% outside above card, 50% inside) matching media_1792863692214.png */}
           <View style={styles.floatingAvatarWrap} pointerEvents="box-none">
@@ -802,6 +796,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   profileContentContainer: {
+    width: '100%',
     alignItems: 'center',
     paddingBottom: 10,
   },

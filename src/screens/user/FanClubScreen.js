@@ -62,18 +62,18 @@ const FAN_PERKS = [
 ];
 
 const INTIMACY_WAYS = [
-  { action: 'Daily Sign-in to Room', points: '+10 Intimacy', icon: 'login' },
-  { action: 'Send 10 Diamonds of Gifts', points: '+10 Intimacy', icon: 'card-giftcard' },
-  { action: 'Chat 10 Messages in Room', points: '+5 Intimacy', icon: 'chat-bubble-outline' },
-  { action: 'Stay on Seat for 10 Mins', points: '+15 Intimacy', icon: 'mic-none' },
+  { action: 'Send 1 Diamond in Room', points: '+1 Exp', icon: 'card-giftcard' },
+  { action: 'Stay in Room for 1 Min', points: '+10 Exp', icon: 'time-outline' },
+  { action: 'Daily Sign-in to Room', points: '+100 Exp', icon: 'login' },
+  { action: 'Stay on Seat for 10 Mins', points: '+150 Exp', icon: 'mic-none' },
 ];
 
 const FAN_TIERS = [
-  { tier: 1, name: 'Iron Fan', xp: '0 - 500 XP', badgeColor: '#94A3B8' },
-  { tier: 2, name: 'Bronze Fan', xp: '500 - 1,500 XP', badgeColor: '#CD7F32' },
-  { tier: 3, name: 'Silver Fan', xp: '1,500 - 3,500 XP', badgeColor: '#CBD5E1' },
-  { tier: 4, name: 'Gold Fan', xp: '3,500 - 8,000 XP', badgeColor: '#F59E0B' },
-  { tier: 5, name: 'Diamond Fan', xp: '8,000+ XP', badgeColor: '#38BDF8' },
+  { tier: 'Bronze (I-III)', name: 'Bronze Fan', xp: '0 ~ 40,000 Exp', badgeColor: '#CD7F32' },
+  { tier: 'Silver (I-III)', name: 'Silver Fan', xp: '40,000 ~ 170,000 Exp', badgeColor: '#94A3B8' },
+  { tier: 'Gold (I-III)', name: 'Gold Fan', xp: '170,000 ~ 500,000 Exp', badgeColor: '#F59E0B' },
+  { tier: 'Platinum (I-III)', name: 'Platinum Fan', xp: '500,000 ~ 1,500,000 Exp', badgeColor: '#6366F1' },
+  { tier: 'Diamond (I-III)', name: 'Diamond Fan', xp: '1,500,000 ~ 2CR+ Exp', badgeColor: '#EC4899' },
 ];
 
 const FanClubScreen = () => {

@@ -1531,8 +1531,6 @@ export const VoiceRoomProvider = ({ children }) => {
           if (!isCurrentRoomEvent(data)) return;
           const userKeys = [data?.user?.userId, data?.userId, data?.user?.id, data?.user?._id]
             .filter(Boolean).map(String);
-          if (hasRoomMemberSnapshotRef.current && userKeys.length &&
-              !userKeys.some(id => roomMemberIdsRef.current.has(id))) return;
           if (!rememberEntryEvent(data)) return;
           console.warn(`📡 [VoiceRoom] ${eventName} received in Context:`, data?.entryId, data?.user?.name);
           if (data?.user) {
@@ -1571,24 +1569,14 @@ export const VoiceRoomProvider = ({ children }) => {
             acceptEntryEffect(data, 'room:vip-entry');
             return;
           }
-          const entryUserIds = [data?.user?.userId, data?.userId, data?.user?.id, data?.user?._id]
-            .filter(Boolean).map(String);
-          if (hasRoomMemberSnapshotRef.current && entryUserIds.length &&
-              !entryUserIds.some((id) => roomMemberIdsRef.current.has(id))) return;
           if (!rememberEntryEvent(data)) return;
-          // Membership alone does not create a room entrance.
         });
         sock.on('vip:entry', (data) => {
           if (data?.effect || data?.entry || data?.entrance) {
             acceptEntryEffect(data, 'vip:entry');
             return;
           }
-          const entryUserIds = [data?.user?.userId, data?.userId, data?.user?.id, data?.user?._id]
-            .filter(Boolean).map(String);
-          if (hasRoomMemberSnapshotRef.current && entryUserIds.length &&
-              !entryUserIds.some((id) => roomMemberIdsRef.current.has(id))) return;
           if (!rememberEntryEvent(data)) return;
-          // Legacy VIP-only announcements are intentionally ignored.
         });
 
         // Join room on server

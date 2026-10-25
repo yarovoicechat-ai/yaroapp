@@ -91,7 +91,7 @@ export default function IdentityDisplayId({
 
   const animatedIdColor = idColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#111827', '#D4AF37'],
+    outputRange: ['#FFD700', '#FDE047'],
   });
 
   const handleCopy = () => {
@@ -119,17 +119,16 @@ export default function IdentityDisplayId({
           <MaterialCommunityIcons
             name="crown"
             size={Math.max(18, fontSize + 4)}
-            color="#D4AF37"
+            color="#FFD700"
             style={styles.vipIconWrap}
           />
         ) : null}
 
-        {/* When SVGA badge is shown, do NOT render plain ID text after it */}
-        {!hasSvgaBadge && (
+        {Boolean(effectiveId) && (
           <Animated.Text
             style={[
               styles.vipIdText,
-              { fontSize: Math.max(14, fontSize + 2), color: animatedIdColor },
+              { fontSize: Math.max(13, fontSize + 1), color: animatedIdColor },
             ]}
             numberOfLines={1}
           >
@@ -144,7 +143,7 @@ export default function IdentityDisplayId({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={styles.copyButton}
           >
-            <Icon name="copy-outline" size={Math.max(15, fontSize + 2)} color="#F59E0B" />
+            <Icon name="copy-outline" size={Math.max(15, fontSize + 2)} color="#FFD700" />
           </TouchableOpacity>
         )}
       </View>
@@ -154,7 +153,7 @@ export default function IdentityDisplayId({
   // 2. Standard ID Presentation (when user has regular numeric ID)
   return (
     <View style={[styles.container, style]}>
-      {showPrefix && !hasSvgaBadge && (
+      {showPrefix && (
         <Text style={[styles.prefixText, { fontSize }]}>{prefix}</Text>
       )}
 
@@ -169,7 +168,7 @@ export default function IdentityDisplayId({
             </TouchableOpacity>
           ) : (
             <LinearGradient
-              colors={['#64748B', '#475569']}
+              colors={['#CA8A04', '#A16207']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.regularSealCircle}
@@ -180,8 +179,7 @@ export default function IdentityDisplayId({
         </View>
       )}
 
-      {/* When SVGA badge is shown, do NOT render plain ID text after it */}
-      {!hasSvgaBadge && (
+      {Boolean(effectiveId) && (
         <Text
           style={[
             styles.regularIdText,
@@ -200,7 +198,7 @@ export default function IdentityDisplayId({
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={styles.copyButton}
         >
-          <Icon name="copy-outline" size={Math.max(15, fontSize + 2)} color="#94A3B8" />
+          <Icon name="copy-outline" size={Math.max(15, fontSize + 2)} color="#FFD700" />
         </TouchableOpacity>
       )}
     </View>

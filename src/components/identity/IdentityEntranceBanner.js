@@ -185,8 +185,11 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   enteredText: {
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontSize: 10,
-    fontWeight: '600',
+    color: '#FEF08A',
+    fontSize: 10.5,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

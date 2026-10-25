@@ -16,10 +16,11 @@ export default function IdentityDisplayName({
   const expiresAt = config.expiresAt ? new Date(config.expiresAt).getTime() : null;
   const styled = config.enabled !== false && (!expiresAt || expiresAt > clock) && Boolean(supplied?.length || vipTier?.nameColor);
   const speed = Math.max(0.25, Math.min(3, Number(config.speed || config.animationSpeed) || 1));
-  const base = supplied?.[0] || vipTier?.nameColor || '#E6B94F';
+  const rawBase = supplied?.[0] || vipTier?.nameColor || '#FFD700';
+  const base = /^#?(000|111|222|000000|111827|0f172a|black)/i.test(String(rawBase).trim()) ? '#FFD700' : rawBase;
   const palette = config.animationColors?.length >= 2 ? config.animationColors
     : supplied?.length >= 4 ? supplied
-    : ['#FF667D', '#FFAC4D', '#FFE66D', '#74E89A', '#5CDFF3', '#9AA7FF', '#EA8CFF'];
+    : ['#FFD700', '#FDE047', '#FEF08A', '#F59E0B', '#FBBF24', '#FFE66D', '#FFD700'];
   const text = String(name || '').trim();
   const prefix = config.prefixBadge || (isOfficial ? '\u{1F451}' : '');
   const fullName = prefix ? prefix + ' ' + text : text;
@@ -56,10 +57,10 @@ export default function IdentityDisplayName({
     if (config.animationType === 'shimmer') {
       const start = 0.05 + (index / Math.max(1, count)) * 0.65;
       return sweep.interpolate({ inputRange: [0, start, start + 0.10, start + 0.22, 1],
-        outputRange: [base, base, palette[1], base, base], extrapolate: 'clamp' });
+        outputRange: [base, base, palette[1] || '#FFF', base, base], extrapolate: 'clamp' });
     }
     if (config.animationType === 'glow_pulse') {
-      return sweep.interpolate({ inputRange: [0, 0.5, 1], outputRange: [palette[0], palette[1], palette[0]] });
+      return sweep.interpolate({ inputRange: [0, 0.5, 1], outputRange: [palette[0] || base, palette[1] || '#FFF', palette[0] || base] });
     }
     const offset = Math.floor(index / Math.max(1, count) * palette.length);
     const rotated = palette.map((_, step) => palette[(step + offset) % palette.length]);
@@ -70,8 +71,15 @@ export default function IdentityDisplayName({
     });
   };
   const textStyle = [
-    { fontSize, fontWeight, color: '#FFFFFF' }, style,
-    { textShadowColor: 'transparent', textShadowRadius: 0 },
+    {
+      fontSize,
+      fontWeight,
+      color: '#FFD700',
+      textShadowColor: 'rgba(0, 0, 0, 0.9)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2.5,
+    },
+    style,
     styled && { color: base },
   ];
   // Compact rooms use one animated text run instead of one per letter.

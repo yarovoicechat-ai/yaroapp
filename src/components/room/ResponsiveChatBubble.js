@@ -919,9 +919,12 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   normalSenderName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FDE68A',
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#FFD700',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2.5,
   },
   normalLevelPill: {
     backgroundColor: '#3B82F6',

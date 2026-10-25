@@ -453,7 +453,7 @@ export default function MeScreen() {
                 <IdentityDisplayId
                   userId={user?.userId || user?._id?.slice(-8)}
                   officialDisplayId={displayId}
-                  customDisplayId={user?.customDisplayId || identity.customDisplayId}
+                  customDisplayId={user?.customDisplayId || user?.equippedCustomId || user?.uniqueId || identity.customDisplayId}
                   isOfficial={isOfficialId}
                   badgeUrl={idBadgeUrl}
                   badgeText={user?.uniqueIdBadge?.badgeName || identity.uniqueIdBadge?.badgeName || 'VIP'}
@@ -461,7 +461,7 @@ export default function MeScreen() {
                   showPrefix={true}
                   showCopy={true}
                   fontSize={12}
-                  textColor="#64748B"
+                  textColor="#FEF08A"
                 />
               </TouchableOpacity>
 

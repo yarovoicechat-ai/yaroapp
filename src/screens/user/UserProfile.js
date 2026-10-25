@@ -121,8 +121,8 @@ export default function UserProfileScreen() {
     return {
       _id: raw._id || raw.id || raw.userId || fallbackId,
       userId: raw.userId || raw.id || fallbackId,
-      displayId: raw.displayId || identity.displayId || raw.customDisplayId || raw.meethiId || raw.uniqueId || raw.userId || fallbackId || '—',
-      customDisplayId: raw.customDisplayId || identity.customDisplayId || null,
+      displayId: raw.customDisplayId || raw.equippedCustomId || raw.uniqueId || raw.displayId || identity.displayId || raw.meethiId || raw.userId || fallbackId || '—',
+      customDisplayId: raw.customDisplayId || identity.customDisplayId || raw.equippedCustomId || raw.uniqueId || null,
       officialDisplayId: raw.officialDisplayId || (raw.isOfficial ? raw.displayId : null) || null,
       isOfficial: Boolean(raw.isOfficial || identity.isOfficial),
       badgeUrl: officialBadge.badgeUrl || uniqueIdBadge.badgeIconUrl || raw.officialBadgeUrl || raw.badgeUrl || null,

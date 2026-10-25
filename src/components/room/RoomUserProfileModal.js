@@ -171,9 +171,20 @@ export default function RoomUserProfileModal({
     ? displayData.badges
     : [];
 
-  const uniqueId = displayData.equippedCustomId || displayData.uniqueId || displayData.customId || null;
+  const uniqueId =
+    displayData.customDisplayId ||
+    displayData.equippedCustomId ||
+    displayData.uniqueId ||
+    displayData.customId ||
+    resolvedProfile?.customDisplayId ||
+    resolvedProfile?.equippedCustomId ||
+    resolvedProfile?.uniqueId ||
+    user?.customDisplayId ||
+    user?.equippedCustomId ||
+    user?.uniqueId ||
+    null;
   const hasUniqueId = Boolean(uniqueId && String(uniqueId).trim());
-  const displayId = displayData.displayId || displayData.customDisplayId || targetUserId || '—';
+  const displayId = uniqueId || displayData.displayId || displayData.customDisplayId || targetUserId || '—';
   const rawUniqueBadgeUrl =
     displayData.uniqueIdBadge?.badgeIconUrl ||
     displayData.uniqueIdBadge?.badgeUrl ||

@@ -11,6 +11,7 @@ import {
   PanResponder,
   BackHandler,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -406,7 +407,7 @@ export default function GiftPanel({
               }}
               activeOpacity={0.8}
             >
-              <Text style={styles.diamondEmoji}>💎</Text>
+              <Image source={require('../../assets/icons/diamond.png')} style={{ width: 16, height: 16, marginRight: 5 }} resizeMode="contain" />
               <Text style={styles.balanceNum}>
                 {formatCompactBalance(activeBalance)}
               </Text>

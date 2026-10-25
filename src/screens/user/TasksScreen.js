@@ -72,7 +72,7 @@ const TasksScreen = () => {
         {/* Currency balances in header */}
         <View style={styles.headerCurrencies}>
           <View style={styles.currencyPill}>
-            <MaterialCommunityIcons name="diamond-stone" size={14} color="#0284C7" />
+            <Image source={require('../../assets/icons/diamond.png')} style={{ width: 14, height: 14, resizeMode: 'contain', marginRight: 3 }} />
             <Text style={styles.currencyText}>{user?.diamonds ?? 0}</Text>
           </View>
           <View style={[styles.currencyPill, styles.beansPill]}>

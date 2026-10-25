@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -207,7 +208,7 @@ export default function GiftCard({ gift, isSelected = false, onSelect }) {
 
           {/* Price with Glowing Diamond */}
           <View style={[styles.priceRow, isSelectedBool && styles.priceRowSelected]}>
-            <Text style={styles.diamondEmoji}>💎</Text>
+            <Image source={require('../../assets/icons/diamond.png')} style={{ width: 12, height: 12, marginRight: 2 }} resizeMode="contain" />
             <Text style={[styles.priceText, isSelectedBool && styles.priceTextSelected]}>
               {formatCompactBalance(price)}
             </Text>

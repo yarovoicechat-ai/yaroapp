@@ -633,11 +633,10 @@ export default function MeScreen() {
             activeOpacity={0.88}
             onPress={() => navigation.navigate('Wallet')}
           >
-            <MaterialCommunityIcons
-              name="diamond-stone"
-              size={28}
-              color="#0284C7"
-              style={{ marginRight: 8 }}
+            <Image
+              source={require('../../assets/icons/diamond.png')}
+              style={{ width: 28, height: 28, marginRight: 8 }}
+              resizeMode="contain"
             />
             <View style={{ flex: 1 }}>
               <Text style={styles.cardMainValue}>

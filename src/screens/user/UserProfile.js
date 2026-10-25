@@ -94,47 +94,64 @@ export default function UserProfileScreen() {
     const uniqueIdBadge = raw.uniqueIdBadge || identity.uniqueIdBadge || {};
     const country = typeof raw.country === 'object' ? raw.country : {};
 
-    const rawCurrentRoom = raw.currentRoomId || raw.roomId || (raw.isInRoom ? (raw.currentRoomId || '1000000001') : null);
+    const rawCurrentRoom = (raw.isInRoom && raw.currentRoomId) ? raw.currentRoomId : null;
+
+    let lastOnlineText = 'Offline';
+    if (raw.isOnline) {
+      lastOnlineText = 'Online now';
+    } else if (raw.lastOnline || raw.lastActiveAt) {
+      const diffMinutes = Math.floor((Date.now() - new Date(raw.lastOnline || raw.lastActiveAt).getTime()) / 60000);
+      if (diffMinutes < 1) lastOnlineText = 'Online just now';
+      else if (diffMinutes < 60) lastOnlineText = `Online ${diffMinutes}m ago`;
+      else if (diffMinutes < 1440) lastOnlineText = `Online ${Math.floor(diffMinutes / 60)}h ago`;
+      else lastOnlineText = `Online ${Math.floor(diffMinutes / 1440)}d ago`;
+    }
+
+    const cpPartner = (raw.cpPartner && (raw.cpPartner.name || raw.cpPartner.partnerName || raw.cpPartner._id)) ? raw.cpPartner : null;
+    const club = (raw.club && raw.club.name) ? raw.club : (raw.fanClub && raw.fanClub.name) ? raw.fanClub : null;
+
+    const realBadges = Array.isArray(raw.equippedBadges) && raw.equippedBadges.length > 0
+      ? raw.equippedBadges
+      : Array.isArray(raw.honors) && raw.honors.length > 0
+      ? raw.honors
+      : Array.isArray(raw.badges) && raw.badges.length > 0
+      ? raw.badges
+      : [];
 
     return {
       _id: raw._id || raw.id || raw.userId || fallbackId,
       userId: raw.userId || raw.id || fallbackId,
-      displayId: raw.displayId || identity.displayId || '600002',
+      displayId: raw.displayId || identity.displayId || raw.customDisplayId || raw.meethiId || raw.uniqueId || raw.userId || fallbackId || '—',
       customDisplayId: raw.customDisplayId || identity.customDisplayId || null,
       officialDisplayId: raw.officialDisplayId || (raw.isOfficial ? raw.displayId : null) || null,
       isOfficial: Boolean(raw.isOfficial || identity.isOfficial),
       badgeUrl: officialBadge.badgeUrl || uniqueIdBadge.badgeIconUrl || raw.officialBadgeUrl || raw.badgeUrl || null,
       uniqueIdBadge,
-      isProfileVerified: Boolean(raw.isProfileVerified ?? true),
+      isProfileVerified: Boolean(raw.isProfileVerified || raw.isVerified),
       verifiedTitle: raw.verifiedTitle || '',
-      name: raw.name || raw.hostName || raw.userName || 'PIHU',
+      name: raw.name || raw.hostName || raw.userName || 'User',
       avatar: raw.avatar || raw.coverImage || raw.image || null,
-      gender: raw.gender || 'female',
-      age: raw.age ?? 24,
-      countryFlag: country.flag || raw.countryFlag || '🇮🇳',
-      level: raw.level ?? 35,
-      wealthLevel: raw.wealthLevel ?? 35,
-      charmLevel: raw.charmLevel ?? 36,
-      vipLevel: Number(raw.vipLevel ?? identity.vipLevel ?? 3),
-      svipLevel: Number(raw.svipLevel ?? identity.svipLevel ?? 3),
-      isSvip: Boolean(raw.isSvip ?? true),
-      bio: raw.bio || raw.about || '^мy нusвαиd💫JAFAR💫... дои\'т тоuсн му iд\nকারণ আমি এক পুরুষে আসক্ত😌\n❥Dιdιγα - 🔥SIMI☠️\nBestie Piku🎀🧿👑💎🌍',
-      followersCount: raw.followersCount != null ? Number(raw.followersCount) : 987,
-      followingCount: raw.followingCount != null ? Number(raw.followingCount) : 1,
-      visitorsCount: raw.visitorsCount != null ? Number(raw.visitorsCount) : 7700,
-      cpPartner: raw.cpPartner?.name ? raw.cpPartner : {
-        name: 'JAFAR',
-        avatar: null,
-        days: 345,
-        cpLevel: 6,
-        svipLevel: 4,
-      },
-      club: raw.club || { name: 'JP CLUB', membersCount: 131, maxMembers: 200, isLive: true },
-      isOnline: Boolean(raw.isOnline ?? true),
-      lastOnlineText: 'Online 27 minutes ago',
+      gender: raw.gender || '',
+      age: raw.age ?? null,
+      countryFlag: country.flag || raw.countryFlag || '',
+      level: raw.level ?? 1,
+      wealthLevel: raw.wealthLevel ?? raw.level ?? 1,
+      charmLevel: raw.charmLevel ?? 1,
+      vipLevel: Number(raw.vipLevel ?? identity.vipLevel ?? 0),
+      svipLevel: Number(raw.svipLevel ?? identity.svipLevel ?? 0),
+      isSvip: Boolean(raw.isSvip || (raw.svipLevel && Number(raw.svipLevel) > 0)),
+      bio: raw.bio || raw.about || '',
+      followersCount: Number(raw.followersCount ?? (Array.isArray(raw.followers) ? raw.followers.length : 0)),
+      followingCount: Number(raw.followingCount ?? (Array.isArray(raw.following) ? raw.following.length : 0)),
+      visitorsCount: Number(raw.visitorsCount ?? 0),
+      cpPartner,
+      club,
+      badges: realBadges,
+      isOnline: Boolean(raw.isOnline),
+      lastOnlineText,
       currentRoomId: rawCurrentRoom,
-      currentRoomTitle: raw.currentRoomTitle || `${raw.name || 'PIHU'}'s Room`,
-      isInRoom: Boolean(raw.isInRoom || rawCurrentRoom),
+      currentRoomTitle: raw.currentRoomTitle || (rawCurrentRoom ? `${raw.name || 'User'}'s Room` : ''),
+      isInRoom: Boolean(rawCurrentRoom),
       isHost: Boolean(raw.isHost ?? (raw.role === 'host' || raw.callRate > 0)),
       callRate: raw.callRate || 20,
       videoCallRate: raw.videoCallRate || 35,
@@ -348,71 +365,98 @@ export default function UserProfileScreen() {
           style={styles.bgAmbience}
         />
 
-        {/* DUAL AVATAR CP COUPLE HEADER (Screenshot 3) */}
-        <View style={styles.heroDualAvatarsContainer}>
-          {/* Main User Avatar with Golden Eagle SVIP3 Frame */}
-          <View style={styles.avatarMainCol}>
+        {/* AVATAR HEADER: DUAL IF REAL CP PARTNER EXISTS, ELSE SINGLE HERO AVATAR */}
+        {targetUser.cpPartner ? (
+          <View style={styles.heroDualAvatarsContainer}>
+            {/* Main User Avatar */}
+            <View style={styles.avatarMainCol}>
+              <View style={styles.avatarEagleFrameWrap}>
+                <LinearGradient
+                  colors={['#FDE047', '#EAB308', '#B45309']}
+                  style={styles.avatarGoldBorder}
+                >
+                  <Image
+                    source={getUserAvatar(targetUser)}
+                    style={styles.mainAvatarImg}
+                  />
+                </LinearGradient>
+                {targetUser.svipLevel > 0 && (
+                  <LinearGradient
+                    colors={['#CA8A04', '#F59E0B', '#B45309']}
+                    style={styles.svipPlaque}
+                  >
+                    <Text style={styles.svipPlaqueText}>SVIP{targetUser.svipLevel}</Text>
+                  </LinearGradient>
+                )}
+              </View>
+            </View>
+
+            {/* Center CP Heart Badge */}
+            <View style={styles.cpCenterHeartBadge}>
+              <LinearGradient
+                colors={['#F43F5E', '#EC4899', '#DB2777']}
+                style={styles.cpHeartPill}
+              >
+                <Text style={styles.cpHeartText}>💖 LV.{targetUser.cpPartner.cpLevel || 1}</Text>
+              </LinearGradient>
+            </View>
+
+            {/* Right CP Partner Avatar */}
+            <View style={styles.avatarPartnerCol}>
+              <View style={styles.avatarCrownFrameWrap}>
+                <LinearGradient
+                  colors={['#A855F7', '#7C3AED', '#581C87']}
+                  style={styles.avatarPurpleBorder}
+                >
+                  <Image
+                    source={getUserAvatar(targetUser.cpPartner)}
+                    style={styles.partnerAvatarImg}
+                  />
+                </LinearGradient>
+                {targetUser.cpPartner.svipLevel > 0 && (
+                  <LinearGradient
+                    colors={['#7C3AED', '#A855F7', '#6D28D9']}
+                    style={styles.partnerSvipPlaque}
+                  >
+                    <Text style={styles.partnerSvipText}>SVIP{targetUser.cpPartner.svipLevel}</Text>
+                  </LinearGradient>
+                )}
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.heroSingleAvatarContainer}>
             <View style={styles.avatarEagleFrameWrap}>
               <LinearGradient
                 colors={['#FDE047', '#EAB308', '#B45309']}
-                style={styles.avatarGoldBorder}
+                style={styles.singleAvatarGoldBorder}
               >
                 <Image
                   source={getUserAvatar(targetUser)}
-                  style={styles.mainAvatarImg}
+                  style={styles.singleAvatarImg}
                 />
               </LinearGradient>
-              {/* SVIP Plaque */}
-              <LinearGradient
-                colors={['#CA8A04', '#F59E0B', '#B45309']}
-                style={styles.svipPlaque}
-              >
-                <Text style={styles.svipPlaqueText}>SVIP{targetUser.svipLevel || 3}</Text>
-              </LinearGradient>
+              {targetUser.svipLevel > 0 && (
+                <LinearGradient
+                  colors={['#CA8A04', '#F59E0B', '#B45309']}
+                  style={styles.singleSvipPlaque}
+                >
+                  <Text style={styles.svipPlaqueText}>SVIP{targetUser.svipLevel}</Text>
+                </LinearGradient>
+              )}
             </View>
           </View>
-
-          {/* Center CP Heart Badge (Lv.6 with pink wings) */}
-          <View style={styles.cpCenterHeartBadge}>
-            <LinearGradient
-              colors={['#F43F5E', '#EC4899', '#DB2777']}
-              style={styles.cpHeartPill}
-            >
-              <Text style={styles.cpHeartText}>💖 LV.{targetUser.cpPartner?.cpLevel || 6}</Text>
-            </LinearGradient>
-          </View>
-
-          {/* Right CP Partner Avatar with Royal Crown SVIP4 Frame */}
-          <View style={styles.avatarPartnerCol}>
-            <View style={styles.avatarCrownFrameWrap}>
-              <LinearGradient
-                colors={['#A855F7', '#7C3AED', '#581C87']}
-                style={styles.avatarPurpleBorder}
-              >
-                <Image
-                  source={getUserAvatar(targetUser.cpPartner)}
-                  style={styles.partnerAvatarImg}
-                />
-              </LinearGradient>
-              {/* Partner SVIP Plaque */}
-              <LinearGradient
-                colors={['#7C3AED', '#A855F7', '#6D28D9']}
-                style={styles.partnerSvipPlaque}
-              >
-                <Text style={styles.partnerSvipText}>SVIP{targetUser.cpPartner?.svipLevel || 4}</Text>
-              </LinearGradient>
-            </View>
-          </View>
-        </View>
+        )}
 
         {/* User Name */}
         <View style={styles.nameRow}>
-          <Text style={styles.nameSparkle}>💫</Text>
           <Text style={styles.userNameText}>{targetUser.name}</Text>
-          <Text style={styles.nameSparkle}>💫</Text>
+          {targetUser.isProfileVerified && (
+            <MaterialIcons name="verified" size={18} color="#38BDF8" style={{ marginLeft: 5 }} />
+          )}
         </View>
 
-        {/* ID & Online Status (Screenshot 3) */}
+        {/* ID & Online Status */}
         <View style={styles.idStatusRow}>
           <TouchableOpacity style={styles.idCopyPill} onPress={handleCopyId} activeOpacity={0.8}>
             <Text style={styles.idIcon}>🆔</Text>
@@ -422,12 +466,14 @@ export default function UserProfileScreen() {
           <Text style={styles.onlineStatusText}>{targetUser.lastOnlineText}</Text>
         </View>
 
-        {/* TAGS ROW (Screenshot 3) */}
+        {/* TAGS ROW */}
         <View style={styles.tagsRow}>
           {/* SVIP Tag */}
-          <LinearGradient colors={['#0D9488', '#115E59']} style={styles.tagPill}>
-            <Text style={styles.tagPillText}>🦅 SVIP{targetUser.svipLevel || 3}</Text>
-          </LinearGradient>
+          {targetUser.svipLevel > 0 && (
+            <LinearGradient colors={['#0D9488', '#115E59']} style={styles.tagPill}>
+              <Text style={styles.tagPillText}>🦅 SVIP{targetUser.svipLevel}</Text>
+            </LinearGradient>
+          )}
 
           {/* Wealth Tag */}
           <LinearGradient colors={['#0284C7', '#0369A1']} style={styles.tagPill}>
@@ -440,34 +486,48 @@ export default function UserProfileScreen() {
           </LinearGradient>
 
           {/* Gender/Age */}
-          <View style={styles.genderAgePill}>
-            <Text style={styles.genderIcon}>{targetUser.gender === 'female' ? '♀' : '♂'}</Text>
-            <Text style={styles.genderAgeText}>{targetUser.age}</Text>
-          </View>
+          {(targetUser.gender || targetUser.age) ? (
+            <View style={styles.genderAgePill}>
+              <Text style={styles.genderIcon}>{targetUser.gender === 'female' ? '♀' : '♂'}</Text>
+              {targetUser.age ? <Text style={styles.genderAgeText}>{targetUser.age}</Text> : null}
+            </View>
+          ) : null}
 
           {/* Country Flag */}
-          <View style={styles.flagPill}>
-            <Text style={{ fontSize: 13 }}>{targetUser.countryFlag}</Text>
-          </View>
+          {Boolean(targetUser.countryFlag) && (
+            <View style={styles.flagPill}>
+              <Text style={{ fontSize: 13 }}>{targetUser.countryFlag}</Text>
+            </View>
+          )}
         </View>
 
-        {/* PRESTIGE MEDALS SHELF (Screenshot 3) */}
-        <View style={styles.medalsShelfContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.medalsScroll}>
-            {PROFILE_MEDALS.map((medal) => (
-              <View key={medal.id} style={styles.medalCircleWrap}>
-                <LinearGradient
-                  colors={medal.colors}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.medalCircle}
-                >
-                  <MaterialCommunityIcons name={medal.icon} size={16} color="#FFFFFF" />
-                </LinearGradient>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
+        {/* PRESTIGE MEDALS SHELF (Only rendered if user has real badges) */}
+        {targetUser.badges && targetUser.badges.length > 0 && (
+          <View style={styles.medalsShelfContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.medalsScroll}>
+              {targetUser.badges.map((badge, idx) => {
+                const icon = badge.icon || badge.badgeIcon || badge.imageUrl;
+                const isUrl = typeof icon === 'string' && (icon.startsWith('http') || icon.startsWith('/'));
+                return (
+                  <View key={badge.id || badge._id || idx} style={styles.medalCircleWrap}>
+                    <LinearGradient
+                      colors={badge.colors || ['#F59E0B', '#D97706']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.medalCircle}
+                    >
+                      {isUrl ? (
+                        <Image source={{ uri: icon }} style={{ width: 18, height: 18 }} resizeMode="contain" />
+                      ) : (
+                        <MaterialCommunityIcons name={badge.icon || 'shield-check'} size={16} color="#FFFFFF" />
+                      )}
+                    </LinearGradient>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {/* FOLLOWERS / FOLLOWING / VISITORS STATS ROW (Screenshot 3) */}
         <View style={styles.statsRow}>
@@ -514,16 +574,18 @@ export default function UserProfileScreen() {
 
         {activeTab === 'Profile' ? (
           <View style={styles.tabBodyContent}>
-            {/* About Me Section (Screenshot 3) */}
+            {/* About Me Section */}
             <View style={styles.sectionWrap}>
               <Text style={styles.sectionTitle}>About Me</Text>
               <View style={styles.bioCard}>
                 <Text style={styles.bioLabel}>Bio</Text>
-                <Text style={styles.bioContent}>{targetUser.bio}</Text>
+                <Text style={[styles.bioContent, !targetUser.bio && { color: '#64748B', fontStyle: 'italic' }]}>
+                  {targetUser.bio || 'No bio added yet.'}
+                </Text>
               </View>
             </View>
 
-            {/* Club Section (Screenshot 3) */}
+            {/* Club Section */}
             {targetUser.club && (
               <View style={styles.sectionWrap}>
                 <Text style={styles.sectionTitle}>Club</Text>
@@ -545,7 +607,7 @@ export default function UserProfileScreen() {
                       <View>
                         <Text style={styles.clubNameText}>{targetUser.club.name}</Text>
                         <View style={styles.clubMiniPill}>
-                          <Text style={styles.clubMiniPillText}>🛡️ JP</Text>
+                          <Text style={styles.clubMiniPillText}>🛡️ {targetUser.club.name?.slice(0, 4) || 'CLUB'}</Text>
                         </View>
                       </View>
                     </View>
@@ -554,20 +616,22 @@ export default function UserProfileScreen() {
                       <View style={styles.clubMembersRow}>
                         <Icon name="people" size={14} color="#FFFFFF" />
                         <Text style={styles.clubMembersText}>
-                          {targetUser.club.membersCount}/{targetUser.club.maxMembers}
+                          {targetUser.club.membersCount || 1}/{targetUser.club.maxMembers || 200}
                         </Text>
                         <Icon name="chevron-forward" size={16} color="#FFFFFF" />
                       </View>
-                      <View style={styles.clubLiveBadge}>
-                        <Text style={styles.clubLiveBadgeText}>LIVE</Text>
-                      </View>
+                      {targetUser.club.isLive && (
+                        <View style={styles.clubLiveBadge}>
+                          <Text style={styles.clubLiveBadgeText}>LIVE</Text>
+                        </View>
+                      )}
                     </View>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
             )}
 
-            {/* CP Section (Romantic Roses Banner matching Screenshot 3) */}
+            {/* CP Section */}
             {targetUser.cpPartner && (
               <View style={styles.sectionWrap}>
                 <Text style={styles.sectionTitle}>CP</Text>
@@ -584,19 +648,19 @@ export default function UserProfileScreen() {
                         source={getUserAvatar(targetUser)}
                         style={styles.cpAvatar}
                       />
-                      <Text style={styles.cpName} numberOfLines={1}>💫{targetUser.name}💫</Text>
+                      <Text style={styles.cpName} numberOfLines={1}>{targetUser.name}</Text>
                     </View>
 
-                    {/* Center Ribbon: 345 Days + Lv.6 */}
+                    {/* Center Ribbon */}
                     <View style={styles.cpCenterCol}>
                       <View style={styles.cpDaysPill}>
-                        <Text style={styles.cpDaysText}>{targetUser.cpPartner.days || 345} Days</Text>
+                        <Text style={styles.cpDaysText}>{targetUser.cpPartner.days || 1} Days</Text>
                       </View>
                       <LinearGradient
                         colors={['#FDE047', '#EAB308']}
                         style={styles.cpLvBadge}
                       >
-                        <Text style={styles.cpLvText}>Lv.{targetUser.cpPartner.cpLevel || 6}</Text>
+                        <Text style={styles.cpLvText}>Lv.{targetUser.cpPartner.cpLevel || 1}</Text>
                       </LinearGradient>
                     </View>
 
@@ -606,7 +670,7 @@ export default function UserProfileScreen() {
                         source={getUserAvatar(targetUser.cpPartner)}
                         style={styles.cpAvatar}
                       />
-                      <Text style={styles.cpName} numberOfLines={1}>💫{targetUser.cpPartner.name}💫</Text>
+                      <Text style={styles.cpName} numberOfLines={1}>{targetUser.cpPartner.name}</Text>
                     </View>
                   </LinearGradient>
                 </View>
@@ -769,6 +833,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 18,
     gap: 12,
+  },
+  heroSingleAvatarContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+    marginBottom: 6,
+  },
+  singleAvatarGoldBorder: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    padding: 3,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  singleAvatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 45,
+  },
+  singleSvipPlaque: {
+    position: 'absolute',
+    bottom: -8,
+    paddingHorizontal: 12,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FEF08A',
   },
   avatarMainCol: {
     alignItems: 'center',

@@ -152,12 +152,24 @@ export default function RoomUserProfileModal({
 
   const displayData = resolvedProfile || user;
   const targetName = displayData.name || displayData.userName || 'User';
-  const targetGender = displayData.gender || 'female';
-  const targetAge = displayData.age || 24;
-  const wealthLevel = displayData.wealthLevel ?? displayData.level ?? 4;
+  const targetGender = displayData.gender || '';
+  const targetAge = displayData.age ?? null;
+  const wealthLevel = displayData.wealthLevel ?? displayData.level ?? 1;
+  const charmLevel = displayData.charmLevel ?? displayData.hostLevel ?? 1;
   const targetSvipLevel = Number(displayData.svipLevel ?? displayData.svip ?? (displayData.isSvip ? 1 : 0));
+  const targetVipLevel = Number(displayData.vipLevel ?? displayData.vip ?? 0);
+  const hasVip = Boolean(displayData.isVip || targetVipLevel > 0);
+  const agencyName = displayData.agencyName || displayData.agency?.name || displayData.agencyCode || null;
   const followersCount = currentFollowersCount || displayData.followersCount || 0;
   const userBio = displayData.bio || displayData.about || (isSelf ? 'Adding Information can gain more followers.' : '');
+
+  const targetBadges = Array.isArray(displayData.equippedBadges) && displayData.equippedBadges.length > 0
+    ? displayData.equippedBadges
+    : Array.isArray(displayData.honors) && displayData.honors.length > 0
+    ? displayData.honors
+    : Array.isArray(displayData.badges) && displayData.badges.length > 0
+    ? displayData.badges
+    : [];
 
   const uniqueId = displayData.equippedCustomId || displayData.uniqueId || displayData.customId || null;
   const hasUniqueId = Boolean(uniqueId && String(uniqueId).trim());
@@ -239,33 +251,33 @@ export default function RoomUserProfileModal({
                 {targetName}
               </Text>
 
-              {/* Gender Tag: Male is blue circle with ♂, Female is pink pill with ♀ age */}
+              {/* Gender Tag */}
               {targetGender === 'female' ? (
                 <View style={styles.genderFemalePill}>
-                  <Text style={styles.genderText}>♀ {targetAge}</Text>
+                  <Text style={styles.genderText}>♀ {targetAge || ''}</Text>
                 </View>
-              ) : (
+              ) : targetGender === 'male' ? (
                 <View style={styles.genderMaleCircle}>
-                  <Text style={styles.genderMaleIcon}>♂</Text>
+                  <Text style={styles.genderMaleIcon}>♂ {targetAge || ''}</Text>
                 </View>
-              )}
+              ) : null}
             </View>
 
-            {/* 3. Badges Row: Lv.4, Lv.0, VIP+, SYAMBABA, Admin/Owner */}
+            {/* 3. Badges Row: Wealth Level, Charm Level, VIP/SVIP, Agency, Admin/Owner */}
             <View style={styles.badgesRow}>
-              {/* Bronze Level Pill */}
+              {/* Wealth Level Pill */}
               <View style={styles.levelBronzePill}>
                 <MaterialCommunityIcons name="star-four-points" size={11} color="#FFF" style={{ marginRight: 2 }} />
                 <Text style={styles.levelText}>Lv.{wealthLevel}</Text>
               </View>
 
-              {/* Silver Star Level Pill */}
+              {/* Charm Level Pill */}
               <View style={styles.levelSilverPill}>
                 <MaterialCommunityIcons name="star" size={11} color="#CBD5E1" style={{ marginRight: 2 }} />
-                <Text style={styles.levelText}>Lv.0</Text>
+                <Text style={styles.levelText}>Lv.{charmLevel}</Text>
               </View>
 
-              {/* VIP+ / SVIP badge */}
+              {/* VIP / SVIP badge */}
               {targetSvipLevel > 0 ? (
                 targetSvipLevel === 3 ? (
                   <View style={styles.modalSvip3Wrap}>
@@ -291,16 +303,16 @@ export default function RoomUserProfileModal({
                     <Text style={styles.modalSvipGeneralText}>👑 SVIP {targetSvipLevel}</Text>
                   </LinearGradient>
                 )
-              ) : !isSelf ? (
+              ) : hasVip ? (
                 <View style={styles.vipPill}>
-                  <Text style={styles.vipText}>VIP+</Text>
+                  <Text style={styles.vipText}>{targetVipLevel > 0 ? `VIP ${targetVipLevel}` : 'VIP'}</Text>
                 </View>
               ) : null}
 
-              {/* Agency Tag if any */}
-              {!isSelf && (
+              {/* Agency Tag if user belongs to an agency */}
+              {Boolean(agencyName) && (
                 <View style={styles.agencyPill}>
-                  <Text style={styles.agencyText}>SYAMBABA</Text>
+                  <Text style={styles.agencyText}>{agencyName}</Text>
                 </View>
               )}
 
@@ -317,26 +329,30 @@ export default function RoomUserProfileModal({
               )}
             </View>
 
-            {/* 4. Prestigious Medals Row (Screenshot 2: only for another user when regular guest) */}
-            {!isSelf && !canModerate && (
+            {/* 4. Prestigious Medals Row (Only if user has actual badges/medals) */}
+            {!isSelf && !canModerate && targetBadges && targetBadges.length > 0 && (
               <View style={styles.medalsShelfContainer}>
                 <View style={styles.medalsScroll}>
-                  {PRESTIGE_MEDALS.map((medal) => (
-                    <View key={medal.id} style={styles.medalItemWrap}>
-                      <LinearGradient
-                        colors={medal.colors}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.medalCircle}
-                      >
-                        {medal.isCustomImage ? (
-                          <Image source={medal.image} style={styles.medalCustomImg} resizeMode="contain" />
-                        ) : (
-                          <MaterialCommunityIcons name={medal.icon} size={15} color="#FFFFFF" />
-                        )}
-                      </LinearGradient>
-                    </View>
-                  ))}
+                  {targetBadges.map((badge, idx) => {
+                    const icon = badge.icon || badge.badgeIcon || badge.imageUrl;
+                    const isUrl = typeof icon === 'string' && (icon.startsWith('http') || icon.startsWith('/'));
+                    return (
+                      <View key={badge.id || badge._id || idx} style={styles.medalItemWrap}>
+                        <LinearGradient
+                          colors={badge.colors || ['#F59E0B', '#D97706']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.medalCircle}
+                        >
+                          {isUrl ? (
+                            <Image source={{ uri: icon }} style={styles.medalCustomImg} resizeMode="contain" />
+                          ) : (
+                            <MaterialCommunityIcons name={badge.icon || 'shield-check'} size={15} color="#FFFFFF" />
+                          )}
+                        </LinearGradient>
+                      </View>
+                    );
+                  })}
                 </View>
               </View>
             )}

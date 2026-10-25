@@ -76,7 +76,7 @@ const TasksScreen = () => {
             <Text style={styles.currencyText}>{user?.diamonds ?? 0}</Text>
           </View>
           <View style={[styles.currencyPill, styles.beansPill]}>
-            <Text style={styles.beansEmoji}>🌰</Text>
+            <Image source={require('../../assets/icons/beans.png')} style={{ width: 14, height: 14, resizeMode: 'contain' }} />
             <Text style={[styles.currencyText, { color: '#047857' }]}>{user?.coins ?? 0}</Text>
           </View>
         </View>

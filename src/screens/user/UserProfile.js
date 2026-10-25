@@ -23,6 +23,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { AuthContext } from '../../context/AuthProvider';
 import { AlertService } from '../../utils/AlertService';
 import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
+import SvgaView from '../../components/SvgaView';
 import { apiUtil } from '../../utils/apiUtil';
 import { formatCompactBalance } from '../../utils/numberUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
@@ -488,17 +489,33 @@ export default function UserProfileScreen() {
             </LinearGradient>
           )}
 
-          {/* Equipped Custom Tag */}
-          {Boolean(targetUser.equippedTag) && (
-            <LinearGradient
-              colors={[targetUser.equippedTagAsset?.previewColor || '#D97706', '#78350F']}
-              style={styles.tagPill}
-            >
-              <Text style={styles.tagPillText}>
-                {targetUser.equippedTagAsset?.metadata?.tagText || targetUser.equippedTag}
-              </Text>
-            </LinearGradient>
-          )}
+          {/* Equipped Custom Tag (Animation File / Theme Asset .svga, .gif, .webp, .png, or Text Pill) */}
+          {(() => {
+            const tagMedia = targetUser.equippedTagAsset?.animationUrl || targetUser.equippedTagAsset?.imageUrl || null;
+            const isTagSvga = Boolean(tagMedia && /\.svga(?:[?#]|$)/i.test(tagMedia));
+            const tagName = targetUser.equippedTagAsset?.metadata?.tagText || targetUser.equippedTagAsset?.name || targetUser.equippedTag;
+
+            if (!tagMedia && !tagName) return null;
+
+            return (
+              <View style={{ marginHorizontal: 2 }}>
+                {tagMedia ? (
+                  isTagSvga ? (
+                    <SvgaView source={tagMedia} style={{ width: 88, height: 26 }} resizeMode="contain" />
+                  ) : (
+                    <Image source={{ uri: tagMedia }} style={{ width: 88, height: 26 }} resizeMode="contain" />
+                  )
+                ) : (
+                  <LinearGradient
+                    colors={[targetUser.equippedTagAsset?.previewColor || '#D97706', '#78350F']}
+                    style={styles.tagPill}
+                  >
+                    <Text style={styles.tagPillText}>{tagName}</Text>
+                  </LinearGradient>
+                )}
+              </View>
+            );
+          })()}
 
           {/* Equipped Badge */}
           {Boolean(targetUser.equippedBadge) && (

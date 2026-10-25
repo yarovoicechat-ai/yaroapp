@@ -1489,11 +1489,23 @@ export default function VoiceRoomScreen() {
       senderId: user?.userId || user?._id || user?.id,
       senderName: user?.name || 'You',
       avatar: user?.avatar || user?.image,
-      equippedFrame: user?.equippedFrameAsset || user?.equippedFrame || null,
-      equippedFrameAsset: user?.equippedFrameAsset || null,
       chatBubble: user?.equippedChatBubbleAsset || user?.equippedChatBubble || null,
       chatBubbleId: user?.equippedChatBubble || null,
-      level: user?.level,
+      level: user?.wealthLevel || user?.level || 1,
+      wealthLevel: user?.wealthLevel || user?.level || 1,
+      charmLevel: user?.charmLevel ?? 0,
+      isOwner: isRoomOwner,
+      userRole: isRoomOwner ? 'owner' : (isCurrentUserAdmin ? 'admin' : (user?.isStaff ? 'staff' : 'user')),
+      isStaff: Boolean(user?.isStaff || user?.role === 'admin' || user?.role === 'superAdmin'),
+      isVip: Boolean(user?.isVip || user?.equippedVipId),
+      isSvip: Boolean(user?.isSvip || user?.equippedSvipId),
+      svipLevel: user?.svipLevel || (user?.equippedSvipId ? 1 : null),
+      vipLevel: user?.vipLevel || (user?.equippedVipId ? 1 : null),
+      equippedTag: user?.equippedTag || null,
+      equippedTagAsset: user?.equippedTagAsset || null,
+      equippedBadge: user?.equippedBadge || null,
+      equippedBadgeAsset: user?.equippedBadgeAsset || null,
+      equippedBadges: Array.isArray(user?.equippedBadges) ? user.equippedBadges : [],
       text: trimmed,
       isBullet: isBulletMode,
     };
@@ -2222,8 +2234,8 @@ export default function VoiceRoomScreen() {
           styles.floatingChatInputBar,
           {
             bottom: isKeyboardVisible
-              ? keyboardLift + (Platform.OS === 'android' ? Math.max(82, (insets.bottom || 0) + 54) : 8)
-              : (insets.bottom > 0 ? insets.bottom + 4 : 10),
+              ? (Platform.OS === 'android' ? 0 : (keyboardHeight || 0) + 4)
+              : Math.max(6, (insets.bottom || 0) + 4),
           },
         ]}>
           <TouchableOpacity
@@ -2859,6 +2871,7 @@ export default function VoiceRoomScreen() {
         visible={giftPanelVisible}
         onClose={() => setGiftPanelVisible(false)}
         room={room}
+        user={user}
         seats={seats}
         diamondBalance={diamondBalance}
         onTopUp={() => {

@@ -279,7 +279,7 @@ const Withdrawal = () => {
               </View>
               <View style={styles.coinIconContainer}>
                 <Image
-                  source={require('../../assets/coin.webp')}
+                  source={require('../../assets/icons/beans.png')}
                   style={{ width: 36, height: 36 }}
                   resizeMode="contain"
                 />
@@ -323,7 +323,7 @@ const Withdrawal = () => {
           <Text style={styles.cardSectionLabel}>Withdrawal Amount</Text>
           <View style={styles.amountInputRow}>
             <View style={styles.inputWrapper}>
-              <Image source={require('../../assets/coin.webp')} style={styles.tinyCoinIcon} />
+              <Image source={require('../../assets/icons/beans.png')} style={styles.tinyCoinIcon} resizeMode="contain" />
               <TextInput
                 style={styles.coinInput}
                 placeholder={t('withdrawal.input_coin') || 'Input Beans'}

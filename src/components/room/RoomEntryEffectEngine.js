@@ -66,14 +66,15 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   useEffect(() => {
     if (!current) return;
     const assets = resolveEntryAssets(current);
-    const visual = assets.entry || assets.entrance;
-    const hasAnimation = Boolean(visual?.animationUrl);
-    const duration = hasAnimation
-      ? Math.max(3000, Math.min(12000, Number(visual.duration || visual.metadata?.duration) || 5000))
+    const entryAsset = assets.entry;
+    const entranceAsset = assets.entrance;
+    const isRide = Boolean(entryAsset?.animationUrl || (entranceAsset?.metadata?.comingText && entranceAsset?.animationUrl));
+    const duration = isRide
+      ? Math.max(3000, Math.min(12000, Number(entryAsset?.duration || entryAsset?.metadata?.duration || entranceAsset?.duration) || 5000))
       : 3000;
 
     let motion;
-    if (hasAnimation) {
+    if (isRide) {
       // COMING WALA: Pahle jaisa hi rahega (full SVGA ride, comingStage with large avatar)
       comingTranslateX.setValue(width);
       comingOpacity.setValue(0);
@@ -134,33 +135,38 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   if (!current) return null;
 
   const assets = resolveEntryAssets(current);
-  const visual = assets.entry || assets.entrance;
-  const hasAnimation = Boolean(visual?.animationUrl);
-  const media = visual?.animationUrl || '';
-  const settings = visual?.metadata || {};
+  // Entry Effect vs Entrance Effect are strictly separated.
+  // Entry Ride: Has SVGA ride vehicle animation -> renders full screen SVGA + comingStage ("is coming")
+  // Entrance: Has horizontal bullet banner -> renders fast flying bullet strip ("enter the room") with NO comingStage!
+  const entryAsset = assets.entry;
+  const entranceAsset = assets.entrance;
+  const isRide = Boolean(entryAsset?.animationUrl || (entranceAsset?.metadata?.comingText && entranceAsset?.animationUrl));
+  const rideMedia = entryAsset?.animationUrl || entranceAsset?.animationUrl || '';
+  const settings = (isRide ? (entryAsset?.metadata || entranceAsset?.metadata) : entranceAsset?.metadata) || {};
   const user = current.user || {};
   const wealthLevel = user.wealthLevel ?? user.level ?? current.wealthLevel ?? 1;
   const nameEffect = user.nameEffect || current.vipExperience?.nameEffect;
-  const colors = visual?.bannerColors || visual?.bgColors;
+  const colors = entryAsset?.bannerColors || entryAsset?.bgColors;
   const bannerColors = Array.isArray(colors) && colors.length >= 2
     ? colors : ['#117C9B', '#245E78', '#17394A'];
 
   // Check custom entrance from My Items
-  const customEntrance = assets.entrance && !assets.entrance.isDefault ? assets.entrance : null;
+  const customEntrance = entranceAsset && !entranceAsset.isDefault ? entranceAsset : null;
   const entranceBgSource = (customEntrance?.imageUrl && !customEntrance.isDefault)
     ? { uri: customEntrance.imageUrl }
     : DEFAULT_ENTRANCE_BANNER;
+  const isEntranceSvga = Boolean(customEntrance?.animationUrl && /\.svga(?:[?#]|$)/i.test(customEntrance.animationUrl));
 
   return (
     <View style={styles.overlay} pointerEvents="none">
-      {/* 1. COMING WALA: Pahle jaisa hi rahega (full screen SVGA + comingStage with large avatar) */}
-      {hasAnimation ? (
+      {/* 1. ENTRY EFFECT (RIDE): Full screen SVGA ride + comingStage ("is coming") */}
+      {isRide ? (
         <>
-          {media ? (
+          {rideMedia ? (
             <Animated.View style={[styles.mediaStage, { opacity: comingOpacity }]} pointerEvents="none">
               <SvgaView
                 key={current.entryId}
-                source={media}
+                source={rideMedia}
                 style={StyleSheet.absoluteFillObject}
                 loops={1}
                 resizeMode="contain"
@@ -201,7 +207,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
           </Animated.View>
         </>
       ) : (
-        /* 2. ENTRANCE: Right se Left bullet message (speed jyada, 2 sec pause, default/custom banner) */
+        /* 2. ENTRANCE EFFECT: Floating bullet banner (Speed jyada, 2 sec pause, Right to Left) with NO comingStage! */
         <Animated.View
           style={[
             styles.bulletEntranceContainer,
@@ -212,37 +218,67 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
           ]}
           pointerEvents="none"
         >
-          <ImageBackground
-            source={entranceBgSource}
-            style={styles.bulletBannerBg}
-            imageStyle={styles.bulletBannerImageStyle}
-            resizeMode="stretch"
-          >
-            {/* Wealth Level Pill on the Left */}
-            <View style={styles.wealthBadge}>
-              <Text style={styles.wealthGem}>💎</Text>
-              <Text style={styles.wealthText}>Lv.{wealthLevel}</Text>
+          {isEntranceSvga ? (
+            <View style={styles.bulletBannerWrap}>
+              <SvgaView
+                source={customEntrance.animationUrl}
+                style={StyleSheet.absoluteFillObject}
+                loops={0}
+                resizeMode="stretch"
+              />
+              <View style={styles.bulletInnerContent}>
+                <View style={styles.wealthBadge}>
+                  <Text style={styles.wealthGem}>💎</Text>
+                  <Text style={styles.wealthText}>Lv.{wealthLevel}</Text>
+                </View>
+                <View style={styles.avatarWrap}>
+                  <AvatarWithFrame user={user} size={24} showOnlineDot={false} />
+                </View>
+                <IdentityDisplayName
+                  name={user.name || 'User'}
+                  effect={nameEffect}
+                  fontSize={13}
+                  style={styles.bulletName}
+                  numberOfLines={1}
+                />
+                <Text style={styles.bulletActionText} numberOfLines={1}>
+                  enter the room
+                </Text>
+              </View>
             </View>
+          ) : (
+            <ImageBackground
+              source={entranceBgSource}
+              style={styles.bulletBannerBg}
+              imageStyle={styles.bulletBannerImageStyle}
+              resizeMode="stretch"
+            >
+              {/* Wealth Level Pill on the Left */}
+              <View style={styles.wealthBadge}>
+                <Text style={styles.wealthGem}>💎</Text>
+                <Text style={styles.wealthText}>Lv.{wealthLevel}</Text>
+              </View>
 
-            {/* Avatar with Frame */}
-            <View style={styles.avatarWrap}>
-              <AvatarWithFrame user={user} size={24} showOnlineDot={false} />
-            </View>
+              {/* Avatar with Frame */}
+              <View style={styles.avatarWrap}>
+                <AvatarWithFrame user={user} size={24} showOnlineDot={false} />
+              </View>
 
-            {/* User Name in Radiant Gold */}
-            <IdentityDisplayName
-              name={user.name || 'User'}
-              effect={nameEffect}
-              fontSize={13}
-              style={styles.bulletName}
-              numberOfLines={1}
-            />
+              {/* User Name in Radiant Gold */}
+              <IdentityDisplayName
+                name={user.name || 'User'}
+                effect={nameEffect}
+                fontSize={13}
+                style={styles.bulletName}
+                numberOfLines={1}
+              />
 
-            {/* Entrance text: enter the room */}
-            <Text style={styles.bulletActionText} numberOfLines={1}>
-              enter the room
-            </Text>
-          </ImageBackground>
+              {/* Entrance text: enter the room */}
+              <Text style={styles.bulletActionText} numberOfLines={1}>
+                enter the room
+              </Text>
+            </ImageBackground>
+          )}
         </Animated.View>
       )}
     </View>
@@ -317,6 +353,22 @@ const styles = StyleSheet.create({
     left: 0,
     zIndex: 100000,
     elevation: 10000,
+  },
+  bulletBannerWrap: {
+    height: 40,
+    minWidth: 260,
+    maxWidth: Math.round(width * 0.92),
+    borderRadius: 20,
+    overflow: 'hidden',
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  bulletInnerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 10,
+    paddingRight: 32,
+    zIndex: 2,
   },
   bulletBannerBg: {
     flexDirection: 'row',

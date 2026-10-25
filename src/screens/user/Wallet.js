@@ -550,7 +550,11 @@ const Wallet = () => {
                     <Text style={[styles.balanceLabel, { color: '#065F46' }]}>My Beans</Text>
                     <View style={styles.balanceCountRow}>
                       <Text style={[styles.balanceCount, { color: '#047857' }]}>{formatCompactBalance(user?.coins || 0)}</Text>
-                      <Icon name="stars" size={24} color="#10B981" style={styles.balanceIcon} />
+                      <Image
+                        source={require('../../assets/icons/beans.png')}
+                        style={{ width: 22, height: 22, marginLeft: 6 }}
+                        resizeMode="contain"
+                      />
                     </View>
                     <Text style={[styles.balanceValue, { color: '#059669' }]}>
                       ≈ ₹{formatCompactBalance((user?.coins || 0) / 2)}
@@ -563,7 +567,11 @@ const Wallet = () => {
                     <View style={[styles.pedestalRing3, { borderColor: 'rgba(16, 185, 129, 0.2)' }]}>
                       <View style={[styles.pedestalRing2, { borderColor: 'rgba(16, 185, 129, 0.4)' }]}>
                         <View style={[styles.pedestalRing1, { backgroundColor: '#10B981' }]}>
-                          <Text style={{ fontSize: 22 }}>🌱</Text>
+                          <Image
+                            source={require('../../assets/icons/beans.png')}
+                            style={{ width: 28, height: 28 }}
+                            resizeMode="contain"
+                          />
                         </View>
                       </View>
                     </View>

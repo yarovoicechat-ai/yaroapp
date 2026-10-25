@@ -23,6 +23,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
 import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
+import SvgaView from '../../components/SvgaView';
 import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
@@ -249,6 +250,24 @@ export default function ProfileScreen() {
                 </Text>
               </View>
 
+              {/* Wealth Level */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Level', { initialTab: 'wealth' })}
+                style={[styles.svipTag, { backgroundColor: '#0284C7' }]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.svipTagText}>💎 Lv.{user?.wealthLevel ?? user?.level ?? 1}</Text>
+              </TouchableOpacity>
+
+              {/* Charm Level */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Level', { initialTab: 'charm' })}
+                style={[styles.svipTag, { backgroundColor: '#7C3AED' }]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.svipTagText}>🌸 Lv.{user?.charmLevel ?? 1}</Text>
+              </TouchableOpacity>
+
               {(user?.isSvip || Number(user?.svipLevel) > 0) && (
                 <View style={styles.svipTag}>
                   <Text style={styles.svipTagText}>👑 SVIP{user?.svipLevel || ''}</Text>
@@ -262,11 +281,43 @@ export default function ProfileScreen() {
                 </View>
               )}
 
-              {/* Equipped Tag */}
-              {Boolean(user?.equippedTag || user?.equippedEntryTag || user?.equippedTagAsset) && (
-                <View style={[styles.svipTag, { backgroundColor: user?.equippedTagAsset?.previewColor || '#D97706' }]}>
+              {/* Equipped Tag (Animation File / Theme Asset .svga, .gif, .webp, .png, or Text Pill) */}
+              {(() => {
+                const tagMedia = user?.equippedTagAsset?.animationUrl || user?.equippedTagAsset?.imageUrl || null;
+                const isTagSvga = Boolean(tagMedia && /\.svga(?:[?#]|$)/i.test(tagMedia));
+                const tagName = user?.equippedTagAsset?.metadata?.tagText || user?.equippedTagAsset?.name || user?.equippedTag || user?.equippedEntryTag;
+
+                if (!tagMedia && !tagName) return null;
+
+                return (
+                  <View style={{ marginHorizontal: 2 }}>
+                    {tagMedia ? (
+                      isTagSvga ? (
+                        <SvgaView source={tagMedia} style={{ width: 80, height: 22 }} resizeMode="contain" />
+                      ) : (
+                        <Image source={{ uri: tagMedia }} style={{ width: 80, height: 22 }} resizeMode="contain" />
+                      )
+                    ) : (
+                      <View style={[styles.svipTag, { backgroundColor: user?.equippedTagAsset?.previewColor || '#D97706' }]}>
+                        <Text style={styles.svipTagText}>{tagName}</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })()}
+
+              {/* Equipped Badge */}
+              {Boolean(user?.equippedBadge || user?.equippedBadgeAsset) && (
+                <View style={[styles.svipTag, { backgroundColor: '#7C3AED', flexDirection: 'row', alignItems: 'center' }]}>
+                  {user?.equippedBadgeAsset?.imageUrl ? (
+                    <Image
+                      source={{ uri: user.equippedBadgeAsset.imageUrl }}
+                      style={{ width: 13, height: 13, marginRight: 3 }}
+                      resizeMode="contain"
+                    />
+                  ) : null}
                   <Text style={styles.svipTagText}>
-                    {user?.equippedTagAsset?.metadata?.tagText || user?.equippedTag || user?.equippedEntryTag}
+                    🏅 {user?.equippedBadgeAsset?.name || user?.equippedBadge}
                   </Text>
                 </View>
               )}

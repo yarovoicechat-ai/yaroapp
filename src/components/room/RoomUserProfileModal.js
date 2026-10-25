@@ -14,6 +14,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import AvatarWithFrame from '../AvatarWithFrame';
 import IdentityDisplayId from '../identity/IdentityDisplayId';
+import SvgaView from '../SvgaView';
 import { AuthContext } from '../../context/AuthProvider';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { apiUtil } from '../../utils/apiUtil';
@@ -355,19 +356,33 @@ export default function RoomUserProfileModal({
                 </View>
               )}
 
-              {/* Equipped Tag (Staff Tag, Official Tag, Custom Tag) */}
-              {Boolean(
-                displayData.equippedTag ||
-                resolvedProfile?.equippedTag ||
-                displayData.equippedEntryTag ||
-                resolvedProfile?.equippedEntryTag
-              ) && (
-                <View style={[styles.agencyPill, { backgroundColor: 'rgba(245, 158, 11, 0.2)', borderColor: 'rgba(245, 158, 11, 0.4)' }]}>
-                  <Text style={[styles.agencyText, { color: '#F59E0B' }]}>
-                    {displayData.equippedTag || resolvedProfile?.equippedTag || displayData.equippedEntryTag || resolvedProfile?.equippedEntryTag}
-                  </Text>
-                </View>
-              )}
+              {/* Equipped Tag (Animation File / Theme Asset .svga, .gif, .webp, .png, or Text Pill) */}
+              {(() => {
+                const tagAsset = displayData.equippedTagAsset || resolvedProfile?.equippedTagAsset || user?.equippedTagAsset || null;
+                const tagMedia = tagAsset?.animationUrl || tagAsset?.imageUrl || displayData.equippedTagAnimation || resolvedProfile?.equippedTagAnimation || null;
+                const tagName = displayData.equippedTag || resolvedProfile?.equippedTag || tagAsset?.name || displayData.equippedEntryTag || resolvedProfile?.equippedEntryTag || null;
+                const isTagSvga = Boolean(tagMedia && /\.svga(?:[?#]|$)/i.test(tagMedia));
+
+                if (!tagMedia && !tagName) return null;
+
+                return (
+                  <View style={{ marginHorizontal: 2 }}>
+                    {tagMedia ? (
+                      isTagSvga ? (
+                        <SvgaView source={tagMedia} style={{ width: 88, height: 26 }} resizeMode="contain" />
+                      ) : (
+                        <Image source={{ uri: tagMedia }} style={{ width: 88, height: 26 }} resizeMode="contain" />
+                      )
+                    ) : (
+                      <View style={[styles.agencyPill, { backgroundColor: 'rgba(245, 158, 11, 0.2)', borderColor: 'rgba(245, 158, 11, 0.4)' }]}>
+                        <Text style={[styles.agencyText, { color: '#F59E0B' }]}>
+                          {tagName}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })()}
 
               {/* Equipped Badge (Icon or image) */}
               {Boolean(
@@ -393,8 +408,8 @@ export default function RoomUserProfileModal({
               )}
             </View>
 
-            {/* 4. Prestigious Medals Row (Only if user has actual badges/medals) */}
-            {!isSelf && !canModerate && targetBadges && targetBadges.length > 0 && (
+            {/* 4. Prestigious Medals Row (Shown whenever user has badges/medals) */}
+            {targetBadges && targetBadges.length > 0 && (
               <View style={styles.medalsShelfContainer}>
                 <View style={styles.medalsScroll}>
                   {targetBadges.map((badge, idx) => {

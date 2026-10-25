@@ -163,7 +163,11 @@ const ExchangeCoins = () => {
 
                 {/* Bean item count */}
                 <View style={styles.valueRow}>
-                  <Icon name="grain" size={14} color="#10B981" style={styles.itemIcon} />
+                  <Image
+                    source={require('../../assets/icons/beans.png')}
+                    style={{ width: 14, height: 14, marginRight: 4 }}
+                    resizeMode="contain"
+                  />
                   <Text style={styles.valueText} numberOfLines={1}>{formatCompactBalance(pack.coins)}</Text>
                 </View>
                 <Text style={styles.valueSub}>Beans</Text>

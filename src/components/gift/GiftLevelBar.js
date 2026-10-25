@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function GiftLevelBar({
-  level = 3,
-  currentExp = 900,
+  level = 1,
+  currentExp = 0,
   targetExp = 1000,
   onPress,
 }) {

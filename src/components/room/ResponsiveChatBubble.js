@@ -5,7 +5,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { getUserAvatar } from '../../utils/avatarUtil';
-import AvatarWithFrame from '../AvatarWithFrame';
+import SvgaView from '../SvgaView';
 import { resolveGiftVisual } from '../gift/giftMediaUtils';
 
 const { width } = Dimensions.get('window');
@@ -22,16 +22,34 @@ export default function ResponsiveChatBubble({
 }) {
   const text = message?.text || message?.content || '';
   const senderName = sender?.name || message?.user || message?.senderName || 'User';
+  const isSvipUser = Boolean(isSvip || message?.isSvip || message?.svipLevel || sender?.isSvip || sender?.equippedSvipId);
+  const isVipUser = Boolean(isVip || message?.isVip || message?.vipLevel || sender?.isVip || sender?.equippedVipId);
+  const svipLevel = message?.svipLevel || sender?.svipLevel || (isSvipUser ? 1 : null);
+  const vipLevel = message?.vipLevel || sender?.vipLevel || (isVipUser ? 1 : null);
   const nameEffect = message?.nameEffect || sender?.nameEffect || sender?.effectiveIdentity?.nameEffect ||
-    ((isVip || isSvip) ? { colors: ['#FFE890', '#FFF8D6', '#E9B74D'], animationType: 'shimmer' } : undefined);
+    ((isVipUser || isSvipUser) ? { colors: ['#FFE890', '#FFF8D6', '#E9B74D'], animationType: 'shimmer' } : undefined);
   const rawAvatar = sender?.avatar || message?.avatar || null;
   const avatarSource = getUserAvatar({ avatar: rawAvatar, image: rawAvatar, gender: message?.gender || sender?.gender || 'female' });
-  const isOwner = Boolean(message?.isOwner || message?.userRole === 'owner');
-  const svipLevel = message?.svipLevel || (isSvip ? 1 : null);
-  const vipLevel = message?.vipLevel || (isVip ? 1 : null);
-  const userLevel = message?.level ?? sender?.level ?? null;
-  const charmLevel = message?.charmLevel ?? sender?.charmLevel ?? sender?.charm ?? null;
+  const isOwner = Boolean(message?.isOwner || message?.userRole === 'owner' || message?.role === 'owner');
+  const isStaff = Boolean(message?.isStaff || message?.userRole === 'staff' || sender?.isStaff);
+  const isAdmin = Boolean(message?.isAdmin || message?.userRole === 'admin' || sender?.isAdmin);
+  const wealthLevel = message?.wealthLevel ?? message?.level ?? sender?.wealthLevel ?? sender?.level ?? 1;
+  const charmLevel = message?.charmLevel ?? sender?.charmLevel ?? sender?.charm ?? 0;
+  const userLevel = wealthLevel;
   const clubName = message?.clubName || sender?.clubName || '';
+
+  // Equipped Tag & Tag Animation File (uploaded in panel)
+  const equippedTagAsset = message?.equippedTagAsset || sender?.equippedTagAsset || null;
+  const equippedTag = message?.equippedTag || sender?.equippedTag || equippedTagAsset?.name || null;
+  const tagMedia = equippedTagAsset?.animationUrl || equippedTagAsset?.imageUrl || null;
+  const isTagSvga = Boolean(tagMedia && /\.svga(?:[?#]|$)/i.test(tagMedia));
+
+  // Equipped Badges
+  const equippedBadges = Array.isArray(message?.equippedBadges) && message.equippedBadges.length
+    ? message.equippedBadges
+    : (Array.isArray(sender?.equippedBadges) && sender.equippedBadges.length
+      ? sender.equippedBadges
+      : (message?.equippedBadgeAsset ? [message.equippedBadgeAsset] : []));
 
   const equippedFrame =
     message?.equippedFrameAsset ||
@@ -102,11 +120,9 @@ export default function ResponsiveChatBubble({
     return (
       <View style={styles.welcomeCardContainer}>
         <View style={styles.welcomeAvatarWrap}>
-          <AvatarWithFrame
-            user={{ avatar }}
-            frame={frame}
-            size={42}
-            showOnlineDot={false}
+          <Image
+            source={{ uri: avatar }}
+            style={styles.welcomeAvatarClean}
           />
         </View>
         <View style={styles.welcomeRightCol}>
@@ -198,8 +214,8 @@ export default function ResponsiveChatBubble({
     );
   }
 
-  // 2. VIP 1 / Owner Royal Red-Gold Ornate Bubble (Bubble 1 in Image 1)
-  if (!customBubble && svipLevel === 1) {
+  // 2. VIP / SVIP / Owner / Regent Royal Ornate Bubble (Matches Image in User Reference!)
+  if (!customBubble && (svipLevel || isSvipUser || isVipUser || isOwner || wealthLevel >= 10)) {
     return (
       <View style={styles.luxuryBubbleContainer}>
         {/* Double Gold Ornate Frame */}
@@ -221,7 +237,7 @@ export default function ResponsiveChatBubble({
 
             <View style={styles.royalUserMetaCol}>
               <View style={styles.royalNameRow}>
-                {isOwner && (
+                {isOwner ? (
                   <LinearGradient
                     colors={['#EF4444', '#DC2626']}
                     start={{ x: 0, y: 0 }}
@@ -230,53 +246,114 @@ export default function ResponsiveChatBubble({
                   >
                     <Text style={styles.ownerPillText}>Owner</Text>
                   </LinearGradient>
-                )}
+                ) : isStaff ? (
+                  <View style={[styles.ownerPillTag, { backgroundColor: '#DC2626' }]}>
+                    <Text style={styles.ownerPillText}>🛡️ Staff</Text>
+                  </View>
+                ) : isAdmin ? (
+                  <View style={[styles.ownerPillTag, { backgroundColor: '#4F46E5' }]}>
+                    <Text style={styles.ownerPillText}>Admin</Text>
+                  </View>
+                ) : null}
                 <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.royalGoldName} />
               </View>
 
-              {/* Badges Row */}
-              <View style={styles.badgesRow}>
-                <LinearGradient
-                  colors={['#B45309', '#F59E0B']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.svipBadgePill}
-                >
-                  <MaterialCommunityIcons name="shield-crown" size={10} color="#FEF08A" />
-                  <Text style={styles.svipBadgeText}>SVIP{svipLevel}</Text>
-                </LinearGradient>
+              {/* Tag Banner Row (Animation File / Theme Asset from Admin Panel) */}
+              {Boolean(tagMedia || equippedTag) && (
+                <View style={styles.chatTagContainer}>
+                  {tagMedia ? (
+                    isTagSvga ? (
+                      <SvgaView source={tagMedia} style={styles.chatTagSvga} resizeMode="contain" />
+                    ) : (
+                      <Image source={{ uri: tagMedia }} style={styles.chatTagImage} resizeMode="contain" />
+                    )
+                  ) : (
+                    <View style={styles.chatTagTextPill}>
+                      <Text style={styles.chatTagTextString}>{equippedTag}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
 
+              {/* Badges Row with SVIP, Wealth Level & Charm Level */}
+              <View style={styles.badgesRow}>
+                {Boolean(isSvipUser || svipLevel) ? (
+                  <LinearGradient
+                    colors={['#B45309', '#F59E0B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.svipBadgePill}
+                  >
+                    <MaterialCommunityIcons name="shield-crown" size={10} color="#FEF08A" />
+                    <Text style={styles.svipBadgeText}>SVIP{svipLevel || 1}</Text>
+                  </LinearGradient>
+                ) : Boolean(isVipUser || vipLevel) ? (
+                  <LinearGradient
+                    colors={['#D97706', '#F59E0B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.svipBadgePill}
+                  >
+                    <MaterialCommunityIcons name="crown" size={10} color="#FEF08A" />
+                    <Text style={styles.svipBadgeText}>VIP{vipLevel || 1}</Text>
+                  </LinearGradient>
+                ) : null}
+
+                {/* Wealth Level: Blue Badge [🛡️ Lv.54] */}
                 <View style={styles.levelBadgeShield}>
                   <Text style={styles.levelBadgeIcon}>🛡️</Text>
-                  <Text style={styles.levelBadgeText}>{userLevel != null ? `Lv.${userLevel}` : ''}</Text>
+                  <Text style={styles.levelBadgeText}>Lv.{wealthLevel}</Text>
                 </View>
 
-                <View style={styles.levelBadgeGreen}>
-                  <Text style={styles.levelBadgeIcon}>🌿</Text>
-                  <Text style={styles.levelBadgeText}>{charmLevel != null ? `Lv.${charmLevel}` : ''}</Text>
+                {/* Charm Level: Purple Badge [👑 Lv.59] */}
+                <View style={styles.levelBadgePurple}>
+                  <Text style={styles.levelBadgeIcon}>👑</Text>
+                  <Text style={styles.levelBadgeText}>Lv.{charmLevel}</Text>
                 </View>
 
-                <View style={styles.clubPillBadge}>
-                  <Text style={styles.clubPillText}>{clubName ? `💎 ${clubName}` : ''}</Text>
-                </View>
+                {Boolean(clubName) && (
+                  <View style={styles.clubPillBadge}>
+                    <Text style={styles.clubPillText}>💎 {clubName}</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>
 
           {/* Row of Medals & Honor Crests */}
           <View style={styles.honorMedalsRow}>
-            <Text style={styles.honorMedal}>🎖️</Text>
-            <Text style={styles.honorMedal}>🏆</Text>
-            <Text style={styles.honorMedal}>🛡️</Text>
-            <Text style={styles.honorMedal}>👑</Text>
-            <Text style={styles.honorMedal}>⭐</Text>
-            <Text style={styles.honorMedal}>🌟</Text>
-            <Text style={styles.honorMedal}>⚜️</Text>
+            {equippedBadges.length > 0 ? (
+              equippedBadges.slice(0, 8).map((badge, idx) => {
+                const icon = badge.imageUrl || badge.image || badge.icon;
+                return icon && typeof icon === 'string' && (icon.startsWith('http') || icon.startsWith('/')) ? (
+                  <Image key={idx} source={{ uri: icon }} style={styles.shelfMedalIcon} resizeMode="contain" />
+                ) : (
+                  <Text key={idx} style={styles.honorMedal}>{badge.icon || '🎖️'}</Text>
+                );
+              })
+            ) : (
+              <>
+                <Text style={styles.honorMedal}>🎖️</Text>
+                <Text style={styles.honorMedal}>🏆</Text>
+                <Text style={styles.honorMedal}>🛡️</Text>
+                <Text style={styles.honorMedal}>👑</Text>
+                <Text style={styles.honorMedal}>⭐</Text>
+                <Text style={styles.honorMedal}>🌟</Text>
+                <Text style={styles.honorMedal}>⚜️</Text>
+              </>
+            )}
           </View>
 
-          {/* Message Text with Golden Accent */}
+          {/* Message Text with Golden Accent & Yellow Mention */}
           <Text style={styles.royalMessageText}>
-            {text}
+            {text.startsWith('@') ? (
+              <>
+                <Text style={styles.chatMentionHighlight}>{text.split(' ')[0]} </Text>
+                <Text>{text.substring(text.indexOf(' ') + 1)}</Text>
+              </>
+            ) : (
+              text
+            )}
           </Text>
 
           {/* Bottom Wing Ornament */}
@@ -347,6 +424,23 @@ export default function ResponsiveChatBubble({
                   <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.vip4GoldName} />
                 </View>
 
+                {/* Tag Banner Row */}
+                {Boolean(tagMedia || equippedTag) && (
+                  <View style={styles.chatTagContainer}>
+                    {tagMedia ? (
+                      isTagSvga ? (
+                        <SvgaView source={tagMedia} style={styles.chatTagSvga} resizeMode="contain" />
+                      ) : (
+                        <Image source={{ uri: tagMedia }} style={styles.chatTagImage} resizeMode="contain" />
+                      )
+                    ) : (
+                      <View style={styles.chatTagTextPill}>
+                        <Text style={styles.chatTagTextString}>{equippedTag}</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+
                 {/* Badges Row */}
                 <View style={styles.badgesRow}>
                   <LinearGradient
@@ -359,14 +453,14 @@ export default function ResponsiveChatBubble({
                     <Text style={styles.svipBadgeText}>VIP 4</Text>
                   </LinearGradient>
 
-                  <View style={styles.levelBadgeGreen}>
-                    <Text style={styles.levelBadgeIcon}>⭐</Text>
-                    <Text style={styles.levelBadgeText}>{userLevel != null ? `Lv.${userLevel}` : ''}</Text>
+                  <View style={styles.levelBadgeShield}>
+                    <Text style={styles.levelBadgeIcon}>🛡️</Text>
+                    <Text style={styles.levelBadgeText}>Lv.{wealthLevel}</Text>
                   </View>
 
-                  <View style={styles.levelBadgeBlue}>
-                    <Text style={styles.levelBadgeIcon}>🌸</Text>
-                    <Text style={styles.levelBadgeText}>{charmLevel != null ? `Lv.${charmLevel}` : ''}</Text>
+                  <View style={styles.levelBadgePurple}>
+                    <Text style={styles.levelBadgeIcon}>👑</Text>
+                    <Text style={styles.levelBadgeText}>Lv.{charmLevel}</Text>
                   </View>
                 </View>
               </View>
@@ -418,6 +512,23 @@ export default function ResponsiveChatBubble({
                 <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.svip3CyanName} />
               </View>
 
+              {/* Tag Banner */}
+              {Boolean(tagMedia || equippedTag) && (
+                <View style={styles.chatTagContainer}>
+                  {tagMedia ? (
+                    isTagSvga ? (
+                      <SvgaView source={tagMedia} style={styles.chatTagSvga} resizeMode="contain" />
+                    ) : (
+                      <Image source={{ uri: tagMedia }} style={styles.chatTagImage} resizeMode="contain" />
+                    )
+                  ) : (
+                    <View style={styles.chatTagTextPill}>
+                      <Text style={styles.chatTagTextString}>{equippedTag}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
               <View style={styles.badgesRow}>
                 <LinearGradient
                   colors={['#06B6D4', '#0284C7']}
@@ -428,14 +539,14 @@ export default function ResponsiveChatBubble({
                   <Text style={styles.svipBadgeText}>🐺 SVIP 3</Text>
                 </LinearGradient>
 
-                <View style={styles.levelBadgeGreen}>
-                  <Text style={styles.levelBadgeIcon}>⭐</Text>
-                  <Text style={styles.levelBadgeText}>{userLevel != null ? `Lv.${userLevel}` : ''}</Text>
+                <View style={styles.levelBadgeShield}>
+                  <Text style={styles.levelBadgeIcon}>🛡️</Text>
+                  <Text style={styles.levelBadgeText}>Lv.{wealthLevel}</Text>
                 </View>
 
-                <View style={styles.levelBadgeBlue}>
-                  <Text style={styles.levelBadgeIcon}>🌸</Text>
-                  <Text style={styles.levelBadgeText}>{charmLevel != null ? `Lv.${charmLevel}` : ''}</Text>
+                <View style={styles.levelBadgePurple}>
+                  <Text style={styles.levelBadgeIcon}>👑</Text>
+                  <Text style={styles.levelBadgeText}>Lv.{charmLevel}</Text>
                 </View>
               </View>
             </View>
@@ -478,6 +589,23 @@ export default function ResponsiveChatBubble({
                 <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.emeraldGoldName} />
               </View>
 
+              {/* Tag Banner */}
+              {Boolean(tagMedia || equippedTag) && (
+                <View style={styles.chatTagContainer}>
+                  {tagMedia ? (
+                    isTagSvga ? (
+                      <SvgaView source={tagMedia} style={styles.chatTagSvga} resizeMode="contain" />
+                    ) : (
+                      <Image source={{ uri: tagMedia }} style={styles.chatTagImage} resizeMode="contain" />
+                    )
+                  ) : (
+                    <View style={styles.chatTagTextPill}>
+                      <Text style={styles.chatTagTextString}>{equippedTag}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
               <View style={styles.badgesRow}>
                 <LinearGradient
                   colors={['#047857', '#10B981']}
@@ -489,14 +617,14 @@ export default function ResponsiveChatBubble({
                   <Text style={styles.svipBadgeText}>SVIP{svipLevel}</Text>
                 </LinearGradient>
 
-                <View style={styles.levelBadgeGreen}>
-                  <Text style={styles.levelBadgeIcon}>🌿</Text>
-                  <Text style={styles.levelBadgeText}>{userLevel != null ? `Lv.${userLevel}` : ''}</Text>
+                <View style={styles.levelBadgeShield}>
+                  <Text style={styles.levelBadgeIcon}>🛡️</Text>
+                  <Text style={styles.levelBadgeText}>Lv.{wealthLevel}</Text>
                 </View>
 
-                <View style={styles.levelBadgeBlue}>
-                  <Text style={styles.levelBadgeIcon}>⭐</Text>
-                  <Text style={styles.levelBadgeText}>{charmLevel != null ? `Lv.${charmLevel}` : ''}</Text>
+                <View style={styles.levelBadgePurple}>
+                  <Text style={styles.levelBadgeIcon}>👑</Text>
+                  <Text style={styles.levelBadgeText}>Lv.{charmLevel}</Text>
                 </View>
               </View>
             </View>
@@ -541,29 +669,74 @@ export default function ResponsiveChatBubble({
               onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
               style={styles.customAvatarWrapper}
             >
-              <AvatarWithFrame
-                user={{ avatar: rawAvatar, name: senderName }}
-                frame={equippedFrame}
-                size={34}
-                showOnlineDot={false}
-              />
+              <Image source={avatarSource} style={styles.chatAvatarClean} />
             </TouchableOpacity>
 
             <View style={styles.customUserMetaCol}>
               <View style={styles.customNameRow}>
+                {isOwner && (
+                  <View style={[styles.ownerPillTag, { backgroundColor: '#EF4444', marginRight: 4 }]}>
+                    <Text style={styles.ownerPillText}>Owner</Text>
+                  </View>
+                )}
+                {isStaff && (
+                  <View style={[styles.ownerPillTag, { backgroundColor: '#DC2626', marginRight: 4 }]}>
+                    <Text style={styles.ownerPillText}>🛡️ Staff</Text>
+                  </View>
+                )}
                 <IdentityDisplayName name={senderName} effect={nameEffect} style={[styles.customSenderName, { color: customBubble.borderColor }]} />
                 <View style={[styles.customBadgePill, { backgroundColor: customBubble.borderColor }]}>
                   <Text style={styles.customBadgeText}>{customBubble.badge}</Text>
                 </View>
               </View>
-              <View style={styles.badgesRow}>
-                <View style={styles.levelBadgeGreen}>
-                  <Text style={styles.levelBadgeIcon}>⭐</Text>
-                  <Text style={styles.levelBadgeText}>{userLevel != null ? `Lv.${userLevel}` : ''}</Text>
+
+              {/* Tag Banner */}
+              {Boolean(tagMedia || equippedTag) && (
+                <View style={styles.chatTagContainer}>
+                  {tagMedia ? (
+                    isTagSvga ? (
+                      <SvgaView source={tagMedia} style={styles.chatTagSvga} resizeMode="contain" />
+                    ) : (
+                      <Image source={{ uri: tagMedia }} style={styles.chatTagImage} resizeMode="contain" />
+                    )
+                  ) : (
+                    <View style={styles.chatTagTextPill}>
+                      <Text style={styles.chatTagTextString}>{equippedTag}</Text>
+                    </View>
+                  )}
                 </View>
-                <View style={styles.levelBadgeBlue}>
+              )}
+
+              {/* Badges Row with SVIP, Wealth Level & Charm Level */}
+              <View style={styles.badgesRow}>
+                {Boolean(isSvipUser || svipLevel) ? (
+                  <LinearGradient
+                    colors={['#D97706', '#F59E0B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.svipBadgePill}
+                  >
+                    <MaterialCommunityIcons name="shield-crown" size={10} color="#FEF08A" />
+                    <Text style={styles.svipBadgeText}>SVIP{svipLevel || 1}</Text>
+                  </LinearGradient>
+                ) : Boolean(isVipUser || vipLevel) ? (
+                  <LinearGradient
+                    colors={['#B45309', '#F59E0B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.svipBadgePill}
+                  >
+                    <MaterialCommunityIcons name="crown" size={10} color="#FEF08A" />
+                    <Text style={styles.svipBadgeText}>VIP{vipLevel || 1}</Text>
+                  </LinearGradient>
+                ) : null}
+                <View style={styles.levelBadgeShield}>
+                  <Text style={styles.levelBadgeIcon}>🛡️</Text>
+                  <Text style={styles.levelBadgeText}>Lv.{wealthLevel}</Text>
+                </View>
+                <View style={styles.levelBadgePurple}>
                   <Text style={styles.levelBadgeIcon}>🌸</Text>
-                  <Text style={styles.levelBadgeText}>{charmLevel != null ? `Lv.${charmLevel}` : ''}</Text>
+                  <Text style={styles.levelBadgeText}>Lv.{charmLevel}</Text>
                 </View>
               </View>
             </View>
@@ -585,22 +758,73 @@ export default function ResponsiveChatBubble({
         activeOpacity={0.8}
         onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
       >
-        <AvatarWithFrame
-          user={{ avatar: rawAvatar, name: senderName }}
-          frame={equippedFrame}
-          size={36}
-          showOnlineDot={false}
-        />
+        <Image source={avatarSource} style={styles.chatAvatarClean} />
       </TouchableOpacity>
       <View style={styles.normalBubbleBox}>
         <View style={styles.normalSenderHeader}>
-          <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.normalSenderName} />
-          {userLevel != null ? (
-            <View style={styles.normalLevelPill}>
-              <Text style={styles.normalLevelText}>Lv.{userLevel}</Text>
+          {isOwner && (
+            <View style={[styles.ownerPillTag, { backgroundColor: '#EF4444', marginRight: 4 }]}>
+              <Text style={styles.ownerPillText}>Owner</Text>
             </View>
-          ) : null}
+          )}
+          {isStaff && (
+            <View style={[styles.ownerPillTag, { backgroundColor: '#DC2626', marginRight: 4 }]}>
+              <Text style={styles.ownerPillText}>🛡️ Staff</Text>
+            </View>
+          )}
+          <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.normalSenderName} />
         </View>
+
+        {/* Tag Banner */}
+        {Boolean(tagMedia || equippedTag) && (
+          <View style={styles.chatTagContainer}>
+            {tagMedia ? (
+              isTagSvga ? (
+                <SvgaView source={tagMedia} style={styles.chatTagSvga} resizeMode="contain" />
+              ) : (
+                <Image source={{ uri: tagMedia }} style={styles.chatTagImage} resizeMode="contain" />
+              )
+            ) : (
+              <View style={styles.chatTagTextPill}>
+                <Text style={styles.chatTagTextString}>{equippedTag}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Badges & Both Levels */}
+        <View style={styles.badgesRow}>
+          {Boolean(isSvipUser || svipLevel) ? (
+            <LinearGradient
+              colors={['#D97706', '#F59E0B']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.svipBadgePill}
+            >
+              <MaterialCommunityIcons name="shield-crown" size={10} color="#FEF08A" />
+              <Text style={styles.svipBadgeText}>SVIP{svipLevel || 1}</Text>
+            </LinearGradient>
+          ) : Boolean(isVipUser || vipLevel) ? (
+            <LinearGradient
+              colors={['#B45309', '#F59E0B']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.svipBadgePill}
+            >
+              <MaterialCommunityIcons name="crown" size={10} color="#FEF08A" />
+              <Text style={styles.svipBadgeText}>VIP{vipLevel || 1}</Text>
+            </LinearGradient>
+          ) : null}
+          <View style={styles.levelBadgeShield}>
+            <Text style={styles.levelBadgeIcon}>🛡️</Text>
+            <Text style={styles.levelBadgeText}>Lv.{wealthLevel}</Text>
+          </View>
+          <View style={styles.levelBadgePurple}>
+            <Text style={styles.levelBadgeIcon}>🌸</Text>
+            <Text style={styles.levelBadgeText}>Lv.{charmLevel}</Text>
+          </View>
+        </View>
+
         <Text style={styles.normalMessageText}>{text}</Text>
       </View>
     </View>
@@ -1227,6 +1451,58 @@ const styles = StyleSheet.create({
   svip3CornerText: {
     color: '#A5F3FC',
     fontSize: 8.5,
+    fontWeight: '800',
+  },
+  chatAvatarClean: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+  },
+  welcomeAvatarClean: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  chatTagContainer: {
+    marginVertical: 2,
+    alignSelf: 'flex-start',
+  },
+  chatTagSvga: {
+    width: 82,
+    height: 22,
+  },
+  chatTagImage: {
+    width: 82,
+    height: 22,
+  },
+  chatTagTextPill: {
+    backgroundColor: 'rgba(234, 179, 8, 0.2)',
+    borderWidth: 1,
+    borderColor: '#EAB308',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  chatTagTextString: {
+    color: '#FEF08A',
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  levelBadgePurple: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 6,
+    gap: 2,
+  },
+  shelfMedalIcon: {
+    width: 16,
+    height: 16,
+  },
+  chatMentionHighlight: {
+    color: '#FACC15',
     fontWeight: '800',
   },
 });

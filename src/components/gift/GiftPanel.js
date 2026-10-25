@@ -23,6 +23,7 @@ import GiftHistoryModal from './GiftHistoryModal';
 import InsufficientBalanceModal from './InsufficientBalanceModal';
 import { AlertService } from '../../utils/AlertService';
 import { formatCompactBalance } from '../../utils/numberUtil';
+import { calculateWealthProgress } from '../../utils/levelEngine';
 
 const { width, height } = Dimensions.get('window');
 const SHEET_HEIGHT = Math.min(height * 0.84, 660);
@@ -33,6 +34,7 @@ export default function GiftPanel({
   visible,
   onClose,
   room = {},
+  user,
   seats = [],
   diamondBalance = 0,
   onTopUp,
@@ -40,6 +42,11 @@ export default function GiftPanel({
   bottomSafePadding = 12,
 }) {
   const activeBalance = Number(diamondBalance !== undefined ? diamondBalance : 0);
+  const userExp = Number(user?.wealthExp ?? 0);
+  const wealthProgress = calculateWealthProgress(userExp);
+  const userWealthLevel = Number(user?.wealthLevel || wealthProgress.level || 1);
+  const userCurrentExp = Number(userExp || 0);
+  const userTargetExp = Number(wealthProgress.nextLevelExp || (userCurrentExp + 1000));
 
   const {
     categories,
@@ -303,9 +310,9 @@ export default function GiftPanel({
 
           {/* 3. Gold Level Progress Bar */}
           <GiftLevelBar
-            level={3}
-            currentExp={900}
-            targetExp={1000}
+            level={userWealthLevel}
+            currentExp={userCurrentExp}
+            targetExp={userTargetExp}
             onPress={() => setHistoryModalVisible(true)}
           />
 

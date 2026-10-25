@@ -27,6 +27,7 @@ import DeviceInfo from 'react-native-device-info';
 import { apiUtil } from '../../utils/apiUtil';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
 import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
+import SvgaView from '../../components/SvgaView';
 import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
@@ -504,14 +505,30 @@ export default function MeScreen() {
                   </View>
                 )}
 
-                {/* Equipped Custom Tag */}
-                {Boolean(user?.equippedTag || user?.equippedEntryTag || user?.equippedTagAsset) && (
-                  <View style={[styles.svipTag, { backgroundColor: user?.equippedTagAsset?.previewColor || '#D97706' }]}>
-                    <Text style={styles.svipTagText}>
-                      {user?.equippedTagAsset?.metadata?.tagText || user?.equippedTag || user?.equippedEntryTag}
-                    </Text>
-                  </View>
-                )}
+                {/* Equipped Custom Tag (Animation File / Theme Asset .svga, .gif, .webp, .png, or Text Pill) */}
+                {(() => {
+                  const tagMedia = user?.equippedTagAsset?.animationUrl || user?.equippedTagAsset?.imageUrl || null;
+                  const isTagSvga = Boolean(tagMedia && /\.svga(?:[?#]|$)/i.test(tagMedia));
+                  const tagName = user?.equippedTagAsset?.metadata?.tagText || user?.equippedTagAsset?.name || user?.equippedTag || user?.equippedEntryTag;
+
+                  if (!tagMedia && !tagName) return null;
+
+                  return (
+                    <View style={{ marginHorizontal: 2 }}>
+                      {tagMedia ? (
+                        isTagSvga ? (
+                          <SvgaView source={tagMedia} style={{ width: 80, height: 22 }} resizeMode="contain" />
+                        ) : (
+                          <Image source={{ uri: tagMedia }} style={{ width: 80, height: 22 }} resizeMode="contain" />
+                        )
+                      ) : (
+                        <View style={[styles.svipTag, { backgroundColor: user?.equippedTagAsset?.previewColor || '#D97706' }]}>
+                          <Text style={styles.svipTagText}>{tagName}</Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })()}
               </View>
             </View>
 
@@ -639,7 +656,11 @@ export default function MeScreen() {
             activeOpacity={0.88}
             onPress={() => navigation.navigate('Earning')}
           >
-            <Text style={{ fontSize: 26, marginRight: 8 }}>🧅</Text>
+            <Image
+              source={require('../../assets/icons/beans.png')}
+              style={{ width: 28, height: 28, marginRight: 8 }}
+              resizeMode="contain"
+            />
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardMainValue, { color: '#065F46' }]}>
                 {formatCompactBalance(user?.beanBalance ?? user?.beans ?? 0)}

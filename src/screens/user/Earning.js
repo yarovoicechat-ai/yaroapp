@@ -94,7 +94,7 @@ const Earning = () => {
           </View>
           <View style={styles.coinBadge}>
             <Image
-              source={require('../../assets/coin.webp')}
+              source={require('../../assets/icons/beans.png')}
               style={styles.smallCoinIcon}
               resizeMode="contain"
             />
@@ -176,7 +176,7 @@ const Earning = () => {
               </View>
               <View style={styles.balanceRow}>
                 <Image
-                  source={require('../../assets/coin.webp')}
+                  source={require('../../assets/icons/beans.png')}
                   style={styles.largeCoinIcon}
                   resizeMode="contain"
                 />

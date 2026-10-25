@@ -100,6 +100,17 @@ export const AuthProvider = ({ children }) => {
     [commitCanonicalUser],
   );
 
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('identityNameEffectUpdated', data => {
+      const current = userRef.current;
+      if (!current || ![current.userId, current._id, current.id].some(id =>
+        [data?.userId, data?.userObjectId].some(target => target != null && String(target) === String(id)))) return;
+      commitCanonicalUser({ ...current, nameEffect: data.nameEffect,
+        effectiveIdentity: { ...(current.effectiveIdentity || {}), nameEffect: data.nameEffect } });
+    });
+    return () => subscription.remove();
+  }, [commitCanonicalUser]);
+
   const setEquippedFrame = useCallback(
     (item) => equipCosmetic(item, 'Frames', Boolean(item)),
     [equipCosmetic],

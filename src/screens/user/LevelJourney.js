@@ -27,6 +27,7 @@ import { AlertService } from '../../utils/AlertService';
 import LevelRewardThumbnail from '../../components/levels/LevelRewardThumbnail';
 import RewardPreviewModal from '../../components/levels/RewardPreviewModal';
 import UpgradeGuideModal from '../../components/levels/UpgradeGuideModal';
+import UniqueIdRequestModal from '../../components/levels/UniqueIdRequestModal';
 import {
   calculateWealthLevel,
   calculateWealthProgress,
@@ -72,6 +73,7 @@ export default function LevelJourney() {
 
   // Modals
   const [previewItem, setPreviewItem] = useState(null);
+  const [uniqueIdRequestItem, setUniqueIdRequestItem] = useState(null);
   const [showHowToUpgrade, setShowHowToUpgrade] = useState(false);
   const [claimLoading, setClaimLoading] = useState(false);
 
@@ -717,7 +719,7 @@ export default function LevelJourney() {
                           onPress={() => handleClaimReward(item)}
                           disabled={claimLoading}
                         >
-                          <Text style={styles.rewardActionClaimText}>Claim Reward</Text>
+                          <Text style={styles.rewardActionClaimText}>{item.type === 'custom_id' || item.categoryName === 'Unique ID' ? 'Request ID 👑' : 'Claim Reward'}</Text>
                         </TouchableOpacity>
                       )}
                       {state === 'CLAIMED' && (
@@ -855,7 +857,7 @@ export default function LevelJourney() {
                           onPress={() => handleClaimReward(reward)}
                           disabled={claimLoading}
                         >
-                          <Text style={styles.rewardActionClaimText}>Claim Reward</Text>
+                          <Text style={styles.rewardActionClaimText}>{reward.type === 'custom_id' || reward.categoryName === 'Unique ID' ? 'Request ID 👑' : 'Claim Reward'}</Text>
                         </TouchableOpacity>
                       )}
                       {state === 'CLAIMED' && (
@@ -895,6 +897,18 @@ export default function LevelJourney() {
         onClaim={handleClaimReward}
         onEquip={handleEquipReward}
         styles={styles}
+      />
+
+      <UniqueIdRequestModal
+        visible={Boolean(uniqueIdRequestItem)}
+        item={uniqueIdRequestItem}
+        journeyType={journeyType}
+        user={user}
+        onClose={() => setUniqueIdRequestItem(null)}
+        onSuccess={() => {
+          if (fetchUserProfile) fetchUserProfile();
+          loadStatus(false);
+        }}
       />
 
       <UpgradeGuideModal

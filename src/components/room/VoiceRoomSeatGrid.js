@@ -3,10 +3,14 @@ import { Dimensions, Image, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import VipMicWave from './VipMicWave';
+import IdentityDisplayName from '../identity/IdentityDisplayName';
 import AvatarWithFrame from '../AvatarWithFrame';
 import { DEFAULT_SEAT_IMAGE, LOCK_SEAT_IMAGE } from '../../utils/cosmeticResolver';
 
 const { width } = Dimensions.get('window');
+const seatNameEffect = user => user?.nameEffect || user?.effectiveIdentity?.nameEffect ||
+  ((user?.equippedVipId || user?.equippedSvipId)
+    ? { colors: ['#FFE890', '#FFF8D6', '#E9B74D'], animationType: 'shimmer' } : undefined);
 
 export default function VoiceRoomSeatGrid({
   topTwoSeats,
@@ -72,9 +76,7 @@ export default function VoiceRoomSeatGrid({
                         )}
                       </View>
                     </VipMicWave>
-                    <Text style={styles.topSeatUserName} numberOfLines={1}>
-                      {seat.user.name}
-                    </Text>
+                    <IdentityDisplayName name={seat.user.name} effect={seatNameEffect(seat.user)} style={styles.topSeatUserName} />
                     {showSeatCharm && (
                       <View style={styles.charmPill}>
                         <Text style={styles.charmFlower}>🌸</Text>
@@ -174,9 +176,7 @@ export default function VoiceRoomSeatGrid({
                           )}
                         </View>
                       </VipMicWave>
-                      <Text style={[styles.seatUserName, isCompactLayout && { fontSize: 9.5, maxWidth: 66 }]} numberOfLines={1}>
-                        {seat.user.name}
-                      </Text>
+                      <IdentityDisplayName name={seat.user.name} effect={seatNameEffect(seat.user)} isCrowded={isCompactLayout} style={[styles.seatUserName, isCompactLayout && { fontSize: 9.5, maxWidth: 66 }]} />
                       {showSeatCharm && (
                         <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
                           <Text style={styles.charmFlower}>🌸</Text>

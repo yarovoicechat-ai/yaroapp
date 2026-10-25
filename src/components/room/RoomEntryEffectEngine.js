@@ -1,278 +1,115 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Dimensions,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Animated, Dimensions, Easing, StyleSheet, Text, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import SvgaView from '../SvgaView';
 import AvatarWithFrame from '../AvatarWithFrame';
+import IdentityDisplayName from '../identity/IdentityDisplayName';
 import { resolveEntryAssets } from '../../utils/cosmeticResolver';
 
 const { width, height } = Dimensions.get('window');
 
 export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
-  const [currentEntry, setCurrentEntry] = useState(null);
-  const [showAsset, setShowAsset] = useState(false);
-  const [showTassel, setShowTassel] = useState(false);
-  const playedIdsRef = useRef(new Set());
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
-
-  const bannerX = useRef(new Animated.Value(-48)).current;
-  const bannerOpacity = useRef(new Animated.Value(0)).current;
-  const assetX = useRef(new Animated.Value(0)).current;
-  const assetScale = useRef(new Animated.Value(1)).current;
-  const assetOpacity = useRef(new Animated.Value(0)).current;
-  const tasselY = useRef(new Animated.Value(-24)).current;
-  const tasselOpacity = useRef(new Animated.Value(0)).current;
+  const [current, setCurrent] = useState(null);
+  const pending = useRef([]);
+  const seen = useRef(new Set());
+  const playing = useRef(false);
+  const mounted = useRef(true);
+  const completion = useRef(onComplete);
+  completion.current = onComplete;
+  const translateX = useRef(new Animated.Value(width)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!activeEntry) {
-      return undefined;
+    mounted.current = true;
+    return () => { mounted.current = false; pending.current = []; };
+  }, []);
+
+  useEffect(() => {
+    if (!activeEntry) return;
+    const id = String(activeEntry.entryId || activeEntry.id ||
+      ('join:' + activeEntry.user?.userId + ':' + activeEntry.timestamp));
+    if (seen.current.has(id)) return;
+    seen.current.add(id);
+    if (seen.current.size > 160) seen.current.delete(seen.current.values().next().value);
+    pending.current.push({ ...activeEntry, entryId: id });
+    if (!playing.current) {
+      playing.current = true;
+      setCurrent(pending.current.shift());
     }
-    const resolvedAssets = resolveEntryAssets(activeEntry);
-    if (!resolvedAssets.entry && !resolvedAssets.entrance) return undefined;
+  }, [activeEntry]);
 
-    const entryId =
-      activeEntry.entryId ||
-      activeEntry.id ||
-      `entry:${activeEntry.user?.userId || 'user'}:${activeEntry.timestamp || Date.now()}`;
-    if (playedIdsRef.current.has(entryId)) return undefined;
-    playedIdsRef.current.add(entryId);
-    if (playedIdsRef.current.size > 100) {
-      const first = playedIdsRef.current.values().next().value;
-      playedIdsRef.current.delete(first);
-    }
-
-    const entry = resolvedAssets.entry || resolvedAssets.entrance || activeEntry.entry || activeEntry.effect || {};
-    const entrance = resolvedAssets.entrance || activeEntry.entrance || {};
-    const tassel = resolvedAssets.tassel || activeEntry.tassel || null;
-    const animationUrl =
-      entry.animationUrl ||
-      entrance.animationUrl ||
-      activeEntry.animationUrl ||
-      activeEntry.svgaUrl ||
-      activeEntry.mediaUrl ||
-      '';
-    const visualUrl =
-      animationUrl ||
-      entry.imageUrl ||
-      entry.image ||
-      entrance.imageUrl ||
-      entrance.image ||
-      activeEntry.imageUrl ||
-      activeEntry.image ||
-      activeEntry.visualUrl ||
-      '';
-    const isAnimatedAsset = Boolean(animationUrl || /\.svga|\.gif|\.webp|\.mp4/i.test(visualUrl));
-
-    const hasVisualAsset = Boolean(visualUrl);
-    const hasTassel = Boolean(
-      tassel &&
-        (tassel.name || tassel.animationUrl || tassel.imageUrl || tassel.image),
-    );
-
-    setCurrentEntry({
-      ...activeEntry,
-      entryId,
-      hasEntry: true,
-      entry,
-      effect: entry,
-      entrance,
-      tassel,
-    });
-    setShowAsset(false);
-    setShowTassel(false);
-    bannerX.setValue(width + 20);
-    bannerOpacity.setValue(1);
-    assetX.setValue(0);
-    assetScale.setValue(1);
-    assetOpacity.setValue(0);
-    tasselY.setValue(-24);
-    tasselOpacity.setValue(0);
-
-    // Smoothly spring banner into position from the right
-    Animated.spring(bannerX, {
-      toValue: 0,
-      friction: 7,
-      tension: 45,
-      useNativeDriver: true,
-    }).start();
-
-    const assetTimer = hasVisualAsset
-      ? setTimeout(() => {
-          setShowAsset(true);
-          Animated.timing(assetOpacity, {
-            toValue: 1,
-            duration: 350,
-            useNativeDriver: true,
-          }).start();
-        }, 80)
-      : null;
-
-    const tasselTimer = hasTassel
-      ? setTimeout(() => {
-          setShowTassel(true);
-          Animated.parallel([
-            Animated.timing(tasselY, {
-              toValue: 0,
-              duration: 500,
-              useNativeDriver: true,
-            }),
-            Animated.timing(tasselOpacity, {
-              toValue: 1,
-              duration: 450,
-              useNativeDriver: true,
-            }),
-          ]).start();
-        }, 850)
-      : null;
-
-    const duration = Math.min(
-      12000,
-      Math.max(3500, Number(entry.duration || entrance.duration || activeEntry.duration || 5000)),
-    );
-    const dismissTimer = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(bannerOpacity, {
-          toValue: 0,
-          duration: 350,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bannerX, {
-          toValue: -width,
-          duration: 350,
-          useNativeDriver: true,
-        }),
-        Animated.timing(assetOpacity, {
-          toValue: 0,
-          duration: 350,
-          useNativeDriver: true,
-        }),
-        Animated.timing(tasselOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setCurrentEntry(null);
-        setShowAsset(false);
-        setShowTassel(false);
-        onCompleteRef.current?.(entryId);
+  useEffect(() => {
+    if (!current) return;
+    const assets = resolveEntryAssets(current);
+    const visual = assets.entry || assets.entrance;
+    const hasAnimation = Boolean(visual?.animationUrl);
+    const duration = hasAnimation
+      ? Math.max(2000, Math.min(12000, Number(visual.duration || visual.metadata?.duration) || 5000))
+      : 4500;
+    translateX.setValue(width);
+    opacity.setValue(0);
+    let motion;
+    if (hasAnimation) {
+      motion = Animated.sequence([
+        Animated.parallel([
+          Animated.timing(translateX, { toValue: 0, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        ]),
+        Animated.delay(duration),
+        Animated.timing(opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+      ]);
+    } else {
+      opacity.setValue(1);
+      motion = Animated.timing(translateX, {
+        toValue: -width, duration, easing: Easing.linear, useNativeDriver: true,
       });
-    }, duration);
+    }
+    motion.start(({ finished }) => {
+      if (!finished || !mounted.current) return;
+      completion.current?.(current.entryId);
+      const next = pending.current.shift();
+      playing.current = Boolean(next);
+      setCurrent(next || null);
+    });
+    return () => motion.stop();
+  }, [current, opacity, translateX]);
 
-    return () => {
-      if (assetTimer) clearTimeout(assetTimer);
-      if (tasselTimer) clearTimeout(tasselTimer);
-      clearTimeout(dismissTimer);
-      bannerX.stopAnimation();
-      bannerOpacity.stopAnimation();
-      assetX.stopAnimation();
-      assetScale.stopAnimation();
-      assetOpacity.stopAnimation();
-      tasselY.stopAnimation();
-      tasselOpacity.stopAnimation();
-    };
-  }, [
-    activeEntry,
-    assetOpacity,
-    assetScale,
-    assetX,
-    bannerOpacity,
-    bannerX,
-    tasselOpacity,
-    tasselY,
-  ]);
-
-  if (!currentEntry) return null;
-
-  const resolvedAssets = resolveEntryAssets(currentEntry);
-  const entry = resolvedAssets.entry || resolvedAssets.entrance || {};
-  const entrance = resolvedAssets.entrance || {};
-  const tassel = resolvedAssets.tassel || {};
-  const hasAvatarTassel = Boolean(
-    tassel.name || tassel.animationUrl || tassel.imageUrl || tassel.image,
-  );
-  const user = currentEntry.user || {};
-  const colors =
-    Array.isArray(entry.bannerColors) && entry.bannerColors.length >= 2
-      ? entry.bannerColors
-      : ['#F59E0B', '#B45309', '#78350F'];
-  const animationUrl = entry.animationUrl || entrance.animationUrl || '';
-  const visualUrl = animationUrl || entry.image || entrance.image || entry.imageUrl || entrance.imageUrl || '';
-  const isAnimatedAsset = Boolean(animationUrl);
+  if (!current) return null;
+  const assets = resolveEntryAssets(current);
+  const visual = assets.entry || assets.entrance;
+  const media = visual?.animationUrl || '';
+  const settings = visual?.metadata || {};
+  const user = current.user || {};
+  const colors = visual?.bannerColors || visual?.bgColors;
+  const bannerColors = Array.isArray(colors) && colors.length >= 2
+    ? colors : ['#117C9B', '#245E78', '#17394A'];
+  const nameEffect = user.nameEffect || current.vipExperience?.nameEffect;
 
   return (
     <View style={styles.overlay} pointerEvents="none">
-      {/* 1. Full-Screen SVGA / Vehicle / Ride Animation Layer */}
-      {showAsset && visualUrl ? (
-        <Animated.View
-          style={[
-            styles.assetStage,
-            {
-              opacity: assetOpacity,
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <SvgaView
-            source={visualUrl}
-            style={isAnimatedAsset ? styles.fullScreenSvga : styles.staticAssetImage}
-            loops={1}
-            resizeMode="cover"
-          />
+      {media ? (
+        <Animated.View style={[styles.mediaStage, { opacity }]}>
+          <SvgaView key={current.entryId} source={media} style={StyleSheet.absoluteFillObject} loops={1} resizeMode="contain" />
         </Animated.View>
       ) : null}
-
-      {/* 2. Floating Top Banner (User Avatar + Frame + Name + Tag Text) */}
-      <Animated.View
-        style={[
-          styles.banner,
-          { opacity: bannerOpacity, transform: [{ translateX: bannerX }] },
-        ]}
-        pointerEvents="none"
-      >
-        <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.bannerGradient}>
-          <View style={styles.entryAvatarWrap}>
-            <AvatarWithFrame
-              user={user}
-              frame={user.equippedFrameAsset || user.equippedFrame || null}
-              size={44}
-              showOnlineDot={false}
-            />
-            {showTassel && hasAvatarTassel ? (
-              <Animated.View
-                style={[
-                  styles.tasselAvatarBadge,
-                  {
-                    opacity: tasselOpacity,
-                    borderColor: tassel.previewColor || '#F59E0B',
-                    transform: [{ translateY: tasselY }],
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="ribbon"
-                  size={13}
-                  color={tassel.previewColor || '#F59E0B'}
-                />
-              </Animated.View>
-            ) : null}
+      <Animated.View style={[
+        styles.bannerStage, media && styles.comingStage,
+        { opacity, transform: [{ translateX }] },
+      ]}>
+        {media && settings.showAvatar === true ? (
+          <View style={styles.largeAvatar}>
+            <AvatarWithFrame user={user} size={76} showOnlineDot={false} />
           </View>
-          <View style={styles.bannerText}>
-            <View style={styles.bannerNameRow}>
-              <Text style={styles.userName} numberOfLines={1}>{user.name || 'User'}</Text>
-              <Text style={{ fontSize: 13 }}>{entry.icon || '👑'}</Text>
-            </View>
-            <Text style={styles.tagText} numberOfLines={1}>
-              {currentEntry.tagText || entry.tagText || entrance.tagText || (entry.name ? `entered with ${entry.name}` : 'has joined the room')}
+        ) : null}
+        <LinearGradient colors={bannerColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.banner}>
+          <AvatarWithFrame user={user} size={32} showOnlineDot={false} />
+          <View style={styles.copy}>
+            <IdentityDisplayName name={user.name || 'User'} effect={nameEffect} fontSize={14} style={styles.name} />
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {media ? (settings.comingText || 'is coming') : 'entered the room'}
             </Text>
           </View>
+          {!media ? <Text style={styles.level}>Lv.{user.wealthLevel ?? user.level ?? 1}</Text> : null}
         </LinearGradient>
       </Animated.View>
     </View>
@@ -280,111 +117,15 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 99999,
-    elevation: 9999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  assetStage: {
-    ...StyleSheet.absoluteFillObject,
-    width: width,
-    height: height,
-    zIndex: 99999,
-    elevation: 9999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  fullScreenSvga: {
-    width: width,
-    height: height,
-  },
-  staticAssetImage: {
-    width: width,
-    height: height,
-    resizeMode: 'contain',
-  },
-  banner: {
-    position: 'absolute',
-    top: Math.max(68, height * 0.12),
-    alignSelf: 'center',
-    width: width - 32,
-    maxWidth: 360,
-    borderRadius: 22,
-    overflow: 'visible',
-    zIndex: 100000,
-    elevation: 10000,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
-  },
-  bannerGradient: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: 'rgba(254, 240, 138, 0.75)',
-  },
-  entryAvatarWrap: {
-    width: 44,
-    height: 44,
-    marginRight: 10,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tasselAvatarBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#111827',
-    borderWidth: 1.2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 100001,
-    elevation: 10001,
-  },
-  bannerText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  bannerNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  userName: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-    maxWidth: '82%',
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  tagText: {
-    color: '#FEF3C7',
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 2,
-    letterSpacing: 0.2,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
+  overlay: { ...StyleSheet.absoluteFillObject, zIndex: 9999, elevation: 99 },
+  mediaStage: { position: 'absolute', top: height * 0.17, bottom: height * 0.12, left: 0, right: 0 },
+  bannerStage: { position: 'absolute', top: height * 0.55, left: 12, width: width - 24 },
+  comingStage: { top: height * 0.33, left: width * 0.13, width: width * 0.74 },
+  banner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 22, borderWidth: 1, borderColor: 'rgba(142,225,255,0.8)' },
+  largeAvatar: { alignSelf: 'center', marginBottom: 8 },
+  copy: { flex: 1, minWidth: 0, marginHorizontal: 8 },
+  name: { flexShrink: 1, color: '#FFF1A8' },
+  subtitle: { color: '#FFFFFF', fontSize: 11, marginTop: 1 },
+  level: { color: '#FFF1A8', fontWeight: '700', fontSize: 11 },
 });

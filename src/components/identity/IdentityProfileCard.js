@@ -50,7 +50,7 @@ export default function IdentityProfileCard({
           <View style={styles.nameRow}>
             <IdentityDisplayName
               name={effectiveUser.name || effectiveUser.userName || 'Yaro User'}
-              effect={effectiveUser.nameEffect}
+              effect={effectiveUser.nameEffect || effectiveUser.effectiveIdentity?.nameEffect}
               vipTier={effectiveUser.svipTier || effectiveUser.vipTier}
               fontSize={18}
               fontWeight="900"

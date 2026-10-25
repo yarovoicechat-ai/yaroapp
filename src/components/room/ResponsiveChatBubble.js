@@ -1,4 +1,5 @@
 import React from 'react';
+import IdentityDisplayName from '../identity/IdentityDisplayName';
 import { View, Text, StyleSheet, Dimensions, Image, TouchableOpacity } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -21,6 +22,8 @@ export default function ResponsiveChatBubble({
 }) {
   const text = message?.text || message?.content || '';
   const senderName = sender?.name || message?.user || message?.senderName || 'User';
+  const nameEffect = message?.nameEffect || sender?.nameEffect || sender?.effectiveIdentity?.nameEffect ||
+    ((isVip || isSvip) ? { colors: ['#FFE890', '#FFF8D6', '#E9B74D'], animationType: 'shimmer' } : undefined);
   const rawAvatar = sender?.avatar || message?.avatar || null;
   const avatarSource = getUserAvatar({ avatar: rawAvatar, image: rawAvatar, gender: message?.gender || sender?.gender || 'female' });
   const isOwner = Boolean(message?.isOwner || message?.userRole === 'owner');
@@ -228,9 +231,7 @@ export default function ResponsiveChatBubble({
                     <Text style={styles.ownerPillText}>Owner</Text>
                   </LinearGradient>
                 )}
-                <Text style={styles.royalGoldName} numberOfLines={1}>
-                  👑 𝓡{senderName.slice(1) || senderName}
-                </Text>
+                <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.royalGoldName} />
               </View>
 
               {/* Badges Row */}
@@ -343,9 +344,7 @@ export default function ResponsiveChatBubble({
                       <Text style={styles.ownerPillText}>Owner</Text>
                     </LinearGradient>
                   )}
-                  <Text style={styles.vip4GoldName} numberOfLines={1}>
-                    👑 {senderName}
-                  </Text>
+                  <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.vip4GoldName} />
                 </View>
 
                 {/* Badges Row */}
@@ -416,9 +415,7 @@ export default function ResponsiveChatBubble({
 
             <View style={styles.royalUserMetaCol}>
               <View style={styles.royalNameRow}>
-                <Text style={styles.svip3CyanName} numberOfLines={1}>
-                  🐺 {senderName} 🐺
-                </Text>
+                <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.svip3CyanName} />
               </View>
 
               <View style={styles.badgesRow}>
@@ -478,9 +475,7 @@ export default function ResponsiveChatBubble({
 
             <View style={styles.royalUserMetaCol}>
               <View style={styles.royalNameRow}>
-                <Text style={styles.emeraldGoldName} numberOfLines={1}>
-                  👑 {senderName} 👑
-                </Text>
+                <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.emeraldGoldName} />
               </View>
 
               <View style={styles.badgesRow}>
@@ -556,9 +551,7 @@ export default function ResponsiveChatBubble({
 
             <View style={styles.customUserMetaCol}>
               <View style={styles.customNameRow}>
-                <Text style={[styles.customSenderName, { color: customBubble.borderColor }]} numberOfLines={1}>
-                  {senderName}
-                </Text>
+                <IdentityDisplayName name={senderName} effect={nameEffect} style={[styles.customSenderName, { color: customBubble.borderColor }]} />
                 <View style={[styles.customBadgePill, { backgroundColor: customBubble.borderColor }]}>
                   <Text style={styles.customBadgeText}>{customBubble.badge}</Text>
                 </View>
@@ -601,9 +594,7 @@ export default function ResponsiveChatBubble({
       </TouchableOpacity>
       <View style={styles.normalBubbleBox}>
         <View style={styles.normalSenderHeader}>
-          <Text style={styles.normalSenderName} numberOfLines={1}>
-            {senderName}
-          </Text>
+          <IdentityDisplayName name={senderName} effect={nameEffect} style={styles.normalSenderName} />
           {userLevel != null ? (
             <View style={styles.normalLevelPill}>
               <Text style={styles.normalLevelText}>Lv.{userLevel}</Text>

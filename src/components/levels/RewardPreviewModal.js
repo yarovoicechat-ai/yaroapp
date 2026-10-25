@@ -18,6 +18,7 @@ export default function RewardPreviewModal({
   const rewardState = getRewardState(item);
   const locked = rewardState === 'LOCKED';
   const accentColor = isWealth ? '#F59E0B' : '#EC4899';
+  const isUniqueId = item.type === 'custom_id' || item.type === 'uniqueId' || item.categoryName === 'Unique ID';
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -52,7 +53,7 @@ export default function RewardPreviewModal({
           <View style={styles.modalCtaRow}>
             {rewardState === 'UNLOCKED' && (
               <TouchableOpacity style={[styles.modalPrimaryBtn, { backgroundColor: accentColor }]} onPress={() => onClaim(item)} disabled={claimLoading}>
-                {claimLoading ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.modalPrimaryBtnText}>Claim Reward</Text>}
+                {claimLoading ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.modalPrimaryBtnText}>{isUniqueId ? '👑 Request Custom ID' : 'Claim Reward'}</Text>}
               </TouchableOpacity>
             )}
             {rewardState === 'CLAIMED' && (

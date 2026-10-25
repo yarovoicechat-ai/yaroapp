@@ -11,6 +11,7 @@ import {
   FlatList,
   TextInput,
   Animated,
+  Easing,
   StatusBar,
   Alert,
   ScrollView,
@@ -38,7 +39,6 @@ import RoomUserProfileModal from '../../components/room/RoomUserProfileModal';
 import RoomDetailsModal from '../../components/room/RoomDetailsModal';
 import RoomGroupPrivilegeModal from '../../components/room/RoomGroupPrivilegeModal';
 import RoomEntryEffectEngine from '../../components/room/RoomEntryEffectEngine';
-import VipFloatingEntryEngine from '../../components/room/VipFloatingEntryEngine';
 import ResponsiveChatBubble from '../../components/room/ResponsiveChatBubble';
 import VoiceRoomSeatGrid from '../../components/room/VoiceRoomSeatGrid';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
@@ -130,32 +130,39 @@ const hasPlayableGiftVisual = (payload) => {
 function DanmakuItem({ bullet, onComplete }) {
   const animX = useRef(new Animated.Value(width + 10)).current;
 
+  const [cardWidth, setCardWidth] = useState(null);
   useEffect(() => {
-    Animated.timing(animX, {
-      toValue: -width - 250,
-      duration: 6500,
-      useNativeDriver: false,
-    }).start(({ finished }) => {
+    if (!cardWidth) return undefined;
+    animX.setValue(width + 10);
+    const motion = Animated.timing(animX, {
+      toValue: -cardWidth - 20,
+      duration: Math.round((width + cardWidth + 30) / 65 * 1000),
+      easing: Easing.linear,
+      useNativeDriver: true,
+    });
+    motion.start(({ finished }) => {
       if (finished) {
         onComplete(bullet.id);
       }
     });
-  }, []);
+    return () => motion.stop();
+  }, [animX, cardWidth, bullet.id]);
 
-  const topPosition = 260 + (bullet.track || 0) * 50;
+  const topPosition = height * 0.53 + (bullet.track || 0) * 38;
 
   return (
     <Animated.View
+      onLayout={(event) => setCardWidth(event.nativeEvent.layout.width)}
       style={[
         styles.flyingBulletCard,
         {
           top: topPosition,
-          left: animX,
+          transform: [{ translateX: animX }],
         },
       ]}
     >
       <LinearGradient
-        colors={['#7C3AED', '#EC4899', '#F59E0B']}
+        colors={['#126B8C', '#25536B', '#193C52']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.flyingBulletGradient}
@@ -229,11 +236,8 @@ export default function VoiceRoomScreen() {
     respondLiveRequest,
     broadcastChatMessage,
     broadcastReaction,
-    joinedNotification,
     activeEntryEffect,
     setActiveEntryEffect,
-    activeVipEntry,
-    setActiveVipEntry,
     agoraStatus,
     agoraErrorMessage,
     isMusicPlaying,
@@ -262,17 +266,9 @@ export default function VoiceRoomScreen() {
     updateSeatCharm,
   } = useVoiceRoom();
 
-  const handleEntryEffectComplete = useCallback(() => {
-    setActiveEntryEffect?.(null);
+  const handleEntryEffectComplete = useCallback((entryId) => {
+    setActiveEntryEffect?.((previous) => previous?.entryId === entryId ? null : previous);
   }, [setActiveEntryEffect]);
-
-  const handleVipEntryComplete = useCallback(() => {
-    setActiveVipEntry?.(null);
-  }, [setActiveVipEntry]);
-
-  const [activeJoinBanner, setActiveJoinBanner] = useState(null);
-  const joinBannerAnim = useRef(new Animated.Value(-width)).current;
-  const joinBannerOpacity = useRef(new Animated.Value(0)).current;
 
   // Modals for Tools, Music, Seat Layout, Themes & Seat Skins (Owner Tools)
   const [toolsModalVisible, setToolsModalVisible] = useState(false);
@@ -400,37 +396,6 @@ export default function VoiceRoomScreen() {
       ]).start(() => setFlyingGiftBanner(null));
     }, 3800);
   };
-
-  useEffect(() => {
-    const isSelf = Boolean(
-      user?.userId &&
-      (String(joinedNotification?.userId) === String(user.userId) ||
-       String(joinedNotification?.id) === String(user.userId) ||
-       String(joinedNotification?._id) === String(user.userId))
-    );
-    if (joinedNotification?.name && !isSelf) {
-      setActiveJoinBanner(joinedNotification);
-      joinBannerAnim.setValue(width + 20);
-      joinBannerOpacity.setValue(1);
-
-      // Bullet message entrance: fly smoothly across from RIGHT to LEFT, then disappear
-      const bulletAnim = Animated.timing(joinBannerAnim, {
-        toValue: -width - 250,
-        duration: 5500,
-        useNativeDriver: true,
-      });
-
-      bulletAnim.start(({ finished }) => {
-        if (finished) {
-          setActiveJoinBanner(null);
-        }
-      });
-
-      return () => {
-        bulletAnim.stop();
-      };
-    }
-  }, [joinedNotification, user?.userId]);
 
   const incomingRoomId = route.params?.roomId || route.params?.id || route.params?.room?.id;
   const isSelfHostFromDeepLink = Boolean(incomingRoomId && user?.userId && String(incomingRoomId) === String(user.userId));
@@ -851,69 +816,34 @@ export default function VoiceRoomScreen() {
   }, [room?.hostId, room?.ownerId, room?.hostName, seats, seatCount, topSafeInset]);
 
   const [roomContributors, setRoomContributors] = useState([]);
+  const contributorsRequest = useRef(0);
 
   const fetchRoomContributors = useCallback(async () => {
+    const version = ++contributorsRequest.current;
     const activeRoomId = currentRoomId || room?.id || room?.roomId || route?.params?.roomId;
     if (!activeRoomId) return;
     try {
       const res = await apiUtil.get(`/voice-club/rooms/${activeRoomId}/contributors?period=daily`);
-      if (res?.data?.success && Array.isArray(res.data.data?.contributors)) {
+      if (version === contributorsRequest.current && res?.data?.success && Array.isArray(res.data.data?.contributors)) {
         setRoomContributors(res.data.data.contributors);
       }
     } catch (_) {}
   }, [currentRoomId, room?.id, room?.roomId, route?.params?.roomId]);
 
   useEffect(() => {
+    setRoomContributors([]);
     fetchRoomContributors();
+    const timer = setInterval(fetchRoomContributors, 15000);
+    return () => {
+      clearInterval(timer);
+      contributorsRequest.current += 1;
+    };
   }, [fetchRoomContributors]);
 
-  const recordContribution = useCallback((senderUser, diamondsCount) => {
-    if (!senderUser || !diamondsCount) return;
-    const sId = String(senderUser.userId || senderUser.id || senderUser._id || '');
-    if (!sId) return;
-    const addedPoints = Number(diamondsCount) || 0;
-    if (addedPoints <= 0) return;
-
-    setRoomContributors((prev) => {
-      const existingIdx = prev.findIndex((u) => {
-        const uId = String(u.userId || u.id || u._id || '');
-        return uId === sId;
-      });
-      if (existingIdx >= 0) {
-        const updated = [...prev];
-        const cur = updated[existingIdx];
-        const newPoints = Number(cur.points || cur.wealthPoints || cur.diamonds || 0) + addedPoints;
-        updated[existingIdx] = {
-          ...cur,
-          points: newPoints,
-          wealthPoints: newPoints,
-          diamonds: newPoints,
-          totalDiamonds: newPoints,
-          totalSent: newPoints,
-        };
-        return updated.sort((a, b) => (b.points || 0) - (a.points || 0));
-      } else {
-        const newUser = {
-          userId: sId,
-          id: sId,
-          _id: sId,
-          name: senderUser.name || 'User',
-          avatar: senderUser.avatar || senderUser.image || '',
-          level: senderUser.level || 1,
-          points: addedPoints,
-          wealthPoints: addedPoints,
-          diamonds: addedPoints,
-          totalDiamonds: addedPoints,
-          totalSent: addedPoints,
-        };
-        return [...prev, newUser].sort((a, b) => (b.points || 0) - (a.points || 0));
-      }
-    });
-
-    // Re-fetch from server to ensure accurate daily aggregation
-    setTimeout(() => {
-      fetchRoomContributors();
-    }, 1000);
+  const recordContribution = useCallback(() => {
+    // HTTP success and socket delivery can refer to the same gift. Read the
+    // persisted total instead of incrementing twice for those notifications.
+    fetchRoomContributors();
   }, [fetchRoomContributors]);
 
   const giftHook = useGift({
@@ -1101,9 +1031,7 @@ export default function VoiceRoomScreen() {
   const [wealthModalVisible, setWealthModalVisible] = useState(false);
   const [onlineUsersModalVisible, setOnlineUsersModalVisible] = useState(false);
   const topRoomContributors = useMemo(() => {
-    const list = Array.isArray(roomContributors) && roomContributors.length > 0
-      ? roomContributors
-      : (Array.isArray(onlineUsers) ? onlineUsers : []);
+    const list = Array.isArray(roomContributors) ? roomContributors : [];
     return [...list]
       .filter((u) => Number(u.points || u.wealthPoints || u.diamonds || u.totalDiamonds || u.totalSent || 0) > 0)
       .sort((a, b) =>
@@ -1111,7 +1039,7 @@ export default function VoiceRoomScreen() {
         Number(a.wealthPoints || a.points || a.diamonds || a.totalDiamonds || a.totalSent || 0),
       )
       .slice(0, 3);
-  }, [roomContributors, onlineUsers]);
+  }, [roomContributors]);
 
   // Room Details and Settings Modals
   const [currentRoomTitle, setCurrentRoomTitle] = useState(room.title);
@@ -1916,43 +1844,6 @@ export default function VoiceRoomScreen() {
             <Text style={styles.flyingGiftMultiplier}>
               x{flyingGiftBanner.combo || 1}
             </Text>
-          </LinearGradient>
-        </Animated.View>
-      )}
-
-      {/* Floating Animated Room Join Banner */}
-      {activeJoinBanner && (
-        <Animated.View
-          style={[
-            styles.roomJoinBanner,
-            {
-              transform: [{ translateX: joinBannerAnim }],
-              opacity: joinBannerOpacity,
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={['rgba(76,29,149,0.96)', 'rgba(180,83,9,0.96)', 'rgba(245,158,11,0.94)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.roomJoinBannerGradient}
-          >
-            <View style={styles.joinAvatarWithBadge}>
-              <AvatarWithFrame
-                user={activeJoinBanner}
-                frame={activeJoinBanner.equippedFrameAsset || activeJoinBanner.equippedFrame || null}
-                size={32}
-                showOnlineDot={false}
-              />
-              <Text style={styles.joinAvatarEmoji}>✨</Text>
-            </View>
-            <View style={styles.joinCopyColumn}>
-              <Text style={styles.joinUserName} numberOfLines={1}>{activeJoinBanner.name || 'User'}</Text>
-              <Text style={styles.joinSubText}>has joined</Text>
-              <View style={styles.joinLevelBadge}>
-                <Text style={styles.joinLevelText}>💎 Lv.{activeJoinBanner.wealthLevel ?? activeJoinBanner.level ?? '—'}</Text>
-              </View>
-            </View>
           </LinearGradient>
         </Animated.View>
       )}
@@ -2816,7 +2707,6 @@ export default function VoiceRoomScreen() {
         roomId={currentRoomId || room?.id || room?.roomId || route?.params?.roomId}
         onOpenGiftPanel={() => setGiftPanelVisible(true)}
         bottomSafePadding={bottomSafePadding}
-        users={roomContributors.length > 0 ? roomContributors : onlineUsers}
       />
 
       {/* MODAL: ROOM ONLINE USERS LIST */}
@@ -2846,14 +2736,9 @@ export default function VoiceRoomScreen() {
       />
       {/* ROOM ENTRY EFFECT ANIMATION ENGINE */}
       <RoomEntryEffectEngine
+        key={String(currentRoomId || room?.id || room?.roomId || 'room')}
         activeEntry={activeEntryEffect}
         onComplete={handleEntryEffectComplete}
-      />
-
-      {/* VIP FLOATING ENTRY ENGINE */}
-      <VipFloatingEntryEngine
-        vipEntryEvent={activeVipEntry}
-        onComplete={handleVipEntryComplete}
       />
 
       {/* ENTERPRISE GIFT ANIMATION ENGINE (CENTER -> RECIPIENT AVATAR FLIGHT -> BURST) */}

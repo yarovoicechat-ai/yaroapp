@@ -45,6 +45,7 @@ export const VoiceRoomProvider = ({ children }) => {
   const [seats, setSeats] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [activeEntryEffect, setActiveEntryEffect] = useState(null);
+  const nameEffectHandlerRef = useRef(null);
   const [activeVipEntry, setActiveVipEntry] = useState(null);
   const [currentRoomTheme, setCurrentRoomTheme] = useState(null);
   const [currentSeatSkin, setCurrentSeatSkin] = useState(null);
@@ -840,6 +841,10 @@ export const VoiceRoomProvider = ({ children }) => {
     sock.off('room:vip-entry');
     sock.off('vip:entry');
     sock.off('entry:effect');
+    if (nameEffectHandlerRef.current) {
+      sock.off('identity:name-effect-updated', nameEffectHandlerRef.current);
+      nameEffectHandlerRef.current = null;
+    }
     sock.off('room:entry');
     if (reconnectHandlerRef.current) {
       sock.off('connect', reconnectHandlerRef.current);
@@ -1322,15 +1327,6 @@ export const VoiceRoomProvider = ({ children }) => {
               data.eventId ||
               `join:${data.user.userId || data.user.id || data.user.name}`;
             const joinedUserKey = String(data.user.userId || data.user.id || data.user._id || data.user.name);
-            const hasEquippedArrivalEffect = Boolean(
-              data.user.equippedEntryAsset ||
-              data.user.equippedEntryEffect ||
-              data.user.equippedEntry ||
-              data.user.equippedEntranceAsset ||
-              data.user.equippedEntrance ||
-              data.user.equippedVipId ||
-              data.user.equippedSvipId
-            );
             const now = Date.now();
             const lastAnnouncementAt = recentJoinUsersRef.current.get(joinedUserKey) || 0;
             if (seenJoinEventsRef.current.has(joinEventId) || now - lastAnnouncementAt < 3000) return;
@@ -1343,13 +1339,6 @@ export const VoiceRoomProvider = ({ children }) => {
             if (recentJoinUsersRef.current.size > 200) {
               const first = recentJoinUsersRef.current.keys().next().value;
               recentJoinUsersRef.current.delete(first);
-            }
-            if (!hasEquippedArrivalEffect) {
-              setJoinedNotification({
-                ...data.user,
-                id: joinEventId,
-                timestamp: Date.now(),
-              });
             }
             // User requirement: Do NOT show welcome greeting card to existing occupants in room.
           } else if (isSelf && !actuallyOwner) {
@@ -1539,6 +1528,11 @@ export const VoiceRoomProvider = ({ children }) => {
           return true;
         };
         const acceptEntryEffect = (data, eventName) => {
+          if (!isCurrentRoomEvent(data)) return;
+          const userKeys = [data?.user?.userId, data?.userId, data?.user?.id, data?.user?._id]
+            .filter(Boolean).map(String);
+          if (hasRoomMemberSnapshotRef.current && userKeys.length &&
+              !userKeys.some(id => roomMemberIdsRef.current.has(id))) return;
           if (!rememberEntryEvent(data)) return;
           console.warn(`📡 [VoiceRoom] ${eventName} received in Context:`, data?.entryId, data?.user?.name);
           if (data?.user) {
@@ -1553,6 +1547,18 @@ export const VoiceRoomProvider = ({ children }) => {
           }
           setActiveEntryEffect(data);
         };
+        const handleNameEffectUpdated = (data) => {
+          const keys = [data?.userId, data?.userObjectId].filter(Boolean).map(String);
+          if (!keys.length) return;
+          const matches = value => [value?.userId, value?.id, value?._id, value?.senderId]
+            .some(id => keys.includes(String(id)));
+          const patch = value => matches(value) ? { ...value, nameEffect: data.nameEffect } : value;
+          setOnlineUsers(previous => previous.map(patch));
+          setSeats(previous => previous.map(seat => ({ ...seat, user: seat.user ? patch(seat.user) : null })));
+          setChatMessages(previous => previous.map(patch));
+        };
+        nameEffectHandlerRef.current = handleNameEffectUpdated;
+        sock.on('identity:name-effect-updated', handleNameEffectUpdated);
         sock.on('entry:effect', (data) => {
           acceptEntryEffect(data, 'entry:effect');
         });
@@ -1570,7 +1576,7 @@ export const VoiceRoomProvider = ({ children }) => {
           if (hasRoomMemberSnapshotRef.current && entryUserIds.length &&
               !entryUserIds.some((id) => roomMemberIdsRef.current.has(id))) return;
           if (!rememberEntryEvent(data)) return;
-          setActiveVipEntry(data);
+          // Membership alone does not create a room entrance.
         });
         sock.on('vip:entry', (data) => {
           if (data?.effect || data?.entry || data?.entrance) {
@@ -1582,7 +1588,7 @@ export const VoiceRoomProvider = ({ children }) => {
           if (hasRoomMemberSnapshotRef.current && entryUserIds.length &&
               !entryUserIds.some((id) => roomMemberIdsRef.current.has(id))) return;
           if (!rememberEntryEvent(data)) return;
-          setActiveVipEntry(data);
+          // Legacy VIP-only announcements are intentionally ignored.
         });
 
         // Join room on server

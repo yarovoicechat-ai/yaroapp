@@ -31,7 +31,7 @@ const CARD_WIDTH = (width - 48) / 2;
 const ItemAsset = CosmeticAsset;
 
 
-const CATEGORIES = ['All', 'Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'Tag', 'Theme', 'Seat Skin', 'Unique ID', 'Profile Border', 'VIP', 'King of Kings', 'Chat Bubble', 'Tassel'];
+const CATEGORIES = ['All', 'Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'Tag', 'Theme', 'Seat Skin', 'Unique ID', 'Profile Border', 'VIP', 'King of Kings', 'Chat Bubble'];
 const EQUIPPABLE_TYPES = ['Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'VIP', 'Chat Bubble', 'Tassel', 'Theme', 'Profile Border', 'Unique ID'];
 
 export default function MyItems() {
@@ -447,7 +447,7 @@ export default function MyItems() {
       );
     }
 
-    if (item?.type === 'Entry' || item?.coverType === 'portal_entry') {
+    if (item?.type === 'Entry' || item?.type === 'Entrance' || item?.coverType === 'portal_entry') {
       return (
         <LinearGradient
           colors={['#0F0C20', '#1E1435', '#2E1065']}

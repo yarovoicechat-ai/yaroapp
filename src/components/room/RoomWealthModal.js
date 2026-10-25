@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Image,
   Modal,
@@ -21,11 +21,11 @@ export default function RoomWealthModal({
   onClose,
   onSelectUser,
   roomId = '',
-  users = [],
   currentUser = null,
   onOpenGiftPanel,
   bottomSafePadding = 16,
 }) {
+  const requestVersion = useRef(0);
   const [activeTab, setActiveTab] = useState('Daily'); // 'Daily' | 'Weekly' | 'Monthly'
   const [tabData, setTabData] = useState({
     Daily: [],
@@ -45,12 +45,14 @@ export default function RoomWealthModal({
 
   const fetchContributorsForTab = useCallback(
     async (tab) => {
+      const version = ++requestVersion.current;
       if (!roomId) return;
       try {
         setLoadingTab(true);
         const res = await apiUtil.get(
           `/voice-club/rooms/${roomId}/contributors?period=${tab.toLowerCase()}`
         );
+        if (version !== requestVersion.current) return;
         if (res?.data?.success && res.data.data) {
           const d = res.data.data;
           setTabData((prev) => ({ ...prev, [tab]: d.contributors || [] }));
@@ -60,46 +62,42 @@ export default function RoomWealthModal({
           if (d.myContribution !== undefined && d.myRank !== undefined) {
             setUserStats({
               myContribution: d.myContribution,
-              myRank: d.myRank > 99 ? '99+' : `#${d.myRank}`,
+              myRank: Number(d.myRank) > 0 && Number(d.myRank) <= 99 ? `#${d.myRank}` : '99+',
             });
           }
         }
       } catch (err) {
+        if (version !== requestVersion.current) return;
+        setTabData((prev) => ({ ...prev, [tab]: [] }));
+        setUserStats({ myContribution: 0, myRank: '99+' });
         console.warn('[RoomWealthModal] Fetch tab error:', err?.message);
       } finally {
-        setLoadingTab(false);
+        if (version === requestVersion.current) setLoadingTab(false);
       }
     },
     [roomId]
   );
 
   useEffect(() => {
-    if (visible && roomId) {
-      fetchContributorsForTab(activeTab);
-    }
+    setTabData({ Daily: [], Weekly: [], Monthly: [] });
+    setPeriodTexts({ Daily: '', Weekly: '', Monthly: '' });
+    setUserStats({ myContribution: 0, myRank: '99+' });
+    if (!visible || !roomId) return;
+    fetchContributorsForTab(activeTab);
+    const timer = setInterval(() => fetchContributorsForTab(activeTab), 10000);
+    return () => {
+      clearInterval(timer);
+      requestVersion.current += 1;
+    };
   }, [visible, activeTab, roomId, fetchContributorsForTab]);
 
-  // Ranked users: use server data for the active tab (Daily / Weekly / Monthly), with fallback to users for Daily
+  // Online users and wallet balances are never room contributions.
   const rankedUsers = useMemo(() => {
-    const serverList = tabData[activeTab];
-    const sourceList =
-      Array.isArray(serverList) && serverList.length > 0
-        ? serverList
-        : activeTab === 'Daily'
-        ? users
-        : [];
+    const sourceList = tabData[activeTab] || [];
 
     return [...sourceList]
       .map((member) => {
-        const points = Number(
-          member.wealthPoints ||
-            member.points ||
-            member.diamonds ||
-            member.totalDiamonds ||
-            member.totalSent ||
-            member.contribution ||
-            0
-        );
+        const points = Number(member.points ?? 0);
         return {
           ...member,
           points,
@@ -111,7 +109,7 @@ export default function RoomWealthModal({
         ...member,
         rank: index + 1,
       }));
-  }, [tabData, activeTab, users]);
+  }, [tabData, activeTab]);
 
   // Current user's contribution and rank
   const myContribution = useMemo(() => {

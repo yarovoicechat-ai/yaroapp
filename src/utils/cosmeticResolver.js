@@ -1,6 +1,7 @@
 import { getUserAvatar } from './avatarUtil';
 
 export const USER_COSMETIC_FIELDS = [
+  'nameEffect',
   'equippedFrame',
   'equippedFrameAsset',
   'equippedEntry',

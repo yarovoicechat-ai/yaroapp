@@ -1,3 +1,4 @@
+import SvgaView from '../../components/SvgaView';
 import React, { useState, useContext } from 'react';
 import {
   View,
@@ -64,7 +65,7 @@ const StoreAsset = CosmeticAsset;
 
 
 // Store categories: Unique ID, Frames, Chat Bubble, Theme, Tassel, Entry, Mic Wave, Profile Card, Room Card, Profile Entry, VIP, King of Kings, Badge, Tag
-const STORE_CATEGORIES = ['Unique ID', 'Frames', 'Chat Bubble', 'Theme', 'Seat Skin', 'Tassel', 'Entry', 'Mic Wave', 'Profile Card', 'Room Card', 'Profile Entry', 'VIP', 'King of Kings', 'Badge', 'Tag'];
+const STORE_CATEGORIES = ['Unique ID', 'Frames', 'Chat Bubble', 'Theme', 'Seat Skin', 'Entrance', 'Entry', 'Mic Wave', 'Profile Card', 'Room Card', 'Profile Entry', 'VIP', 'King of Kings', 'Badge', 'Tag'];
 
 const createEmptyCatalog = () =>
   STORE_CATEGORIES.reduce((result, category) => ({ ...result, [category]: [] }), {});
@@ -99,11 +100,11 @@ export default function StoreScreen() {
             if (item.isStaffOnly || String(item.audience || '').toLowerCase() === 'employee') return;
             const rawCat = String(item.category || '').trim();
             const cat = (rawCat === 'Frame' || rawCat === 'Frames') ? 'Frames'
-              : (rawCat === 'Entry' || rawCat === 'Entry Effect' || rawCat === 'Entry Effects' || rawCat === 'Entrance') ? 'Entry'
+              : (rawCat === 'Entry' || rawCat === 'Entry Effect' || rawCat === 'Entry Effects') ? 'Entry'
               : (rawCat === 'Chat Bubble' || rawCat === 'Chat Bubbles') ? 'Chat Bubble'
               : (rawCat === 'Theme' || rawCat === 'Themes') ? 'Theme'
               : (rawCat === 'Seat Skin' || rawCat === 'Seat Skins') ? 'Seat Skin'
-              : (rawCat === 'Tassel' || rawCat === 'Tassels') ? 'Tassel'
+              : (rawCat === 'Entrance' || rawCat === 'Ride') ? 'Entrance'
               : (rawCat === 'Mic Wave' || rawCat === 'Mic Waves') ? 'Mic Wave'
               : (rawCat === 'Profile Card' || rawCat === 'Profile Cards') ? 'Profile Card'
               : (rawCat === 'Room Card' || rawCat === 'Room Cards') ? 'Room Card'
@@ -390,33 +391,12 @@ export default function StoreScreen() {
       );
     }
 
-    // 4. TASSEL PREVIEW
-    if (activeCategory === 'Tassel') {
+    if (activeCategory === 'Entrance') {
       return (
-        <LinearGradient
-          colors={['#1E293B', '#0F172A', '#020617']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.previewCard}
-        >
-          <View style={styles.tasselPreviewRow}>
-            {/* Mic Seat Simulation */}
-            <View style={styles.micSeatSimBox}>
-              <View style={[styles.micSeatCircle, { borderColor: item?.previewColor || '#F59E0B' }]}>
-                <MaterialIcons name="mic" size={26} color={item?.previewColor || '#F59E0B'} />
-              </View>
-              {/* Dangling Tassel Graphic */}
-              <View style={[styles.tasselDangle, { backgroundColor: item?.previewColor || '#F59E0B' }]}>
-                <MaterialCommunityIcons name="ribbon" size={20} color="#FFFFFF" />
-              </View>
-            </View>
-
-            <View style={styles.tasselTextCol}>
-              <Text style={styles.tasselTitle}>{item?.name}</Text>
-              <Text style={styles.tasselTagBadge}>{item?.tag || 'Mic Tassel Ornament'}</Text>
-              <Text style={styles.tasselDesc}>{item?.desc}</Text>
-            </View>
-          </View>
+        <LinearGradient colors={['#123C54', '#101C35']} style={styles.previewCard}>
+          <SvgaView source={item?.animationUrl || item?.imageUrl || ''} style={{ width: '100%', height: 140 }} />
+          <Text style={styles.previewTitle}>{item?.name}</Text>
+          <Text style={styles.previewSub}>{item?.desc || 'Room entrance'}</Text>
         </LinearGradient>
       );
     }

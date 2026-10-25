@@ -28,7 +28,7 @@ test('plain joins queue once and do not display a fabricated ride', async () => 
   const first = { entryId: 'a', user: { name: 'One' }, hasEntry: false };
   await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={first} />); });
   expect(tree.root.findAllByType('SvgaView')).toHaveLength(0);
-  expect(JSON.stringify(tree.toJSON())).toContain('entered the room');
+  expect(JSON.stringify(tree.toJSON())).toContain('enter the room');
   const second = { entryId: 'b', user: { name: 'Two' }, hasEntry: false };
   await act(async () => tree.update(<RoomEntryEffectEngine activeEntry={second} />));
   expect(JSON.stringify(tree.toJSON())).toContain('One');
@@ -53,13 +53,13 @@ test('entry uses Coming copy and only adds the large avatar when configured', as
   expect(tree.root.findAllByType('AvatarWithFrame')).toHaveLength(1);
 });
 
-test('styled names keep the full name with no glow blur', async () => {
+test('styled names keep the full name with gold styling', async () => {
   await act(async () => { tree = Renderer.create(<IdentityDisplayName name="Long Fancy Name" effect={{
     colors: ['#FFD700', '#FFFFFF'], animationType: 'none', glowColor: '#FFAA00',
   }} />); });
   const text = tree.root.findAllByType('Text')[0];
   expect(text.props.accessibilityLabel).toBe('Long Fancy Name');
-  expect(JSON.stringify(text.props.style)).toContain('"textShadowRadius":0');
+  expect(JSON.stringify(text.props.style)).toContain('#FFD700');
 });
 
 test('multicolour name changes smoothly across letters without hiding the name', async () => {

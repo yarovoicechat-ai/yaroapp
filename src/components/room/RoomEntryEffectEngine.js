@@ -16,21 +16,32 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   const mounted = useRef(true);
   const completion = useRef(onComplete);
   completion.current = onComplete;
-  const translateX = useRef(new Animated.Value(width)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+
+  const translateX = useRef(new Animated.Value(-width * 0.85)).current;
+  const bannerOpacity = useRef(new Animated.Value(0)).current;
+  const mediaOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; pending.current = []; };
+    return () => {
+      mounted.current = false;
+      pending.current = [];
+    };
   }, []);
 
   useEffect(() => {
     if (!activeEntry) return;
-    const id = String(activeEntry.entryId || activeEntry.id ||
-      ('join:' + activeEntry.user?.userId + ':' + activeEntry.timestamp));
+    const id = String(
+      activeEntry.entryId ||
+      activeEntry.id ||
+      ('join:' + (activeEntry.user?.userId || activeEntry.userId || 'u') + ':' + (activeEntry.timestamp || Date.now()))
+    );
     if (seen.current.has(id)) return;
     seen.current.add(id);
-    if (seen.current.size > 160) seen.current.delete(seen.current.values().next().value);
+    if (seen.current.size > 200) {
+      const first = seen.current.values().next().value;
+      seen.current.delete(first);
+    }
     pending.current.push({ ...activeEntry, entryId: id });
     if (!playing.current) {
       playing.current = true;
@@ -43,73 +54,139 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     const assets = resolveEntryAssets(current);
     const visual = assets.entry || assets.entrance;
     const hasAnimation = Boolean(visual?.animationUrl);
-    const duration = hasAnimation
-      ? Math.max(2000, Math.min(12000, Number(visual.duration || visual.metadata?.duration) || 5000))
-      : 4500;
-    translateX.setValue(width);
-    opacity.setValue(0);
-    let motion;
+    const mediaDuration = hasAnimation
+      ? Math.max(3000, Math.min(12000, Number(visual.duration || visual.metadata?.duration) || 5000))
+      : 0;
+
+    translateX.setValue(-width * 0.85);
+    bannerOpacity.setValue(0);
+    mediaOpacity.setValue(0);
+
+    // Floating entrance: floats in, pauses for 2 seconds, then smoothly disappears
+    const bannerAnimation = Animated.sequence([
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: 0,
+          duration: 350,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bannerOpacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.delay(2000), // 2 seconds pause
+      Animated.parallel([
+        Animated.timing(bannerOpacity, {
+          toValue: 0,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateX, {
+          toValue: -30,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]);
+
+    let overallAnimation;
     if (hasAnimation) {
-      motion = Animated.sequence([
-        Animated.parallel([
-          Animated.timing(translateX, { toValue: 0, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }),
-        ]),
-        Animated.delay(duration),
-        Animated.timing(opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+      const mediaAnim = Animated.sequence([
+        Animated.timing(mediaOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+        Animated.delay(Math.max(0, mediaDuration - 550)),
+        Animated.timing(mediaOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
       ]);
+      overallAnimation = Animated.parallel([bannerAnimation, mediaAnim]);
     } else {
-      opacity.setValue(1);
-      motion = Animated.timing(translateX, {
-        toValue: -width, duration, easing: Easing.linear, useNativeDriver: true,
-      });
+      overallAnimation = bannerAnimation;
     }
-    motion.start(({ finished }) => {
+
+    overallAnimation.start(({ finished }) => {
       if (!finished || !mounted.current) return;
       completion.current?.(current.entryId);
       const next = pending.current.shift();
       playing.current = Boolean(next);
       setCurrent(next || null);
     });
-    return () => motion.stop();
-  }, [current, opacity, translateX]);
+
+    return () => overallAnimation.stop();
+  }, [current, bannerOpacity, mediaOpacity, translateX]);
 
   if (!current) return null;
+
   const assets = resolveEntryAssets(current);
   const visual = assets.entry || assets.entrance;
   const media = visual?.animationUrl || '';
   const settings = visual?.metadata || {};
   const user = current.user || {};
-  const colors = visual?.bannerColors || visual?.bgColors;
-  const bannerColors = Array.isArray(colors) && colors.length >= 2
-    ? colors : ['#117C9B', '#245E78', '#17394A'];
+  const wealthLevel = user.wealthLevel ?? user.level ?? current.wealthLevel ?? 1;
   const nameEffect = user.nameEffect || current.vipExperience?.nameEffect;
+  const actionText = settings.comingText || (media ? 'is coming' : 'enter the room');
 
   return (
     <View style={styles.overlay} pointerEvents="none">
+      {/* FULL SCREEN SVGA RIDE / ENTRANCE ANIMATION */}
       {media ? (
-        <Animated.View style={[styles.mediaStage, { opacity }]}>
-          <SvgaView key={current.entryId} source={media} style={StyleSheet.absoluteFillObject} loops={1} resizeMode="contain" />
+        <Animated.View style={[styles.mediaStage, { opacity: mediaOpacity }]} pointerEvents="none">
+          <SvgaView
+            key={current.entryId}
+            source={media}
+            style={StyleSheet.absoluteFillObject}
+            loops={1}
+            resizeMode="contain"
+          />
         </Animated.View>
       ) : null}
-      <Animated.View style={[
-        styles.bannerStage, media && styles.comingStage,
-        { opacity, transform: [{ translateX }] },
-      ]}>
+
+      {/* FLOATING ENTRANCE BANNER PILL: [Lv.X] [👑 / Avatar] [Name] enter the room */}
+      <Animated.View
+        style={[
+          styles.bannerContainer,
+          {
+            opacity: bannerOpacity,
+            transform: [{ translateX }],
+          },
+        ]}
+        pointerEvents="none"
+      >
         {media && settings.showAvatar === true ? (
           <View style={styles.largeAvatar}>
             <AvatarWithFrame user={user} size={76} showOnlineDot={false} />
           </View>
         ) : null}
-        <LinearGradient colors={bannerColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.banner}>
-          <AvatarWithFrame user={user} size={32} showOnlineDot={false} />
-          <View style={styles.copy}>
-            <IdentityDisplayName name={user.name || 'User'} effect={nameEffect} fontSize={14} style={styles.name} />
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {media ? (settings.comingText || 'is coming') : 'entered the room'}
-            </Text>
+        <LinearGradient
+          colors={['rgba(8, 70, 85, 0.92)', 'rgba(14, 95, 115, 0.88)', 'rgba(6, 45, 55, 0.92)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.bannerPill}
+        >
+          {/* Emerald Green Wealth Level Badge */}
+          <View style={styles.wealthBadge}>
+            <Text style={styles.wealthGem}>💎</Text>
+            <Text style={styles.wealthText}>Lv.{wealthLevel}</Text>
           </View>
-          {!media ? <Text style={styles.level}>Lv.{user.wealthLevel ?? user.level ?? 1}</Text> : null}
+
+          {/* Mini Avatar in Pill */}
+          <View style={styles.avatarWrap}>
+            <AvatarWithFrame user={user} size={24} showOnlineDot={false} />
+          </View>
+
+          {/* User Name */}
+          <IdentityDisplayName
+            name={user.name || 'User'}
+            effect={nameEffect}
+            fontSize={13}
+            style={styles.name}
+            numberOfLines={1}
+          />
+
+          {/* Action text */}
+          <Text style={styles.actionText} numberOfLines={1}>
+            {actionText}
+          </Text>
         </LinearGradient>
       </Animated.View>
     </View>
@@ -117,38 +194,91 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { ...StyleSheet.absoluteFillObject, zIndex: 9999, elevation: 99 },
-  mediaStage: { position: 'absolute', top: height * 0.17, bottom: height * 0.12, left: 0, right: 0 },
-  bannerStage: { position: 'absolute', top: height * 0.55, left: 12, width: width - 24 },
-  comingStage: { top: height * 0.33, left: width * 0.13, width: width * 0.74 },
-  banner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 22, borderWidth: 1.2, borderColor: '#F59E0B' },
-  largeAvatar: { alignSelf: 'center', marginBottom: 8 },
-  copy: { flex: 1, minWidth: 0, marginHorizontal: 8 },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 99999,
+    elevation: 9999,
+    pointerEvents: 'none',
+  },
+  mediaStage: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 99999,
+    elevation: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  largeAvatar: {
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+  bannerContainer: {
+    position: 'absolute',
+    top: Math.round(height * 0.535),
+    left: 14,
+    maxWidth: width - 28,
+    alignSelf: 'flex-start',
+    zIndex: 100000,
+    elevation: 10000,
+  },
+  bannerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1.2,
+    borderColor: 'rgba(56, 189, 248, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+  },
+  wealthBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#059669',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(110, 231, 183, 0.6)',
+    marginRight: 6,
+  },
+  wealthGem: {
+    fontSize: 9.5,
+    marginRight: 2.5,
+  },
+  wealthText: {
+    color: '#FFFFFF',
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  avatarWrap: {
+    marginRight: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  crownIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
   name: {
-    flexShrink: 1,
     color: '#FFD700',
-    fontWeight: '900',
-    fontSize: 14.5,
-    letterSpacing: 0.3,
-    textShadowColor: 'rgba(0, 0, 0, 0.95)',
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 0.2,
+    maxWidth: width * 0.36,
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  subtitle: {
-    color: '#FEF08A',
-    fontSize: 11.5,
-    marginTop: 1.5,
-    fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.85)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  level: {
-    color: '#FFD700',
-    fontWeight: '800',
-    fontSize: 11,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+  actionText: {
+    color: '#E0F2FE',
+    fontSize: 12.5,
+    fontWeight: '600',
+    marginLeft: 6,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },

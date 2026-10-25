@@ -988,30 +988,6 @@ export default function VoiceRoomScreen() {
     },
   });
 
-  useEffect(() => {
-    const entryAssets = resolveEntryAssets(activeEntryEffect);
-    if (activeEntryEffect && (entryAssets.entry || entryAssets.entrance)) {
-      const effectName = entryAssets.entry?.name || entryAssets.entrance?.name || 'Entry Effect';
-      const userName = activeEntryEffect.user?.name || 'User';
-      const entryId = activeEntryEffect.entryId || activeEntryEffect.id || `entry-${Date.now()}`;
-      setChatMessages((prev) => {
-        if (prev.some((m) => m.id === `entry-${entryId}` || m.entryId === entryId)) {
-          return prev;
-        }
-        return [
-          ...prev,
-          {
-            id: `entry-${entryId}`,
-            entryId: entryId,
-            type: 'system',
-            text: `👑 ${userName} entered with ${effectName}!`,
-            tagText: activeEntryEffect.tagText,
-            timestamp: Date.now(),
-          },
-        ];
-      });
-    }
-  }, [activeEntryEffect]);
 
   const [giftPanelVisible, setGiftPanelVisible] = useState(false);
   const giftModalVisible = giftPanelVisible;

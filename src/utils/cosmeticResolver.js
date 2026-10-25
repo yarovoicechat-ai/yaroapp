@@ -70,12 +70,18 @@ export const normalizeCosmeticAsset = (value) => {
     {};
   const merged = { ...nested, ...value };
   const directUrl = merged.uri || merged.url || merged.src || '';
-  const animationUrl =
+  const animCandidate =
     merged.animationUrl ||
     merged.animationURL ||
     merged.svgaUrl ||
     merged.mediaUrl ||
-    (isAnimatedAssetUrl(directUrl) ? directUrl : '');
+    (isAnimatedAssetUrl(directUrl) ? directUrl : '') ||
+    (isAnimatedAssetUrl(merged.imageUrl) ? merged.imageUrl : '') ||
+    (isAnimatedAssetUrl(merged.imageURL) ? merged.imageURL : '') ||
+    (isAnimatedAssetUrl(merged.image) ? merged.image : '') ||
+    (isAnimatedAssetUrl(merged.previewUrl) ? merged.previewUrl : '') ||
+    (isAnimatedAssetUrl(merged.coverImage) ? merged.coverImage : '');
+  const animationUrl = typeof animCandidate === 'string' ? animCandidate.trim() : '';
   const imageUrl =
     merged.imageUrl ||
     merged.imageURL ||

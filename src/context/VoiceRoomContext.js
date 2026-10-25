@@ -1516,7 +1516,7 @@ export const VoiceRoomProvider = ({ children }) => {
           const hasSeenEvent = eventKey && recentEntryUsersRef.current.has(eventKey);
           const hasRecentUserEvent = userKeys.some((key) => {
             const seenAt = recentEntryUsersRef.current.get(key) || 0;
-            return seenAt && now - seenAt < 3000;
+            return seenAt && now - seenAt < 400;
           });
           if (hasSeenEvent || hasRecentUserEvent) return false;
           userKeys.forEach((key) => recentEntryUsersRef.current.set(key, now));

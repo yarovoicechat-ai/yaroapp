@@ -443,6 +443,14 @@ export default function MeScreen() {
                 >
                   <Text style={styles.levelBadgeMiniText}>🌸 Lv.{user?.charmLevel ?? '—'}</Text>
                 </TouchableOpacity>
+                {/* Equipped Badge */}
+                {Boolean(user?.equippedBadge || user?.equippedBadgeAsset) && (
+                  <View style={[styles.levelBadgeMini, { backgroundColor: '#7C3AED' }]}>
+                    <Text style={styles.levelBadgeMiniText} numberOfLines={1}>
+                      🏅 {String(user?.equippedBadgeAsset?.name || user?.equippedBadge)}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <TouchableOpacity
@@ -488,6 +496,22 @@ export default function MeScreen() {
                 {Number(user?.svipLevel || user?.svip || 0) > 0 && <View style={styles.svipTag}>
                   <Text style={styles.svipTagText}>{'\u{1F451}'} SVIP {user?.svipLevel || user?.svip}</Text>
                 </View>}
+
+                {/* Staff Tag */}
+                {Boolean(user?.role === 'admin' || user?.role === 'superAdmin' || user?.isGlobalRoomManager || user?.isBd || user?.isAgency) && (
+                  <View style={[styles.svipTag, { backgroundColor: '#DC2626' }]}>
+                    <Text style={styles.svipTagText}>🛡️ Staff</Text>
+                  </View>
+                )}
+
+                {/* Equipped Custom Tag */}
+                {Boolean(user?.equippedTag || user?.equippedEntryTag || user?.equippedTagAsset) && (
+                  <View style={[styles.svipTag, { backgroundColor: user?.equippedTagAsset?.previewColor || '#D97706' }]}>
+                    <Text style={styles.svipTagText}>
+                      {user?.equippedTagAsset?.metadata?.tagText || user?.equippedTag || user?.equippedEntryTag}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
 

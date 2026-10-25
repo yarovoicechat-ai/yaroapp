@@ -255,6 +255,22 @@ export default function ProfileScreen() {
                 </View>
               )}
 
+              {/* Staff Tag */}
+              {Boolean(user?.role === 'admin' || user?.role === 'superAdmin' || user?.isGlobalRoomManager || user?.isBd || user?.isAgency) && (
+                <View style={[styles.svipTag, { backgroundColor: '#DC2626' }]}>
+                  <Text style={styles.svipTagText}>🛡️ Staff</Text>
+                </View>
+              )}
+
+              {/* Equipped Tag */}
+              {Boolean(user?.equippedTag || user?.equippedEntryTag || user?.equippedTagAsset) && (
+                <View style={[styles.svipTag, { backgroundColor: user?.equippedTagAsset?.previewColor || '#D97706' }]}>
+                  <Text style={styles.svipTagText}>
+                    {user?.equippedTagAsset?.metadata?.tagText || user?.equippedTag || user?.equippedEntryTag}
+                  </Text>
+                </View>
+              )}
+
               {Boolean(user?.isHost || user?.role === 'host') && (
                 <View style={styles.hostTag}>
                   <Text style={styles.hostTagText}>🎙️ Host</Text>

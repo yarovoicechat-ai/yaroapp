@@ -155,6 +155,12 @@ export default function UserProfileScreen() {
       isHost: Boolean(raw.isHost ?? (raw.role === 'host' || raw.callRate > 0)),
       callRate: raw.callRate || 20,
       videoCallRate: raw.videoCallRate || 35,
+      role: raw.role || '',
+      isStaff: Boolean(raw.role === 'admin' || raw.role === 'superAdmin' || raw.isGlobalRoomManager || raw.isStaff),
+      equippedTag: raw.equippedTag || raw.equippedEntryTag || raw.equippedTagAsset?.name || null,
+      equippedTagAsset: raw.equippedTagAsset || null,
+      equippedBadge: raw.equippedBadge || raw.equippedBadgeAsset?.name || null,
+      equippedBadgeAsset: raw.equippedBadgeAsset || null,
     };
   }, [route.params, fetchedUser]);
 
@@ -472,6 +478,41 @@ export default function UserProfileScreen() {
           {targetUser.svipLevel > 0 && (
             <LinearGradient colors={['#0D9488', '#115E59']} style={styles.tagPill}>
               <Text style={styles.tagPillText}>🦅 SVIP{targetUser.svipLevel}</Text>
+            </LinearGradient>
+          )}
+
+          {/* Staff Tag */}
+          {(targetUser.isStaff || targetUser.role === 'admin' || targetUser.role === 'superAdmin') && (
+            <LinearGradient colors={['#DC2626', '#991B1B']} style={styles.tagPill}>
+              <Text style={styles.tagPillText}>🛡️ Staff</Text>
+            </LinearGradient>
+          )}
+
+          {/* Equipped Custom Tag */}
+          {Boolean(targetUser.equippedTag) && (
+            <LinearGradient
+              colors={[targetUser.equippedTagAsset?.previewColor || '#D97706', '#78350F']}
+              style={styles.tagPill}
+            >
+              <Text style={styles.tagPillText}>
+                {targetUser.equippedTagAsset?.metadata?.tagText || targetUser.equippedTag}
+              </Text>
+            </LinearGradient>
+          )}
+
+          {/* Equipped Badge */}
+          {Boolean(targetUser.equippedBadge) && (
+            <LinearGradient colors={['#7C3AED', '#581C87']} style={styles.tagPill}>
+              {targetUser.equippedBadgeAsset?.imageUrl ? (
+                <Image
+                  source={{ uri: targetUser.equippedBadgeAsset.imageUrl }}
+                  style={{ width: 13, height: 13, marginRight: 3 }}
+                  resizeMode="contain"
+                />
+              ) : null}
+              <Text style={styles.tagPillText}>
+                🏅 {targetUser.equippedBadgeAsset?.name || targetUser.equippedBadge}
+              </Text>
             </LinearGradient>
           )}
 

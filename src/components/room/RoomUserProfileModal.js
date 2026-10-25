@@ -338,6 +338,59 @@ export default function RoomUserProfileModal({
                   <Text style={styles.roleBadgeText}>Admin</Text>
                 </View>
               )}
+
+              {/* Official Staff Tag */}
+              {Boolean(
+                displayData.role === 'admin' ||
+                resolvedProfile?.role === 'admin' ||
+                displayData.role === 'superAdmin' ||
+                resolvedProfile?.role === 'superAdmin' ||
+                displayData.isGlobalRoomManager ||
+                resolvedProfile?.isGlobalRoomManager ||
+                displayData.isStaff ||
+                resolvedProfile?.isStaff
+              ) && (
+                <View style={[styles.ownerBadgePill, { backgroundColor: '#DC2626' }]}>
+                  <Text style={styles.roleBadgeText}>🛡️ Staff</Text>
+                </View>
+              )}
+
+              {/* Equipped Tag (Staff Tag, Official Tag, Custom Tag) */}
+              {Boolean(
+                displayData.equippedTag ||
+                resolvedProfile?.equippedTag ||
+                displayData.equippedEntryTag ||
+                resolvedProfile?.equippedEntryTag
+              ) && (
+                <View style={[styles.agencyPill, { backgroundColor: 'rgba(245, 158, 11, 0.2)', borderColor: 'rgba(245, 158, 11, 0.4)' }]}>
+                  <Text style={[styles.agencyText, { color: '#F59E0B' }]}>
+                    {displayData.equippedTag || resolvedProfile?.equippedTag || displayData.equippedEntryTag || resolvedProfile?.equippedEntryTag}
+                  </Text>
+                </View>
+              )}
+
+              {/* Equipped Badge (Icon or image) */}
+              {Boolean(
+                displayData.equippedBadge ||
+                resolvedProfile?.equippedBadge ||
+                displayData.equippedBadgeAsset?.imageUrl ||
+                resolvedProfile?.equippedBadgeAsset?.imageUrl
+              ) && (
+                <View style={[styles.agencyPill, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.4)' }]}>
+                  {(displayData.equippedBadgeAsset?.imageUrl || resolvedProfile?.equippedBadgeAsset?.imageUrl) ? (
+                    <Image
+                      source={{ uri: displayData.equippedBadgeAsset?.imageUrl || resolvedProfile?.equippedBadgeAsset?.imageUrl }}
+                      style={{ width: 14, height: 14, marginRight: 3 }}
+                      resizeMode="contain"
+                    />
+                  ) : null}
+                  <Text style={[styles.agencyText, { color: '#C084FC' }]}>
+                    {typeof (displayData.equippedBadge || resolvedProfile?.equippedBadge) === 'string'
+                      ? (displayData.equippedBadge || resolvedProfile?.equippedBadge)
+                      : (displayData.equippedBadge?.name || resolvedProfile?.equippedBadge?.name || 'Badge')}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* 4. Prestigious Medals Row (Only if user has actual badges/medals) */}

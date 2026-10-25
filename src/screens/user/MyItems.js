@@ -32,7 +32,7 @@ const ItemAsset = CosmeticAsset;
 
 
 const CATEGORIES = ['All', 'Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'Tag', 'Theme', 'Seat Skin', 'Unique ID', 'Profile Border', 'VIP', 'King of Kings', 'Chat Bubble'];
-const EQUIPPABLE_TYPES = ['Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'VIP', 'Chat Bubble', 'Tassel', 'Theme', 'Profile Border', 'Unique ID'];
+const EQUIPPABLE_TYPES = ['Frame', 'Mic Wave', 'Entry', 'Entrance', 'Vehicle', 'Badge', 'Tag', 'VIP', 'Chat Bubble', 'Tassel', 'Theme', 'Profile Border', 'Unique ID'];
 
 export default function MyItems() {
   const insets = useSafeAreaInsets() || { top: 0, bottom: 0, left: 0, right: 0 };
@@ -85,6 +85,7 @@ export default function MyItems() {
       if (type === 'Theme') return user?.equippedRoomTheme;
       if (type === 'VIP') return user?.equippedVipId;
       if (type === 'Badge') return user?.equippedBadge;
+      if (type === 'Tag') return user?.equippedTag || user?.equippedEntryTag;
       return null;
     },
     [user],

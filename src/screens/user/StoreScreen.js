@@ -109,6 +109,8 @@ export default function StoreScreen() {
               : (rawCat === 'Profile Card' || rawCat === 'Profile Cards') ? 'Profile Card'
               : (rawCat === 'Room Card' || rawCat === 'Room Cards') ? 'Room Card'
               : (rawCat === 'Profile Entry' || rawCat === 'Profile Entries') ? 'Profile Entry'
+              : (rawCat === 'Badge' || rawCat === 'Badges') ? 'Badge'
+              : (rawCat === 'Tag' || rawCat === 'Tags') ? 'Tag'
               : rawCat;
             if (cat === 'Theme') {
               const location = String(item.themeLocation || item.metadata?.themeLocation || 'STORE')

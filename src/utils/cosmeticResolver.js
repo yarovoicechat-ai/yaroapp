@@ -16,7 +16,10 @@ export const USER_COSMETIC_FIELDS = [
   'equippedChatBubbleAsset',
   'equippedMicWave',
   'equippedBadge',
+  'equippedBadgeAsset',
   'equippedBadges',
+  'equippedTag',
+  'equippedTagAsset',
   'equippedVipId',
   'equippedSvipId',
   'equippedRoomTheme',
@@ -114,6 +117,18 @@ export const resolveFrameAsset = (user, explicitFrame = null) =>
       null,
   );
 
+export const DEFAULT_ENTRANCE_ASSET = {
+  id: 'default_entrance',
+  name: 'Default Entrance',
+  isDefault: true,
+  imageUrl: '',
+  bannerColors: ['#854D0E', '#B45309', '#78350F'],
+  metadata: {
+    comingText: 'enter the room',
+    isDefault: true,
+  },
+};
+
 export const resolveEntryAssets = (payload) => {
   const user = payload?.user || {};
   return {
@@ -139,7 +154,7 @@ export const resolveEntryAssets = (payload) => {
         user?.equippedEntranceAsset ||
         user?.equippedEntrance ||
         null,
-    ),
+    ) || DEFAULT_ENTRANCE_ASSET,
     tassel: normalizeCosmeticAsset(
       payload?.tassel ||
         payload?.tasselAsset ||
@@ -192,9 +207,15 @@ export const resolveUserCosmetics = (user) => {
     entrance: normalizeCosmeticAsset(user.equippedEntranceAsset || user.equippedEntrance || null),
     micWave: user.equippedMicWave || null,
     badge:
+      normalizeCosmeticAsset(user.equippedBadgeAsset) ||
       user.equippedBadge ||
       (Array.isArray(user.equippedBadges) ? user.equippedBadges[0] : null) ||
       null,
+    tag:
+      normalizeCosmeticAsset(user.equippedTagAsset) ||
+      user.equippedTag ||
+      user.equippedEntryTag ||
+      (user.role === 'admin' ? '🛡️ ADMIN' : user.role === 'superAdmin' ? '👑 SUPER ADMIN' : user.isGlobalRoomManager ? '⚡ OFFICIAL' : null),
     vip:
       user.equippedVipId ||
       user.equippedSvipId ||

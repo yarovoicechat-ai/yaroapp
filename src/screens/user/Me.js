@@ -135,7 +135,8 @@ export default function MeScreen() {
     user?.isApprovedHost ||
     user?.isHostApproved ||
     user?.hostingApproved ||
-    user?.hostingStatus === 'approved'
+    user?.hostingStatus === 'approved' ||
+    (user?.hasAppOption && (user?.appRole === 'host' || user?.appFeatures?.hostCenter))
   );
   const hasAgencyPrivilege = Boolean(
     user?.isAgency ||
@@ -143,14 +144,19 @@ export default function MeScreen() {
     user?.isAgencyOwner ||
     user?.hasAgency ||
     user?.role === 'owner' ||
-    user?.role === 'operator'
+    user?.role === 'operator' ||
+    (user?.hasAppOption && (user?.appRole === 'agency' || user?.appFeatures?.agencyPortal))
   );
   const hasBdPrivilege = Boolean(
     user?.isBd ||
     user?.role === 'bd' ||
+    user?.role === 'bd-leader' ||
+    user?.role === 'bdLeader' ||
+    user?.isBdLeader ||
     user?.role === 'admin' ||
     user?.role === 'superAdmin' ||
-    user?.isBD
+    user?.isBD ||
+    (user?.hasAppOption && (user?.appRole === 'bd' || user?.appRole === 'bdLeader' || user?.appRole === 'bd-leader' || user?.appFeatures?.bdCenter))
   );
 
   // 4 items in every line (Row 1: Tasks, Fan Club, Level, Apply Hosting)
@@ -342,7 +348,7 @@ export default function MeScreen() {
       ? [
           {
             id: 'bdPortal',
-            label: 'BD Center',
+            label: (user?.role === 'bdLeader' || user?.role === 'bd-leader' || user?.isBdLeader) ? 'BD Leader Hub' : 'BD Center',
             icon: (
               <View style={[styles.serviceIconCircle, { backgroundColor: '#FEF3C7' }]}>
                 <MaterialCommunityIcons name="account-tie" size={26} color="#D97706" />

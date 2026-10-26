@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import SvgaView from '../SvgaView';
+import { SvgaPlayer } from '@dasimems/react-native-svga';
 import AvatarWithFrame from '../AvatarWithFrame';
 import IdentityDisplayName from '../identity/IdentityDisplayName';
 import { resolveEntryAssets } from '../../utils/cosmeticResolver';
@@ -173,17 +173,22 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
       {isRide ? (
         <>
           {rideMedia ? (
-            <Animated.View style={[styles.mediaStage, { opacity: comingOpacity }]} pointerEvents="none">
-              <SvgaView
+            <View style={styles.mediaStage} pointerEvents="none" collapsable={false}>
+              <SvgaPlayer
                 key={current.entryId}
                 source={rideMedia}
                 style={{ width, height }}
                 loops={1}
+                autoPlay
+                muteBuiltInAudio
+                scaleMode="aspectFit"
                 onFinish={() => mediaFinished.current(current.entryId, 'ride')}
-                onError={() => mediaFinished.current(current.entryId, 'ride')}
-                resizeMode="contain"
+                onError={(error) => {
+                  console.warn('[RoomEntry] Ride playback failed:', error, rideMedia);
+                  mediaFinished.current(current.entryId, 'ride');
+                }}
               />
-            </Animated.View>
+            </View>
           ) : null}
           <Animated.View
             style={[
@@ -232,14 +237,19 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
         >
           {isEntranceSvga ? (
             <View style={styles.bulletBannerWrap}>
-              <SvgaView
+              <SvgaPlayer
                 key={current.entryId}
                 source={customEntrance.animationUrl}
                 style={StyleSheet.absoluteFillObject}
                 loops={1}
+                autoPlay
+                muteBuiltInAudio
+                scaleMode="fill"
                 onFinish={() => mediaFinished.current(current.entryId, 'entrance')}
-                onError={() => mediaFinished.current(current.entryId, 'entrance')}
-                resizeMode="stretch"
+                onError={(error) => {
+                  console.warn('[RoomEntry] Entrance playback failed:', error, customEntrance.animationUrl);
+                  mediaFinished.current(current.entryId, 'entrance');
+                }}
               />
               <View style={styles.bulletInnerContent}>
                 <View style={styles.wealthBadge}>
@@ -301,16 +311,22 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width,
+    height,
     zIndex: 99999,
     elevation: 9999,
     pointerEvents: 'none',
   },
   // COMING STAGE (Pahle jaisa hi)
   mediaStage: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 99999,
-    elevation: 9999,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width,
+    height,
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -11,6 +11,7 @@ import {
   ClientRoleType,
   AudioMixingStateType,
   AudioMixingReasonType,
+  AudioProfileType,
 } from 'react-native-agora';
 import InCallManager from 'react-native-incall-manager';
 import { AgoraClientService } from '../services/agoraService';
@@ -330,6 +331,7 @@ export const VoiceRoomProvider = ({ children }) => {
       engine.enableAudio();
       engine.enableLocalAudio(true);
       engine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
+      engine.setAudioProfile(AudioProfileType.AudioProfileMusicHighQuality);
       engine.setDefaultAudioRouteToSpeakerphone(true);
       engine.setEnableSpeakerphone(true);
       engine.muteAllRemoteAudioStreams(false);

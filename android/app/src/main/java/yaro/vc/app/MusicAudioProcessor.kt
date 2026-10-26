@@ -34,7 +34,7 @@ class MusicAudioProcessor(private val context: ReactApplicationContext) : ReactC
             try {
                 val directory = File(context.cacheDir, "room-music-dsp").apply { mkdirs() }
                 val fingerprint = if (uri.startsWith("/")) File(uri).let { "${it.length()}:${it.lastModified()}" } else ""
-                val key = MessageDigest.getInstance("SHA-256").digest("v1:$uri:$fingerprint:$bassDb".toByteArray()).joinToString("") { "%02x".format(it) }
+                val key = MessageDigest.getInstance("SHA-256").digest("v2:$uri:$fingerprint:$bassDb".toByteArray()).joinToString("") { "%02x".format(it) }
                 val output = File(directory, "$key.wav")
                 if (output.exists() && output.length() > 44) {
                     output.setLastModified(System.currentTimeMillis())
@@ -127,7 +127,7 @@ class MusicAudioProcessor(private val context: ReactApplicationContext) : ReactC
                             val bytes = ByteArray(samples * 2)
                             for (sample in 0 until samples) {
                                 val value = if (floatPcm) buffer.float.toDouble() else buffer.short / 32768.0
-                                val pcm = boostMusicSample(filter.process(value, sample % channels))
+                                val pcm = encodeMusicSample(filter.process(value, sample % channels), bassDb)
                                 bytes[sample * 2] = pcm.toByte()
                                 bytes[sample * 2 + 1] = (pcm shr 8).toByte()
                             }
@@ -164,12 +164,11 @@ class MusicAudioProcessor(private val context: ReactApplicationContext) : ReactC
     override fun invalidate() { generation.incrementAndGet(); worker.shutdownNow(); super.invalidate() }
 }
 
-internal fun boostMusicSample(sample: Double): Int {
-    val amplified = sample * 5.0
-    // Soft knee keeps boosted PCM within the supported sample range.
-    val magnitude = abs(amplified)
-    val limited = if (magnitude <= 0.85) amplified else sign(amplified) * (0.85 + 0.15 * tanh((magnitude - 0.85) / 0.15))
-    return (limited * 32767).roundToInt().coerceIn(-32768, 32767)
+internal fun encodeMusicSample(sample: Double, bassDb: Double = 0.0): Int {
+    // Reserve peak headroom before converting to PCM; clipping cannot be
+    // undone by reducing Agora's volume after the file has been encoded.
+    val headroom = 0.95 / 10.0.pow(bassDb.coerceIn(0.0, 15.0) / 20.0)
+    return (sample * headroom * 32767).roundToInt().coerceIn(-32768, 32767)
 }
 
 /** RBJ low-shelf biquad, separate history for every stereo channel. */

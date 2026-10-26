@@ -6,6 +6,7 @@ import IdentityDisplayName from '../components/identity/IdentityDisplayName';
 
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 jest.mock('../components/SvgaView', () => 'SvgaView');
+jest.mock('@dasimems/react-native-svga', () => ({ SvgaPlayer: 'SvgaView' }));
 jest.mock('../components/AvatarWithFrame', () => 'AvatarWithFrame');
 
 const finish = [];
@@ -45,6 +46,8 @@ test('entry uses Coming copy and only adds the large avatar when configured', as
   } };
   await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={entry} />); });
   expect(tree.root.findAllByType('SvgaView')[0].props.source).toBe('bike.svga');
+  expect(tree.root.findByType('SvgaView').props.autoPlay).toBe(true);
+  expect(tree.root.findByType('SvgaView').props.muteBuiltInAudio).toBe(true);
   expect(tree.root.findAllByType('AvatarWithFrame')).toHaveLength(3);
   expect(JSON.stringify(tree.toJSON())).toContain('enter the room');
   expect(JSON.stringify(tree.toJSON())).toContain('is coming');

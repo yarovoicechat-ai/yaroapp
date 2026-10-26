@@ -6,13 +6,22 @@ import org.junit.Test
 import kotlin.math.*
 
 class MusicBassFilterTest {
-    @Test fun gainBoostsQuietSamplesFiveTimesAndLimitsPeaks() {
-        assertEquals((0.05 * 5 * 32767).roundToInt(), boostMusicSample(0.05))
-        assertEquals(0, boostMusicSample(0.0))
-        for (value in listOf(-10.0, -1.0, -0.2, 0.2, 1.0, 10.0)) {
-            assertTrue(boostMusicSample(value) in -32767..32767)
-            assertEquals(-boostMusicSample(value), boostMusicSample(-value))
+    @Test fun pcmPreservesLoudSamplesWithoutFivefoldSaturation() {
+        assertEquals((0.8 * 0.95 * 32767).roundToInt(), encodeMusicSample(0.8))
+        assertEquals(0, encodeMusicSample(0.0))
+        for (value in listOf(-1.0, -0.2, 0.2, 1.0)) {
+            assertEquals(-encodeMusicSample(value), encodeMusicSample(-value))
         }
+    }
+
+    @Test fun boostedBassKeepsHeadroomForLoudMusic() {
+        val filter = MusicBassFilter(48000, 1, 15.0)
+        var peak = 0
+        for (i in 0 until 48000) {
+            val sample = 0.9 * sin(2 * PI * 50 * i / 48000)
+            peak = max(peak, abs(encodeMusicSample(filter.process(sample, 0), 15.0)))
+        }
+        assertTrue("Loud bass must not flatten at the PCM limit: $peak", peak in 20000..31000)
     }
     private fun amplitude(db: Double, frequency: Double): Double {
         val filter = MusicBassFilter(48000, 2, db)

@@ -157,3 +157,33 @@ test('ride and entrance finish independently before advancing the queue', async 
   await act(async () => staleFinish());
   expect(onComplete).toHaveBeenCalledTimes(1);
 });
+
+test.each([
+  ['no entrance equipped', null],
+  ['default entrance equipped', { isDefault: true }],
+])('equipped ride plays with default banner when %s', async (_, entrance) => {
+  await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={{
+    entryId: 'ride-default', user: { name: 'Rider' },
+    entry: { animationUrl: 'ride.svga' }, entrance,
+  }} />); });
+  expect(tree.root.findByType('SvgaView').props.source).toBe('ride.svga');
+  expect(tree.root.findAllByType(ImageBackground)).toHaveLength(1);
+  expect(JSON.stringify(tree.toJSON())).toContain('is coming');
+  expect(JSON.stringify(tree.toJSON())).toContain('enter the room');
+});
+
+test.each([
+  ['only custom entrance', { animationUrl: 'entrance.svga' }],
+  ['only default entrance', { isDefault: true }],
+  ['no cosmetics', null],
+])('%s never revives an unequipped ride or coming banner', async (_, entrance) => {
+  await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={{
+    entryId: 'no-ride', entry: null, effect: null, entrance,
+    user: { name: 'Banner', equippedEntryAsset: { animationUrl: 'stale-ride.svga' },
+      equippedEntranceAsset: { animationUrl: 'stale-entrance.svga' } },
+  }} />); });
+  const sources = tree.root.findAllByType('SvgaView').map(player => player.props.source);
+  expect(sources).toEqual(entrance?.animationUrl ? ['entrance.svga'] : []);
+  expect(JSON.stringify(tree.toJSON())).not.toContain('is coming');
+  expect(JSON.stringify(tree.toJSON())).toContain('enter the room');
+});

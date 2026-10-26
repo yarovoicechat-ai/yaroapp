@@ -131,11 +131,19 @@ export const DEFAULT_ENTRANCE_ASSET = {
 
 export const resolveEntryAssets = (payload) => {
   const user = payload?.user || {};
+  // Explicit room slots, including null, override cached profile cosmetics.
+  const firstSlot = (keys, fallback) => {
+    const key = keys.find(candidate => hasOwn(payload, candidate));
+    return key ? payload[key] : fallback;
+  };
+  const activeAsset = value => {
+    const asset = normalizeCosmeticAsset(value);
+    if (!asset || asset.isActive === false ||
+      (asset.expiresAt && !(new Date(asset.expiresAt).getTime() > Date.now()))) return null;
+    return asset;
+  };
   return {
-    entry: normalizeCosmeticAsset(
-      payload?.entry ||
-        payload?.effect ||
-        payload?.entryAsset ||
+    entry: activeAsset(firstSlot(['entry', 'effect', 'entryAsset'],
         payload?.equippedEntryAsset ||
         payload?.vehicle ||
         payload?.equippedVehicle ||
@@ -146,15 +154,13 @@ export const resolveEntryAssets = (payload) => {
         user?.equippedEntryEffect ||
         user?.equippedEntry ||
         null,
-    ),
-    entrance: normalizeCosmeticAsset(
-      payload?.entrance ||
-        payload?.entranceAsset ||
+    )),
+    entrance: activeAsset(firstSlot(['entrance', 'entranceAsset'],
         payload?.equippedEntranceAsset ||
         user?.equippedEntranceAsset ||
         user?.equippedEntrance ||
         null,
-    ) || DEFAULT_ENTRANCE_ASSET,
+    )) || DEFAULT_ENTRANCE_ASSET,
     tassel: normalizeCosmeticAsset(
       payload?.tassel ||
         payload?.tasselAsset ||

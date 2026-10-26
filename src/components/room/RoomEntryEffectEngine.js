@@ -70,9 +70,9 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     if (!current) return;
     const assets = resolveEntryAssets(current);
     const entryAsset = assets.entry;
-    const isRide = Boolean(entryAsset?.animationUrl);
-    const rideSvga = /\.svga(?:[?#]|$)/i.test(entryAsset?.animationUrl || '');
-    const entranceSvga = /\.svga(?:[?#]|$)/i.test(assets.entrance?.animationUrl || '');
+    const isRide = Boolean(entryAsset?.animationUrl && !entryAsset.isDefault);
+    const rideSvga = isRide && /\.svga(?:[?#]|$)/i.test(entryAsset.animationUrl);
+    const entranceSvga = !assets.entrance?.isDefault && /\.svga(?:[?#]|$)/i.test(assets.entrance?.animationUrl || '');
     const waiting = new Set([...(rideSvga ? ['ride'] : []), ...(entranceSvga ? ['entrance'] : [])]);
     let motionDone = false;
     let completed = false;
@@ -97,7 +97,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     bulletOpacity.setValue(1);
     const entranceMotion = Animated.sequence([
       Animated.timing(bulletTranslateX, {
-        toValue: 14, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+        toValue: 8, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true,
       }),
       Animated.delay(2000),
       ...(entranceSvga ? [] : [Animated.timing(bulletOpacity, { toValue: 0, duration: 180, useNativeDriver: true })]),
@@ -135,7 +135,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   // Entrance: Has horizontal bullet banner -> renders fast flying bullet strip ("enter the room") with NO comingStage!
   const entryAsset = assets.entry;
   const entranceAsset = assets.entrance;
-  const isRide = Boolean(entryAsset?.animationUrl);
+  const isRide = Boolean(entryAsset?.animationUrl && !entryAsset.isDefault);
   const rideMedia = entryAsset?.animationUrl || '';
   const settings = entryAsset?.metadata || {};
   const user = current.user || {};
@@ -355,8 +355,8 @@ const styles = StyleSheet.create({
   },
   bulletBannerWrap: {
     height: 40,
-    width: Math.round(width * 0.92),
-    maxWidth: Math.round(width * 0.92),
+    width: width - 16,
+    maxWidth: width - 16,
     borderRadius: 20,
     overflow: 'hidden',
     position: 'relative',
@@ -375,8 +375,8 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     paddingRight: 32,
     height: 40,
-    width: Math.round(width * 0.92),
-    maxWidth: Math.round(width * 0.92),
+    width: width - 16,
+    maxWidth: width - 16,
   },
   bulletBannerImageStyle: {
     borderRadius: 20,

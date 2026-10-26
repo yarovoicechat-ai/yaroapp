@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dimensions, Image, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Image, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import VipMicWave from './VipMicWave';
@@ -12,6 +12,65 @@ const seatNameEffect = user => user?.nameEffect || user?.effectiveIdentity?.name
   ((user?.equippedVipId || user?.equippedSvipId)
     ? { colors: ['#FFE890', '#FFF8D6', '#E9B74D'], animationType: 'shimmer' } : undefined);
 
+const AnimatedSeatReaction = React.memo(function AnimatedSeatReaction({ emoji, id }) {
+  const anim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    anim.setValue(0);
+    Animated.sequence([
+      Animated.spring(anim, {
+        toValue: 1,
+        friction: 4,
+        tension: 70,
+        useNativeDriver: true,
+      }),
+      Animated.timing(anim, {
+        toValue: 2,
+        duration: 1800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [id]);
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 0.4, 1, 2],
+    outputRange: [12, -8, -28, -50],
+  });
+
+  const translateX = anim.interpolate({
+    inputRange: [0, 0.25, 0.5, 0.75, 1, 1.5, 2],
+    outputRange: [0, -4, 4, -3, 2, -2, 0],
+  });
+
+  const scale = anim.interpolate({
+    inputRange: [0, 0.35, 0.7, 1.4, 2],
+    outputRange: [0.2, 1.4, 1.15, 1.0, 0.6],
+  });
+
+  const opacity = anim.interpolate({
+    inputRange: [0, 0.1, 1.3, 2],
+    outputRange: [0, 1, 1, 0],
+  });
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: -12,
+        alignSelf: 'center',
+        zIndex: 9999,
+        transform: [{ translateY }, { translateX }, { scale }],
+        opacity,
+      }}
+    >
+      <Text style={{ fontSize: 32, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}>
+        {emoji}
+      </Text>
+    </Animated.View>
+  );
+});
+
 export default function VoiceRoomSeatGrid({
   topTwoSeats,
   bottomSeatRows,
@@ -23,6 +82,7 @@ export default function VoiceRoomSeatGrid({
   showSeatCharm,
   handleSeatPress,
   registerGiftAvatarPosition,
+  activeSeatReactions,
   styles,
 }) {
   return (
@@ -41,6 +101,13 @@ export default function VoiceRoomSeatGrid({
                 }}
                 activeOpacity={0.85}
               >
+                {activeSeatReactions?.[seat.seatIndex] && (
+                  <AnimatedSeatReaction
+                    key={activeSeatReactions[seat.seatIndex].id}
+                    emoji={activeSeatReactions[seat.seatIndex].emoji}
+                    id={activeSeatReactions[seat.seatIndex].id}
+                  />
+                )}
                 {isOccupied ? (
                   <View style={styles.occupiedSeatWrapper}>
                     <VipMicWave
@@ -136,6 +203,13 @@ export default function VoiceRoomSeatGrid({
                   }}
                   activeOpacity={0.85}
                 >
+                  {activeSeatReactions?.[seat.seatIndex] && (
+                    <AnimatedSeatReaction
+                      key={activeSeatReactions[seat.seatIndex].id}
+                      emoji={activeSeatReactions[seat.seatIndex].emoji}
+                      id={activeSeatReactions[seat.seatIndex].id}
+                    />
+                  )}
                   {isOccupied ? (
                     <View style={styles.occupiedSeatWrapper}>
                       <VipMicWave

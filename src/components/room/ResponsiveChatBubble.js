@@ -38,6 +38,38 @@ export default function ResponsiveChatBubble({
   const userLevel = wealthLevel;
   const clubName = message?.clubName || sender?.clubName || '';
 
+  const handlePressUser = () => {
+    if (!onPressUser) return;
+    const resolvedId =
+      message?.userId ||
+      message?.senderId ||
+      message?.sender?.userId ||
+      message?.sender?.id ||
+      message?.sender?._id ||
+      message?.user?._id ||
+      message?.user?.id ||
+      message?.user?.userId ||
+      sender?.userId ||
+      sender?.id ||
+      sender?._id ||
+      null;
+    onPressUser({
+      ...sender,
+      ...message,
+      userId: resolvedId,
+      id: resolvedId,
+      _id: resolvedId,
+      name: senderName,
+      avatar: rawAvatar,
+      image: rawAvatar,
+      gender: message?.gender || sender?.gender || 'female',
+      isVip: isVipUser,
+      isSvip: isSvipUser,
+      vipLevel,
+      svipLevel,
+    });
+  };
+
   // Equipped Tag & Tag Animation File (uploaded in panel)
   const equippedTagAsset = message?.equippedTagAsset || sender?.equippedTagAsset || null;
   const equippedTag = message?.equippedTag || sender?.equippedTag || equippedTagAsset?.name || null;
@@ -181,7 +213,7 @@ export default function ResponsiveChatBubble({
       <View style={styles.giftMessageContainer}>
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
+          onPress={handlePressUser}
           style={styles.giftAvatarWrapper}
         >
           <Image source={avatarSource} style={styles.giftSenderAvatar} />
@@ -229,7 +261,7 @@ export default function ResponsiveChatBubble({
           <View style={styles.royalTopHeader}>
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
+              onPress={handlePressUser}
               style={styles.royalAvatarBorder}
             >
               <Image source={avatarSource} style={styles.royalAvatarImg} />
@@ -403,7 +435,7 @@ export default function ResponsiveChatBubble({
             <View style={styles.royalTopHeader}>
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
+                onPress={handlePressUser}
                 style={styles.vip4AvatarBorder}
               >
                 <Image source={avatarSource} style={styles.royalAvatarImg} />
@@ -501,7 +533,7 @@ export default function ResponsiveChatBubble({
           <View style={styles.royalTopHeader}>
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
+              onPress={handlePressUser}
               style={styles.svip3AvatarBorder}
             >
               <Image source={avatarSource} style={styles.royalAvatarImg} />
@@ -578,7 +610,7 @@ export default function ResponsiveChatBubble({
           <View style={styles.royalTopHeader}>
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
+              onPress={handlePressUser}
               style={styles.emeraldAvatarBorder}
             >
               <Image source={avatarSource} style={styles.royalAvatarImg} />
@@ -666,7 +698,7 @@ export default function ResponsiveChatBubble({
           <View style={styles.customBubbleHeader}>
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
+              onPress={handlePressUser}
               style={styles.customAvatarWrapper}
             >
               <Image source={avatarSource} style={styles.chatAvatarClean} />
@@ -756,7 +788,7 @@ export default function ResponsiveChatBubble({
     <View style={styles.normalBubbleRow}>
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => onPressUser && onPressUser({ name: senderName, avatar: rawAvatar })}
+        onPress={handlePressUser}
       >
         <Image source={avatarSource} style={styles.chatAvatarClean} />
       </TouchableOpacity>

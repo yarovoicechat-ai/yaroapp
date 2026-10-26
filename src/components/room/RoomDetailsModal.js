@@ -27,7 +27,7 @@ export default function RoomDetailsModal({
 }) {
   if (!visible) return null;
 
-  const roomTitle = room?.title || room?.roomName || owner?.name || 'Voice Room';
+  const roomTitle = room?.title || room?.roomName || room?.name || (owner?.name ? `${owner.name}'s Room` : 'Voice Room');
   const roomId = room?.uniqueId || room?.customDisplayId || room?.displayId || room?.id || room?.roomId || owner?.uniqueId || owner?.customDisplayId || owner?.displayId || owner?.userId || '—';
   const rawBadgeUrl =
     badgeUrl ||

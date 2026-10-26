@@ -165,9 +165,8 @@ class MusicAudioProcessor(private val context: ReactApplicationContext) : ReactC
 }
 
 internal fun encodeMusicSample(sample: Double, bassDb: Double = 0.0): Int {
-    // Reserve peak headroom before converting to PCM; clipping cannot be
-    // undone by reducing Agora's volume after the file has been encoded.
-    val headroom = 0.95 / 10.0.pow(bassDb.coerceIn(0.0, 15.0) / 20.0)
+    // Preserve full music volume while applying mild headroom for bass boost
+    val headroom = (0.95 / (1.0 + 0.25 * (bassDb.coerceIn(0.0, 15.0) / 6.0))).coerceIn(0.70, 0.95)
     return (sample * headroom * 32767).roundToInt().coerceIn(-32768, 32767)
 }
 

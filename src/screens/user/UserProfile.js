@@ -12,6 +12,7 @@ import {
   StatusBar,
   Share,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +22,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthContext } from '../../context/AuthProvider';
+import { VoiceRoomContext } from '../../context/VoiceRoomContext';
 import { AlertService } from '../../utils/AlertService';
 import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
 import SvgaView from '../../components/SvgaView';
@@ -48,6 +50,41 @@ export default function UserProfileScreen() {
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomSafePadding = getStackScreenBottomPadding(insets.bottom, 16);
   const { user: currentUser } = useContext(AuthContext);
+  const voiceRoomContext = useContext(VoiceRoomContext);
+  const activeRoom = voiceRoomContext?.activeRoom;
+  const maximizeRoom = voiceRoomContext?.maximizeRoom;
+
+  const handleBack = () => {
+    if (route.params?.fromVoiceRoom || activeRoom) {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        if (activeRoom && maximizeRoom) {
+          maximizeRoom();
+        }
+      } else if (activeRoom) {
+        if (maximizeRoom) {
+          maximizeRoom();
+        } else {
+          navigation.navigate('VoiceRoom', { room: activeRoom });
+        }
+      } else {
+        navigation.navigate('MainTabs');
+      }
+    } else if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('MainTabs');
+    }
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const backSub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => backSub.remove();
+  }, [navigation, activeRoom, maximizeRoom, route.params?.fromVoiceRoom]);
 
   const incomingUser = route.params?.user || route.params?.host || null;
   const [fetchedUser, setFetchedUser] = useState(incomingUser);
@@ -314,7 +351,7 @@ export default function UserProfileScreen() {
       <View style={[styles.topActionBar, { paddingTop: topSafeInset + 6 }]}>
         <TouchableOpacity
           style={styles.iconCircleBtn}
-          onPress={() => navigation.goBack()}
+          onPress={handleBack}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Icon name="chevron-back" size={24} color="#FFFFFF" />

@@ -210,6 +210,8 @@ export default function VoiceRoomScreen() {
     enterRoom,
     takeSeat,
     leaveSeat,
+    isMinimized,
+    setIsMinimized,
     minimizeRoom,
     leaveRoom,
     toggleMic,
@@ -342,16 +344,50 @@ export default function VoiceRoomScreen() {
     };
   }, []);
 
-  // Broadcast Reaction Listener (All users in room see floating reactions)
+  // Room Reactions & Seat Moving Reactions State
+  const [reactions, setReactions] = useState([]);
+  const [seatReactions, setSeatReactions] = useState({});
+
+  // Broadcast Reaction Listener (All users in room see floating reactions & seat moving reactions)
   useEffect(() => {
     if (lastReaction?.emoji) {
       const id = lastReaction.id || ('react-' + Date.now() + Math.random());
-      setReactions((prev) => [...prev, { id, emoji: lastReaction.emoji }]);
+      let reactionSeatIndex = lastReaction.seatIndex;
+      if (reactionSeatIndex === undefined && lastReaction.userId) {
+        const seatWithUser = seats.find(
+          (s) => s.user && String(s.user.userId || s.user._id || s.user.id) === String(lastReaction.userId)
+        );
+        if (seatWithUser) {
+          reactionSeatIndex = seatWithUser.seatIndex;
+        }
+      }
+
+      if (reactionSeatIndex !== undefined) {
+        setSeatReactions((prev) => ({
+          ...prev,
+          [reactionSeatIndex]: {
+            emoji: lastReaction.emoji,
+            id,
+            timestamp: Date.now(),
+          },
+        }));
+      }
+
+      setReactions((prev) => [...prev, { id, emoji: lastReaction.emoji, seatIndex: reactionSeatIndex }]);
       setTimeout(() => {
         setReactions((prev) => prev.filter((r) => r.id !== id));
-      }, 2000);
+        if (reactionSeatIndex !== undefined) {
+          setSeatReactions((prev) => {
+            const next = { ...prev };
+            if (next[reactionSeatIndex]?.id === id) {
+              delete next[reactionSeatIndex];
+            }
+            return next;
+          });
+        }
+      }, 2500);
     }
-  }, [lastReaction]);
+  }, [lastReaction, seats]);
 
   // Image 2 Announcement & Notice States
   const [roomAnnouncement, setRoomAnnouncement] = useState('');
@@ -1026,6 +1062,18 @@ export default function VoiceRoomScreen() {
   const [hasRoomPin, setHasRoomPin] = useState(Boolean(room.hasPin || room.pin || room.isLocked || /private\s*\(pin\)/i.test(room.mode || '')));
   const [isPinVerified, setIsPinVerified] = useState(Boolean(route?.params?.isPinVerified));
 
+  useEffect(() => {
+    if (room?.title && room.title !== currentRoomTitle) {
+      setCurrentRoomTitle(room.title);
+    }
+    if (room?.coverImage && room.coverImage !== currentRoomCover) {
+      setCurrentRoomCover(room.coverImage);
+    }
+    if (room?.about !== undefined && room.about !== currentRoomAbout) {
+      setCurrentRoomAbout(room.about);
+    }
+  }, [room?.title, room?.coverImage, room?.about]);
+
   // Prompt PIN when a non-admin enters a locked room
   useEffect(() => {
     const isLocked = Boolean(currentRoomLocked || room.isLocked || /private\s*\(pin\)/i.test(room.mode || ''));
@@ -1532,12 +1580,38 @@ export default function VoiceRoomScreen() {
 
   // Handle reactions
   const handleSendReaction = (emoji) => {
+    const mySeat = seats.find(
+      (s) => s.user && (s.user.isCurrentUser || String(s.user.userId || s.user._id || s.user.id) === String(user?.userId || user?._id || user?.id))
+    );
+    const resolvedSeatIndex = currentSeatIndex !== null && currentSeatIndex !== undefined
+      ? currentSeatIndex
+      : (mySeat ? mySeat.seatIndex : undefined);
+
     const id = 'react-' + Date.now() + Math.random();
-    setReactions(prev => [...prev, { id, emoji }]);
-    broadcastReaction(emoji, user?.name || 'Guest');
+    if (resolvedSeatIndex !== undefined) {
+      setSeatReactions((prev) => ({
+        ...prev,
+        [resolvedSeatIndex]: { emoji, id, timestamp: Date.now() },
+      }));
+    }
+    setReactions(prev => [...prev, { id, emoji, seatIndex: resolvedSeatIndex }]);
+    broadcastReaction(emoji, {
+      userId: user?.userId || user?._id || user?.id,
+      seatIndex: resolvedSeatIndex,
+      userName: user?.name || 'Guest',
+    });
     setTimeout(() => {
       setReactions(prev => prev.filter(r => r.id !== id));
-    }, 2000);
+      if (resolvedSeatIndex !== undefined) {
+        setSeatReactions((prev) => {
+          const next = { ...prev };
+          if (next[resolvedSeatIndex]?.id === id) {
+            delete next[resolvedSeatIndex];
+          }
+          return next;
+        });
+      }
+    }, 2500);
   };
 
   // Play Sound Effect
@@ -1882,6 +1956,7 @@ export default function VoiceRoomScreen() {
         showSeatCharm={showSeatCharm}
         handleSeatPress={handleSeatPress}
         registerGiftAvatarPosition={registerGiftAvatarPosition}
+        activeSeatReactions={seatReactions}
         styles={styles}
       />
 
@@ -2627,22 +2702,24 @@ export default function VoiceRoomScreen() {
         onLeaveSeat={() => leaveSeat(user)}
         onOpenFullProfile={(target) => {
           setProfileModalVisible(false);
-          const targetId = target?.userId || target?.id || target?._id;
-          const isSelf = [user?.userId, user?.id, user?._id]
-            .filter(Boolean)
-            .map(String)
-            .includes(String(targetId || ''));
-          if (isSelf || !targetId) {
-            navigation.navigate('MainTabs', { screen: 'Profile' });
-          } else {
-            navigation.navigate('UserProfile', { userId: targetId, user: target });
-          }
+          const targetId = target?.userId || target?.id || target?._id || target?.displayId;
+          const targetUserObj = target || selectedProfileUser;
+          if (setIsMinimized) setIsMinimized(true);
+          else if (minimizeRoom) minimizeRoom();
+          navigation.navigate('UserProfile', {
+            userId: targetId || user?.userId || user?._id || user?.id,
+            user: targetUserObj,
+            fromVoiceRoom: true,
+          });
         }}
         onOpenChat={(target) => {
           setProfileModalVisible(false);
+          if (setIsMinimized) setIsMinimized(true);
+          else if (minimizeRoom) minimizeRoom();
           navigation.navigate('Chat', {
             user: target,
             otherUser: target,
+            fromVoiceRoom: true,
           });
         }}
         onMention={handleMentionUser}
@@ -2758,7 +2835,7 @@ export default function VoiceRoomScreen() {
           id: displayRoomId,
           uniqueId: room.uniqueId || user?.customDisplayId,
           badgeUrl: roomBadgeUrl,
-          title: currentRoomTitle || room.title || 'Voice Room',
+          title: currentRoomTitle || room.title || room.roomName || room.name || 'Voice Room',
           coverImage: currentRoomCover || room.coverImage,
           tag: room.tag || '',
           about: currentRoomAbout || room.about || '',
@@ -2903,6 +2980,22 @@ export default function VoiceRoomScreen() {
         saving={isSavingRoomSettings}
         styles={styles}
       />
+
+      {/* Floating Audience Reactions (Bottom-Right upward float) */}
+      {reactions.filter((r) => r.seatIndex === undefined).map((r) => (
+        <View
+          key={r.id}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            bottom: 120,
+            right: 24,
+            zIndex: 9999,
+          }}
+        >
+          <Text style={{ fontSize: 32 }}>{r.emoji}</Text>
+        </View>
+      ))}
     </ImageBackground>
   );
 }

@@ -404,18 +404,34 @@ export const VoiceRoomProvider = ({ children }) => {
         onUserMuteAudio: (conn, remoteUid, muted) => {
           console.warn('🎙️ [VoiceRoom] Remote user audio mute state:', remoteUid, muted);
         },
+        onAudioMixingFinished: () => {
+          if (!isCurrentSession() || agoraEngineRef.current !== engine || musicIntentRef.current === 'stopped') return;
+          if (isSwitchingTrackRef.current) return;
+          const advance = musicIntentRef.current === 'playing';
+          setIsMusicPlaying(false);
+          setIsMusicLoading(false);
+          if (advance && onSongEndedCallbackRef.current) {
+            onSongEndedCallbackRef.current();
+          } else {
+            setCurrentTrack(null);
+            musicIntentRef.current = 'stopped';
+          }
+        },
         onAudioMixingStateChanged: (state, reason) => {
           if (!isCurrentSession() || agoraEngineRef.current !== engine || musicIntentRef.current === 'stopped') return;
           // Events from the old track must not change the pending selection.
           if (musicSwitchTimerRef.current) return;
-          if (state === AudioMixingStateType.AudioMixingStateStopped && reason === AudioMixingReasonType.AudioMixingReasonAllLoopsCompleted) {
+          if (state === AudioMixingStateType.AudioMixingStateStopped && (reason === AudioMixingReasonType.AudioMixingReasonAllLoopsCompleted || reason === 723 || reason === 0 || !reason)) {
             if (isSwitchingTrackRef.current) return;
             const advance = musicIntentRef.current === 'playing' && !isSwitchingTrackRef.current;
-            musicIntentRef.current = 'stopped';
             setIsMusicPlaying(false);
             setIsMusicLoading(false);
-            setCurrentTrack(null);
-            if (advance) onSongEndedCallbackRef.current?.();
+            if (advance && onSongEndedCallbackRef.current) {
+              onSongEndedCallbackRef.current();
+            } else {
+              setCurrentTrack(null);
+              musicIntentRef.current = 'stopped';
+            }
           } else if (state === AudioMixingStateType.AudioMixingStatePlaying) {
             clearTimeout(musicLoadTimeoutRef.current);
             musicFailureHandlerRef.current = null;
@@ -585,7 +601,7 @@ export const VoiceRoomProvider = ({ children }) => {
         const result = engine.startAudioMixing(uri, false, 1, Math.max(0, Math.round(position)));
         if (typeof result === 'number' && result < 0) throw new Error('Audio mixing could not start (' + result + ')');
         const selected = Math.max(0, Math.min(500, Number(musicVolumeRef.current) || 0));
-        const safeVol = musicEnhancedRef.current ? Math.round(selected / 5) : Math.min(100, selected);
+        const safeVol = Math.max(0, Math.min(100, Math.round(selected > 100 ? 100 : selected)));
         engine.adjustAudioMixingPublishVolume(safeVol);
         engine.adjustAudioMixingPlayoutVolume(safeVol);
       } catch (error) {
@@ -712,7 +728,7 @@ export const VoiceRoomProvider = ({ children }) => {
       if (volumeThrottleTimerRef.current) clearTimeout(volumeThrottleTimerRef.current);
       volumeThrottleTimerRef.current = setTimeout(() => {
         try {
-          const volume = musicEnhancedRef.current ? Math.round(safeVol / 5) : Math.min(100, safeVol);
+          const volume = Math.max(0, Math.min(100, Math.round(safeVol > 100 ? 100 : safeVol)));
           agoraEngineRef.current?.adjustAudioMixingPublishVolume(volume);
           agoraEngineRef.current?.adjustAudioMixingPlayoutVolume(volume);
         } catch (err) {}
@@ -1136,17 +1152,21 @@ export const VoiceRoomProvider = ({ children }) => {
         });
 
         // 1.1 Reaction received broadcast
-        sock.on('voice_room:reaction_received', (data) => {
-          console.log('📡 [VoiceRoom] Reaction received:', data?.emoji, data?.user);
+        const handleReactionReceived = (data) => {
+          console.log('📡 [VoiceRoom] Reaction received:', data?.emoji, data?.user, data?.seatIndex);
           if (data?.emoji) {
             setLastReaction({
               id: data.id || ('react-' + Date.now() + Math.random()),
               emoji: data.emoji,
               user: data.user || 'Guest',
+              userId: data.userId,
+              seatIndex: typeof data.seatIndex === 'number' ? data.seatIndex : null,
               timestamp: Date.now(),
             });
           }
-        });
+        };
+        sock.on('voice_room:reaction_received', handleReactionReceived);
+        sock.on('voice_room:reaction', handleReactionReceived);
 
         // 1.2 All seats locked broadcast
         sock.on('voice_room:all_seats_locked', (data) => {
@@ -2058,11 +2078,19 @@ export const VoiceRoomProvider = ({ children }) => {
   };
 
   // Send real-time reaction via socket
-  const broadcastReaction = (emoji, userName) => {
+  const broadcastReaction = (emoji, userName, explicitSeatIndex = null) => {
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
     const sock = socketRef.current || getSocket();
+    const currentUserId = currentUserRef.current?.userId || currentUserRef.current?.id || currentUserRef.current?._id;
+    const seatIdx = explicitSeatIndex !== null ? explicitSeatIndex : currentSeatIndexRef.current;
     if (sock && roomId && emoji) {
-      sock.emit('voice_room:reaction', { roomId, emoji, user: userName });
+      sock.emit('voice_room:reaction', {
+        roomId,
+        emoji,
+        user: userName,
+        userId: currentUserId,
+        seatIndex: seatIdx,
+      });
     }
   };
 
@@ -2215,6 +2243,7 @@ export const VoiceRoomProvider = ({ children }) => {
       value={{
         activeRoom,
         isMinimized,
+        setIsMinimized,
         isMuted,
         currentSeatIndex,
         isOwner,

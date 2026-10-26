@@ -415,26 +415,30 @@ export default function RoomMusicModal({
     return () => registerOnSongEnded(null);
   }, [registerOnSongEnded]);
 
-  // Pick individual file from file manager fallback
+  // Pick multiple files or all songs from file manager
   const handlePickCustomFile = async () => {
     try {
       if (DocumentPicker && DocumentPicker.pick) {
         const results = await DocumentPicker.pick({
           type: [DocumentPicker.types.audio],
+          allowMultiSelection: true,
         });
         if (results && results.length > 0) {
-          const file = results[0];
-          const customSong = {
-            id: 'dev-' + Date.now(),
-            title: file.name || 'Phone Audio',
-            artist: 'My Phone 📱',
+          const newSongs = results.map((file, idx) => ({
+            id: 'dev-' + Date.now() + '-' + idx,
+            title: file.name || `Audio Track ${idx + 1}`,
+            artist: 'Phone Storage 📱',
             duration: 'Local',
             uri: file.uri,
+            contentUri: file.uri,
+            path: file.uri,
             icon: 'cellphone-sound',
             isLocal: true,
-          };
-          setDeviceSongs((prev) => [customSong, ...prev]);
-          handleSelectSong(customSong);
+          }));
+          setDeviceSongs((prev) => [...newSongs, ...prev]);
+          if (newSongs[0]) {
+            handleSelectSong(newSongs[0]);
+          }
         }
       }
     } catch (error) {
@@ -576,7 +580,21 @@ export default function RoomMusicModal({
                 <MaterialCommunityIcons name="skip-next" size={22} color="#E2E8F0" />
               </TouchableOpacity>
 
-              {/* Repeat Mode */}
+              {/* 1. Next Song Auto Play Option */}
+              <TouchableOpacity
+                style={[styles.controlPillBtn, autoNext && styles.autoNextActiveBtn]}
+                onPress={() => setAutoNext(!autoNext)}
+                accessibilityLabel={`Auto Next ${autoNext ? 'ON' : 'OFF'}`}
+                activeOpacity={0.75}
+              >
+                <MaterialCommunityIcons
+                  name="playlist-play"
+                  size={20}
+                  color={autoNext ? '#38BDF8' : '#64748B'}
+                />
+              </TouchableOpacity>
+
+              {/* 2. Repeat Song Mode Option */}
               <TouchableOpacity
                 style={[styles.controlPillBtn, repeatMode !== 'off' && styles.repeatActiveBtn]}
                 onPress={toggleRepeatMode}
@@ -588,6 +606,48 @@ export default function RoomMusicModal({
                   size={19}
                   color={repeatMode !== 'off' ? '#A78BFA' : '#64748B'}
                 />
+              </TouchableOpacity>
+
+              {/* 3. Bass Boost Option */}
+              <TouchableOpacity
+                style={[styles.controlPillBtn, bassLevel > 0 && styles.bassActiveBtn]}
+                onPress={() => {
+                  const nextBass = bassLevel <= 0 ? 6 : bassLevel <= 6 ? 10 : bassLevel <= 10 ? 15 : 0;
+                  onSetBassLevel && onSetBassLevel(nextBass);
+                }}
+                accessibilityLabel={`Bass Boost ${bassLevel}dB`}
+                activeOpacity={0.75}
+              >
+                <MaterialCommunityIcons
+                  name="speaker-wireless"
+                  size={19}
+                  color={bassLevel > 0 ? '#EC4899' : '#64748B'}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Mode Status Badges */}
+            <View style={styles.modeBadgesRow}>
+              <TouchableOpacity onPress={() => setAutoNext(!autoNext)} style={[styles.miniModeBadge, autoNext && styles.miniModeBadgeAuto]}>
+                <Text style={[styles.miniModeBadgeText, autoNext && { color: '#38BDF8' }]}>
+                  {autoNext ? '⚡ Auto-Play ON' : 'Auto-Play OFF'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={toggleRepeatMode} style={[styles.miniModeBadge, repeatMode !== 'off' && styles.miniModeBadgeRepeat]}>
+                <Text style={[styles.miniModeBadgeText, repeatMode !== 'off' && { color: '#A78BFA' }]}>
+                  {repeatMode === 'one' ? '🔂 Repeat: Single' : repeatMode === 'all' ? '🔁 Repeat: All' : 'Repeat: OFF'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  const nextBass = bassLevel <= 0 ? 6 : bassLevel <= 6 ? 10 : bassLevel <= 10 ? 15 : 0;
+                  onSetBassLevel && onSetBassLevel(nextBass);
+                }}
+                style={[styles.miniModeBadge, bassLevel > 0 && styles.miniModeBadgeBass]}
+              >
+                <Text style={[styles.miniModeBadgeText, bassLevel > 0 && { color: '#F472B6' }]}>
+                  {bassLevel > 0 ? `🔊 Bass: +${bassLevel}dB` : 'Bass: Normal'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -876,6 +936,32 @@ export default function RoomMusicModal({
             )}
           </View>
 
+          {/* Multi-Select / Select All Action Bar */}
+          <View style={styles.multiSelectActionRow}>
+            <TouchableOpacity
+              style={styles.selectAllBtn}
+              onPress={handlePickCustomFile}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="file-multiple" size={16} color="#C084FC" />
+              <Text style={styles.selectAllBtnText}>+ All Songs Select / Add</Text>
+            </TouchableOpacity>
+
+            {currentList.length > 0 && (
+              <TouchableOpacity
+                style={[styles.selectAllBtn, { borderColor: 'rgba(56, 189, 248, 0.4)', backgroundColor: 'rgba(56, 189, 248, 0.12)' }]}
+                onPress={() => {
+                  setAutoNext(true);
+                  if (currentList[0]) handleSelectSong(currentList[0]);
+                }}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="play-circle-outline" size={16} color="#38BDF8" />
+                <Text style={[styles.selectAllBtnText, { color: '#38BDF8' }]}>▶ Play All ({currentList.length})</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           {/* Song List */}
           <FlatList
             style={styles.songsScroll}
@@ -1037,10 +1123,55 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 21,
   },
+  autoNextActiveBtn: {
+    backgroundColor: 'rgba(56, 189, 248, 0.25)',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
   repeatActiveBtn: {
     backgroundColor: 'rgba(167, 139, 250, 0.25)',
     borderWidth: 1,
     borderColor: '#A78BFA',
+  },
+  bassActiveBtn: {
+    backgroundColor: 'rgba(236, 72, 153, 0.25)',
+    borderWidth: 1,
+    borderColor: '#EC4899',
+  },
+  modeBadgesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  miniModeBadge: {
+    flex: 1,
+    paddingVertical: 5,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniModeBadgeAuto: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderColor: '#38BDF8',
+  },
+  miniModeBadgeRepeat: {
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+    borderColor: '#A78BFA',
+  },
+  miniModeBadgeBass: {
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    borderColor: '#EC4899',
+  },
+  miniModeBadgeText: {
+    color: '#94A3B8',
+    fontSize: 9.5,
+    fontWeight: '700',
   },
   quickChangeBtn: {
     marginTop: 10,
@@ -1219,8 +1350,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(192, 132, 252, 0.4)',
   },
+  multiSelectActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 8,
+  },
+  selectAllBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(139, 92, 246, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.35)',
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+  },
+  selectAllBtnText: {
+    color: '#C084FC',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   songsScroll: {
-    maxHeight: 250,
+    height: 295,
+    maxHeight: 295,
   },
   songItem: {
     flexDirection: 'row',

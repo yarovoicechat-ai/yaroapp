@@ -61,8 +61,18 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
   private val sources = WeakHashMap<SVGAImageView, String>()
 
   private fun emit(view: SVGAImageView, event: String) {
-    (view.context as? ThemedReactContext)?.getJSModule(RCTEventEmitter::class.java)
-      ?.receiveEvent(view.id, event, Arguments.createMap())
+    var ctx: android.content.Context? = view.context
+    while (ctx is android.content.ContextWrapper) {
+      if (ctx is ThemedReactContext) break
+      ctx = ctx.baseContext
+    }
+    val reactContext = ctx as? ThemedReactContext ?: return
+    try {
+      reactContext.getJSModule(RCTEventEmitter::class.java)
+        ?.receiveEvent(view.id, event, Arguments.createMap())
+    } catch (e: Exception) {
+      android.util.Log.w("SvgaPlayerViewManager", "Failed to emit $event: ${e.message}")
+    }
   }
 
   override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> =
@@ -76,7 +86,10 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
   override fun createViewInstance(reactContext: ThemedReactContext): SVGAImageView =
     ResumableSVGAImageView(reactContext).apply {
       callback = object : SVGACallback {
-        override fun onFinished() { emit(this@apply, "topPlaybackFinished") }
+        override fun onFinished() {
+          android.util.Log.i("SvgaPlayerViewManager", "Playback finished: ${width}x${height}")
+          emit(this@apply, "topPlaybackFinished")
+        }
         override fun onPause() {}
         override fun onRepeat() {}
         override fun onStep(frame: Int, percentage: Double) {}
@@ -116,6 +129,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
       override fun onComplete(videoItem: SVGAVideoEntity) {
         view.post {
           if (sources[view] != source) return@post
+          android.util.Log.i("SvgaPlayerViewManager", "Decoded frames=${videoItem.frames}, view=${view.width}x${view.height}")
           rView?.lastVideoItem = videoItem
           val drawable = SVGADrawable(videoItem)
           view.setImageDrawable(drawable)

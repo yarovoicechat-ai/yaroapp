@@ -76,22 +76,33 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     const waiting = new Set([...(rideSvga ? ['ride'] : []), ...(entranceSvga ? ['entrance'] : [])]);
     let motionDone = false;
     let completed = false;
+    const duration = isRide
+      ? Math.max(3000, Math.min(12000, Number(entryAsset?.duration || entryAsset?.metadata?.duration) || 5000))
+      : 3000;
+
     const finishEntry = () => {
       if (completed || !motionDone || waiting.size || !mounted.current) return;
       completed = true;
+      clearTimeout(safetyTimer);
       completion.current?.(current.entryId);
       const next = pending.current.shift();
       playing.current = Boolean(next);
       setCurrent(next || null);
     };
+
+    // Absolute safety timeout: if native playback events drop or delay, queue is never blocked
+    const safetyTimer = setTimeout(() => {
+      if (completed || !mounted.current) return;
+      waiting.clear();
+      motionDone = true;
+      finishEntry();
+    }, duration + 600);
+
     mediaFinished.current = (id, kind) => {
       if (id !== current.entryId) return;
       waiting.delete(kind);
       finishEntry();
     };
-    const duration = isRide
-      ? Math.max(3000, Math.min(12000, Number(entryAsset?.duration || entryAsset?.metadata?.duration) || 5000))
-      : 3000;
 
     bulletTranslateX.setValue(width + 30);
     bulletOpacity.setValue(1);
@@ -100,7 +111,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
         toValue: 8, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true,
       }),
       Animated.delay(2000),
-      ...(entranceSvga ? [] : [Animated.timing(bulletOpacity, { toValue: 0, duration: 180, useNativeDriver: true })]),
+      Animated.timing(bulletOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
     ]);
     comingTranslateX.setValue(width);
     comingOpacity.setValue(0);
@@ -114,7 +125,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
           Animated.timing(comingOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
         ]),
         Animated.delay(Math.max(1500, duration - 600)),
-        ...(rideSvga ? [] : [Animated.timing(comingOpacity, { toValue: 0, duration: 300, useNativeDriver: true })]),
+        Animated.timing(comingOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
       ]),
     ]) : entranceMotion;
 
@@ -124,7 +135,11 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
       finishEntry();
     });
 
-    return () => { completed = true; motion.stop(); };
+    return () => {
+      completed = true;
+      clearTimeout(safetyTimer);
+      motion.stop();
+    };
   }, [current, comingOpacity, comingTranslateX, bulletOpacity, bulletTranslateX]);
 
   if (!current) return null;
@@ -162,7 +177,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
               <SvgaView
                 key={current.entryId}
                 source={rideMedia}
-                style={StyleSheet.absoluteFillObject}
+                style={{ width, height }}
                 loops={1}
                 onFinish={() => mediaFinished.current(current.entryId, 'ride')}
                 onError={() => mediaFinished.current(current.entryId, 'ride')}
@@ -354,10 +369,10 @@ const styles = StyleSheet.create({
     elevation: 10000,
   },
   bulletBannerWrap: {
-    height: 40,
+    height: 52,
     width: width - 16,
     maxWidth: width - 16,
-    borderRadius: 20,
+    borderRadius: 26,
     overflow: 'hidden',
     position: 'relative',
     justifyContent: 'center',
@@ -374,12 +389,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingLeft: 10,
     paddingRight: 32,
-    height: 40,
+    height: 52,
     width: width - 16,
     maxWidth: width - 16,
   },
   bulletBannerImageStyle: {
-    borderRadius: 20,
+    borderRadius: 26,
   },
   wealthBadge: {
     flexDirection: 'row',
@@ -403,7 +418,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   avatarWrap: {
-    marginRight: 5,
+    width: 44,
+    height: 44,
+    marginRight: 7,
     justifyContent: 'center',
     alignItems: 'center',
   },

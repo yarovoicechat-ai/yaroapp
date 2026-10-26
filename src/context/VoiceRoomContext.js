@@ -1002,8 +1002,19 @@ export const VoiceRoomProvider = ({ children }) => {
           : null,
       }));
     };
-    const isCurrentRoomEvent = (payload) =>
-      !payload?.roomId || normalizeRoomId(payload.roomId) === normalizeRoomId(roomId);
+    const isCurrentRoomEvent = (payload) => {
+      if (!payload?.roomId) return true;
+      const targetId = normalizeRoomId(payload.roomId);
+      const candidates = [
+        roomId,
+        roomData?.id,
+        roomData?.roomId,
+        roomData?.channelName,
+        roomData?._id,
+        activeRoomIdRef.current,
+      ].filter(Boolean).map(normalizeRoomId);
+      return candidates.includes(targetId);
+    };
 
     // Socket.IO Room Connection
     try {
@@ -1024,18 +1035,16 @@ export const VoiceRoomProvider = ({ children }) => {
         sock.on('voice_room:state', (data) => {
           if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] Initial state received from server:', data?.roomId);
-          const serverSaysOwner = Boolean(
-            data?.isHost ||
-            data?.isOwner ||
-            actuallyOwner ||
+          const hasServerOwnership = typeof data?.isOwner === 'boolean' || typeof data?.isHost === 'boolean';
+          const serverSaysOwner = hasServerOwnership
+            ? Boolean(data.isOwner ?? data.isHost)
+            : Boolean(actuallyOwner ||
             (data?.hostUser?.userId && currentUserId && (
               String(data.hostUser.userId) === String(currentUserId) ||
               normalizeRoomId(data.hostUser.userId) === normalizeRoomId(currentUserId)
             ))
           );
-          if (serverSaysOwner) {
-            setIsOwner(true);
-          }
+          setIsOwner(serverSaysOwner);
           setIsGlobalRoomManager(Boolean(data?.isGlobalRoomManager));
           setAdmins(Array.isArray(data?.admins) ? data.admins.map(String) : []);
           setBannedChatUsers(Array.isArray(data?.bannedChatUsers) ? data.bannedChatUsers.map(String) : []);

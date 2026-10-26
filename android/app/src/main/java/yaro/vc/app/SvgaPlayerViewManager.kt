@@ -2,6 +2,9 @@ package yaro.vc.app
 
 import android.content.Context
 import android.view.View
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.uimanager.events.RCTEventEmitter
+import com.opensource.svgaplayer.SVGACallback
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
@@ -57,10 +60,27 @@ class ResumableSVGAImageView(context: Context) : SVGAImageView(context) {
 class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
   private val sources = WeakHashMap<SVGAImageView, String>()
 
+  private fun emit(view: SVGAImageView, event: String) {
+    (view.context as? ThemedReactContext)?.getJSModule(RCTEventEmitter::class.java)
+      ?.receiveEvent(view.id, event, Arguments.createMap())
+  }
+
+  override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> =
+    mutableMapOf(
+      "topPlaybackFinished" to mapOf("registrationName" to "onPlaybackFinished"),
+      "topPlaybackError" to mapOf("registrationName" to "onPlaybackError")
+    )
+
   override fun getName(): String = "SvgaPlayerView"
 
   override fun createViewInstance(reactContext: ThemedReactContext): SVGAImageView =
     ResumableSVGAImageView(reactContext).apply {
+      callback = object : SVGACallback {
+        override fun onFinished() { emit(this@apply, "topPlaybackFinished") }
+        override fun onPause() {}
+        override fun onRepeat() {}
+        override fun onStep(frame: Int, percentage: Double) {}
+      }
       loops = 0
       clearsAfterStop = false
       clearsAfterDetached = false
@@ -106,6 +126,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
       }
 
       override fun onError() {
+        view.post { if (sources[view] == source) emit(view, "topPlaybackError") }
         android.util.Log.e("SvgaPlayerViewManager", "Error decoding SVGA from source: $source")
       }
     }
@@ -123,6 +144,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
         SVGAParser.shareParser().decodeFromAssets(assetPath, callback)
       }
     } catch (e: Exception) {
+      view.post { if (sources[view] == source) emit(view, "topPlaybackError") }
       android.util.Log.e("SvgaPlayerViewManager", "Exception loading SVGA: $source", e)
     }
   }

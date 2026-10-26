@@ -25,6 +25,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   const playing = useRef(false);
   const mounted = useRef(true);
   const completion = useRef(onComplete);
+  const mediaFinished = useRef(() => {});
   completion.current = onComplete;
 
   // Coming Ride animation values (Full SVGA Ride / Coming Stage)
@@ -70,6 +71,24 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     const assets = resolveEntryAssets(current);
     const entryAsset = assets.entry;
     const isRide = Boolean(entryAsset?.animationUrl);
+    const rideSvga = /\.svga(?:[?#]|$)/i.test(entryAsset?.animationUrl || '');
+    const entranceSvga = /\.svga(?:[?#]|$)/i.test(assets.entrance?.animationUrl || '');
+    const waiting = new Set([...(rideSvga ? ['ride'] : []), ...(entranceSvga ? ['entrance'] : [])]);
+    let motionDone = false;
+    let completed = false;
+    const finishEntry = () => {
+      if (completed || !motionDone || waiting.size || !mounted.current) return;
+      completed = true;
+      completion.current?.(current.entryId);
+      const next = pending.current.shift();
+      playing.current = Boolean(next);
+      setCurrent(next || null);
+    };
+    mediaFinished.current = (id, kind) => {
+      if (id !== current.entryId) return;
+      waiting.delete(kind);
+      finishEntry();
+    };
     const duration = isRide
       ? Math.max(3000, Math.min(12000, Number(entryAsset?.duration || entryAsset?.metadata?.duration) || 5000))
       : 3000;
@@ -81,7 +100,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
         toValue: 14, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true,
       }),
       Animated.delay(2000),
-      Animated.timing(bulletOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+      ...(entranceSvga ? [] : [Animated.timing(bulletOpacity, { toValue: 0, duration: 180, useNativeDriver: true })]),
     ]);
     comingTranslateX.setValue(width);
     comingOpacity.setValue(0);
@@ -95,19 +114,17 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
           Animated.timing(comingOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
         ]),
         Animated.delay(Math.max(1500, duration - 600)),
-        Animated.timing(comingOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ...(rideSvga ? [] : [Animated.timing(comingOpacity, { toValue: 0, duration: 300, useNativeDriver: true })]),
       ]),
     ]) : entranceMotion;
 
     motion.start(({ finished }) => {
       if (!finished || !mounted.current) return;
-      completion.current?.(current.entryId);
-      const next = pending.current.shift();
-      playing.current = Boolean(next);
-      setCurrent(next || null);
+      motionDone = true;
+      finishEntry();
     });
 
-    return () => motion.stop();
+    return () => { completed = true; motion.stop(); };
   }, [current, comingOpacity, comingTranslateX, bulletOpacity, bulletTranslateX]);
 
   if (!current) return null;
@@ -147,6 +164,8 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
                 source={rideMedia}
                 style={StyleSheet.absoluteFillObject}
                 loops={1}
+                onFinish={() => mediaFinished.current(current.entryId, 'ride')}
+                onError={() => mediaFinished.current(current.entryId, 'ride')}
                 resizeMode="contain"
               />
             </Animated.View>
@@ -199,9 +218,12 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
           {isEntranceSvga ? (
             <View style={styles.bulletBannerWrap}>
               <SvgaView
+                key={current.entryId}
                 source={customEntrance.animationUrl}
                 style={StyleSheet.absoluteFillObject}
-                loops={0}
+                loops={1}
+                onFinish={() => mediaFinished.current(current.entryId, 'entrance')}
+                onError={() => mediaFinished.current(current.entryId, 'entrance')}
                 resizeMode="stretch"
               />
               <View style={styles.bulletInnerContent}>

@@ -34,6 +34,8 @@ const GiftMedia = ({
   fallbackSource,
   repeat = true,
   muted = true,
+  onFinish,
+  onError,
 }) => {
   const [failed, setFailed] = useState(false);
   const type = useMemo(() => inferType(source, mediaType), [source, mediaType]);
@@ -64,7 +66,8 @@ const GiftMedia = ({
         autoPlay
         muteBuiltInAudio={muted}
         scaleMode={resizeMode === 'contain' ? 'aspectFit' : 'aspectFill'}
-        onError={() => setFailed(true)}
+        onFinish={onFinish}
+        onError={(error) => { setFailed(true); onError?.(error); }}
       />
     );
   }

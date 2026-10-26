@@ -49,6 +49,8 @@ test('entry uses Coming copy and only adds the large avatar when configured', as
   expect(JSON.stringify(tree.toJSON())).toContain('enter the room');
   expect(JSON.stringify(tree.toJSON())).toContain('is coming');
   await act(async () => finish.shift()({ finished: true }));
+  expect(tree.root.findAllByType('SvgaView')).toHaveLength(1);
+  await act(async () => tree.root.findByType('SvgaView').props.onFinish());
   const noAvatar = { ...entry, entryId: 'ride-2', entry: { ...entry.entry, metadata: { showAvatar: false } } };
   await act(async () => tree.update(<RoomEntryEffectEngine activeEntry={noAvatar} />));
   expect(tree.root.findAllByType('AvatarWithFrame')).toHaveLength(2);
@@ -133,4 +135,25 @@ test('reference entrance shows level, avatar, name and arrival text in order', a
   expect(content[1].props.children.props.user.name).toBe('Prince');
   expect(content[2].props.name).toBe('Prince');
   expect(content[3].props.children.trim()).toBe('enter the room');
+});
+
+test('ride and entrance finish independently before advancing the queue', async () => {
+  const onComplete = jest.fn();
+  const first = { entryId: 'full', user: { name: 'Full' },
+    entry: { animationUrl: 'long.svga', duration: 1000 },
+    entrance: { animationUrl: 'strip.svga' } };
+  await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={first} onComplete={onComplete} />); });
+  const players = tree.root.findAllByType('SvgaView');
+  expect(players.every(player => player.props.loops === 1)).toBe(true);
+  const staleFinish = players[0].props.onFinish;
+  await act(async () => tree.update(<RoomEntryEffectEngine activeEntry={{ entryId: 'next', user: { name: 'Next' } }} onComplete={onComplete} />));
+  await act(async () => finish.shift()({ finished: true }));
+  expect(onComplete).not.toHaveBeenCalled();
+  await act(async () => players[0].props.onFinish());
+  expect(onComplete).not.toHaveBeenCalled();
+  await act(async () => players[1].props.onError());
+  expect(onComplete).toHaveBeenCalledWith('full');
+  expect(JSON.stringify(tree.toJSON())).toContain('Next');
+  await act(async () => staleFinish());
+  expect(onComplete).toHaveBeenCalledTimes(1);
 });

@@ -15,6 +15,8 @@ export default function SvgaView({
   loops = 0,
   resizeMode = 'contain',
   fallbackImage,
+  onFinish,
+  onError,
 }) {
   const [failed, setFailed] = React.useState(false);
   let isFocused = true;
@@ -36,7 +38,7 @@ export default function SvgaView({
     return null;
   }
 
-  const isSvga = /\.svga(?:\?|$)/i.test(src);
+  const isSvga = /\.svga(?:[?#]|$)/i.test(src);
 
   if (isSvga && NativeSvga) {
     return (
@@ -53,6 +55,8 @@ export default function SvgaView({
             key={`${src}_${isFocused}`}
             source={src}
             loops={loops}
+            onPlaybackFinished={onFinish}
+            onPlaybackError={onError}
             style={StyleSheet.absoluteFillObject}
           />
         ) : fallbackImage ? (
@@ -69,6 +73,9 @@ export default function SvgaView({
   return (
     <GiftMedia
       source={src}
+      repeat={loops === 0}
+      onFinish={onFinish}
+      onError={onError}
       style={style}
       resizeMode={resizeMode}
       fallbackSource={fallbackImage ? { uri: fallbackImage } : undefined}

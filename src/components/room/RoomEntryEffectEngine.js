@@ -45,19 +45,21 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
 
   useEffect(() => {
     if (!activeEntry) return;
-    const id = String(
-      activeEntry.entryId ||
-      activeEntry.id ||
-      ('join:' + (activeEntry.user?.userId || activeEntry.userId || 'u') + ':' + (activeEntry.timestamp || Date.now()))
-    );
-    if (seen.current.has(id)) return;
-    seen.current.add(id);
-    if (seen.current.size > 200) {
-      const first = seen.current.values().next().value;
-      seen.current.delete(first);
+    for (const event of activeEntry.queuedEntries || [activeEntry]) {
+      const id = String(
+        event.entryId ||
+        event.id ||
+        ('join:' + (event.user?.userId || event.userId || 'u') + ':' + (event.timestamp || Date.now()))
+      );
+      if (seen.current.has(id)) continue;
+      seen.current.add(id);
+      if (seen.current.size > 200) {
+        const first = seen.current.values().next().value;
+        seen.current.delete(first);
+      }
+      pending.current.push({ ...event, entryId: id });
     }
-    pending.current.push({ ...activeEntry, entryId: id });
-    if (!playing.current) {
+    if (!playing.current && pending.current.length) {
       playing.current = true;
       setCurrent(pending.current.shift());
     }
@@ -67,59 +69,35 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     if (!current) return;
     const assets = resolveEntryAssets(current);
     const entryAsset = assets.entry;
-    const entranceAsset = assets.entrance;
-    const isRide = Boolean(entryAsset?.animationUrl || (entranceAsset?.metadata?.comingText && entranceAsset?.animationUrl));
+    const isRide = Boolean(entryAsset?.animationUrl);
     const duration = isRide
-      ? Math.max(3000, Math.min(12000, Number(entryAsset?.duration || entryAsset?.metadata?.duration || entranceAsset?.duration) || 5000))
+      ? Math.max(3000, Math.min(12000, Number(entryAsset?.duration || entryAsset?.metadata?.duration) || 5000))
       : 3000;
 
-    let motion;
-    if (isRide) {
-      // COMING WALA: Pahle jaisa hi rahega (full SVGA ride, comingStage with large avatar)
-      comingTranslateX.setValue(width);
-      comingOpacity.setValue(0);
-      motion = Animated.sequence([
+    bulletTranslateX.setValue(width + 30);
+    bulletOpacity.setValue(1);
+    const entranceMotion = Animated.sequence([
+      Animated.timing(bulletTranslateX, {
+        toValue: 14, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+      }),
+      Animated.delay(2000),
+      Animated.timing(bulletOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+    ]);
+    comingTranslateX.setValue(width);
+    comingOpacity.setValue(0);
+    const motion = isRide ? Animated.parallel([
+      entranceMotion,
+      Animated.sequence([
         Animated.parallel([
           Animated.timing(comingTranslateX, {
-            toValue: 0,
-            duration: 350,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
+            toValue: 0, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true,
           }),
-          Animated.timing(comingOpacity, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-          }),
+          Animated.timing(comingOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
         ]),
         Animated.delay(Math.max(1500, duration - 600)),
-        Animated.timing(comingOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]);
-    } else {
-      // ENTRANCE: Right se Left jayega jaise bullet message jata hai lekin speed jyada hai
-      // Fast in from right (width + 30 -> 14) in 380ms -> 2 seconds pause -> fast out to left (-width - 80) in 380ms
-      bulletTranslateX.setValue(width + 30);
-      bulletOpacity.setValue(1);
-      motion = Animated.sequence([
-        Animated.timing(bulletTranslateX, {
-          toValue: 14,
-          duration: 380,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.delay(2000), // 2 SEC RUKTA HAI
-        Animated.timing(bulletTranslateX, {
-          toValue: -width - 80,
-          duration: 380,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]);
-    }
+        Animated.timing(comingOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]),
+    ]) : entranceMotion;
 
     motion.start(({ finished }) => {
       if (!finished || !mounted.current) return;
@@ -135,14 +113,14 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   if (!current) return null;
 
   const assets = resolveEntryAssets(current);
-  // Entry Effect vs Entrance Effect are strictly separated.
+  // The ride and entrance share a join event and animate together.
   // Entry Ride: Has SVGA ride vehicle animation -> renders full screen SVGA + comingStage ("is coming")
   // Entrance: Has horizontal bullet banner -> renders fast flying bullet strip ("enter the room") with NO comingStage!
   const entryAsset = assets.entry;
   const entranceAsset = assets.entrance;
-  const isRide = Boolean(entryAsset?.animationUrl || (entranceAsset?.metadata?.comingText && entranceAsset?.animationUrl));
-  const rideMedia = entryAsset?.animationUrl || entranceAsset?.animationUrl || '';
-  const settings = (isRide ? (entryAsset?.metadata || entranceAsset?.metadata) : entranceAsset?.metadata) || {};
+  const isRide = Boolean(entryAsset?.animationUrl);
+  const rideMedia = entryAsset?.animationUrl || '';
+  const settings = entryAsset?.metadata || {};
   const user = current.user || {};
   const wealthLevel = user.wealthLevel ?? user.level ?? current.wealthLevel ?? 1;
   const nameEffect = user.nameEffect || current.vipExperience?.nameEffect;
@@ -206,8 +184,8 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
             </LinearGradient>
           </Animated.View>
         </>
-      ) : (
-        /* 2. ENTRANCE EFFECT: Floating bullet banner (Speed jyada, 2 sec pause, Right to Left) with NO comingStage! */
+      ) : null}
+      { /* 2. ENTRANCE EFFECT: Floating bullet banner (Speed jyada, 2 sec pause, Right to Left) with NO comingStage! */ }
         <Animated.View
           style={[
             styles.bulletEntranceContainer,
@@ -280,7 +258,6 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
             </ImageBackground>
           )}
         </Animated.View>
-      )}
     </View>
   );
 }
@@ -346,7 +323,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
 
-  // BULLET ENTRANCE BANNER (Right to Left bullet message, speed jyada, 2s pause)
+  // Entrance slides in from the bullet-message side and holds for two seconds.
   bulletEntranceContainer: {
     position: 'absolute',
     top: Math.round(height * 0.535),
@@ -356,7 +333,7 @@ const styles = StyleSheet.create({
   },
   bulletBannerWrap: {
     height: 40,
-    minWidth: 260,
+    width: Math.round(width * 0.92),
     maxWidth: Math.round(width * 0.92),
     borderRadius: 20,
     overflow: 'hidden',
@@ -376,7 +353,7 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     paddingRight: 32,
     height: 40,
-    minWidth: 260,
+    width: Math.round(width * 0.92),
     maxWidth: Math.round(width * 0.92),
   },
   bulletBannerImageStyle: {
@@ -414,6 +391,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.2,
     maxWidth: Math.round(width * 0.34),
+    flexShrink: 1,
     textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,

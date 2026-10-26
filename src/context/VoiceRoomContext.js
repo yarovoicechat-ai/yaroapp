@@ -1518,7 +1518,7 @@ export const VoiceRoomProvider = ({ children }) => {
             const seenAt = recentEntryUsersRef.current.get(key) || 0;
             return seenAt && now - seenAt < 400;
           });
-          if (hasSeenEvent || hasRecentUserEvent) return false;
+          if (hasSeenEvent || (!eventKey && hasRecentUserEvent)) return false;
           userKeys.forEach((key) => recentEntryUsersRef.current.set(key, now));
           if (eventKey) recentEntryUsersRef.current.set(eventKey, now);
           if (recentEntryUsersRef.current.size > 200) {
@@ -1543,7 +1543,11 @@ export const VoiceRoomProvider = ({ children }) => {
               return exists ? prev : [...prev, data.user];
             });
           }
-          setActiveEntryEffect(data);
+          // Preserve socket bursts that React may batch into a single render.
+          setActiveEntryEffect(previous => ({
+            ...data,
+            queuedEntries: [...(previous?.queuedEntries || []), data].slice(-100),
+          }));
         };
         const handleNameEffectUpdated = (data) => {
           const keys = [data?.userId, data?.userObjectId].filter(Boolean).map(String);

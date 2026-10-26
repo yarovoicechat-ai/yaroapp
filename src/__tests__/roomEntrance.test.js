@@ -1,6 +1,6 @@
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { Animated } from 'react-native';
+import { Animated, ImageBackground } from 'react-native';
 import RoomEntryEffectEngine from '../components/room/RoomEntryEffectEngine';
 import IdentityDisplayName from '../components/identity/IdentityDisplayName';
 
@@ -40,17 +40,18 @@ test('plain joins queue once and do not display a fabricated ride', async () => 
 });
 
 test('entry uses Coming copy and only adds the large avatar when configured', async () => {
-  const entry = { entryId: 'ride', user: { name: 'Rider' }, entrance: {
+  const entry = { entryId: 'ride', user: { name: 'Rider' }, entry: {
     animationUrl: 'bike.svga', metadata: { showAvatar: true, comingText: 'is coming' },
   } };
   await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={entry} />); });
   expect(tree.root.findAllByType('SvgaView')[0].props.source).toBe('bike.svga');
-  expect(tree.root.findAllByType('AvatarWithFrame')).toHaveLength(2);
+  expect(tree.root.findAllByType('AvatarWithFrame')).toHaveLength(3);
+  expect(JSON.stringify(tree.toJSON())).toContain('enter the room');
   expect(JSON.stringify(tree.toJSON())).toContain('is coming');
   await act(async () => finish.shift()({ finished: true }));
-  const noAvatar = { ...entry, entryId: 'ride-2', entrance: { ...entry.entrance, metadata: { showAvatar: false } } };
+  const noAvatar = { ...entry, entryId: 'ride-2', entry: { ...entry.entry, metadata: { showAvatar: false } } };
   await act(async () => tree.update(<RoomEntryEffectEngine activeEntry={noAvatar} />));
-  expect(tree.root.findAllByType('AvatarWithFrame')).toHaveLength(1);
+  expect(tree.root.findAllByType('AvatarWithFrame')).toHaveLength(2);
 });
 
 test('styled names keep the full name with gold styling', async () => {
@@ -97,4 +98,39 @@ test('assigned effects honour their palette and speed, and expire automatically'
     expect(parent).toBeDefined();
     expect(JSON.stringify(parent.props.style)).not.toContain('#45D79A');
   } finally { jest.useRealTimers(); }
+});
+
+test('entrance metadata never enables coming banner and holds for two seconds', async () => {
+  const delay = jest.spyOn(Animated, 'delay').mockImplementation(motion);
+  await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={{
+    entryId: 'entrance-only', user: { name: 'Banner' },
+    entrance: { animationUrl: 'strip.svga', metadata: { comingText: 'is coming', showAvatar: true } },
+  }} />); });
+  expect(JSON.stringify(tree.toJSON())).not.toContain('is coming');
+  expect(JSON.stringify(tree.toJSON())).toContain('enter the room');
+  expect(delay).toHaveBeenCalledWith(2000);
+});
+
+test('batched socket entries all play in order', async () => {
+  const queuedEntries = ['First', 'Second', 'Third'].map(name => ({ entryId: name, user: { name } }));
+  await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={{
+    ...queuedEntries[2], queuedEntries,
+  }} />); });
+  for (const name of ['First', 'Second', 'Third']) {
+    expect(JSON.stringify(tree.toJSON())).toContain(name);
+    await act(async () => finish.shift()({ finished: true }));
+  }
+  expect(tree.toJSON()).toBeNull();
+});
+
+test('reference entrance shows level, avatar, name and arrival text in order', async () => {
+  await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={{
+    entryId: 'reference', user: { name: 'Prince', wealthLevel: 17 },
+  }} />); });
+  const banner = tree.root.findByType(ImageBackground);
+  const content = React.Children.toArray(banner.props.children);
+  expect(content[0].props.children[1].props.children).toEqual(['Lv.', 17]);
+  expect(content[1].props.children.props.user.name).toBe('Prince');
+  expect(content[2].props.name).toBe('Prince');
+  expect(content[3].props.children.trim()).toBe('enter the room');
 });

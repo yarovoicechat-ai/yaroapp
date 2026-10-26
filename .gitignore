@@ -43,6 +43,7 @@ Thumbs.db
 
 # Scratch and test artifacts
 scratch/
+test_assets/
 /*.xml
 /*.png
 /*.patch

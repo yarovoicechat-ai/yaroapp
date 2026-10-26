@@ -825,9 +825,6 @@ export default function VoiceRoomScreen() {
     });
   }, [chatMessages, triggerBulletMessage, user?.userId, user?._id, user?.id]);
 
-  // Floating reactions
-  const [reactions, setReactions] = useState([]);
-
   // Modals
   // New Enterprise Gift Flow Hooks
   const { diamondBalance, setDiamondBalance, deductLocalBalance } = useGiftBalance();

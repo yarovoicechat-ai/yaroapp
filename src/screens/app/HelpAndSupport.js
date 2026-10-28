@@ -89,9 +89,9 @@ const HelpAndSupport = () => {
 
   const faqBotData = {
     'How to use Yaro Voice Chat?':
-      'Open the Home screen, select an online host and tap Call. Calls use 100 diamonds per started minute. Keep a stable internet connection and allow microphone permission.',
+      'Open the Home screen, select an online host and tap Call. Calls use the rate shown when you start the call. Each started minute is billable. Keep a stable internet connection and allow microphone permission.',
     'How to earn coins and diamonds?':
-      'Users purchase diamonds for calls and gifts. Hosts earn coins from eligible call time according to their host level and supported rewards.',
+      'Users purchase diamonds for calls and gifts. Hosts earn Beans from eligible calling and gifts under the applicable economy version.',
     'How to withdraw my earnings?':
       'Go to Profile > Withdrawal, enter coins and choose Bank or UPI. You will see 5% platform fee and final net payout.',
     'Account & Verification':

@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getTabScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil } from '../../utils/apiUtil';
-import { CALL_DIAMONDS_PER_MINUTE, hasCallStartIdentity } from '../../utils/callValidation';
+import { hasCallStartIdentity } from '../../utils/callValidation';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { normalizeLanguages } from '../../utils/hostPresentation';
 import EmptyStateView from '../../components/EmptyStateView';
@@ -122,7 +122,7 @@ export default function OneToOne() {
   const startCall = async (host, isVideo = true) => {
     if (!host) return;
     if (callingId) return;
-    if (Number(user?.diamonds || 0) < CALL_DIAMONDS_PER_MINUTE) {
+    if (Number(user?.diamonds || 0) <= 0) {
       Alert.alert('Insufficient Diamonds', 'Please recharge your Diamonds to start this call.', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Recharge', onPress: () => navigation.navigate('Recharge') },

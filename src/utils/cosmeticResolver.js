@@ -39,8 +39,19 @@ export const USER_COSMETIC_FIELDS = [
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
 
+export const resolveAssetUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (/^(?:https?:\/\/|file:\/\/|content:\/\/|data:|asset:\/\/)/i.test(trimmed)) {
+    return trimmed;
+  }
+  const clean = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return `https://api.yaroapp.in${clean}`;
+};
+
 const isRemoteAssetUrl = (value) =>
-  typeof value === 'string' && /^(?:https?:\/\/|file:\/\/|content:\/\/|data:)/i.test(value.trim());
+  typeof value === 'string' && /^(?:https?:\/\/|file:\/\/|content:\/\/|data:|\/|uploads\/)/i.test(value.trim());
 
 const isAnimatedAssetUrl = (value) =>
   typeof value === 'string' && /\.(?:svga|gif|webp|mp4|m4v|mov)(?:[?#]|$)/i.test(value.trim());
@@ -57,9 +68,10 @@ export const normalizeCosmeticAsset = (value) => {
     const trimmed = value.trim();
     if (!trimmed) return null;
     if (!isRemoteAssetUrl(trimmed)) return { id: trimmed, name: trimmed };
+    const normalizedUrl = resolveAssetUrl(trimmed);
     return isAnimatedAssetUrl(trimmed)
-      ? { id: trimmed, name: '', animationUrl: trimmed, imageUrl: '' }
-      : { id: trimmed, name: '', animationUrl: '', imageUrl: trimmed };
+      ? { id: trimmed, name: '', animationUrl: normalizedUrl, imageUrl: '' }
+      : { id: trimmed, name: '', animationUrl: '', imageUrl: normalizedUrl };
   }
 
   if (typeof value !== 'object') return null;
@@ -84,15 +96,16 @@ export const normalizeCosmeticAsset = (value) => {
     (isAnimatedAssetUrl(merged.image) ? merged.image : '') ||
     (isAnimatedAssetUrl(merged.previewUrl) ? merged.previewUrl : '') ||
     (isAnimatedAssetUrl(merged.coverImage) ? merged.coverImage : '');
-  const animationUrl = typeof animCandidate === 'string' ? animCandidate.trim() : '';
-  const imageUrl =
-    merged.imageUrl ||
+  const animationUrl = typeof animCandidate === 'string' && animCandidate.trim()
+    ? resolveAssetUrl(animCandidate.trim()) : '';
+  const rawImg = merged.imageUrl ||
     merged.imageURL ||
     merged.image ||
     merged.previewUrl ||
     merged.thumbnail ||
     merged.coverImage ||
     (!animationUrl && isRemoteAssetUrl(directUrl) ? directUrl : '');
+  const imageUrl = typeof rawImg === 'string' && rawImg.trim() ? resolveAssetUrl(rawImg.trim()) : '';
 
   return {
     ...merged,
@@ -133,8 +146,12 @@ export const resolveEntryAssets = (payload) => {
   const user = payload?.user || {};
   // Explicit room slots, including null, override cached profile cosmetics.
   const firstSlot = (keys, fallback) => {
-    const key = keys.find(candidate => hasOwn(payload, candidate));
-    return key ? payload[key] : fallback;
+    for (const candidate of keys) {
+      if (payload && payload[candidate] != null) {
+        return payload[candidate];
+      }
+    }
+    return fallback;
   };
   const activeAsset = value => {
     const asset = normalizeCosmeticAsset(value);

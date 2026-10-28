@@ -1155,12 +1155,19 @@ export const VoiceRoomProvider = ({ children }) => {
         const handleReactionReceived = (data) => {
           console.log('📡 [VoiceRoom] Reaction received:', data?.emoji, data?.user, data?.seatIndex);
           if (data?.emoji) {
+            const rawUser = data.user;
+            const parsedName = typeof rawUser === 'object' ? (rawUser?.userName || rawUser?.name || rawUser?.user) : rawUser;
+            const parsedUserId = data.userId || (typeof rawUser === 'object' ? (rawUser?.userId || rawUser?.id || rawUser?._id) : undefined);
+            const parsedSeatIndex = typeof data.seatIndex === 'number'
+              ? data.seatIndex
+              : (typeof rawUser === 'object' && typeof rawUser?.seatIndex === 'number' ? rawUser.seatIndex : undefined);
+
             setLastReaction({
               id: data.id || ('react-' + Date.now() + Math.random()),
               emoji: data.emoji,
-              user: data.user || 'Guest',
-              userId: data.userId,
-              seatIndex: typeof data.seatIndex === 'number' ? data.seatIndex : null,
+              user: parsedName || 'Guest',
+              userId: parsedUserId,
+              seatIndex: parsedSeatIndex,
               timestamp: Date.now(),
             });
           }
@@ -2078,17 +2085,24 @@ export const VoiceRoomProvider = ({ children }) => {
   };
 
   // Send real-time reaction via socket
-  const broadcastReaction = (emoji, userName, explicitSeatIndex = null) => {
+  const broadcastReaction = (emoji, optionsOrName, explicitSeatIndex = null) => {
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
     const sock = socketRef.current || getSocket();
-    const currentUserId = currentUserRef.current?.userId || currentUserRef.current?.id || currentUserRef.current?._id;
-    const seatIdx = explicitSeatIndex !== null ? explicitSeatIndex : currentSeatIndexRef.current;
+    const isObj = optionsOrName && typeof optionsOrName === 'object';
+    const userName = isObj ? (optionsOrName.userName || optionsOrName.name || optionsOrName.user || 'Guest') : (optionsOrName || 'Guest');
+    const resolvedUserId = isObj && (optionsOrName.userId || optionsOrName.id || optionsOrName._id)
+      ? (optionsOrName.userId || optionsOrName.id || optionsOrName._id)
+      : (currentUserRef.current?.userId || currentUserRef.current?.id || currentUserRef.current?._id);
+    const seatIdx = isObj && optionsOrName.seatIndex !== undefined && optionsOrName.seatIndex !== null
+      ? optionsOrName.seatIndex
+      : (explicitSeatIndex !== null ? explicitSeatIndex : currentSeatIndexRef.current);
+
     if (sock && roomId && emoji) {
       sock.emit('voice_room:reaction', {
         roomId,
         emoji,
         user: userName,
-        userId: currentUserId,
+        userId: resolvedUserId,
         seatIndex: seatIdx,
       });
     }

@@ -46,6 +46,7 @@ const SystemMessage = () => {
                 body: item.message || item.body || item.content,
                 date: item.createdAt ? dayjs(item.createdAt).format('DD/MM/YYYY HH:mm') : '',
                 isRead: Boolean(item.isRead),
+                invitationId: item.data?.action === 'team_invitation' ? item.data.invitationId : null,
             }));
             setMessages((previous) => {
                 const merged = new Map((append ? previous : []).map((item) => [item.id, item]));
@@ -106,6 +107,33 @@ const SystemMessage = () => {
                         <Text style={styles.date}>{item.date}</Text>
                     </View>
                     <Text style={styles.body}>{item.body}</Text>
+                    {item.invitationId && (
+                        <View style={{ marginTop: 10, padding: 12, backgroundColor: '#f0fdf4', borderRadius: 12, borderWidth: 1, borderColor: '#86efac' }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '800', color: '#15803d', textTransform: 'uppercase', letterSpacing: 0.5 }}>Team Invitation Received</Text>
+                            </View>
+                            <Text style={{ fontSize: 11, color: '#166534', marginBottom: 8, lineHeight: 16 }}>
+                                You have been invited to join the team. Tap below to review details, select your hosting categories, and submit your application.
+                            </Text>
+                            <TouchableOpacity
+                                accessibilityRole="button"
+                                onPress={() => navigation.navigate('TeamInvitationForm', { invitationId: item.invitationId })}
+                                style={{
+                                    backgroundColor: '#4f46e5',
+                                    paddingVertical: 9,
+                                    paddingHorizontal: 14,
+                                    borderRadius: 10,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6,
+                                }}
+                            >
+                                <Icon name="check-circle" size={15} color="#fff" />
+                                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>Open Invitation & Fill Details</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
             </View>
         </View>

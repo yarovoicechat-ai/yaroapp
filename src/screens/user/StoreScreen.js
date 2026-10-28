@@ -490,14 +490,14 @@ export default function StoreScreen() {
       );
     }
 
-    if (activeCategory === 'Entry' && (item?.animationUrl || item?.imageUrl)) {
+    if (['Entry', 'Entrance', 'Profile Entry'].includes(activeCategory) && item && (item.animationUrl || item.imageUrl || item.coverImageUrl || item.image)) {
       return (
         <LinearGradient colors={['#111827', '#312E81', '#4C1D95']} style={styles.previewCard}>
           <View style={styles.entryAssetPreview}>
             <StoreAsset item={item} style={styles.entryAssetMedia} />
             <View style={styles.entryAssetCaption}>
               <Text style={styles.previewTitle}>{item.name}</Text>
-              <Text style={styles.previewSub}>{item.banner || item.desc}</Text>
+              <Text style={styles.previewSub}>{item.banner || item.desc || 'Exclusive Animated Entry'}</Text>
             </View>
           </View>
         </LinearGradient>

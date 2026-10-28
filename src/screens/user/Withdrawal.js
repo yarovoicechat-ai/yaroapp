@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { AuthContext } from '../../context/AuthProvider';
@@ -34,12 +34,18 @@ const money = value => (Math.round(Number(value) * 100) / 100).toFixed(2);
 
 const Withdrawal = () => {
   const navigation = useNavigation();
+  const route = useRoute();
+  const economyBucket = route.params?.economyBucket;
+  const conversionRatio = economyBucket?.beansPerInr || COIN_TO_INR_RATIO;
+  const minimumInr = economyBucket ? economyBucket.minimumPaise / 100 : MIN_WITHDRAWAL_INR;
+  const withdrawalRequest = useRef(null);
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 42);
   const { user, fetchUserProfile } = useContext(AuthContext);
+  const payoutBalance = economyBucket ? economyBucket.earnedBeans : (user?.coins || 0);
   const [loading, setLoading] = useState(false);
-  const [platformFeePercent, setPlatformFeePercent] = useState(DEFAULT_PLATFORM_FEE_PERCENT);
+  const [platformFeePercent, setPlatformFeePercent] = useState(economyBucket ? economyBucket.feeBps / 100 : DEFAULT_PLATFORM_FEE_PERCENT);
   const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState('bank');
@@ -62,7 +68,7 @@ const Withdrawal = () => {
   useEffect(() => {
     apiPublic.get('/public/settings')
       .then(res => {
-        const fee = Number(res.data?.data?.withdrawalPlatformFeePercent);
+        const fee = economyBucket ? economyBucket.feeBps / 100 : Number(res.data?.data?.withdrawalPlatformFeePercent);
         if (Number.isFinite(fee)) setPlatformFeePercent(fee);
       })
       .catch(() => {});
@@ -71,8 +77,8 @@ const Withdrawal = () => {
   // Update INR when coins change
   useEffect(() => {
     const coins = parseFloat(withdrawalAmount) || 0;
-    setCalculatedINR((coins / COIN_TO_INR_RATIO).toFixed(2));
-  }, [withdrawalAmount]);
+    setCalculatedINR(economyBucket ? (Math.floor(coins * 100 / conversionRatio) / 100).toFixed(2) : (coins / conversionRatio).toFixed(2));
+  }, [withdrawalAmount, conversionRatio, economyBucket]);
 
   const handleInputChange = (field, value) => {
     setBankDetails(prev => ({
@@ -95,12 +101,23 @@ const Withdrawal = () => {
         } : { upiId },
       };
 
-      const res = await apiUtil.post('/withdrawal/request', payload);
+      let endpoint = '/withdrawal/request';
+      if (economyBucket) {
+        endpoint = '/economy/withdrawals';
+        payload.beans = Number(withdrawalAmount);
+        payload.version = economyBucket.version;
+        const fingerprint = JSON.stringify({ ...payload, beans: payload.beans });
+        if (withdrawalRequest.current?.fingerprint !== fingerprint) {
+          withdrawalRequest.current = { fingerprint, key: 'wd_' + Date.now() + '_' + Math.random().toString(36).slice(2) };
+        }
+        payload.requestId = withdrawalRequest.current.key;
+      }
+      const res = await apiUtil.post(endpoint, payload);
       if (res.data.success) {
         const result = res.data.data;
         AlertService.show(
           t('withdrawal.success') || 'Withdrawal submitted',
-          result ? `Platform fee: \u20B9${money(result.platformFee)}\nYou will receive: \u20B9${money(result.netAmount)}` : (t('withdrawal.submitted') || 'Withdrawal request submitted successfully!'),
+          result ? `Platform fee: \u20B9${money(result.platformFee)}\nYou will receive: \u20B9${money(result.netAmount ?? result.amount)}` : (t('withdrawal.submitted') || 'Withdrawal request submitted successfully!'),
           'success',
         );
         setWithdrawalAmount('');
@@ -120,11 +137,11 @@ const Withdrawal = () => {
     const coins = parseFloat(withdrawalAmount);
     const grossAmount = parseFloat(calculatedINR);
 
-    if (!withdrawalAmount || grossAmount < MIN_WITHDRAWAL_INR) {
-      AlertService.show(t('recharge.error') || 'Error', `${t('withdrawal.min_withdrawal') || 'Minimum withdrawal is ₹'}${MIN_WITHDRAWAL_INR} (${Math.ceil(MIN_WITHDRAWAL_INR * COIN_TO_INR_RATIO)} coins).`, 'error');
+    if (!withdrawalAmount || grossAmount < minimumInr) {
+      AlertService.show(t('recharge.error') || 'Error', `${t('withdrawal.min_withdrawal') || 'Minimum withdrawal is ₹'}${minimumInr} (${Math.ceil(minimumInr * conversionRatio)} Beans).`, 'error');
       return;
     }
-    if (coins > (user?.coins || 0)) {
+    if ((economyBucket && !Number.isSafeInteger(coins)) || coins > payoutBalance) {
       AlertService.show(t('recharge.error') || 'Error', t('withdrawal.insufficient_balance') || 'Insufficient coins', 'error');
       return;
     }
@@ -142,11 +159,13 @@ const Withdrawal = () => {
       return;
     }
 
-    const platformFee = Math.round(grossAmount * platformFeePercent) / 100;
+    const platformFee = economyBucket
+      ? Math.floor(Math.round(grossAmount * 100) * economyBucket.feeBps / 10000) / 100
+      : Math.round(grossAmount * platformFeePercent) / 100;
     const netAmount = Math.round((grossAmount - platformFee) * 100) / 100;
     AlertService.show(
       'Confirm Withdrawal',
-      `Withdrawal amount: \u20B9${money(grossAmount)}\nPlatform fee (${platformFeePercent}%): -\u20B9${money(platformFee)}\nYou will receive: \u20B9${money(netAmount)}\nCoins deducted: ${Math.ceil(grossAmount * COIN_TO_INR_RATIO)}`,
+      `Withdrawal amount: \u20B9${money(grossAmount)}\nPlatform fee (${platformFeePercent}%): -\u20B9${money(platformFee)}\nYou will receive: \u20B9${money(netAmount)}\nCoins deducted: ${Math.ceil(grossAmount * conversionRatio)}`,
       'info',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -258,7 +277,7 @@ const Withdrawal = () => {
         >
           <Icon name="arrow-back-ios" size={20} color="#1E293B" style={{ marginLeft: 6 }} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('withdrawal.title') || 'Withdrawal'}</Text>
+        <Text style={styles.headerTitle}>{economyBucket ? 'Earned Beans Withdrawal' : (t('withdrawal.title') || 'Withdrawal')}</Text>
         <View style={{ width: 40 }} />
       </View>
       <AnimatedTitleLine />
@@ -275,7 +294,7 @@ const Withdrawal = () => {
             <View style={styles.coinContent}>
               <View>
                 <Text style={styles.totalCoinsText}>{t('home.total_coins') || 'Total Balance'}</Text>
-                <Text style={styles.coinAmount}>{formatCompactBalance(user?.coins || 0)}</Text>
+                <Text style={styles.coinAmount}>{formatCompactBalance(payoutBalance)}</Text>
               </View>
               <View style={styles.coinIconContainer}>
                 <Image
@@ -296,12 +315,12 @@ const Withdrawal = () => {
           </View>
           <View style={styles.ruleItem}>
             <Icon name="check-circle" size={16} color="#4CD964" style={styles.ruleCheckIcon} />
-            <Text style={styles.ruleText}>{COIN_TO_INR_RATIO} Beans = 1 INR</Text>
+            <Text style={styles.ruleText}>{conversionRatio} Beans = 1 INR</Text>
           </View>
           <View style={styles.ruleItem}>
             <Icon name="check-circle" size={16} color="#4CD964" style={styles.ruleCheckIcon} />
             <Text style={styles.ruleText}>
-              {t('withdrawal.min_withdrawal') || 'Minimum withdrawal is ₹'}{MIN_WITHDRAWAL_INR} ({Math.ceil(MIN_WITHDRAWAL_INR * COIN_TO_INR_RATIO)} Beans)
+              {t('withdrawal.min_withdrawal') || 'Minimum withdrawal is ₹'}{minimumInr} ({Math.ceil(minimumInr * conversionRatio)} Beans)
             </Text>
           </View>
         </View>

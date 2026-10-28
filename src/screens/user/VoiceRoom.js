@@ -352,17 +352,21 @@ export default function VoiceRoomScreen() {
   useEffect(() => {
     if (lastReaction?.emoji) {
       const id = lastReaction.id || ('react-' + Date.now() + Math.random());
-      let reactionSeatIndex = lastReaction.seatIndex;
+      let reactionSeatIndex = (typeof lastReaction.seatIndex === 'number') ? lastReaction.seatIndex : undefined;
       if (reactionSeatIndex === undefined && lastReaction.userId) {
+        const targetUid = String(lastReaction.userId);
         const seatWithUser = seats.find(
-          (s) => s.user && String(s.user.userId || s.user._id || s.user.id) === String(lastReaction.userId)
+          (s) => s.user && (
+            String(s.user.userId || s.user._id || s.user.id) === targetUid ||
+            (s.seatIndex === 0 && (String(room?.hostId) === targetUid || String(room?.ownerId) === targetUid))
+          )
         );
         if (seatWithUser) {
           reactionSeatIndex = seatWithUser.seatIndex;
         }
       }
 
-      if (reactionSeatIndex !== undefined) {
+      if (reactionSeatIndex !== undefined && reactionSeatIndex !== null) {
         setSeatReactions((prev) => ({
           ...prev,
           [reactionSeatIndex]: {
@@ -376,7 +380,7 @@ export default function VoiceRoomScreen() {
       setReactions((prev) => [...prev, { id, emoji: lastReaction.emoji, seatIndex: reactionSeatIndex }]);
       setTimeout(() => {
         setReactions((prev) => prev.filter((r) => r.id !== id));
-        if (reactionSeatIndex !== undefined) {
+        if (reactionSeatIndex !== undefined && reactionSeatIndex !== null) {
           setSeatReactions((prev) => {
             const next = { ...prev };
             if (next[reactionSeatIndex]?.id === id) {
@@ -387,7 +391,7 @@ export default function VoiceRoomScreen() {
         }
       }, 2500);
     }
-  }, [lastReaction, seats]);
+  }, [lastReaction, seats, room]);
 
   // Image 2 Announcement & Notice States
   const [roomAnnouncement, setRoomAnnouncement] = useState('');
@@ -1577,15 +1581,19 @@ export default function VoiceRoomScreen() {
 
   // Handle reactions
   const handleSendReaction = (emoji) => {
+    const currentUid = String(user?.userId || user?._id || user?.id || '');
     const mySeat = seats.find(
-      (s) => s.user && (s.user.isCurrentUser || String(s.user.userId || s.user._id || s.user.id) === String(user?.userId || user?._id || user?.id))
+      (s) => s.user && (
+        s.user.isCurrentUser ||
+        (currentUid && String(s.user.userId || s.user._id || s.user.id) === currentUid)
+      )
     );
     const resolvedSeatIndex = currentSeatIndex !== null && currentSeatIndex !== undefined
       ? currentSeatIndex
-      : (mySeat ? mySeat.seatIndex : undefined);
+      : (mySeat ? mySeat.seatIndex : ((isRoomOwner || contextIsOwner) && (seats?.[0]?.user || !seats?.[0]?.isLocked) ? 0 : undefined));
 
     const id = 'react-' + Date.now() + Math.random();
-    if (resolvedSeatIndex !== undefined) {
+    if (resolvedSeatIndex !== undefined && resolvedSeatIndex !== null) {
       setSeatReactions((prev) => ({
         ...prev,
         [resolvedSeatIndex]: { emoji, id, timestamp: Date.now() },
@@ -1593,13 +1601,13 @@ export default function VoiceRoomScreen() {
     }
     setReactions(prev => [...prev, { id, emoji, seatIndex: resolvedSeatIndex }]);
     broadcastReaction(emoji, {
-      userId: user?.userId || user?._id || user?.id,
+      userId: currentUid,
       seatIndex: resolvedSeatIndex,
       userName: user?.name || 'Guest',
     });
     setTimeout(() => {
       setReactions(prev => prev.filter(r => r.id !== id));
-      if (resolvedSeatIndex !== undefined) {
+      if (resolvedSeatIndex !== undefined && resolvedSeatIndex !== null) {
         setSeatReactions((prev) => {
           const next = { ...prev };
           if (next[resolvedSeatIndex]?.id === id) {
@@ -2025,9 +2033,9 @@ export default function VoiceRoomScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Floating Reaction Emojis Overlay */}
+      {/* Floating Reaction Emojis Overlay (Audience only, seated users show on avatar) */}
       <View style={styles.floatingReactionsContainer} pointerEvents="none">
-        {reactions.map((r) => (
+        {reactions.filter((r) => r.seatIndex === undefined || r.seatIndex === null).map((r) => (
           <Text key={r.id} style={styles.floatingEmoji}>
             {r.emoji}
           </Text>
@@ -2978,21 +2986,6 @@ export default function VoiceRoomScreen() {
         styles={styles}
       />
 
-      {/* Floating Audience Reactions (Bottom-Right upward float) */}
-      {reactions.filter((r) => r.seatIndex === undefined).map((r) => (
-        <View
-          key={r.id}
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            bottom: 120,
-            right: 24,
-            zIndex: 9999,
-          }}
-        >
-          <Text style={{ fontSize: 32 }}>{r.emoji}</Text>
-        </View>
-      ))}
     </ImageBackground>
   );
 }

@@ -91,18 +91,19 @@ class BillingService {
 
       console.log(`[GooglePlay] Received ${playProducts ? playProducts.length : 0} products from Play Store`);
 
+      this.cachedProducts = {};
       const catalogMap = { ...GOOGLE_PLAY_PRODUCTS };
 
       if (Array.isArray(playProducts)) {
         playProducts.forEach((item) => {
-          const sku = item.productId || item.sku;
+          const sku = item.id || item.productId || item.sku;
           if (sku && catalogMap[sku]) {
             catalogMap[sku] = {
               ...catalogMap[sku],
-              localizedPrice: item.localizedPrice || item.price || catalogMap[sku].formattedPrice,
+              localizedPrice: item.displayPrice || item.localizedPrice,
               currency: item.currency || 'INR',
               playDetails: item,
-              available: true,
+              available: Boolean(item.displayPrice || item.localizedPrice),
             };
             this.cachedProducts[sku] = item;
           }
@@ -138,7 +139,10 @@ class BillingService {
 
     try {
       const cachedDetails = this.cachedProducts[productId];
-      const offerToken = cachedDetails?.oneTimePurchaseOfferDetails?.[0]?.offerToken || 
+      if (!GOOGLE_PLAY_PRODUCTS[productId] || !cachedDetails || !(cachedDetails.displayPrice || cachedDetails.localizedPrice)) {
+        throw new Error('This package is unavailable on Google Play. Please try again later.');
+      }
+      const offerToken = cachedDetails?.oneTimePurchaseOfferDetailsAndroid?.[0]?.offerToken || cachedDetails?.oneTimePurchaseOfferDetails?.[0]?.offerToken || 
                          cachedDetails?.subscriptionOfferDetails?.[0]?.offerToken;
 
       const googlePayload = {

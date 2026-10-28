@@ -1,3 +1,5 @@
+import TeamInvitationForm from '../screens/user/TeamInvitationForm';
+import TeamDashboard from '../screens/user/TeamDashboard';
 import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import BottomTabsNavigator from "./BottomTabsNavigator";
@@ -151,6 +153,8 @@ export default function AppStack() {
       <Stack.Screen name="GiftsScreen" component={GiftsScreen} />
       <Stack.Screen name="SystemNoticeScreen" component={SystemNoticeScreen} />
       <Stack.Screen name="AgencyDetails" component={AgencyDetails} />
+      <Stack.Screen name="TeamDashboard" component={TeamDashboard} />
+      <Stack.Screen name="TeamInvitationForm" component={TeamInvitationForm} />
       <Stack.Screen name="AgencyDashboard" component={AgencyDashboard} />
       <Stack.Screen name="VoiceRoom" component={VoiceRoom} />
       <Stack.Screen name="BDDashboard" component={BDDashboard} />

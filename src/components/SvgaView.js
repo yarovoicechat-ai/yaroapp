@@ -3,6 +3,17 @@ import { View, StyleSheet, Image } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import GiftMedia, { NativeSvgaPlayer as NativeSvga } from './GiftMedia';
 
+const normalizeUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (/^(?:https?:\/\/|file:\/\/|content:\/\/|data:|asset:\/\/)/i.test(trimmed)) {
+    return trimmed;
+  }
+  const clean = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return `https://api.yaroapp.in${clean}`;
+};
+
 /**
  * Universal SVGA / Animated Asset Viewer for YaroApp
  * Plays .svga files using hardware-accelerated SvgaPlayerView on Android,
@@ -25,15 +36,16 @@ export default function SvgaView({
   } catch (_) {
     isFocused = true;
   }
-  const src = String(source || '').trim();
+  const src = normalizeUrl(source);
+  const normalizedFallback = normalizeUrl(fallbackImage);
 
   React.useEffect(() => {
     setFailed(false);
   }, [src]);
 
   if (!src || failed) {
-    if (fallbackImage) {
-      return <Image source={{ uri: fallbackImage }} style={style} resizeMode={resizeMode} />;
+    if (normalizedFallback) {
+      return <Image source={{ uri: normalizedFallback }} style={style} resizeMode={resizeMode} />;
     }
     return null;
   }
@@ -43,9 +55,9 @@ export default function SvgaView({
   if (isSvga && NativeSvga) {
     return (
       <View style={style}>
-        {fallbackImage ? (
+        {normalizedFallback ? (
           <Image
-            source={{ uri: fallbackImage }}
+            source={{ uri: normalizedFallback }}
             style={StyleSheet.absoluteFillObject}
             resizeMode={resizeMode}
           />
@@ -59,9 +71,9 @@ export default function SvgaView({
             onPlaybackError={onError}
             style={StyleSheet.absoluteFillObject}
           />
-        ) : fallbackImage ? (
+        ) : normalizedFallback ? (
           <Image
-            source={{ uri: fallbackImage }}
+            source={{ uri: normalizedFallback }}
             style={[StyleSheet.absoluteFillObject, style]}
             resizeMode={resizeMode}
           />
@@ -78,7 +90,7 @@ export default function SvgaView({
       onError={onError}
       style={style}
       resizeMode={resizeMode}
-      fallbackSource={fallbackImage ? { uri: fallbackImage } : undefined}
+      fallbackSource={normalizedFallback ? { uri: normalizedFallback } : undefined}
     />
   );
 }

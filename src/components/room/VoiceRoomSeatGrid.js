@@ -34,7 +34,7 @@ const AnimatedSeatReaction = React.memo(function AnimatedSeatReaction({ emoji, i
 
   const translateY = anim.interpolate({
     inputRange: [0, 0.4, 1, 2],
-    outputRange: [12, -8, -28, -50],
+    outputRange: [6, -10, -32, -58],
   });
 
   const translateX = anim.interpolate({
@@ -44,7 +44,7 @@ const AnimatedSeatReaction = React.memo(function AnimatedSeatReaction({ emoji, i
 
   const scale = anim.interpolate({
     inputRange: [0, 0.35, 0.7, 1.4, 2],
-    outputRange: [0.2, 1.4, 1.15, 1.0, 0.6],
+    outputRange: [0.3, 1.35, 1.15, 1.0, 0.5],
   });
 
   const opacity = anim.interpolate({
@@ -57,14 +57,23 @@ const AnimatedSeatReaction = React.memo(function AnimatedSeatReaction({ emoji, i
       pointerEvents="none"
       style={{
         position: 'absolute',
-        top: -12,
+        top: -26,
         alignSelf: 'center',
-        zIndex: 9999,
+        zIndex: 99999,
+        elevation: 99999,
         transform: [{ translateY }, { translateX }, { scale }],
         opacity,
       }}
     >
-      <Text style={{ fontSize: 32, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}>
+      <Text
+        style={{
+          fontSize: 34,
+          textAlign: 'center',
+          textShadowColor: 'rgba(0,0,0,0.65)',
+          textShadowOffset: { width: 0, height: 2 },
+          textShadowRadius: 6,
+        }}
+      >
         {emoji}
       </Text>
     </Animated.View>
@@ -101,13 +110,6 @@ export default function VoiceRoomSeatGrid({
                 }}
                 activeOpacity={0.85}
               >
-                {activeSeatReactions?.[seat.seatIndex] && (
-                  <AnimatedSeatReaction
-                    key={activeSeatReactions[seat.seatIndex].id}
-                    emoji={activeSeatReactions[seat.seatIndex].emoji}
-                    id={activeSeatReactions[seat.seatIndex].id}
-                  />
-                )}
                 {isOccupied ? (
                   <View style={styles.occupiedSeatWrapper}>
                     <VipMicWave
@@ -179,6 +181,13 @@ export default function VoiceRoomSeatGrid({
                     )}
                   </View>
                 )}
+                {activeSeatReactions?.[seat.seatIndex] && (
+                  <AnimatedSeatReaction
+                    key={activeSeatReactions[seat.seatIndex].id}
+                    emoji={activeSeatReactions[seat.seatIndex].emoji}
+                    id={activeSeatReactions[seat.seatIndex].id}
+                  />
+                )}
               </TouchableOpacity>
             );
           })}
@@ -203,13 +212,6 @@ export default function VoiceRoomSeatGrid({
                   }}
                   activeOpacity={0.85}
                 >
-                  {activeSeatReactions?.[seat.seatIndex] && (
-                    <AnimatedSeatReaction
-                      key={activeSeatReactions[seat.seatIndex].id}
-                      emoji={activeSeatReactions[seat.seatIndex].emoji}
-                      id={activeSeatReactions[seat.seatIndex].id}
-                    />
-                  )}
                   {isOccupied ? (
                     <View style={styles.occupiedSeatWrapper}>
                       <VipMicWave
@@ -316,6 +318,13 @@ export default function VoiceRoomSeatGrid({
                         </View>
                       )}
                     </View>
+                  )}
+                  {activeSeatReactions?.[seat.seatIndex] && (
+                    <AnimatedSeatReaction
+                      key={activeSeatReactions[seat.seatIndex].id}
+                      emoji={activeSeatReactions[seat.seatIndex].emoji}
+                      id={activeSeatReactions[seat.seatIndex].id}
+                    />
                   )}
                 </TouchableOpacity>
               );

@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getTabScreenBottomPadding } from '../../utils/safeAreaUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CALL_DIAMONDS_PER_MINUTE, hasCallStartIdentity } from '../../utils/callValidation';
+import { hasCallStartIdentity } from '../../utils/callValidation';
 import { normalizeLanguages } from '../../utils/hostPresentation';
 import LanguageFilterModal from '../../components/home/LanguageFilterModal';
 import { getUserAvatar } from '../../utils/avatarUtil';
@@ -274,7 +274,7 @@ const CallAppUI = () => {
     const userDiamonds = Number(user?.diamonds || 0);
     console.log('[CALL] START REQUEST | BALANCE:', userDiamonds);
 
-    if (userDiamonds < CALL_DIAMONDS_PER_MINUTE) {
+    if (userDiamonds <= 0) {
       console.log('[CALL] INSUFFICIENT BALANCE | REJECTED ON FRONTEND');
       showInsufficientDiamondsAlert();
       return;
@@ -330,7 +330,7 @@ const CallAppUI = () => {
     const userDiamonds = Number(user?.diamonds || 0);
     console.log('[CALL] START REQUEST | BALANCE:', userDiamonds);
 
-    if (userDiamonds < CALL_DIAMONDS_PER_MINUTE) {
+    if (userDiamonds <= 0) {
       console.log('[CALL] INSUFFICIENT BALANCE | REJECTED ON FRONTEND');
       showInsufficientDiamondsAlert();
       return;

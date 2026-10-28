@@ -12,7 +12,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { SvgaPlayer } from '@dasimems/react-native-svga';
 import AvatarWithFrame from '../AvatarWithFrame';
 import IdentityDisplayName from '../identity/IdentityDisplayName';
-import { resolveEntryAssets } from '../../utils/cosmeticResolver';
+import { resolveEntryAssets, resolveAssetUrl } from '../../utils/cosmeticResolver';
 
 const { width, height } = Dimensions.get('window');
 
@@ -150,8 +150,9 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   // Entrance: Has horizontal bullet banner -> renders fast flying bullet strip ("enter the room") with NO comingStage!
   const entryAsset = assets.entry;
   const entranceAsset = assets.entrance;
-  const isRide = Boolean(entryAsset?.animationUrl && !entryAsset.isDefault);
-  const rideMedia = entryAsset?.animationUrl || '';
+  const resolvedRideMedia = resolveAssetUrl(entryAsset?.animationUrl);
+  const isRide = Boolean(resolvedRideMedia && !entryAsset.isDefault);
+  const rideMedia = resolvedRideMedia;
   const settings = entryAsset?.metadata || {};
   const user = current.user || {};
   const wealthLevel = user.wealthLevel ?? user.level ?? current.wealthLevel ?? 1;
@@ -162,10 +163,12 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
 
   // Check custom entrance from My Items
   const customEntrance = entranceAsset && !entranceAsset.isDefault ? entranceAsset : null;
-  const entranceBgSource = (customEntrance?.imageUrl && !customEntrance.isDefault)
-    ? { uri: customEntrance.imageUrl }
+  const resolvedEntranceImg = resolveAssetUrl(customEntrance?.imageUrl);
+  const entranceBgSource = (resolvedEntranceImg && !customEntrance?.isDefault)
+    ? { uri: resolvedEntranceImg }
     : DEFAULT_ENTRANCE_BANNER;
-  const isEntranceSvga = Boolean(customEntrance?.animationUrl && /\.svga(?:[?#]|$)/i.test(customEntrance.animationUrl));
+  const resolvedEntranceAnim = resolveAssetUrl(customEntrance?.animationUrl);
+  const isEntranceSvga = Boolean(resolvedEntranceAnim && /\.svga(?:[?#]|$)/i.test(resolvedEntranceAnim));
 
   return (
     <View style={styles.overlay} pointerEvents="none">
@@ -239,7 +242,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
             <View style={styles.bulletBannerWrap}>
               <SvgaPlayer
                 key={current.entryId}
-                source={customEntrance.animationUrl}
+                source={resolvedEntranceAnim}
                 style={StyleSheet.absoluteFillObject}
                 loops={1}
                 autoPlay

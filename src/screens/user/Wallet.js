@@ -1,3 +1,4 @@
+import EconomyEarnings from '../../components/EconomyEarnings';
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import {
   View,
@@ -95,7 +96,7 @@ const Wallet = () => {
         const completeSuccess = await BillingService.completePurchase(purchase);
         console.log(`[GP-BILLING] COMPLETE PURCHASE ${completeSuccess ? 'SUCCESS' : 'FAILED'} for SKU: ${productId}`);
 
-        const diamondsAdded = res.data.diamondsAdded || GOOGLE_PLAY_PRODUCTS[productId]?.diamonds || 0;
+        const diamondsAdded = res.data.diamondsAdded ?? GOOGLE_PLAY_PRODUCTS[productId]?.diamonds ?? 0;
         
         if (res.data.status === 'ALREADY_PROCESSED') {
           console.log('[GP-BILLING] Purchase was already processed previously');
@@ -163,7 +164,7 @@ const Wallet = () => {
    * Handle purchase updates from BillingService listeners
    */
   const handlePurchaseSuccess = useCallback(async (purchase) => {
-    console.log('[Wallet] Purchase successful callback received:', purchase);
+    console.log('[Wallet] Purchase update received');
     await verifyPurchaseWithBackend(purchase);
   }, [verifyPurchaseWithBackend]);
 
@@ -259,7 +260,7 @@ const Wallet = () => {
       return;
     }
 
-    if (purchasingPackId || loading) {
+    if (!pack.available || purchasingPackId || loading) {
       return; // Prevent duplicate taps
     }
 
@@ -473,13 +474,13 @@ const Wallet = () => {
             <View style={styles.packsGrid}>
               {packList.map((pack) => {
                 const isPackLoading = purchasingPackId === pack.productId;
-                const displayPrice = pack.localizedPrice || pack.formattedPrice || `₹${pack.priceInr}`;
+                const displayPrice = pack.available ? pack.localizedPrice : 'Unavailable';
 
                 return (
                   <TouchableOpacity
                     key={pack.productId}
                     onPress={() => handleBuyDiamond(pack)}
-                    disabled={loading || isPackLoading}
+                    disabled={!pack.available || loading || isPackLoading}
                     style={[
                       styles.packCard,
                       pack.isPopular && styles.packCardPopular,
@@ -514,6 +515,10 @@ const Wallet = () => {
               })}
             </View>
 
+            <TouchableOpacity style={styles.historyBtn} onPress={() => navigation.navigate('HelpAndSupport')}>
+              <Text style={styles.historyBtnText}>Help &amp; Support</Text>
+            </TouchableOpacity>
+            <Text style={styles.footerSecureDesc}>Prices and availability are provided by Google Play.</Text>
             {/* Secure payments footer */}
             <View style={styles.footerSecure}>
               <View style={styles.secureBadgeRow}>
@@ -537,6 +542,7 @@ const Wallet = () => {
           </View>
         ) : (
           <View style={styles.tabBody}>
+            <EconomyEarnings />
             {/* Beans Balance Card */}
             <View style={styles.balanceCardContainer}>
               <LinearGradient

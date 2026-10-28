@@ -163,6 +163,10 @@ export default function MeScreen() {
 
   // 4 items in every line (Row 1: Tasks, Fan Club, Level, Apply Hosting)
   const serviceItems = [
+    ...((hasBdPrivilege || hasAgencyPrivilege || hasHostingPrivilege || ['owner', 'operator', 'superAdmin', 'admin'].includes(user?.role)) ? [{
+      id: 'teamTargets', label: 'Team & Targets', icon: <View style={[styles.serviceIconCircle, { backgroundColor: '#EEF2FF' }]}><MaterialCommunityIcons name="account-group-outline" size={26} color="#4F46E5" /></View>,
+      onPress: () => navigation.navigate('TeamDashboard'),
+    }] : []),
     {
       id: 'tasks',
       label: 'Tasks',
@@ -663,7 +667,7 @@ export default function MeScreen() {
             />
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardMainValue, { color: '#065F46' }]}>
-                {formatCompactBalance(user?.beanBalance ?? user?.beans ?? 0)}
+                {formatCompactBalance(user?.beanBalance ?? user?.beans ?? user?.coins ?? 0)}
               </Text>
               <Text style={[styles.cardSmallLabel, { color: '#047857' }]}>
                 My Beans

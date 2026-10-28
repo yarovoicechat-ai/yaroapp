@@ -97,7 +97,7 @@ export const normalizeCosmeticAsset = (value) => {
     (isAnimatedAssetUrl(merged.previewUrl) ? merged.previewUrl : '') ||
     (isAnimatedAssetUrl(merged.coverImage) ? merged.coverImage : '');
   const animationUrl = typeof animCandidate === 'string' && animCandidate.trim()
-    ? resolveAssetUrl(animCandidate.trim()) : '';
+    ? (isRemoteAssetUrl(animCandidate) ? resolveAssetUrl(animCandidate.trim()) : animCandidate.trim()) : '';
   const rawImg = merged.imageUrl ||
     merged.imageURL ||
     merged.image ||
@@ -147,7 +147,7 @@ export const resolveEntryAssets = (payload) => {
   // Explicit room slots, including null, override cached profile cosmetics.
   const firstSlot = (keys, fallback) => {
     for (const candidate of keys) {
-      if (payload && payload[candidate] != null) {
+      if (payload && Object.prototype.hasOwnProperty.call(payload, candidate)) {
         return payload[candidate];
       }
     }

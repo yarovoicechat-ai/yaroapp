@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { SvgaPlayer } from '@dasimems/react-native-svga';
+import SvgaView from '../SvgaView';
 import AvatarWithFrame from '../AvatarWithFrame';
 import IdentityDisplayName from '../identity/IdentityDisplayName';
 import { resolveEntryAssets, resolveAssetUrl } from '../../utils/cosmeticResolver';
@@ -152,7 +152,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   const entranceAsset = assets.entrance;
   const resolvedRideMedia = resolveAssetUrl(entryAsset?.animationUrl);
   const isRide = Boolean(resolvedRideMedia && !entryAsset.isDefault);
-  const rideMedia = resolvedRideMedia;
+  const rideMedia = entryAsset?.animationUrl || resolvedRideMedia;
   const settings = entryAsset?.metadata || {};
   const user = current.user || {};
   const wealthLevel = user.wealthLevel ?? user.level ?? current.wealthLevel ?? 1;
@@ -177,7 +177,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
         <>
           {rideMedia ? (
             <View style={styles.mediaStage} pointerEvents="none" collapsable={false}>
-              <SvgaPlayer
+              <SvgaView
                 key={current.entryId}
                 source={rideMedia}
                 style={{ width, height }}
@@ -240,9 +240,9 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
         >
           {isEntranceSvga ? (
             <View style={styles.bulletBannerWrap}>
-              <SvgaPlayer
+              <SvgaView
                 key={current.entryId}
-                source={resolvedEntranceAnim}
+                source={entranceAsset?.animationUrl || resolvedEntranceAnim}
                 style={StyleSheet.absoluteFillObject}
                 loops={1}
                 autoPlay
@@ -250,7 +250,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
                 scaleMode="fill"
                 onFinish={() => mediaFinished.current(current.entryId, 'entrance')}
                 onError={(error) => {
-                  console.warn('[RoomEntry] Entrance playback failed:', error, customEntrance.animationUrl);
+                  console.warn('[RoomEntry] Entrance playback failed:', error, customEntrance?.animationUrl);
                   mediaFinished.current(current.entryId, 'entrance');
                 }}
               />

@@ -644,46 +644,66 @@ export default function MeScreen() {
         <View style={styles.currencyCardsRow}>
           {/* Card 1: My Diamonds */}
           <TouchableOpacity
-            style={styles.currencyCardItem}
+            style={[styles.currencyCardItem, { backgroundColor: '#1E120A', borderColor: 'rgba(245, 158, 11, 0.4)', borderWidth: 1 }]}
             activeOpacity={0.88}
             onPress={() => navigation.navigate('Wallet')}
           >
             <ImageBackground
               source={meDiamondCardBg}
               style={styles.currencyCardBg}
-              imageStyle={{ borderRadius: 18 }}
+              imageStyle={{ borderRadius: 18, opacity: 0.85 }}
               resizeMode="cover"
             >
-              <View style={styles.currencyCardCenter}>
-                <Text style={styles.diamondCardValue} numberOfLines={1}>
-                  {formatCompactBalance(user?.diamondBalance ?? user?.diamonds ?? 0)}
-                </Text>
-                <Text style={styles.diamondCardLabel} numberOfLines={1}>
-                  Diamonds
-                </Text>
+              <View style={styles.currencyCardRow}>
+                <Image
+                  source={require('../../assets/icons/diamond.png')}
+                  style={{ width: 28, height: 28, marginRight: 8 }}
+                  resizeMode="contain"
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.diamondCardValue} numberOfLines={1}>
+                    {formatCompactBalance(user?.diamondBalance ?? user?.diamonds ?? 0)}
+                  </Text>
+                  <Text style={styles.diamondCardLabel} numberOfLines={1}>
+                    Diamonds
+                  </Text>
+                </View>
+                <View style={styles.addCurrencyPill}>
+                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                </View>
               </View>
             </ImageBackground>
           </TouchableOpacity>
 
           {/* Card 2: My Beans */}
           <TouchableOpacity
-            style={styles.currencyCardItem}
+            style={[styles.currencyCardItem, { backgroundColor: '#022C22', borderColor: 'rgba(16, 185, 129, 0.4)', borderWidth: 1 }]}
             activeOpacity={0.88}
             onPress={() => navigation.navigate('Earning')}
           >
             <ImageBackground
               source={meBeansCardBg}
               style={styles.currencyCardBg}
-              imageStyle={{ borderRadius: 18 }}
+              imageStyle={{ borderRadius: 18, opacity: 0.85 }}
               resizeMode="cover"
             >
-              <View style={styles.currencyCardCenter}>
-                <Text style={styles.beansCardValue} numberOfLines={1}>
-                  {formatCompactBalance(user?.beanBalance ?? user?.beans ?? user?.coins ?? 0)}
-                </Text>
-                <Text style={styles.beansCardLabel} numberOfLines={1}>
-                  My Beans
-                </Text>
+              <View style={styles.currencyCardRow}>
+                <Image
+                  source={require('../../assets/icons/beans.png')}
+                  style={{ width: 26, height: 26, marginRight: 8 }}
+                  resizeMode="contain"
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.beansCardValue} numberOfLines={1}>
+                    {formatCompactBalance(user?.beanBalance ?? user?.beans ?? user?.coins ?? 0)}
+                  </Text>
+                  <Text style={styles.beansCardLabel} numberOfLines={1}>
+                    My Beans
+                  </Text>
+                </View>
+                <View style={[styles.addCurrencyPill, { backgroundColor: 'rgba(16, 185, 129, 0.85)' }]}>
+                  <Ionicons name="swap-horizontal" size={15} color="#FFFFFF" />
+                </View>
               </View>
             </ImageBackground>
           </TouchableOpacity>
@@ -972,12 +992,20 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     justifyContent: 'center',
-    paddingLeft: 42,
-    paddingRight: 38,
   },
-  currencyCardCenter: {
+  currencyCardRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+  },
+  addCurrencyPill: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.85)',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
   },
   diamondCardValue: {
     fontSize: 16,

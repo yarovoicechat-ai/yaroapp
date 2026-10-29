@@ -1540,10 +1540,11 @@ export const VoiceRoomProvider = ({ children }) => {
           const entryId = String(data?.entryId || data?.id || '');
           const eventKey = entryId ? `event:${entryId}` : '';
           const now = Date.now();
-          const hasSeenEvent = eventKey && recentEntryUsersRef.current.has(eventKey);
+          const eventSeenAt = eventKey ? (recentEntryUsersRef.current.get(eventKey) || 0) : 0;
+          const hasSeenEvent = eventKey && eventSeenAt && (now - eventSeenAt < 2000);
           const hasRecentUserEvent = userKeys.some((key) => {
             const seenAt = recentEntryUsersRef.current.get(key) || 0;
-            return seenAt && now - seenAt < 400;
+            return seenAt && now - seenAt < 1000;
           });
           if (hasSeenEvent || (!eventKey && hasRecentUserEvent)) return false;
           userKeys.forEach((key) => recentEntryUsersRef.current.set(key, now));
@@ -1977,6 +1978,9 @@ export const VoiceRoomProvider = ({ children }) => {
     setLocallyMutedUsers([]);
     setActiveEntryEffect(null);
     setActiveVipEntry(null);
+    recentEntryUsersRef.current?.clear?.();
+    seenJoinEventsRef.current?.clear?.();
+    recentJoinUsersRef.current?.clear?.();
     setIsMusicPlaying(false);
     setCurrentTrack(null);
     if (navigationRef.current) {

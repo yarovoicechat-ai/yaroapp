@@ -446,15 +446,15 @@ const Wallet = () => {
               >
                 <View style={styles.balanceHeaderRow}>
                   <View style={styles.balanceLabelCol}>
-                    <Text style={[styles.balanceLabel, { color: '#78350F' }]}>My Diamonds</Text>
+                    <Text style={[styles.balanceLabel, { color: '#FEF3C7', textShadowColor: 'rgba(0,0,0,0.65)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>My Diamonds</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={[styles.balanceCount, { color: '#1E1B4B' }]}>{formatCompactBalance(user?.diamonds || 0)}</Text>
+                      <Text style={[styles.balanceCount, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }]}>{formatCompactBalance(user?.diamonds || 0)}</Text>
                       <Image source={diamondIcon} style={{ width: 24, height: 24, marginLeft: 6 }} resizeMode="contain" />
                     </View>
                   </View>
                 </View>
 
-                <Text style={[styles.balanceSubtext, { color: '#78350F' }]}>
+                <Text style={[styles.balanceSubtext, { color: 'rgba(255, 255, 255, 0.95)', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>
                   Use diamonds to unlock premium features and enjoy exclusive benefits.
                 </Text>
 
@@ -559,23 +559,23 @@ const Wallet = () => {
               >
                 <View style={styles.balanceHeaderRow}>
                   <View style={styles.balanceLabelCol}>
-                    <Text style={[styles.balanceLabel, { color: '#E0E7FF' }]}>My Beans</Text>
+                    <Text style={[styles.balanceLabel, { color: '#E0E7FF', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>My Beans</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={[styles.balanceCount, { color: '#FFFFFF' }]}>{formatCompactBalance(user?.coins || 0)}</Text>
+                      <Text style={[styles.balanceCount, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }]}>{formatCompactBalance(user?.coins || 0)}</Text>
                       <Image
                         source={require('../../assets/icons/beans.png')}
                         style={{ width: 22, height: 22, marginLeft: 6 }}
                         resizeMode="contain"
                       />
                     </View>
-                    <Text style={[styles.balanceValue, { color: '#FDE047' }]}>
+                    <Text style={[styles.balanceValue, { color: '#FEF08A', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3, fontWeight: '800' }]}>
                       ≈ ₹{formatCompactBalance((user?.coins || 0) / 2)}
                       {Number(user?.coins || 0) >= 1000000 ? ` (${(user?.coins || 0).toLocaleString()} 🌟)` : ''}
                     </Text>
                   </View>
                 </View>
 
-                <Text style={[styles.balanceSubtext, { color: 'rgba(255, 255, 255, 0.9)' }]}>
+                <Text style={[styles.balanceSubtext, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3, fontWeight: '500' }]}>
                   Beans are earned through host calls, gifts received, and creator rewards. Convert Beans into Diamonds or withdraw to UPI/Bank.
                 </Text>
 
@@ -746,13 +746,18 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     padding: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#E2E8F0',
     borderRadius: 8,
+    elevation: 1,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
   },
   headerTitle: {
-    color: '#fff',
+    color: '#0F172A',
     fontSize: RF(18),
     fontWeight: 'bold',
   },

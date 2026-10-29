@@ -22,7 +22,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   const [current, setCurrent] = useState(null);
   const [failedEntranceId, setFailedEntranceId] = useState(null);
   const pending = useRef([]);
-  const seen = useRef(new Set());
+  const seen = useRef(new Map());
   const playing = useRef(false);
   const mounted = useRef(true);
   const completion = useRef(onComplete);
@@ -42,21 +42,25 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     return () => {
       mounted.current = false;
       pending.current = [];
+      playing.current = false;
+      seen.current.clear();
     };
   }, []);
 
   useEffect(() => {
     if (!activeEntry) return;
+    const now = Date.now();
     for (const event of activeEntry.queuedEntries || [activeEntry]) {
       const id = String(
         event.entryId ||
         event.id ||
-        ('join:' + (event.user?.userId || event.userId || 'u') + ':' + (event.timestamp || Date.now()))
+        ('join:' + (event.user?.userId || event.userId || 'u') + ':' + (event.timestamp || now))
       );
-      if (seen.current.has(id)) continue;
-      seen.current.add(id);
+      const lastSeen = seen.current.get(id);
+      if (lastSeen && (now - lastSeen < 1200)) continue;
+      seen.current.set(id, now);
       if (seen.current.size > 200) {
-        const first = seen.current.values().next().value;
+        const first = seen.current.keys().next().value;
         seen.current.delete(first);
       }
       pending.current.push({ ...event, entryId: id });

@@ -49,15 +49,40 @@ function AvatarWithFrame({
     );
     if (hasResolvedOverlay) return resolvedFrame;
 
-    if (!frameName || !Array.isArray(user?.storeInventory)) return null;
+    const inventoryList = Array.isArray(user?.storeInventory)
+      ? user.storeInventory
+      : Array.isArray(user?.inventory)
+        ? user.inventory
+        : Array.isArray(user?.activeAssets)
+          ? user.activeAssets
+          : [];
 
-    const found = user.storeInventory.find(
-      (item) =>
-        String(item?.name || '').toLowerCase() === frameName &&
-        (item?.animationUrl || item?.frameOverlayUrl || item?.overlayUrl || item?.frameImageUrl || item?.imageUrl || item?.image || item?.catalogItem),
-    );
+    if (!frameName || !inventoryList.length) return null;
+
+    const searchKey = frameName.toLowerCase();
+    const found = inventoryList.find((item) => {
+      const idMatch =
+        String(item?._id || '').toLowerCase() === searchKey ||
+        String(item?.id || '').toLowerCase() === searchKey ||
+        String(item?.itemId || '').toLowerCase() === searchKey ||
+        String(item?.catalogItem?._id || '').toLowerCase() === searchKey ||
+        String(item?.catalogItem?.id || '').toLowerCase() === searchKey;
+      const nameMatch =
+        String(item?.name || '').toLowerCase() === searchKey ||
+        String(item?.catalogItem?.name || '').toLowerCase() === searchKey;
+      const hasMedia = Boolean(
+        item?.animationUrl ||
+        item?.frameOverlayUrl ||
+        item?.overlayUrl ||
+        item?.frameImageUrl ||
+        item?.imageUrl ||
+        item?.image ||
+        item?.catalogItem
+      );
+      return (idMatch || nameMatch) && hasMedia;
+    });
     return found ? normalizeCosmeticAsset(found) : null;
-  }, [resolvedFrame, frameName, user?.storeInventory]);
+  }, [resolvedFrame, frameName, user?.storeInventory, user?.inventory, user?.activeAssets]);
 
   const frameOverlaySource =
     uploadedFrame?.frameOverlayUrl ||

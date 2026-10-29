@@ -4,39 +4,28 @@ import {
   Text,
   TouchableOpacity,
   FlatList,
-  Image,
   StatusBar,
   StyleSheet,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil } from '../../utils/apiUtil';
 
-
-const coinIcon = require('../../assets/coin.webp');
-
-const SYSTEM_FILTER_TABS = [
-  { id: 'all_messages', label: 'All Messages', icon: 'mail-outline' },
-  { id: 'calls', label: 'Calls', icon: 'call-outline' },
-  { id: 'gifts', label: 'Gifts', icon: 'gift-outline' },
-  { id: 'system', label: 'System', icon: 'shield-checkmark-outline' },
-];
+dayjs.extend(relativeTime);
 
 export default function SystemNoticeScreen() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
-  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 42);
+  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
   const navigation = useNavigation();
   const { user } = useContext(AuthContext);
-  const [activeFilter, setActiveFilter] = useState('system');
   const [notices, setNotices] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -49,29 +38,31 @@ export default function SystemNoticeScreen() {
         const list = Array.isArray(payload.notifications) ? payload.notifications : [];
         if (isMounted) {
           const systemMessages = list.filter((notice) => String(notice?.type || '').toLowerCase() === 'system');
-          setUnreadCount(Number(payload.unreadCount) || systemMessages.filter((notice) => !notice.isRead).length);
           setNotices(systemMessages.map((notice) => {
-            const isAssetGrant = notice.data?.action === 'MyItems' || notice.data?.screen === 'MyItems';
+            const dataObj = notice.data || {};
+            const isAssetGrant = dataObj.action === 'MyItems' || dataObj.screen === 'MyItems';
+            const invitationId =
+              dataObj.action === 'team_invitation' || dataObj.invitationId || notice.invitationId
+                ? (dataObj.invitationId || notice.invitationId || dataObj.id)
+                : null;
+
             return {
               ...notice,
               id: String(notice._id || notice.id),
-              title: notice.title || 'Notification',
-              subtitle: notice.message || notice.content || '',
-              badge: notice.isRead ? null : 'New',
-              time: notice.createdAt ? new Date(notice.createdAt).toLocaleString() : '',
-              icon: isAssetGrant ? 'gift-outline' : (notice.type === 'transaction' ? 'gift-outline' : (notice.type === 'follow' ? 'person-add-outline' : 'notifications-outline')),
-              iconColor: isAssetGrant ? '#EC4899' : (notice.type === 'transaction' ? '#D97706' : (notice.type === 'follow' ? '#EC4899' : '#6C5CE7')),
-              iconBg: isAssetGrant ? '#FDF2F8' : (notice.type === 'transaction' ? '#FEF3C7' : (notice.type === 'follow' ? '#FDF2F8' : '#F3E8FF')),
-              data: notice.data || {},
+              title: notice.title || 'System',
+              subtitle: notice.message || notice.content || notice.body || '',
+              timeAgo: notice.createdAt ? dayjs(notice.createdAt).fromNow() : '',
+              isAssetGrant,
+              invitationId,
+              data: dataObj,
             };
           }));
         }
       } catch (error) {
         if (isMounted) {
           setNotices([]);
-          setUnreadCount(0);
         }
-        console.log('Failed to fetch notifications:', error?.message || error);
+        console.log('Failed to fetch system notifications:', error?.message || error);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -80,378 +71,269 @@ export default function SystemNoticeScreen() {
     return () => { isMounted = false; };
   }, []);
 
-  const renderSystemItem = ({ item }) => {
-    const isAssetGrant = item.data?.action === 'MyItems' || item.data?.screen === 'MyItems';
-
-    const handlePress = async () => {
-      if (!item.isRead) {
-        try {
-          await apiUtil.patch(`/notifications/${item.id}/read`);
-          setNotices((current) => current.map((notice) => notice.id === item.id ? { ...notice, isRead: true, badge: null } : notice));
-          setUnreadCount((current) => Math.max(0, current - 1));
-        } catch (error) {
-          console.log('Could not mark notification read:', error?.message || error);
-        }
+  const handleItemPress = async (item) => {
+    if (!item.isRead) {
+      try {
+        await apiUtil.patch(`/notifications/${item.id}/read`);
+        setNotices((current) => current.map((notice) => notice.id === item.id ? { ...notice, isRead: true } : notice));
+      } catch (error) {
+        console.log('Could not mark notification read:', error?.message || error);
       }
-      if (isAssetGrant) {
-        navigation.navigate('MyItems', {
-          selectedCategory: item.data?.category,
-          assetId: item.data?.assetId || item.data?.uniqueId,
-        });
-      } else if (item.type === 'follow') {
-        navigation.navigate('Followers', { initialTab: 'followers' });
-      }
-    };
+    }
 
+    // 1. Team Invitation Click Handler
+    if (item.invitationId || item.data?.action === 'team_invitation') {
+      navigation.navigate('TeamInvitationForm', {
+        invitationId: item.invitationId || item.data?.invitationId,
+      });
+      return;
+    }
+
+    // 2. Room Invite Click Handler
+    if (item.data?.roomId || item.data?.action === 'room_invite') {
+      navigation.navigate('VoiceRoom', {
+        roomId: item.data?.roomId,
+      });
+      return;
+    }
+
+    // 3. Asset Grant / My Items Handler
+    if (item.isAssetGrant) {
+      navigation.navigate('MyItems', {
+        selectedCategory: item.data?.category,
+        assetId: item.data?.assetId || item.data?.uniqueId,
+      });
+      return;
+    }
+
+    // 4. Wallet / Recharge Handler
+    if (item.data?.action === 'wallet' || item.data?.action === 'recharge') {
+      navigation.navigate('Wallet');
+      return;
+    }
+
+    // 5. Followers Handler
+    if (item.type === 'follow') {
+      navigation.navigate('Followers', { initialTab: 'followers' });
+      return;
+    }
+  };
+
+  const renderItem = ({ item }) => {
     return (
       <TouchableOpacity
-        activeOpacity={0.8}
-        style={[styles.cardWrapper, isAssetGrant && styles.cardWrapperReward]}
-        onPress={handlePress}
+        activeOpacity={0.7}
+        style={styles.noticeRow}
+        onPress={() => handleItemPress(item)}
       >
-        <View style={[styles.specialIconBox, { backgroundColor: item.iconBg }]}>
-          {item.icon === 'amber-coin' ? (
-            <Image source={coinIcon} style={{ width: 24, height: 24 }} />
-          ) : (
-            <Icon name={item.icon} size={22} color={item.iconColor} />
-          )}
+        {/* Left Orange Circle Bell Icon (Matching Screenshot 4) */}
+        <View style={styles.orangeCircleIcon}>
+          <Icon name="notifications" size={22} color="#FFFFFF" />
         </View>
 
-        <View style={styles.cardMainContent}>
-          <View style={styles.nameAgeBadgeRow}>
-            <Text style={styles.userNameText}>{item.title}</Text>
-            {item.badge && (
-              <View style={styles.newPurpleTagBadge}>
-                <Text style={styles.newPurpleTagText}>{item.badge}</Text>
-              </View>
-            )}
-            {isAssetGrant && (
-              <View style={styles.giftTagBadge}>
-                <Text style={styles.giftTagBadgeText}>🎁 REWARD</Text>
-              </View>
-            )}
+        {/* Content Details */}
+        <View style={styles.noticeContent}>
+          <View style={styles.topRow}>
+            <Text style={styles.systemTitle}>System</Text>
+            <Text style={styles.timeAgo}>{item.timeAgo}</Text>
           </View>
-          <Text style={styles.systemNoticeBodyText} numberOfLines={3}>
-            {item.subtitle}
+
+          <Text style={styles.noticeBody} numberOfLines={3}>
+            {item.subtitle || item.title}
           </Text>
 
-          {isAssetGrant && (
+          {/* Action button if team invitation */}
+          {item.invitationId ? (
             <TouchableOpacity
+              style={styles.invitationActionBtn}
               activeOpacity={0.8}
-              style={styles.viewItemsActionBtn}
-              onPress={handlePress}
+              onPress={() => navigation.navigate('TeamInvitationForm', { invitationId: item.invitationId })}
             >
-              <Text style={styles.viewItemsActionBtnText}>View in My Items</Text>
-              <Icon name="arrow-forward" size={13} color="#8B5CF6" />
+              <Text style={styles.invitationActionBtnText}>Review & Fill Application</Text>
+              <Icon name="arrow-forward" size={13} color="#FFFFFF" />
             </TouchableOpacity>
-          )}
-        </View>
+          ) : null}
 
-        <View style={styles.cardRightMeta}>
-          <Text style={styles.timeAgoText}>{item.time}</Text>
-          <Icon name="chevron-forward" size={18} color="#CBD5E1" style={{ marginTop: 6 }} />
+          {/* Action button if asset grant */}
+          {item.isAssetGrant ? (
+            <TouchableOpacity
+              style={styles.assetActionBtn}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('MyItems', {
+                selectedCategory: item.data?.category,
+                assetId: item.data?.assetId || item.data?.uniqueId,
+              })}
+            >
+              <Text style={styles.assetActionBtnText}>View in My Items</Text>
+              <Icon name="arrow-forward" size={13} color="#F59E0B" />
+            </TouchableOpacity>
+          ) : null}
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={StyleSheet.absoluteFillObject} />
-      {/* Top Header Bar */}
-      <View style={[styles.topBarGroup, { paddingTop: topSafeInset + 4 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TouchableOpacity
-            style={styles.backBtnCircle}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.8}
-          >
-            <Icon name="arrow-back" size={20} color="#1E293B" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.langPillBtn} activeOpacity={0.8}>
-            <Icon name="language-outline" size={17} color="#1E293B" />
-            <Text style={styles.langPillValText}>English</Text>
-            <Icon name="chevron-down" size={14} color="#64748B" />
-          </TouchableOpacity>
-        </View>
+    <View style={styles.container}>
+      <StatusBar translucent backgroundColor="#F59E0B" barStyle="light-content" />
 
-        <View style={styles.rightActionsGroup}>
-          <TouchableOpacity
-            style={styles.coinBalancePillCard}
-            onPress={() => navigation.navigate('Recharge')}
-            activeOpacity={0.8}
-          >
-            <Image source={coinIcon} style={styles.coinIconImg} resizeMode="contain" />
-            <Text style={styles.coinValText}>{Number(user?.coins || 0).toLocaleString()}</Text>
-            <View style={styles.plusIconBadgeCircle}>
-              <Icon name="add" size={10} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bellButtonCircle} activeOpacity={0.8}>
-            <Icon name="notifications-outline" size={19} color="#1E293B" />
-            {unreadCount > 0 ? <View style={styles.redBadgeDotSmall} /> : null}
-          </TouchableOpacity>
-        </View>
+      {/* Yellow/Amber Header (Matching Screenshot 4) */}
+      <View style={[styles.header, { paddingTop: topSafeInset + 6 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Icon name="arrow-back" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>System</Text>
       </View>
 
-      {/* Main Title */}
-      <View style={styles.mainTitleRow}>
-        <View>
-          <Text style={styles.mainHeaderTitle}>System</Text>
-          <Text style={styles.mainHeaderSubtitle}>Important updates and notifications</Text>
-        </View>
-
-        <View style={styles.titleRightIcons}>
-          <TouchableOpacity style={styles.actionCircleBtn} activeOpacity={0.8}>
-            <Icon name="search" size={20} color="#1E293B" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionCircleBtn} activeOpacity={0.8}>
-            <Icon name="options-outline" size={20} color="#1E293B" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Filter Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterScrollContent}
-      >
-        {SYSTEM_FILTER_TABS.map(tab => {
-          const isActive = activeFilter === tab.id;
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              onPress={() => {
-                setActiveFilter(tab.id);
-                if (tab.id === 'all_messages') navigation.navigate('MainTabs', { screen: 'ChatScreen' });
-                else if (tab.id === 'calls') navigation.navigate('CallsScreen');
-                else if (tab.id === 'gifts') navigation.navigate('GiftsScreen');
-              }}
-              activeOpacity={0.8}
-              style={[styles.filterPillBtn, isActive && styles.filterPillBtnActive]}
-            >
-              {isActive ? (
-                <LinearGradient
-                  colors={['#8B5CF6', '#6C5CE7']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.filterGradient}
-                >
-                  <Icon name={tab.icon} size={15} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.filterTextActive}>{tab.label}</Text>
-                </LinearGradient>
-              ) : (
-                <View style={styles.filterInactiveInner}>
-                  <Icon name={tab.icon} size={15} color="#64748B" style={{ marginRight: 6 }} />
-                  <Text style={styles.filterTextInactive}>{tab.label}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* System List */}
+      {/* Notifications List */}
       <FlatList
         data={notices}
-        renderItem={renderSystemItem}
-        keyExtractor={item => item.id}
-        ListEmptyComponent={loading ? (
-          <ActivityIndicator size="small" color="#6C5CE7" style={{ marginTop: 40 }} />
-        ) : (
-          <View style={[styles.listContainer, { alignItems: 'center' }]}>
-            <Icon name="notifications-outline" size={42} color="#94A3B8" />
-            <Text style={styles.userNameText}>No notifications yet</Text>
-          </View>
-        )}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={[
-          styles.listContainer,
+          styles.listContent,
           { paddingBottom: bottomPadding },
         ]}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator size="small" color="#F59E0B" style={{ marginTop: 40 }} />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Icon name="notifications-outline" size={48} color="#CBD5E1" />
+              <Text style={styles.emptyText}>No notifications yet</Text>
+            </View>
+          )
+        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  topBarGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  langPillBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  container: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  header: {
+    backgroundColor: '#F59E0B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  backButton: {
+    marginRight: 16,
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  noticeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  orangeCircleIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    marginTop: 2,
+    elevation: 2,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  noticeContent: {
+    flex: 1,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  systemTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  timeAgo: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  noticeBody: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+  },
+  invitationActionBtn: {
+    marginTop: 8,
+    backgroundColor: '#F59E0B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderRadius: 8,
     gap: 6,
-    elevation: 2,
   },
-  langPillValText: { color: '#1E293B', fontSize: 13, fontWeight: '700' },
-  rightActionsGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  coinBalancePillCard: {
+  invitationActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  assetActionBtn: {
+    marginTop: 8,
+    backgroundColor: '#FEF3C7',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFBEB',
-    borderRadius: 20,
-    paddingLeft: 8,
-    paddingRight: 6,
-    paddingVertical: 5,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#FDE68A',
     gap: 6,
-    elevation: 2,
   },
-  coinIconImg: { width: 18, height: 18 },
-  coinValText: { color: '#1E293B', fontSize: 13, fontWeight: '800' },
-  plusIconBadgeCircle: {
-    width: 17,
-    height: 17,
-    borderRadius: 8.5,
-    backgroundColor: '#6C5CE7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bellButtonCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    position: 'relative',
-  },
-  redBadgeDotSmall: {
-    position: 'absolute',
-    top: 6,
-    right: 7,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF2D55',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  mainTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginVertical: 10,
-  },
-  mainHeaderTitle: { fontSize: 26, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-  mainHeaderSubtitle: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  titleRightIcons: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  actionCircleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  filterScrollContent: { paddingHorizontal: 16, paddingVertical: 6, gap: 8 },
-  filterPillBtn: { borderRadius: 20, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden' },
-  filterPillBtnActive: { borderColor: 'transparent' },
-  filterGradient: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 },
-  filterInactiveInner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 },
-  filterTextActive: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-  filterTextInactive: { color: '#64748B', fontSize: 13, fontWeight: '600' },
-  listContainer: { paddingHorizontal: 16, paddingTop: 10 },
-  cardWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    elevation: 3,
-  },
-  cardWrapperReward: {
-    borderColor: '#FBCFE8',
-    backgroundColor: '#FFFDFE',
-    shadowColor: '#EC4899',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-  },
-  giftTagBadge: {
-    backgroundColor: '#FCE7F3',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginLeft: 4,
-    borderWidth: 1,
-    borderColor: '#F472B6',
-  },
-  giftTagBadgeText: { color: '#DB2777', fontSize: 9.5, fontWeight: '900' },
-  viewItemsActionBtn: {
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: '#F3E8FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4.5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D8B4FE',
-  },
-  viewItemsActionBtnText: {
-    fontSize: 11,
+  assetActionBtnText: {
+    color: '#B45309',
+    fontSize: 12,
     fontWeight: '700',
-    color: '#7C3AED',
   },
-  specialIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
+  emptyContainer: {
     alignItems: 'center',
-    marginRight: 12,
-  },
-  cardMainContent: { flex: 1 },
-  nameAgeBadgeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
-  userNameText: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginRight: 6 },
-  newPurpleTagBadge: {
-    backgroundColor: '#F3E8FF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginLeft: 4,
-  },
-  newPurpleTagText: { color: '#8B5CF6', fontSize: 9.5, fontWeight: '800' },
-  systemNoticeBodyText: { fontSize: 12, color: '#64748B', lineHeight: 16, marginTop: 2 },
-  cardRightMeta: { alignItems: 'flex-end', justifyContent: 'center', marginLeft: 8 },
-  timeAgoText: { fontSize: 11, color: '#94A3B8' },
-  backBtnCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    marginTop: 60,
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
 });

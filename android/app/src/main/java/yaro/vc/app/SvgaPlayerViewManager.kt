@@ -3,12 +3,12 @@ package yaro.vc.app
 import android.content.Context
 import android.view.View
 import com.facebook.react.bridge.Arguments
-import com.facebook.react.uimanager.events.RCTEventEmitter
-import com.opensource.svgaplayer.SVGACallback
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.annotations.ReactProp
+import com.facebook.react.uimanager.events.RCTEventEmitter
+import com.opensource.svgaplayer.SVGACallback
 import com.opensource.svgaplayer.SVGADrawable
 import com.opensource.svgaplayer.SVGAImageView
 import com.opensource.svgaplayer.SVGAParser
@@ -58,15 +58,11 @@ class ResumableSVGAImageView(context: Context) : SVGAImageView(context) {
 }
 
 class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
-  companion object {
-    // Keep up to 30 decoded SVGA models in memory for instant reuse across avatars, seats, and entries
-    private val videoCache = android.util.LruCache<String, SVGAVideoEntity>(30)
-  }
-
   private val sources = WeakHashMap<SVGAImageView, String>()
+  private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
   private fun emit(view: SVGAImageView, event: String) {
-    var ctx: android.content.Context? = view.context
+    var ctx: Context? = view.context
     while (ctx is android.content.ContextWrapper) {
       if (ctx is ThemedReactContext) break
       ctx = ctx.baseContext
@@ -92,7 +88,6 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
     ResumableSVGAImageView(reactContext).apply {
       callback = object : SVGACallback {
         override fun onFinished() {
-          android.util.Log.i("SvgaPlayerViewManager", "Playback finished: ${width}x${height}")
           emit(this@apply, "topPlaybackFinished")
         }
         override fun onPause() {}
@@ -112,18 +107,38 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
     else view.stopAnimation(false)
   }
 
-  @ReactProp(name = "scaleMode")
-  fun setScaleMode(view: SVGAImageView, mode: String?) {
-    view.scaleType = when (mode) {
-      "fill" -> android.widget.ImageView.ScaleType.FIT_XY
-      "aspectFill" -> android.widget.ImageView.ScaleType.CENTER_CROP
-      else -> android.widget.ImageView.ScaleType.FIT_CENTER
-    }
-  }
-
   @ReactProp(name = "loops", defaultInt = 0)
   fun setLoops(view: SVGAImageView, loops: Int) {
     view.loops = loops
+  }
+
+  @ReactProp(name = "scaleMode")
+  fun setScaleMode(view: SVGAImageView, scaleMode: String?) {
+    mainHandler.post {
+      when (scaleMode?.lowercase()) {
+        "aspectfill", "centercrop" -> view.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+        "fill", "fitxy" -> view.scaleType = android.widget.ImageView.ScaleType.FIT_XY
+        "center" -> view.scaleType = android.widget.ImageView.ScaleType.CENTER
+        else -> view.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+      }
+    }
+  }
+
+  @ReactProp(name = "resizeMode")
+  fun setResizeMode(view: SVGAImageView, resizeMode: String?) {
+    mainHandler.post {
+      when (resizeMode?.lowercase()) {
+        "cover" -> view.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+        "stretch" -> view.scaleType = android.widget.ImageView.ScaleType.FIT_XY
+        "center" -> view.scaleType = android.widget.ImageView.ScaleType.CENTER
+        else -> view.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+      }
+    }
+  }
+
+  @ReactProp(name = "muteBuiltInAudio", defaultBoolean = false)
+  fun setMuteBuiltInAudio(view: SVGAImageView, mute: Boolean) {
+    // SVGA audio mute hook
   }
 
   @ReactProp(name = "source")
@@ -132,7 +147,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
     if (source.isNullOrBlank()) {
       sources.remove(view)
       rView?.lastVideoItem = null
-      view.post {
+      mainHandler.post {
         view.stopAnimation(false)
         view.setImageDrawable(null)
       }
@@ -146,24 +161,10 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
 
     sources[view] = source
 
-    // Check memory cache first for instant 0ms playback
-    val cachedEntity = videoCache.get(source)
-    if (cachedEntity != null) {
-      rView?.lastVideoItem = cachedEntity
-      val drawable = SVGADrawable(cachedEntity)
-      view.setImageDrawable(drawable)
-      if (rView?.isAutoPlaying != false) {
-        view.startAnimation()
-      }
-      return
-    }
-
     val callback = object : SVGAParser.ParseCompletion {
       override fun onComplete(videoItem: SVGAVideoEntity) {
-        videoCache.put(source, videoItem)
-        view.post {
+        mainHandler.post {
           if (sources[view] != source) return@post
-          android.util.Log.i("SvgaPlayerViewManager", "Decoded frames=${videoItem.frames}, view=${view.width}x${view.height}")
           rView?.lastVideoItem = videoItem
           val drawable = SVGADrawable(videoItem)
           view.setImageDrawable(drawable)
@@ -174,16 +175,30 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
       }
 
       override fun onError() {
-        view.post { if (sources[view] == source) emit(view, "topPlaybackError") }
         android.util.Log.e("SvgaPlayerViewManager", "Error decoding SVGA from source: $source")
+        emit(view, "topPlaybackError")
       }
     }
 
     try {
-      if (source.startsWith("http://", ignoreCase = true) || source.startsWith("https://", ignoreCase = true)) {
-        SVGAParser.shareParser().decodeFromURL(URL(source), callback)
+      try {
+        SVGAParser.shareParser().init(view.context.applicationContext)
+      } catch (_: Exception) {}
+
+      val cleanSource = source.trim().replace(" ", "%20")
+      if (cleanSource.startsWith("http://", ignoreCase = true) || cleanSource.startsWith("https://", ignoreCase = true)) {
+        SVGAParser.shareParser().decodeFromURL(URL(cleanSource), callback)
+      } else if (cleanSource.startsWith("file://", ignoreCase = true) || cleanSource.startsWith("/")) {
+        val filePath = if (cleanSource.startsWith("file://")) cleanSource.substring(7) else cleanSource
+        val file = java.io.File(filePath)
+        if (file.exists()) {
+          SVGAParser.shareParser().decodeFromInputStream(java.io.FileInputStream(file), file.name, callback, true)
+        } else {
+          android.util.Log.e("SvgaPlayerViewManager", "File not found: $filePath")
+          emit(view, "topPlaybackError")
+        }
       } else {
-        var assetPath = source
+        var assetPath = cleanSource
         if (assetPath.startsWith("asset://", ignoreCase = true)) {
           assetPath = assetPath.substring("asset://".length)
         } else if (assetPath.startsWith("assets/", ignoreCase = true)) {
@@ -192,11 +207,10 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
         SVGAParser.shareParser().decodeFromAssets(assetPath, callback)
       }
     } catch (e: Exception) {
-      view.post { if (sources[view] == source) emit(view, "topPlaybackError") }
       android.util.Log.e("SvgaPlayerViewManager", "Exception loading SVGA: $source", e)
+      emit(view, "topPlaybackError")
     }
   }
-
 
   override fun onDropViewInstance(view: SVGAImageView) {
     sources.remove(view)

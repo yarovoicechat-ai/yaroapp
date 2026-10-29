@@ -4,7 +4,13 @@ import { useIsFocused } from '@react-navigation/native';
 import GiftMedia, { NativeSvgaPlayer as NativeSvga } from './GiftMedia';
 
 const normalizeUrl = (url) => {
-  if (!url || typeof url !== 'string') return '';
+  if (!url) return '';
+  if (typeof url !== 'string') {
+    if (typeof url === 'object' && url.uri) {
+      return normalizeUrl(url.uri);
+    }
+    return '';
+  }
   const trimmed = url.trim();
   if (!trimmed) return '';
   if (/^(?:https?:\/\/|file:\/\/|content:\/\/|data:|asset:\/\/)/i.test(trimmed)) {
@@ -28,11 +34,17 @@ export default function SvgaView({
   fallbackImage,
   autoPlay = true,
   scaleMode,
+  muteBuiltInAudio = false,
   onFinish,
   onError,
 }) {
   const [failed, setFailed] = React.useState(false);
-  const isFocused = useIsFocused();
+  let isFocused = true;
+  try {
+    isFocused = useIsFocused();
+  } catch (_) {
+    isFocused = true;
+  }
   const src = normalizeUrl(source);
   const normalizedFallback = normalizeUrl(fallbackImage);
 
@@ -40,7 +52,7 @@ export default function SvgaView({
     setFailed(false);
   }, [src]);
 
-  if (!src || failed) {
+  if (!src || (failed && normalizedFallback)) {
     if (normalizedFallback) {
       return <Image source={{ uri: normalizedFallback }} style={style} resizeMode={resizeMode} />;
     }
@@ -61,14 +73,16 @@ export default function SvgaView({
         ) : null}
         {isFocused ? (
           <NativeSvga
-            key={`${src}_${isFocused}`}
+            key={src}
             source={src}
             loops={loops}
             autoPlay={autoPlay}
             scaleMode={scaleMode || (resizeMode === 'cover' ? 'aspectFill' : resizeMode === 'stretch' ? 'fill' : 'aspectFit')}
+            resizeMode={resizeMode}
+            muteBuiltInAudio={muteBuiltInAudio}
             onPlaybackFinished={onFinish}
             onPlaybackError={(error) => {
-              setFailed(true);
+              if (normalizedFallback) setFailed(true);
               onError?.(error);
             }}
             style={StyleSheet.absoluteFillObject}

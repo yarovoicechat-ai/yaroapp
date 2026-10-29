@@ -1,6 +1,6 @@
 import React from 'react';
 import IdentityDisplayName from '../identity/IdentityDisplayName';
-import { View, Text, StyleSheet, Dimensions, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, useWindowDimensions, Image, TouchableOpacity } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -20,7 +20,9 @@ export default function ResponsiveChatBubble({
   onPressUser,
   onMention,
 }) {
-  const text = message?.text || message?.content || '';
+  const { width: viewportWidth } = useWindowDimensions();
+  const responsiveWidth = Math.max(160, viewportWidth - 32);
+  const text = String(message?.text || message?.content || '');
   const senderName = sender?.name || message?.user || message?.senderName || 'User';
   const isSvipUser = Boolean(isSvip || message?.isSvip || message?.svipLevel || sender?.isSvip || sender?.equippedSvipId);
   const isVipUser = Boolean(isVip || message?.isVip || message?.vipLevel || sender?.isVip || sender?.equippedVipId);
@@ -77,11 +79,12 @@ export default function ResponsiveChatBubble({
   const isTagSvga = Boolean(tagMedia && /\.svga(?:[?#]|$)/i.test(tagMedia));
 
   // Equipped Badges
-  const equippedBadges = Array.isArray(message?.equippedBadges) && message.equippedBadges.length
+  const badgeSource = Array.isArray(message?.equippedBadges)
     ? message.equippedBadges
-    : (Array.isArray(sender?.equippedBadges) && sender.equippedBadges.length
-      ? sender.equippedBadges
-      : (message?.equippedBadgeAsset ? [message.equippedBadgeAsset] : []));
+    : Array.isArray(sender?.equippedBadges) ? sender.equippedBadges
+      : message?.equippedBadgeAsset ? [message.equippedBadgeAsset] : [];
+  const equippedBadges = badgeSource.filter(badge => badge && typeof badge === 'object' && badge.isActive !== false &&
+    (!badge.expiresAt || new Date(badge.expiresAt).getTime() > Date.now()));
 
   const equippedFrame =
     message?.equippedFrameAsset ||
@@ -135,7 +138,7 @@ export default function ResponsiveChatBubble({
         activeBubble.bubbleText ||
         metadata.bubbleText ||
         '#F8FAFC',
-      badge: activeBubble.badge || metadata.badge || activeBubble.tag || metadata.tag || 'ITEM',
+      badge: null,
     };
   };
 
@@ -150,7 +153,7 @@ export default function ResponsiveChatBubble({
     const hostLevel = message.hostLevel ?? 4;
 
     return (
-      <View style={styles.welcomeCardContainer}>
+      <View style={[styles.welcomeCardContainer, { maxWidth: responsiveWidth, width: undefined }]}>
         <View style={styles.welcomeAvatarWrap}>
           <Image
             source={{ uri: avatar }}
@@ -210,7 +213,7 @@ export default function ResponsiveChatBubble({
     const giftVisual = resolveGiftVisual(message);
 
     return (
-      <View style={styles.giftMessageContainer}>
+      <View style={[styles.giftMessageContainer, { maxWidth: responsiveWidth, width: undefined }]}>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handlePressUser}
@@ -249,7 +252,7 @@ export default function ResponsiveChatBubble({
   // 2. VIP / SVIP / Owner / Regent Royal Ornate Bubble (Matches Image in User Reference!)
   if (!customBubble && (svipLevel || isSvipUser || isVipUser || isOwner || wealthLevel >= 10)) {
     return (
-      <View style={styles.luxuryBubbleContainer}>
+      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: undefined }]}>
         {/* Double Gold Ornate Frame */}
         <LinearGradient
           colors={['#4C0519', '#881337', '#3B0712']}
@@ -352,29 +355,17 @@ export default function ResponsiveChatBubble({
             </View>
           </View>
 
-          {/* Row of Medals & Honor Crests */}
-          <View style={styles.honorMedalsRow}>
-            {equippedBadges.length > 0 ? (
-              equippedBadges.slice(0, 8).map((badge, idx) => {
+          {equippedBadges.length > 0 && (
+            <View style={styles.honorMedalsRow}>
+              {equippedBadges.slice(0, 8).map((badge, index) => {
                 const icon = badge.imageUrl || badge.image || badge.icon;
-                return icon && typeof icon === 'string' && (icon.startsWith('http') || icon.startsWith('/')) ? (
-                  <Image key={idx} source={{ uri: icon }} style={styles.shelfMedalIcon} resizeMode="contain" />
-                ) : (
-                  <Text key={idx} style={styles.honorMedal}>{badge.icon || '🎖️'}</Text>
-                );
-              })
-            ) : (
-              <>
-                <Text style={styles.honorMedal}>🎖️</Text>
-                <Text style={styles.honorMedal}>🏆</Text>
-                <Text style={styles.honorMedal}>🛡️</Text>
-                <Text style={styles.honorMedal}>👑</Text>
-                <Text style={styles.honorMedal}>⭐</Text>
-                <Text style={styles.honorMedal}>🌟</Text>
-                <Text style={styles.honorMedal}>⚜️</Text>
-              </>
-            )}
-          </View>
+                if (!icon || typeof icon !== 'string') return null;
+                return (icon.startsWith('http://') || icon.startsWith('https://') || icon.startsWith('/'))
+                  ? <Image key={index} accessibilityLabel={badge.name || 'Equipped badge'} source={{ uri: icon.startsWith('/') ? 'https://api.yaroapp.in' + icon : icon }} style={styles.shelfMedalIcon} resizeMode="contain" />
+                  : <Text key={index} style={styles.honorMedal}>{icon}</Text>;
+              })}
+            </View>
+          )}
 
           {/* Message Text with Golden Accent & Yellow Mention */}
           <Text style={styles.royalMessageText}>
@@ -400,14 +391,10 @@ export default function ResponsiveChatBubble({
   // 3. VIP 4 / SVIP 4 Luxury Gold & Ruby Chat Bubble (Uploaded by user)
   if (
     !customBubble &&
-    (svipLevel === 4 ||
-      vipLevel === 4 ||
-      bubbleName.includes('vip4') ||
-      bubbleName.includes('vip 4') ||
-      bubbleName.includes('tiger'))
+    (svipLevel === 4 || vipLevel === 4)
   ) {
     return (
-      <View style={styles.luxuryBubbleContainer}>
+      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: undefined }]}>
         <View style={styles.vip4BubbleWrapper}>
           {/* Top-Left Ruby Gem Wing Emblem */}
           <View style={styles.vip4RubyWingEmblem}>
@@ -522,7 +509,7 @@ export default function ResponsiveChatBubble({
   // 3.2 SVIP 3 Wolf Sovereign Amethyst & Cyan Bubble
   if (!customBubble && svipLevel === 3) {
     return (
-      <View style={styles.luxuryBubbleContainer}>
+      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: undefined }]}>
         <LinearGradient
           colors={['#0F172A', '#082F49', '#0369A1']}
           start={{ x: 0, y: 0 }}
@@ -599,7 +586,7 @@ export default function ResponsiveChatBubble({
   // 3.3 SVIP 2 Emerald Green & Gold Luxury Bubble
   if (!customBubble && svipLevel && svipLevel >= 2) {
     return (
-      <View style={styles.luxuryBubbleContainer}>
+      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: undefined }]}>
         <LinearGradient
           colors={['#064E3B', '#047857', '#022C22']}
           start={{ x: 0, y: 0 }}
@@ -687,7 +674,7 @@ export default function ResponsiveChatBubble({
   // 3.5 Custom Store Equipped Chat Bubble
   if (customBubble) {
     return (
-      <View style={styles.luxuryBubbleContainer}>
+      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: undefined }]}>
         <LinearGradient
           colors={customBubble.colors}
           start={{ x: 0, y: 0 }}
@@ -717,9 +704,6 @@ export default function ResponsiveChatBubble({
                   </View>
                 )}
                 <IdentityDisplayName name={senderName} effect={nameEffect} style={[styles.customSenderName, { color: customBubble.borderColor }]} />
-                <View style={[styles.customBadgePill, { backgroundColor: customBubble.borderColor }]}>
-                  <Text style={styles.customBadgeText}>{customBubble.badge}</Text>
-                </View>
               </View>
 
               {/* Tag Banner */}
@@ -785,7 +769,7 @@ export default function ResponsiveChatBubble({
 
   // 4. Regular User Chat Bubble
   return (
-    <View style={styles.normalBubbleRow}>
+    <View style={[styles.normalBubbleRow, { maxWidth: responsiveWidth, width: undefined }]}>
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={handlePressUser}
@@ -890,9 +874,13 @@ const styles = StyleSheet.create({
     padding: 1,
   },
   giftContentCol: {
+    minWidth: 0,
+    flexShrink: 1,
     flex: 1,
   },
   giftUserRow: {
+    flexWrap: 'wrap',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -997,30 +985,28 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   royalUserMetaCol: {
+    minWidth: 0,
+    flexShrink: 1,
     flex: 1,
   },
   royalNameRow: {
+    flexWrap: 'wrap',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginBottom: 2,
   },
-  ownerPillTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 8,
-  },
-  ownerPillText: {
-    color: '#FFF',
-    fontSize: 9,
-    fontWeight: '900',
-  },
+  
+  
   royalGoldName: {
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: '900',
     color: '#FEF08A',
   },
   emeraldGoldName: {
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: '900',
     color: '#A7F3D0',
@@ -1110,6 +1096,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   royalMessageText: {
+    flexShrink: 1,
     color: '#FEF08A',
     fontSize: 13,
     lineHeight: 18,
@@ -1159,6 +1146,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   normalBubbleBox: {
+    minWidth: 0,
+    
     backgroundColor: 'rgba(0, 0, 0, 0.48)',
     borderRadius: 14,
     borderTopLeftRadius: 4,
@@ -1169,12 +1158,15 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   normalSenderHeader: {
+    flexWrap: 'wrap',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginBottom: 2,
   },
   normalSenderName: {
+    flexShrink: 1,
     fontSize: 12.5,
     fontWeight: '800',
     color: '#FFD700',
@@ -1194,6 +1186,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   normalMessageText: {
+    flexShrink: 1,
     fontSize: 12.5,
     color: '#FFFFFF',
     fontWeight: '500',
@@ -1216,9 +1209,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   welcomeRightCol: {
+    minWidth: 0,
+    flexShrink: 1,
     flex: 1,
   },
   welcomeHeaderRow: {
+    flexWrap: 'wrap',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -1299,9 +1296,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   customUserMetaCol: {
+    minWidth: 0,
+    flexShrink: 1,
     flex: 1,
   },
   customNameRow: {
+    flexWrap: 'wrap',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -1323,6 +1324,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   customBubbleText: {
+    flexShrink: 1,
     fontSize: 12.5,
     fontWeight: '600',
     lineHeight: 17,

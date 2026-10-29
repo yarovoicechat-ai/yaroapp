@@ -76,6 +76,9 @@ export default function GiftPanel({
   const currentCost = Number(totalDiamonds || 0);
   const isAffordable = Boolean(selectedGift) && hasSufficientDiamonds;
 
+  const refreshCatalog = giftHook?.refreshCatalog;
+  useEffect(() => { if (visible) refreshCatalog?.(); }, [visible, refreshCatalog]);
+
   // Single Source of Truth for Panel Visibility & Animated Progress
   const [mounted, setMounted] = useState(visible);
   const giftPanelProgress = useRef(new Animated.Value(visible ? 1 : 0)).current;

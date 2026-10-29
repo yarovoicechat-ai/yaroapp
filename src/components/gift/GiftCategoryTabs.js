@@ -40,7 +40,7 @@ export default function GiftCategoryTabs({
                   style={styles.activeCapsule}
                 >
                   <Text style={styles.tabTextActive}>
-                    {cat.name}
+                    {String(cat.slug || cat.name).toLowerCase() === 'popular' ? '?? Popular' : cat.name}
                   </Text>
                   <LinearGradient
                     colors={['#EC4899', '#A855F7', '#38BDF8']}

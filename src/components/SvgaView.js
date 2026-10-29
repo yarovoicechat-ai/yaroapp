@@ -26,16 +26,13 @@ export default function SvgaView({
   loops = 0,
   resizeMode = 'contain',
   fallbackImage,
+  autoPlay = true,
+  scaleMode,
   onFinish,
   onError,
 }) {
   const [failed, setFailed] = React.useState(false);
-  let isFocused = true;
-  try {
-    isFocused = useIsFocused();
-  } catch (_) {
-    isFocused = true;
-  }
+  const isFocused = useIsFocused();
   const src = normalizeUrl(source);
   const normalizedFallback = normalizeUrl(fallbackImage);
 
@@ -67,8 +64,13 @@ export default function SvgaView({
             key={`${src}_${isFocused}`}
             source={src}
             loops={loops}
+            autoPlay={autoPlay}
+            scaleMode={scaleMode || (resizeMode === 'cover' ? 'aspectFill' : resizeMode === 'stretch' ? 'fill' : 'aspectFit')}
             onPlaybackFinished={onFinish}
-            onPlaybackError={onError}
+            onPlaybackError={(error) => {
+              setFailed(true);
+              onError?.(error);
+            }}
             style={StyleSheet.absoluteFillObject}
           />
         ) : normalizedFallback ? (

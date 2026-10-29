@@ -1,3 +1,4 @@
+import { getRoomSeatConfig } from '../utils/roomSeats';
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { AppState, NativeModules } from 'react-native';
 import { navigationRef } from '../utils/navigationRef';
@@ -793,40 +794,19 @@ export const VoiceRoomProvider = ({ children }) => {
     }
   };
 
-  const getSeatConfig = (seatSetting) => {
-    const val = Number(seatSetting) || 8;
-    if (val === 15 || val === 17) {
-      return { bottomCount: 15, totalCount: 17, seatsPerRow: 5, isCompact: true };
-    }
-    if (val === 10 || val === 12) {
-      return { bottomCount: 10, totalCount: 12, seatsPerRow: 5, isCompact: true };
-    }
-    // Default: 8 bottom seats (Top 2 seats + Bottom 8 seats = 10 total)
-    return { bottomCount: 8, totalCount: 10, seatsPerRow: 4, isCompact: false };
-  };
+  const getSeatConfig = getRoomSeatConfig;
 
-  // Set Room Seat Layout Count (8, 10, 15)
+  // The server changes the layout atomically; never truncate occupied seats locally.
   const setRoomSeatCount = (newCount) => {
-    const config = getSeatConfig(newCount);
-    const validCount = config.bottomCount;
-    setSeatCount(validCount);
-    setSeats((prev) => {
-      const currentHost = prev[0]?.user;
-      const newSeats = buildInitialSeats(validCount, currentHost);
-      prev.forEach((oldSeat, idx) => {
-        if (idx < newSeats.length && oldSeat.user && idx !== 0) {
-          newSeats[idx].user = oldSeat.user;
-          newSeats[idx].isMuted = oldSeat.isMuted;
-        }
-      });
-      return newSeats;
-    });
-
     const sock = socketRef.current || getSocket();
     const roomId = activeRoomIdRef.current;
-    if (sock && roomId) {
-      sock.emit('voice_room:update_seat_count', { roomId, seatCount: validCount });
-    }
+    if (!sock?.connected || !roomId) return Promise.reject(new Error('Connect to the room first'));
+    return new Promise((resolve, reject) => {
+      sock.timeout(15000).emit('voice_room:update_seat_count', { roomId, seatCount: Number(newCount) }, (error, response) => {
+        if (error || !response?.success) { reject(new Error(response?.message || 'Could not confirm seat layout. Please try again.')); return; }
+        resolve(response);
+      });
+    });
   };
 
   const detachSocketListeners = (sock) => {
@@ -1052,6 +1032,7 @@ export const VoiceRoomProvider = ({ children }) => {
         // 1. Initial Synchronized Room State from Server
         sock.on('voice_room:state', (data) => {
           if (!isCurrentRoomEvent(data)) return;
+          if (data?.seatCount) setSeatCount(Number(data.seatCount));
           console.log('📡 [VoiceRoom] Initial state received from server:', data?.roomId);
           const hasServerOwnership = typeof data?.isOwner === 'boolean' || typeof data?.isHost === 'boolean';
           const serverSaysOwner = hasServerOwnership
@@ -1198,6 +1179,13 @@ export const VoiceRoomProvider = ({ children }) => {
           if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] Room details updated from server:', data);
           if (data) {
+            if (data.seatCount) setSeatCount(Number(data.seatCount));
+            if (Array.isArray(data.seats)) {
+              const mapped = mapSeatsWithCurrentUser(data.seats, currentUserId);
+              setSeats(mapped);
+              const mySeat = mapped.find(seat => seat.user?.isCurrentUser);
+              if (mySeat) setCurrentSeatIndex(mySeat.seatIndex);
+            }
             setActiveRoom((prev) => (prev ? {
               ...prev,
               coverImage: data.coverImage || prev.coverImage,
@@ -1241,6 +1229,7 @@ export const VoiceRoomProvider = ({ children }) => {
         // 2. Real-Time Seat Change (Any user took or vacated a seat)
         sock.on('voice_room:seat_updated', (data) => {
           if (!isCurrentRoomEvent(data)) return;
+          if (data?.seatCount) setSeatCount(Number(data.seatCount));
           console.log('📡 [VoiceRoom] Real-time seat update:', data?.seatIndex, data?.user?.name);
           if (data?.seats && Array.isArray(data.seats)) {
             const mapped = mapSeatsWithCurrentUser(data.seats, currentUserId);
@@ -2034,8 +2023,21 @@ export const VoiceRoomProvider = ({ children }) => {
         chatBubble: extraBubble || msg.chatBubble || currentUserRef.current?.equippedChatBubbleAsset || currentUserRef.current?.equippedChatBubble || null,
         chatBubbleId: msg.chatBubbleId || currentUserRef.current?.equippedChatBubble || null,
       };
+      if (msg.isBullet) {
+        return new Promise((resolve, reject) => {
+          sock.timeout(15000).emit('voice_room:send_chat', { roomId, message: enrichedMsg }, (error, response) => {
+            if (error) { reject(new Error('Message confirmation timed out. Retry to check the same message without paying twice.')); return; }
+            if (!response?.success) { reject(new Error(response?.message || 'Could not send bullet message')); return; }
+            if (!Number.isFinite(response.diamonds) || response.chargedDiamonds === undefined) {
+              reject(new Error('Bullet billing is unavailable. Please try again after the server update.')); return;
+            }
+            resolve(response);
+          });
+        });
+      }
       sock.emit('voice_room:send_chat', { roomId, message: enrichedMsg });
     }
+    if (msg?.isBullet) return Promise.reject(new Error('Connect to the room before sending a bullet message'));
   };
 
   // Update Room Theme (Owner Only - updates real time for all users)
@@ -2234,22 +2236,7 @@ export const VoiceRoomProvider = ({ children }) => {
         ...updatedData,
       });
     }
-    if (updatedData.seatCount) {
-      setSeatCount(updatedData.seatCount);
-      setSeats((prev) => {
-        const count = updatedData.seatCount;
-        if (prev.length === count) return prev;
-        if (prev.length < count) {
-          const added = [];
-          for (let i = prev.length; i < count; i++) {
-            added.push({ seatIndex: i, isHost: false, user: null, isMuted: true });
-          }
-          return [...prev, ...added];
-        } else {
-          return prev.slice(0, count);
-        }
-      });
-    }
+
   };
 
   return (

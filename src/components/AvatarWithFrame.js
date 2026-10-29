@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Image, StyleSheet, Text } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { getUserAvatar } from '../utils/avatarUtil';
+import { getUserAvatar, getCachedAvatarSource } from '../utils/avatarUtil';
 import { normalizeCosmeticAsset, resolveFrameAsset } from '../utils/cosmeticResolver';
 import SvgaView from './SvgaView';
 import { getRankFrame, HOLE_CONFIG } from './ranking/RankAvatar';
@@ -21,7 +21,7 @@ import { getRankFrame, HOLE_CONFIG } from './ranking/RankAvatar';
  * - 'Sakura Blossom Frame' / 'sakura': Cherry blossom pastel flower ring
  * - Custom object: { name, previewColor, border, waveColors }
  */
-export default function AvatarWithFrame({
+function AvatarWithFrame({
   user,
   avatarSource,
   avatarUri,
@@ -34,38 +34,31 @@ export default function AvatarWithFrame({
 }) {
   const rankNum = Number(rank || (typeof frame === 'string' && /top\s*1/i.test(frame) ? 1 : typeof frame === 'string' && /top\s*2/i.test(frame) ? 2 : typeof frame === 'string' && /top\s*3/i.test(frame) ? 3 : 0));
   const rankFrameSource = getRankFrame(rankNum);
-  const resolvedFrame = resolveFrameAsset(user, frame);
+  const resolvedFrame = useMemo(() => resolveFrameAsset(user, frame), [user, frame]);
   const frameName = String(resolvedFrame?.name || resolvedFrame?.id || '').toLowerCase();
-  const inventoryFrame = normalizeCosmeticAsset(
-    user?.storeInventory?.find(
+
+  const uploadedFrame = useMemo(() => {
+    const hasResolvedOverlay = Boolean(
+      resolvedFrame?.animationUrl ||
+      resolvedFrame?.frameOverlayUrl ||
+      resolvedFrame?.overlayUrl ||
+      resolvedFrame?.frameImageUrl ||
+      resolvedFrame?.transparentImageUrl ||
+      resolvedFrame?.imageUrl ||
+      resolvedFrame?.image,
+    );
+    if (hasResolvedOverlay) return resolvedFrame;
+
+    if (!frameName || !Array.isArray(user?.storeInventory)) return null;
+
+    const found = user.storeInventory.find(
       (item) =>
         String(item?.name || '').toLowerCase() === frameName &&
         (item?.animationUrl || item?.frameOverlayUrl || item?.overlayUrl || item?.frameImageUrl || item?.imageUrl || item?.image || item?.catalogItem),
-    ),
-  );
-  const hasResolvedOverlay = Boolean(
-    resolvedFrame?.animationUrl ||
-    resolvedFrame?.frameOverlayUrl ||
-    resolvedFrame?.overlayUrl ||
-    resolvedFrame?.frameImageUrl ||
-    resolvedFrame?.transparentImageUrl ||
-    resolvedFrame?.imageUrl ||
-    resolvedFrame?.image,
-  );
-  const hasInventoryOverlay = Boolean(
-    inventoryFrame?.animationUrl ||
-    inventoryFrame?.frameOverlayUrl ||
-    inventoryFrame?.overlayUrl ||
-    inventoryFrame?.frameImageUrl ||
-    inventoryFrame?.transparentImageUrl ||
-    inventoryFrame?.imageUrl ||
-    inventoryFrame?.image,
-  );
-  const uploadedFrame = hasResolvedOverlay
-    ? resolvedFrame
-    : hasInventoryOverlay
-      ? inventoryFrame
-      : null;
+    );
+    return found ? normalizeCosmeticAsset(found) : null;
+  }, [resolvedFrame, frameName, user?.storeInventory]);
+
   const frameOverlaySource =
     uploadedFrame?.frameOverlayUrl ||
     uploadedFrame?.overlayUrl ||
@@ -80,9 +73,10 @@ export default function AvatarWithFrame({
   const explicitAvatar =
     avatarSource ||
     (typeof avatarUri === 'string' && avatarUri
-      ? { uri: avatarUri }
+      ? getCachedAvatarSource(avatarUri)
       : avatarUri);
   let avatar = explicitAvatar || getUserAvatar(user);
+
   if (
     avatar &&
     typeof avatar === 'object' &&
@@ -245,6 +239,9 @@ export default function AvatarWithFrame({
       >
         <Image
           source={avatar}
+          defaultSource={getUserAvatar(null, user?.gender)}
+          resizeMethod="resize"
+          fadeDuration={0}
           style={[
             styles.avatarImage,
             {
@@ -388,3 +385,5 @@ const styles = StyleSheet.create({
     zIndex: 12,
   },
 });
+
+export default React.memo(AvatarWithFrame);

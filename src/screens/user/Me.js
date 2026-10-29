@@ -12,7 +12,11 @@ import {
   StatusBar,
   Share,
   Image,
+  ImageBackground,
 } from 'react-native';
+
+const meDiamondCardBg = require('../../assets/card/me_diamond_card_bg.png');
+const meBeansCardBg = require('../../assets/card/me_beans_card_bg.png');
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getTabScreenBottomPadding } from '../../utils/safeAreaUtils';
@@ -149,7 +153,13 @@ export default function MeScreen() {
     user?.role === 'operator' ||
     (user?.hasAppOption && (user?.appRole === 'agency' || user?.appFeatures?.agencyPortal))
   );
+  const isBdLeader = Boolean(
+    user?.isBdLeader ||
+    String(user?.role || '').replace(/[-_]/g, '').toLowerCase() === 'bdleader' ||
+    (user?.hasAppOption && String(user?.appRole || '').replace(/[-_]/g, '').toLowerCase() === 'bdleader')
+  );
   const hasBdPrivilege = Boolean(
+    isBdLeader ||
     user?.isBd ||
     user?.role === 'bd' ||
     user?.role === 'bd-leader' ||
@@ -163,7 +173,7 @@ export default function MeScreen() {
 
   // 4 items in every line (Row 1: Tasks, Fan Club, Level, Apply Hosting)
   const serviceItems = [
-    ...((hasBdPrivilege || hasAgencyPrivilege || hasHostingPrivilege || ['owner', 'operator', 'superAdmin', 'admin'].includes(user?.role)) ? [{
+    ...((hasBdPrivilege || hasAgencyPrivilege || isApprovedHost || ['owner', 'operator', 'superAdmin', 'admin'].includes(user?.role)) ? [{
       id: 'teamTargets', label: 'Team & Targets', icon: <View style={[styles.serviceIconCircle, { backgroundColor: '#EEF2FF' }]}><MaterialCommunityIcons name="account-group-outline" size={26} color="#4F46E5" /></View>,
       onPress: () => navigation.navigate('TeamDashboard'),
     }] : []),
@@ -354,7 +364,7 @@ export default function MeScreen() {
       ? [
           {
             id: 'bdPortal',
-            label: (user?.role === 'bdLeader' || user?.role === 'bd-leader' || user?.isBdLeader) ? 'BD Leader Hub' : 'BD Center',
+            label: isBdLeader ? 'BD Leader' : 'BD Center',
             icon: (
               <View style={[styles.serviceIconCircle, { backgroundColor: '#FEF3C7' }]}>
                 <MaterialCommunityIcons name="account-tie" size={26} color="#D97706" />
@@ -634,48 +644,48 @@ export default function MeScreen() {
         <View style={styles.currencyCardsRow}>
           {/* Card 1: My Diamonds */}
           <TouchableOpacity
-            style={styles.diamondsCard}
+            style={styles.currencyCardItem}
             activeOpacity={0.88}
             onPress={() => navigation.navigate('Wallet')}
           >
-            <Image
-              source={require('../../assets/icons/diamond.png')}
-              style={{ width: 28, height: 28, marginRight: 8 }}
-              resizeMode="contain"
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardMainValue}>
-                {formatCompactBalance(user?.diamondBalance ?? user?.diamonds ?? 0)}
-              </Text>
-              <Text style={styles.cardSmallLabel}>Diamonds</Text>
-            </View>
-            <View style={styles.addCoinCircle}>
-              <Ionicons name="add" size={18} color="#FFFFFF" />
-            </View>
+            <ImageBackground
+              source={meDiamondCardBg}
+              style={styles.currencyCardBg}
+              imageStyle={{ borderRadius: 18 }}
+              resizeMode="cover"
+            >
+              <View style={styles.currencyCardCenter}>
+                <Text style={styles.diamondCardValue} numberOfLines={1}>
+                  {formatCompactBalance(user?.diamondBalance ?? user?.diamonds ?? 0)}
+                </Text>
+                <Text style={styles.diamondCardLabel} numberOfLines={1}>
+                  Diamonds
+                </Text>
+              </View>
+            </ImageBackground>
           </TouchableOpacity>
 
           {/* Card 2: My Beans */}
           <TouchableOpacity
-            style={styles.beansCard}
+            style={styles.currencyCardItem}
             activeOpacity={0.88}
             onPress={() => navigation.navigate('Earning')}
           >
-            <Image
-              source={require('../../assets/icons/beans.png')}
-              style={{ width: 28, height: 28, marginRight: 8 }}
-              resizeMode="contain"
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.cardMainValue, { color: '#065F46' }]}>
-                {formatCompactBalance(user?.beanBalance ?? user?.beans ?? user?.coins ?? 0)}
-              </Text>
-              <Text style={[styles.cardSmallLabel, { color: '#047857' }]}>
-                My Beans
-              </Text>
-            </View>
-            <View style={[styles.addCoinCircle, { backgroundColor: '#10B981' }]}>
-              <Ionicons name="swap-horizontal" size={16} color="#FFFFFF" />
-            </View>
+            <ImageBackground
+              source={meBeansCardBg}
+              style={styles.currencyCardBg}
+              imageStyle={{ borderRadius: 18 }}
+              resizeMode="cover"
+            >
+              <View style={styles.currencyCardCenter}>
+                <Text style={styles.beansCardValue} numberOfLines={1}>
+                  {formatCompactBalance(user?.beanBalance ?? user?.beans ?? user?.coins ?? 0)}
+                </Text>
+                <Text style={styles.beansCardLabel} numberOfLines={1}>
+                  My Beans
+                </Text>
+              </View>
+            </ImageBackground>
           </TouchableOpacity>
         </View>
 
@@ -947,46 +957,61 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
-  diamondsCard: {
+  currencyCardItem: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    height: 74,
     borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E0F2FE',
-    elevation: 1,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
   },
-  beansCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#D1FAE5',
-    elevation: 1,
+  currencyCardBg: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    paddingLeft: 42,
+    paddingRight: 38,
   },
-  cardMainValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0369A1',
-  },
-  cardSmallLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#0284C7',
-    marginTop: 2,
-  },
-  addCoinCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#0284C7',
+  currencyCardCenter: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  diamondCardValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  diamondCardLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FDE68A',
+    marginTop: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  beansCardValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  beansCardLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#A7F3D0',
+    marginTop: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 
   // Services Grid (Strictly 4 items per row: width '25%')

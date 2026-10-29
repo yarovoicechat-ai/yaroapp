@@ -61,6 +61,24 @@ export const isValidAvatarUrl = (url) => {
   return true;
 };
 
+// LRU/Map cache for avatar image source objects to avoid re-renders & force local cache
+const avatarSourceCache = new Map();
+
+export const getCachedAvatarSource = (rawUri) => {
+  if (!rawUri || typeof rawUri !== 'string') return null;
+  const key = rawUri.trim();
+  let cached = avatarSourceCache.get(key);
+  if (!cached) {
+    cached = { uri: key, cache: 'force-cache' };
+    if (avatarSourceCache.size > 300) {
+      const oldestKey = avatarSourceCache.keys().next().value;
+      avatarSourceCache.delete(oldestKey);
+    }
+    avatarSourceCache.set(key, cached);
+  }
+  return cached;
+};
+
 /**
  * Central avatar resolver for React Native <Image source={getUserAvatar(user)} />
  */
@@ -140,7 +158,6 @@ export const getUserAvatar = (userOrImage, fallbackGender = null) => {
   if (typeof customUrl === 'number') {
     return customUrl;
   }
-
   // Validate custom URL string
   if (isValidAvatarUrl(customUrl)) {
     const cleanUrl = customUrl.trim();
@@ -153,20 +170,21 @@ export const getUserAvatar = (userOrImage, fallbackGender = null) => {
       cleanUrl.startsWith('file:') ||
       cleanUrl.startsWith('content:')
     ) {
-      return { uri: cleanUrl };
+      return getCachedAvatarSource(cleanUrl);
     }
 
     // Protocol-relative URLs (e.g., //res.cloudinary.com/...)
     if (cleanUrl.startsWith('//')) {
-      return { uri: `https:${cleanUrl}` };
+      return getCachedAvatarSource(`https:${cleanUrl}`);
     }
 
     // Relative server paths (e.g., /uploads/..., uploads/..., avatars/...)
     const pathWithLeadingSlash = cleanUrl.startsWith('/') ? cleanUrl : `/${cleanUrl}`;
-    return { uri: `${SERVER_DOMAIN}${pathWithLeadingSlash}` };
+    return getCachedAvatarSource(`${SERVER_DOMAIN}${pathWithLeadingSlash}`);
   }
 
   return getDefaultAvatar(gender);
 };
 
 export default getUserAvatar;
+

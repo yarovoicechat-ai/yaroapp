@@ -14,7 +14,8 @@ import {
   Platform,
 } from 'react-native';
 
-const diamondCardBg = require('../../assets/card/dimond_back_card.png');
+const diamondCardBg = require('../../assets/card/diamond_gold_card_bg.jpg');
+const beansCardBg = require('../../assets/card/beans_back_card.png');
 const diamondIcon = require('../../assets/icons/diamond.png');
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -260,8 +261,17 @@ const Wallet = () => {
       return;
     }
 
-    if (!pack.available || purchasingPackId || loading) {
+    if (purchasingPackId || loading) {
       return; // Prevent duplicate taps
+    }
+
+    if (!pack.available && !pack.playDetails) {
+      AlertService.show(
+        'Google Play Store',
+        `To purchase the ₹${pack.priceInr || pack.price} pack (${pack.diamonds.toLocaleString()} Diamonds), please make sure you are signed into Google Play or install via the Internal Testing track link.`,
+        'info'
+      );
+      return;
     }
 
     setPurchasingPackId(pack.productId);
@@ -436,30 +446,26 @@ const Wallet = () => {
               >
                 <View style={styles.balanceHeaderRow}>
                   <View style={styles.balanceLabelCol}>
-                    <Text style={styles.balanceLabel}>My Diamonds</Text>
+                    <Text style={[styles.balanceLabel, { color: '#78350F' }]}>My Diamonds</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={styles.balanceCount}>{formatCompactBalance(user?.diamonds || 0)}</Text>
+                      <Text style={[styles.balanceCount, { color: '#1E1B4B' }]}>{formatCompactBalance(user?.diamonds || 0)}</Text>
                       <Image source={diamondIcon} style={{ width: 24, height: 24, marginLeft: 6 }} resizeMode="contain" />
                     </View>
-                    <Text style={styles.balanceValue}>
-                      ≈ ₹{formatCompactBalance(Math.round((user?.diamonds || 0) * 1.43))}
-                      {Number(user?.diamonds || 0) >= 1000000 ? ` (${(user?.diamonds || 0).toLocaleString()} 💎)` : ''}
-                    </Text>
                   </View>
                 </View>
 
-                <Text style={styles.balanceSubtext}>
+                <Text style={[styles.balanceSubtext, { color: '#78350F' }]}>
                   Use diamonds to unlock premium features and enjoy exclusive benefits.
                 </Text>
 
                 <TouchableOpacity
                   onPress={() => navigation.navigate('RechargeHistreoy')}
-                  style={styles.historyBtn}
+                  style={[styles.historyBtn, { backgroundColor: '#FFFFFF', borderColor: '#FDE68A' }]}
                   activeOpacity={0.7}
                 >
-                  <Icon name="history" size={14} color="#03dcfe" style={styles.iconMarginRight} />
-                  <Text style={styles.historyBtnText}>History</Text>
-                  <Icon name="chevron-right" size={12} color="#03dcfe" />
+                  <Icon name="history" size={14} color="#D97706" style={styles.iconMarginRight} />
+                  <Text style={[styles.historyBtnText, { color: '#B45309' }]}>History</Text>
+                  <Icon name="chevron-right" size={12} color="#D97706" />
                 </TouchableOpacity>
               </ImageBackground>
             </View>
@@ -474,13 +480,13 @@ const Wallet = () => {
             <View style={styles.packsGrid}>
               {packList.map((pack) => {
                 const isPackLoading = purchasingPackId === pack.productId;
-                const displayPrice = pack.available ? pack.localizedPrice : 'Unavailable';
+                const displayPrice = pack.localizedPrice || (pack.priceInr ? `₹${pack.priceInr.toLocaleString()}` : 'Unavailable');
 
                 return (
                   <TouchableOpacity
                     key={pack.productId}
                     onPress={() => handleBuyDiamond(pack)}
-                    disabled={!pack.available || loading || isPackLoading}
+                    disabled={loading || isPackLoading}
                     style={[
                       styles.packCard,
                       pack.isPopular && styles.packCardPopular,
@@ -545,46 +551,31 @@ const Wallet = () => {
             <EconomyEarnings />
             {/* Beans Balance Card */}
             <View style={styles.balanceCardContainer}>
-              <LinearGradient
-                colors={['#ECFDF5', '#D1FAE5']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.balanceCard, { borderColor: '#A7F3D0' }]}
+              <ImageBackground
+                source={beansCardBg}
+                style={[styles.balanceCard, { borderColor: '#818CF8' }]}
+                imageStyle={{ borderRadius: 24 }}
+                resizeMode="cover"
               >
                 <View style={styles.balanceHeaderRow}>
                   <View style={styles.balanceLabelCol}>
-                    <Text style={[styles.balanceLabel, { color: '#065F46' }]}>My Beans</Text>
+                    <Text style={[styles.balanceLabel, { color: '#E0E7FF' }]}>My Beans</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={[styles.balanceCount, { color: '#047857' }]}>{formatCompactBalance(user?.coins || 0)}</Text>
+                      <Text style={[styles.balanceCount, { color: '#FFFFFF' }]}>{formatCompactBalance(user?.coins || 0)}</Text>
                       <Image
                         source={require('../../assets/icons/beans.png')}
                         style={{ width: 22, height: 22, marginLeft: 6 }}
                         resizeMode="contain"
                       />
                     </View>
-                    <Text style={[styles.balanceValue, { color: '#059669' }]}>
+                    <Text style={[styles.balanceValue, { color: '#FDE047' }]}>
                       ≈ ₹{formatCompactBalance((user?.coins || 0) / 2)}
                       {Number(user?.coins || 0) >= 1000000 ? ` (${(user?.coins || 0).toLocaleString()} 🌟)` : ''}
                     </Text>
                   </View>
-
-                  {/* Gorgeous Pedestal */}
-                  <View style={styles.pedestalContainer}>
-                    <View style={[styles.pedestalRing3, { borderColor: 'rgba(16, 185, 129, 0.2)' }]}>
-                      <View style={[styles.pedestalRing2, { borderColor: 'rgba(16, 185, 129, 0.4)' }]}>
-                        <View style={[styles.pedestalRing1, { backgroundColor: '#10B981' }]}>
-                          <Image
-                            source={require('../../assets/icons/beans.png')}
-                            style={{ width: 28, height: 28 }}
-                            resizeMode="contain"
-                          />
-                        </View>
-                      </View>
-                    </View>
-                  </View>
                 </View>
 
-                <Text style={[styles.balanceSubtext, { color: '#065F46' }]}>
+                <Text style={[styles.balanceSubtext, { color: 'rgba(255, 255, 255, 0.9)' }]}>
                   Beans are earned through host calls, gifts received, and creator rewards. Convert Beans into Diamonds or withdraw to UPI/Bank.
                 </Text>
 
@@ -601,15 +592,15 @@ const Wallet = () => {
 
                   <TouchableOpacity
                     onPress={() => navigation.navigate('CoinHistory')}
-                    style={[styles.historyBtn, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}
+                    style={[styles.historyBtn, { backgroundColor: 'rgba(255, 255, 255, 0.95)', borderColor: '#E2E8F0' }]}
                     activeOpacity={0.7}
                   >
-                    <Icon name="history" size={14} color="#047857" style={styles.iconMarginRight} />
-                    <Text style={[styles.coinHistoryBtnText, { color: '#047857' }]}>History</Text>
-                    <Icon name="chevron-right" size={12} color="#047857" />
+                    <Icon name="history" size={14} color="#0F172A" style={styles.iconMarginRight} />
+                    <Text style={[styles.coinHistoryBtnText, { color: '#0F172A' }]}>History</Text>
+                    <Icon name="chevron-right" size={12} color="#0F172A" />
                   </TouchableOpacity>
                 </View>
-              </LinearGradient>
+              </ImageBackground>
             </View>
 
             {/* Choose bean conversion pack section */}

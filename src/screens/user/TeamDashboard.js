@@ -78,7 +78,10 @@ export default function TeamDashboard() {
   const [cachedTsv, setCachedTsv] = useState('');
   const [cachedXlsxUrl, setCachedXlsxUrl] = useState('');
 
-  const actorRole = user?.role === 'user' && user?.hasAppOption ? user.appRole : user?.role;
+  const actorRole = user?.role && user.role !== 'user'
+    ? user.role
+    : (user?.hasAppOption && user?.hasAppAccess !== false && user?.appRole) ||
+      (user?.isBdLeader ? 'bdLeader' : user?.isBd || user?.isBD ? 'bd' : user?.isAgency || user?.isAgencyOwner ? 'agency' : user?.role);
   const canonicalRole = String(actorRole || '').replace(/[-_]/g, '').toLowerCase();
   const actorIndex = ROLES.findIndex(r => r.toLowerCase() === canonicalRole);
   const allowedInviteRoles = actorIndex < 0 ? ['host'] : ROLES.slice(actorIndex + 1);
@@ -224,18 +227,20 @@ export default function TeamDashboard() {
 
   const sendInvitation = async () => {
     const uid = Number(inviteRecipientId.trim());
-    if (!uid || isNaN(uid) || uid <= 0) {
+    if (!/^\d+$/.test(inviteRecipientId.trim()) || !Number.isSafeInteger(uid) || uid <= 0) {
       AlertService.show('Invalid ID', 'Please enter a valid numeric YARO User ID.', 'warning');
       return;
     }
+    if (loading || !allowedInviteRoles.includes(inviteRole)) return;
     setLoading(true);
     try {
       const requestKey = `invite_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      await apiUtil.post('/team/invitations', {
+      const response = await apiUtil.post('/team/invitations', {
         userId: uid,
         role: inviteRole,
         requestKey,
       });
+      if (!response.data?.success) throw new Error(response.data?.message || 'Could not send invitation');
       setInviteModalVisible(false);
       setInviteRecipientId('');
       AlertService.show(
@@ -322,7 +327,7 @@ export default function TeamDashboard() {
         </TouchableOpacity>
         <View style={{ flex: 1, marginHorizontal: 10 }}>
           <Text style={styles.screenTitle} numberOfLines={1}>
-            Team & Hosting Targets
+            {canonicalRole === 'bdleader' ? 'BD Leader' : canonicalRole === 'bd' ? 'BD Center' : canonicalRole === 'agency' ? 'Agency Hub' : 'Team & Hosting Targets'}
           </Text>
           <Text style={styles.screenSubtitle} numberOfLines={1}>
             {report?.root?.name || 'Hierarchy Analytics'} · Beans Revenue
@@ -384,10 +389,13 @@ export default function TeamDashboard() {
             {allowedInviteRoles.length > 0 && (
               <TouchableOpacity
                 style={styles.inviteButton}
-                onPress={() => setInviteModalVisible(true)}
+                onPress={() => {
+                  setInviteRole(allowedInviteRoles.includes('host') ? 'host' : allowedInviteRoles[0]);
+                  setInviteModalVisible(true);
+                }}
               >
                 <Ionicons name="person-add" size={16} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={styles.inviteButtonText}>Invite New Member</Text>
+                <Text style={styles.inviteButtonText}>{canonicalRole === 'agency' ? 'Recruit New Host' : 'Invite New Member'}</Text>
               </TouchableOpacity>
             )}
 
@@ -869,7 +877,7 @@ export default function TeamDashboard() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeaderRow}>
               <View>
-                <Text style={styles.modalTitle}>Invite Member to Team</Text>
+                <Text style={styles.modalTitle}>{canonicalRole === 'agency' ? 'Invite Host to Agency' : 'Invite Member to Team'}</Text>
                 <Text style={styles.modalSub}>Sent directly to their in-app System Messages</Text>
               </View>
               <TouchableOpacity onPress={() => setInviteModalVisible(false)}>

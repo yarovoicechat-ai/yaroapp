@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -57,6 +57,8 @@ export default function SeatLayoutModal({
 
   // Selected layout state
   const [selectedLayoutId, setSelectedLayoutId] = useState(activeCount);
+  const [applying, setApplying] = useState(false);
+  useEffect(() => { if (visible) setSelectedLayoutId(activeCount); }, [visible, activeCount]);
 
   if (!visible) return null;
 
@@ -67,11 +69,13 @@ export default function SeatLayoutModal({
 
   const isCurrentActive = currentLayout.count === activeCount;
 
-  const handleApply = () => {
-    if (handleSelect) {
-      handleSelect(currentLayout.count);
-    }
-    onClose();
+  const handleApply = async () => {
+    if (applying) return;
+    setApplying(true);
+    try {
+      const success = handleSelect ? await handleSelect(currentLayout.count) : true;
+      if (success !== false) onClose();
+    } finally { setApplying(false); }
   };
 
   return (
@@ -213,6 +217,7 @@ export default function SeatLayoutModal({
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={handleApply}
+            disabled={applying}
             activeOpacity={0.85}
           >
             <LinearGradient
@@ -222,7 +227,7 @@ export default function SeatLayoutModal({
               style={styles.actionBtnGradient}
             >
               <Text style={styles.actionBtnText}>
-                {isCurrentActive ? 'Using' : 'Use'}
+                {applying ? 'Applying...' : isCurrentActive ? 'Using' : 'Use'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>

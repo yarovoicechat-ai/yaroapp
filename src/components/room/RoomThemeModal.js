@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -263,6 +263,7 @@ function RoomThemeModalInner({
   const [themes, setThemes] = useState(PRESET_THEMES);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
+  const lastThemeFetch = useRef(0);
 
   // CRITICAL FIX: ALL HOOKS MUST BE DECLARED BEFORE ANY CONDITIONAL RETURN!
   // Declaring useMemo here guarantees the hook count is strictly invariant between renders.
@@ -275,17 +276,19 @@ function RoomThemeModalInner({
     if (!visible) return;
     let active = true;
     setSelected(String(currentTheme?.itemId || currentTheme?.id || 'default'));
+    if (Date.now() - lastThemeFetch.current < 60000) return;
     setLoading(true);
 
     Promise.allSettled([
-      apiUtil.get('/store/inventory'),
-      apiUtil.get('/store/items', { params: { category: 'Theme', activeOnly: true } }),
+      apiUtil.get('/store/inventory', { timeout: 8000 }),
+      apiUtil.get('/store/items', { timeout: 8000, params: { category: 'Theme', activeOnly: true } }),
     ])
       .then(([inventoryResult, catalogResult]) => {
         if (!active) return;
         const inventoryResponse = inventoryResult.status === 'fulfilled' ? inventoryResult.value : null;
         const catalogResponse = catalogResult.status === 'fulfilled' ? catalogResult.value : null;
-        const items = inventoryResponse?.data?.data?.items || [];
+        const inventoryItems = inventoryResponse?.data?.data?.items;
+        const items = Array.isArray(inventoryItems) ? inventoryItems : [];
         const ownedThemes = items
           .filter((item) => ['theme', 'themes'].includes(String(item.catalogItem?.category || item.category || '').toLowerCase()))
           .map((item) => normalizeTheme({ ...item, isOwned: true }))
@@ -314,10 +317,11 @@ function RoomThemeModalInner({
         });
 
         const merged = Array.from(byId.values());
+        lastThemeFetch.current = Date.now();
         setThemes(merged.length > 0 ? merged : PRESET_THEMES);
       })
       .catch(() => {
-        if (active) setThemes(PRESET_THEMES);
+        // Retain the currently visible themes when a refresh fails.
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -326,7 +330,7 @@ function RoomThemeModalInner({
     return () => {
       active = false;
     };
-  }, [visible, currentTheme]);
+  }, [visible, currentTheme?.itemId, currentTheme?.id]);
 
   if (!visible) return null;
 
@@ -417,13 +421,17 @@ function RoomThemeModalInner({
 
           {/* Tab 1: Room Theme */}
           {activeTab === 'Room Theme' && (
-            loading ? (
+            loading && displayThemeData.length <= 1 ? (
               <View style={styles.loaderWrap}>
                 <ActivityIndicator size="large" color="#FB923C" />
               </View>
             ) : (
               <FlatList
                 data={displayThemeData}
+                initialNumToRender={4}
+                maxToRenderPerBatch={4}
+                windowSize={5}
+                ListHeaderComponent={loading ? <ActivityIndicator size="small" color="#FB923C" /> : null}
                 keyExtractor={(item, index) => String(item.id || item.itemId || index)}
                 numColumns={2}
                 columnWrapperStyle={styles.columnWrapper}

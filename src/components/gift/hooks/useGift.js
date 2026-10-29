@@ -1,3 +1,4 @@
+import { giftCategories, giftMatchesCategory } from '../../../utils/giftCatalog';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiUtil } from '../../../utils/apiUtil';
 import { AlertService } from '../../../utils/AlertService';
@@ -16,10 +17,11 @@ export function useGift({
   const activeBalanceRef = useRef(activeBalance);
   activeBalanceRef.current = activeBalance;
 
-  const [categories, setCategories] = useState([]);
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [categories, setCategories] = useState(giftCategories([]));
+  const [activeCategory, setActiveCategory] = useState('Popular');
   const [gifts, setGifts] = useState([]);
   const [loadingGifts, setLoadingGifts] = useState(false);
+  const catalogLoadedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGift, setSelectedGift] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
@@ -38,19 +40,20 @@ export function useGift({
     try {
       const response = await apiUtil.get('/gifts/categories');
       const next = response.data?.data;
-      setCategories(Array.isArray(next) ? next : []);
+      setCategories(giftCategories(next));
     } catch (_) {
-      setCategories([]);
+      setCategories(current => current.length ? current : giftCategories([]));
     }
   }, []);
 
   const fetchGifts = useCallback(async () => {
     try {
-      setLoadingGifts(true);
+      if (!catalogLoadedRef.current) setLoadingGifts(true);
       const response = await apiUtil.get('/gifts');
       const items = response.data?.data;
       const next = Array.isArray(items) ? items : [];
       setGifts(next);
+      catalogLoadedRef.current = true;
       setSelectedGift((current) => {
         if (current && next.some((item) => (item._id || item.id) === (current._id || current.id))) {
           return current;
@@ -59,29 +62,26 @@ export function useGift({
       });
     } catch (error) {
       console.warn('[useGift] Gift catalog unavailable:', error?.message);
-      setGifts([]);
-      setSelectedGift(null);
+      // Keep the last loaded catalog available during a failed refresh.
     } finally {
       setLoadingGifts(false);
     }
   }, []);
 
+  const refreshCatalog = useCallback(() => Promise.all([fetchCategories(), fetchGifts()]), [fetchCategories, fetchGifts]);
+
   useEffect(() => {
-    fetchCategories();
-    fetchGifts();
+    refreshCatalog();
     return () => {
       if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
       if (quickSendTimerRef.current) clearTimeout(quickSendTimerRef.current);
     };
-  }, [fetchCategories, fetchGifts]);
+  }, [refreshCatalog]);
 
   const filteredGifts = useMemo(() => {
     let result = gifts;
     if (activeCategory && activeCategory.toLowerCase() !== 'all') {
-      result = result.filter((gift) => {
-        const categoryName = gift.category || gift.categoryId?.name || '';
-        return categoryName.toLowerCase() === activeCategory.toLowerCase();
-      });
+      result = result.filter(gift => giftMatchesCategory(gift, activeCategory));
     }
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
@@ -211,6 +211,7 @@ export function useGift({
   }, [executeSend]);
 
   return {
+    refreshCatalog,
     categories,
     activeCategory,
     setActiveCategory,

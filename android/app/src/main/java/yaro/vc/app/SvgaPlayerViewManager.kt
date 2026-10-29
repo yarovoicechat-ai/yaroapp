@@ -58,6 +58,11 @@ class ResumableSVGAImageView(context: Context) : SVGAImageView(context) {
 }
 
 class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
+  companion object {
+    // Keep up to 30 decoded SVGA models in memory for instant reuse across avatars, seats, and entries
+    private val videoCache = android.util.LruCache<String, SVGAVideoEntity>(30)
+  }
+
   private val sources = WeakHashMap<SVGAImageView, String>()
 
   private fun emit(view: SVGAImageView, event: String) {
@@ -100,6 +105,22 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
       scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
     }
 
+  @ReactProp(name = "autoPlay", defaultBoolean = true)
+  fun setAutoPlay(view: SVGAImageView, autoPlay: Boolean) {
+    (view as? ResumableSVGAImageView)?.isAutoPlaying = autoPlay
+    if (autoPlay) (view as? ResumableSVGAImageView)?.resumeIfNeeded()
+    else view.stopAnimation(false)
+  }
+
+  @ReactProp(name = "scaleMode")
+  fun setScaleMode(view: SVGAImageView, mode: String?) {
+    view.scaleType = when (mode) {
+      "fill" -> android.widget.ImageView.ScaleType.FIT_XY
+      "aspectFill" -> android.widget.ImageView.ScaleType.CENTER_CROP
+      else -> android.widget.ImageView.ScaleType.FIT_CENTER
+    }
+  }
+
   @ReactProp(name = "loops", defaultInt = 0)
   fun setLoops(view: SVGAImageView, loops: Int) {
     view.loops = loops
@@ -125,8 +146,21 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
 
     sources[view] = source
 
+    // Check memory cache first for instant 0ms playback
+    val cachedEntity = videoCache.get(source)
+    if (cachedEntity != null) {
+      rView?.lastVideoItem = cachedEntity
+      val drawable = SVGADrawable(cachedEntity)
+      view.setImageDrawable(drawable)
+      if (rView?.isAutoPlaying != false) {
+        view.startAnimation()
+      }
+      return
+    }
+
     val callback = object : SVGAParser.ParseCompletion {
       override fun onComplete(videoItem: SVGAVideoEntity) {
+        videoCache.put(source, videoItem)
         view.post {
           if (sources[view] != source) return@post
           android.util.Log.i("SvgaPlayerViewManager", "Decoded frames=${videoItem.frames}, view=${view.width}x${view.height}")
@@ -162,6 +196,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
       android.util.Log.e("SvgaPlayerViewManager", "Exception loading SVGA: $source", e)
     }
   }
+
 
   override fun onDropViewInstance(view: SVGAImageView) {
     sources.remove(view)

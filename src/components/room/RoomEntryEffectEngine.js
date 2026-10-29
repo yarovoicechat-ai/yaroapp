@@ -20,6 +20,7 @@ const DEFAULT_ENTRANCE_BANNER = require('../../assets/banner/default_entrance_ba
 
 export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   const [current, setCurrent] = useState(null);
+  const [failedEntranceId, setFailedEntranceId] = useState(null);
   const pending = useRef([]);
   const seen = useRef(new Set());
   const playing = useRef(false);
@@ -77,8 +78,8 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     let motionDone = false;
     let completed = false;
     const duration = isRide
-      ? Math.max(3000, Math.min(12000, Number(entryAsset?.duration || entryAsset?.metadata?.duration) || 5000))
-      : 3000;
+      ? Math.max(4500, Math.min(12000, Number(entryAsset?.duration || entryAsset?.metadata?.duration) || 5500))
+      : 3200;
 
     const finishEntry = () => {
       if (completed || !motionDone || waiting.size || !mounted.current) return;
@@ -90,13 +91,14 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
       setCurrent(next || null);
     };
 
-    // Absolute safety timeout: if native playback events drop or delay, queue is never blocked
+    // Absolute safety timeout: gives sufficient buffer for network downloads
+    // so effects never cut off prematurely before playback completes
     const safetyTimer = setTimeout(() => {
       if (completed || !mounted.current) return;
       waiting.clear();
       motionDone = true;
       finishEntry();
-    }, duration + 600);
+    }, duration + 5000);
 
     mediaFinished.current = (id, kind) => {
       if (id !== current.entryId) return;
@@ -164,11 +166,11 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   // Check custom entrance from My Items
   const customEntrance = entranceAsset && !entranceAsset.isDefault ? entranceAsset : null;
   const resolvedEntranceImg = resolveAssetUrl(customEntrance?.imageUrl);
-  const entranceBgSource = (resolvedEntranceImg && !customEntrance?.isDefault)
+  const entranceBgSource = (failedEntranceId !== current.entryId && resolvedEntranceImg && !customEntrance?.isDefault)
     ? { uri: resolvedEntranceImg }
     : DEFAULT_ENTRANCE_BANNER;
   const resolvedEntranceAnim = resolveAssetUrl(customEntrance?.animationUrl);
-  const isEntranceSvga = Boolean(resolvedEntranceAnim && /\.svga(?:[?#]|$)/i.test(resolvedEntranceAnim));
+  const isEntranceSvga = Boolean(failedEntranceId !== current.entryId && resolvedEntranceAnim && /\.svga(?:[?#]|$)/i.test(resolvedEntranceAnim));
 
   return (
     <View style={styles.overlay} pointerEvents="none">
@@ -251,6 +253,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
                 onFinish={() => mediaFinished.current(current.entryId, 'entrance')}
                 onError={(error) => {
                   console.warn('[RoomEntry] Entrance playback failed:', error, customEntrance?.animationUrl);
+                  setFailedEntranceId(current.entryId);
                   mediaFinished.current(current.entryId, 'entrance');
                 }}
               />
@@ -277,6 +280,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
           ) : (
             <ImageBackground
               source={entranceBgSource}
+              onError={() => setFailedEntranceId(current.entryId)}
               style={styles.bulletBannerBg}
               imageStyle={styles.bulletBannerImageStyle}
               resizeMode="stretch"

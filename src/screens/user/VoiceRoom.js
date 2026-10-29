@@ -1,6 +1,10 @@
+import { getRoomSeatConfig } from '../../utils/roomSeats';
+import { roomKeyboardLift } from '../../utils/roomKeyboard';
+import { appendRoomMention } from '../../utils/roomMention';
 import React, { useState, useEffect, useRef, useContext, useCallback, useMemo } from 'react';
 import {
   View,
+  ActivityIndicator,
   Text,
   StyleSheet,
   TouchableOpacity,
@@ -188,7 +192,7 @@ export default function VoiceRoomScreen() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomSafePadding = getStackScreenBottomPadding(insets.bottom);
-  const { user } = useContext(AuthContext);
+  const { user, updateDiamonds } = useContext(AuthContext);
 
   const {
     activeRoom,
@@ -315,8 +319,18 @@ export default function VoiceRoomScreen() {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [roomLayoutHeight, setRoomLayoutHeight] = useState(0);
   const roomBaseHeightRef = useRef(0);
+  const roomViewportRef = useRef(null);
+  const [viewportBottom, setViewportBottom] = useState(null);
+  const [keyboardTop, setKeyboardTop] = useState(null);
+  const measureRoomViewport = useCallback(() => {
+    roomViewportRef.current?.measureInWindow((x, y, measuredWidth, measuredHeight) => {
+      if (measuredHeight > 0) setViewportBottom(y + measuredHeight);
+    });
+  }, []);
   const keyboardLift = isKeyboardVisible
-    ? Math.max(0, keyboardHeight - Math.max(0, roomBaseHeightRef.current - roomLayoutHeight))
+    ? (viewportBottom !== null && keyboardTop !== null
+      ? roomKeyboardLift(viewportBottom, keyboardTop)
+      : Math.max(0, keyboardHeight - Math.max(0, roomBaseHeightRef.current - roomLayoutHeight)))
     : 0;
 
   useEffect(() => {
@@ -325,6 +339,8 @@ export default function VoiceRoomScreen() {
       (e) => {
         setIsKeyboardVisible(true);
         setKeyboardHeight(e.endCoordinates.height);
+        setKeyboardTop(e.endCoordinates.screenY);
+        requestAnimationFrame(measureRoomViewport);
         setTimeout(() => {
           chatListRef.current?.scrollToEnd({ animated: true });
         }, 120);
@@ -335,14 +351,24 @@ export default function VoiceRoomScreen() {
       () => {
         setIsKeyboardVisible(false);
         setKeyboardHeight(0);
+        setKeyboardTop(null);
         setIsChatBarExpanded(false);
+      }
+    );
+    const frameSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidChangeFrame',
+      (event) => {
+        setKeyboardTop(event.endCoordinates.screenY);
+        setKeyboardHeight(event.endCoordinates.height);
+        requestAnimationFrame(measureRoomViewport);
       }
     );
     return () => {
       showSub.remove();
       hideSub.remove();
+      frameSub.remove();
     };
-  }, []);
+  }, [measureRoomViewport]);
 
   // Room Reactions & Seat Moving Reactions State
   const [reactions, setReactions] = useState([]);
@@ -658,24 +684,8 @@ export default function VoiceRoomScreen() {
 
   // Stealth Mode & Official Moderation
   const isEffectiveGlobalRoomManager = Boolean(
-    contextIsGlobalRoomManager ||
-    user?.isGlobalRoomManager ||
-    user?.isSpecialId ||
-    user?.hasSpecialId ||
-    user?.specialCode ||
-    user?.specialId ||
-    user?.isOfficial ||
-    user?.officialPowers?.isGlobalRoomManager ||
-    user?.officialPowers?.canBanRoom ||
-    user?.officialPowers?.canBanUser ||
-    user?.officialPowers?.canGhostEntry ||
-    user?.officialPowers?.canKickAnyUser ||
-    user?.officialPowers?.canMuteAnyUser ||
-    user?.officialPowers?.canLockAnySeat ||
-    ['admin', 'superAdmin', 'owner', 'operator', 'bdLeader', 'bd'].includes(user?.role) ||
-    /rudransh/i.test(String(user?.name || '')) ||
-    /rudransh/i.test(String(user?.userName || '')) ||
-    /rudransh/i.test(String(user?.email || ''))
+    contextIsGlobalRoomManager || user?.isGlobalRoomManager === true ||
+    user?.officialPowers?.isGlobalRoomManager === true
   );
 
   const isCurrentUserAdmin = Boolean(
@@ -812,14 +822,11 @@ export default function VoiceRoomScreen() {
   };
 
   useEffect(() => {
-    const ownUserId = String(user?.userId || user?._id || user?.id || '');
     chatMessages.forEach((message) => {
       if (!message?.id || handledBulletMessageIdsRef.current.has(String(message.id))) return;
       handledBulletMessageIdsRef.current.add(String(message.id));
       if (!message.isBullet) return;
 
-      const senderId = String(message.senderId || message.userId || '');
-      if (ownUserId && senderId === ownUserId) return;
       triggerBulletMessage({
         id: `bullet-${message.id}`,
         text: message.text || message.content || '',
@@ -827,7 +834,7 @@ export default function VoiceRoomScreen() {
         avatar: message.avatar || message.sender?.avatar,
       });
     });
-  }, [chatMessages, triggerBulletMessage, user?.userId, user?._id, user?.id]);
+  }, [chatMessages, triggerBulletMessage]);
 
   // Modals
   // New Enterprise Gift Flow Hooks
@@ -1510,9 +1517,12 @@ export default function VoiceRoomScreen() {
     }
   };
 
-  // Handle chat message sending
-  const handleSendMessage = () => {
-    if (!inputText.trim()) return;
+  const [sendingBullet, setSendingBullet] = useState(false);
+  const sendingBulletRef = useRef(false);
+  const pendingBulletRef = useRef(null);
+  // Paid messages appear only after the server accepts and charges them.
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || sendingBulletRef.current) return;
 
     if (user?.userId && bannedChatUsers.map(String).includes(String(user.userId))) {
       AlertService.show('Muted from Chat', 'You are currently muted from chat in this room', 'error');
@@ -1521,17 +1531,10 @@ export default function VoiceRoomScreen() {
 
     const trimmed = inputText.trim();
 
-    if (isBulletMode) {
-      triggerBulletMessage({
-        id: 'bullet-' + Date.now(),
-        text: trimmed,
-        user: user?.name || 'You',
-        avatar: user?.avatar || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-      });
-    }
-
     const newMsg = {
-      id: 'm-' + Date.now(),
+      id: isBulletMode
+        ? (pendingBulletRef.current?.text === trimmed && pendingBulletRef.current?.roomId === currentRoomId ? pendingBulletRef.current.id : `bullet-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`)
+        : 'm-' + Date.now(),
       type: 'user',
       user: user?.name || 'You',
       userId: user?.userId || user?._id || user?.id,
@@ -1559,7 +1562,23 @@ export default function VoiceRoomScreen() {
       isBullet: isBulletMode,
     };
 
-    if (isBulletMode) handledBulletMessageIdsRef.current.add(String(newMsg.id));
+    if (isBulletMode) {
+      pendingBulletRef.current = { id: newMsg.id, text: trimmed, roomId: currentRoomId };
+      sendingBulletRef.current = true;
+      setSendingBullet(true);
+      try {
+        const result = await broadcastChatMessage(newMsg);
+        updateDiamonds?.(result.diamonds);
+        pendingBulletRef.current = null;
+        setInputText(current => current.trim() === trimmed ? '' : current);
+      } catch (error) {
+        AlertService.show('Bullet Message', error.message || 'Could not send bullet message', 'error');
+      } finally {
+        sendingBulletRef.current = false;
+        setSendingBullet(false);
+      }
+      return;
+    }
     setChatMessages(prev => [...prev, newMsg]);
     setInputText('');
     broadcastChatMessage(newMsg);
@@ -1572,8 +1591,8 @@ export default function VoiceRoomScreen() {
   // Handle mentioning user
   const handleMentionUser = (targetUser) => {
     setProfileModalVisible(false);
-    const mentionText = `@${targetUser.name} `;
-    setInputText(prev => `${prev ? prev + ' ' : ''}${mentionText}`);
+    setInputText(prev => appendRoomMention(prev, targetUser));
+    setIsChatBarExpanded(true);
     setTimeout(() => {
       textInputRef.current?.focus();
     }, 200);
@@ -1641,16 +1660,7 @@ export default function VoiceRoomScreen() {
 
   // Dynamic Seat Layout according to seatCount (8, 10, 15)
   // Upar 2 seat, uske niche 8 seat (4+4) = 10 total!
-  const getSeatConfig = (seatSetting) => {
-    const val = Number(seatSetting) || 8;
-    if (val === 15 || val === 17) {
-      return { bottomCount: 15, totalCount: 17, seatsPerRow: 5, isCompact: true };
-    }
-    if (val === 10 || val === 12) {
-      return { bottomCount: 10, totalCount: 12, seatsPerRow: 5, isCompact: true };
-    }
-    return { bottomCount: 8, totalCount: 10, seatsPerRow: 4, isCompact: false };
-  };
+  const getSeatConfig = getRoomSeatConfig;
 
   const seatConfig = getSeatConfig(seatCount);
   const targetTotalSeats = seatConfig.totalCount;
@@ -1707,6 +1717,7 @@ export default function VoiceRoomScreen() {
   const hasThemeWallpaper = Boolean(resolvedThemeImage);
 
   return (
+    <View ref={roomViewportRef} collapsable={false} style={styles.screenContainer} onLayout={measureRoomViewport}>
     <ImageBackground
       source={resolvedThemeImage || DEFAULT_ROOM_BG}
       style={[
@@ -1716,6 +1727,7 @@ export default function VoiceRoomScreen() {
       onLayout={({ nativeEvent }) => {
         const nextHeight = nativeEvent.layout.height;
         setRoomLayoutHeight(nextHeight);
+        measureRoomViewport();
         if (!isKeyboardVisible) roomBaseHeightRef.current = nextHeight;
       }}
       resizeMode="cover"
@@ -2096,10 +2108,7 @@ export default function VoiceRoomScreen() {
                       setSelectedProfileUser(u);
                       setProfileModalVisible(true);
                     }}
-                    onMention={(mentionedName) => {
-                      setInputText(`@${mentionedName} `);
-                      setIsChatBarExpanded(true);
-                    }}
+                    onMention={handleMentionUser}
                   />
                   {/* Come on mic and chat together~ Banner (Directly below welcome card) */}
                   <TouchableOpacity
@@ -2334,20 +2343,21 @@ export default function VoiceRoomScreen() {
             <TextInput
               ref={textInputRef}
               style={styles.chatTextInput}
-              placeholder={isBulletMode ? 'Bullet message...' : 'Type a message...'}
+              placeholder={isBulletMode ? 'Bullet message (1 diamond)...' : 'Type a message...'}
               placeholderTextColor="rgba(255, 255, 255, 0.45)"
               value={inputText}
+              maxLength={500}
               onChangeText={setInputText}
               onSubmitEditing={handleSendMessage}
               returnKeyType="send"
               autoFocus
             />
-            <TouchableOpacity onPress={handleSendMessage} style={styles.sendMsgBtn} activeOpacity={0.85}>
+            <TouchableOpacity onPress={handleSendMessage} disabled={sendingBullet} style={styles.sendMsgBtn} activeOpacity={0.85}>
               <LinearGradient
                 colors={['#8B5CF6', '#6D28D9']}
                 style={styles.sendBtnGradient}
               >
-                <Icon name="send" size={13} color="#FFFFFF" />
+                {sendingBullet ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Icon name="send" size={13} color="#FFFFFF" />}
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -2560,7 +2570,7 @@ export default function VoiceRoomScreen() {
         onClose={() => {
           setRoomLockModalVisible(false);
           if (roomLockModalMode === 'enter_pin' && !isCurrentUserAdmin && !isRoomOwner && !isPinVerified) {
-            handleLeaveRoom();
+            handleLeaveCompletely();
             navigation.goBack();
           }
         }}
@@ -2674,10 +2684,16 @@ export default function VoiceRoomScreen() {
         visible={seatLayoutModalVisible}
         onClose={() => setSeatLayoutModalVisible(false)}
         currentSeatCount={seatCount}
-        onSelectSeatCount={(count) => {
-          setRoomSeatCount && setRoomSeatCount(count);
-          setSeatLayoutModalVisible(false);
-          AlertService.show('Seat Layout', `Room updated to ${count} seats`, 'success');
+        onSelectSeatCount={async (count) => {
+          try {
+            await setRoomSeatCount(count);
+            setSeatLayoutModalVisible(false);
+            AlertService.show('Seat Layout', `Room updated to ${count} seats`, 'success');
+            return true;
+          } catch (error) {
+            AlertService.show('Seat Layout', error.message, 'error');
+            return false;
+          }
         }}
         bottomSafePadding={bottomSafePadding}
       />
@@ -2987,6 +3003,7 @@ export default function VoiceRoomScreen() {
       />
 
     </ImageBackground>
+    </View>
   );
 }
 
@@ -3588,20 +3605,8 @@ const styles = StyleSheet.create({
     marginTop: 1,
     flexWrap: 'wrap',
   },
-  systemChatBubble: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignSelf: 'flex-start',
-    marginBottom: 4,
-    maxWidth: '100%',
-  },
-  systemChatText: {
-    fontSize: 10.5,
-    color: '#CBD5E1',
-    lineHeight: 14,
-  },
+  
+  
   giftChatBubble: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -4326,25 +4331,14 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '700',
   },
-  announcementCard: {
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
+  
   announcementHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 6,
     gap: 6,
   },
-  announcementLabel: {
-    color: '#A78BFA',
-    fontSize: 12,
-    fontWeight: '800',
-  },
+  
   announcementContent: {
     color: '#E2E8F0',
     fontSize: 13,

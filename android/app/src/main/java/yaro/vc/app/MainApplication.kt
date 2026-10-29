@@ -43,6 +43,7 @@ class MainApplication : Application(), ReactApplication {
         android.util.Log.e("MainApplication", "SVGAParser init failed", e)
       }
     }
+
     createNotificationChannel()
     loadReactNative(this)
   }

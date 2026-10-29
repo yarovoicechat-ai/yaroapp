@@ -190,3 +190,15 @@ test.each([
   expect(JSON.stringify(tree.toJSON())).not.toContain('is coming');
   expect(JSON.stringify(tree.toJSON())).toContain('enter the room');
 });
+
+
+test('failed custom entrance falls back to a visible default entry banner', async () => {
+  await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={{
+    entryId: 'broken-entrance', user: { name: 'Visible User' },
+    entrance: { animationUrl: 'broken.svga' },
+  }} />); });
+  await act(async () => tree.root.findByType('SvgaView').props.onError(new Error('decode failed')));
+  expect(tree.root.findAllByType(ImageBackground)).toHaveLength(1);
+  expect(JSON.stringify(tree.toJSON())).toContain('Visible User');
+  expect(JSON.stringify(tree.toJSON())).toContain('enter the room');
+});

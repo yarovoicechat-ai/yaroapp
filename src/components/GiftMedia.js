@@ -56,7 +56,17 @@ const GiftMedia = ({
 
   if (type === 'svga') {
     if (NativeSvgaPlayer) {
-      return <NativeSvgaPlayer source={source} style={style} />;
+      return (
+        <NativeSvgaPlayer
+          source={source}
+          style={style}
+          loops={repeat ? 0 : 1}
+          autoPlay
+          scaleMode={resizeMode === 'contain' ? 'aspectFit' : 'aspectFill'}
+          onPlaybackFinished={onFinish}
+          onPlaybackError={(error) => { setFailed(true); onError?.(error); }}
+        />
+      );
     }
     return (
       <SvgaPlayer

@@ -12,7 +12,7 @@ const seatNameEffect = user => user?.nameEffect || user?.effectiveIdentity?.name
   ((user?.equippedVipId || user?.equippedSvipId)
     ? { colors: ['#FFE890', '#FFF8D6', '#E9B74D'], animationType: 'shimmer' } : undefined);
 
-const AnimatedSeatReaction = React.memo(function AnimatedSeatReaction({ emoji, id }) {
+const AnimatedSeatReaction = React.memo(function AnimatedSeatReaction({ emoji, id, size = 54 }) {
   const anim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -30,21 +30,21 @@ const AnimatedSeatReaction = React.memo(function AnimatedSeatReaction({ emoji, i
         useNativeDriver: true,
       }),
     ]).start();
-  }, [id]);
+  }, [id, anim]);
 
   const translateY = anim.interpolate({
     inputRange: [0, 0.4, 1, 2],
-    outputRange: [6, -10, -32, -58],
+    outputRange: [3, 0, -2, -2],
   });
 
   const translateX = anim.interpolate({
     inputRange: [0, 0.25, 0.5, 0.75, 1, 1.5, 2],
-    outputRange: [0, -4, 4, -3, 2, -2, 0],
+    outputRange: [0, -1, 1, -1, 1, -1, 0],
   });
 
   const scale = anim.interpolate({
     inputRange: [0, 0.35, 0.7, 1.4, 2],
-    outputRange: [0.3, 1.35, 1.15, 1.0, 0.5],
+    outputRange: [0.3, 1.05, 1, 1, 0.5],
   });
 
   const opacity = anim.interpolate({
@@ -57,7 +57,11 @@ const AnimatedSeatReaction = React.memo(function AnimatedSeatReaction({ emoji, i
       pointerEvents="none"
       style={{
         position: 'absolute',
-        top: -26,
+        top: Math.round(size * 0.08),
+        width: size * 0.62,
+        height: size * 0.62,
+        alignItems: 'center',
+        justifyContent: 'center',
         alignSelf: 'center',
         zIndex: 99999,
         elevation: 99999,
@@ -67,7 +71,8 @@ const AnimatedSeatReaction = React.memo(function AnimatedSeatReaction({ emoji, i
     >
       <Text
         style={{
-          fontSize: 34,
+          fontSize: Math.round(size * 0.5),
+          includeFontPadding: false,
           textAlign: 'center',
           textShadowColor: 'rgba(0,0,0,0.65)',
           textShadowOffset: { width: 0, height: 2 },
@@ -138,6 +143,14 @@ export default function VoiceRoomSeatGrid({
                           size={54}
                           showOnlineDot={false}
                         />
+                          {activeSeatReactions?.[seat.seatIndex] && (
+                            <AnimatedSeatReaction
+                              key={activeSeatReactions[seat.seatIndex].id}
+                              emoji={activeSeatReactions[seat.seatIndex].emoji}
+                              id={activeSeatReactions[seat.seatIndex].id}
+                              size={54}
+                            />
+                          )}
                         {seat.isMuted && (
                           <View style={styles.micMuteBadge}>
                             <Icon name="mic-off" size={7} color="#FFF" />
@@ -180,13 +193,6 @@ export default function VoiceRoomSeatGrid({
                       </View>
                     )}
                   </View>
-                )}
-                {activeSeatReactions?.[seat.seatIndex] && (
-                  <AnimatedSeatReaction
-                    key={activeSeatReactions[seat.seatIndex].id}
-                    emoji={activeSeatReactions[seat.seatIndex].emoji}
-                    id={activeSeatReactions[seat.seatIndex].id}
-                  />
                 )}
               </TouchableOpacity>
             );
@@ -245,6 +251,14 @@ export default function VoiceRoomSeatGrid({
                             size={avatarSize}
                             showOnlineDot={false}
                           />
+                          {activeSeatReactions?.[seat.seatIndex] && (
+                            <AnimatedSeatReaction
+                              key={activeSeatReactions[seat.seatIndex].id}
+                              emoji={activeSeatReactions[seat.seatIndex].emoji}
+                              id={activeSeatReactions[seat.seatIndex].id}
+                              size={avatarSize}
+                            />
+                          )}
                           {seat.isMuted && (
                             <View style={styles.micMuteBadge}>
                               <Icon name="mic-off" size={7} color="#FFF" />
@@ -318,13 +332,6 @@ export default function VoiceRoomSeatGrid({
                         </View>
                       )}
                     </View>
-                  )}
-                  {activeSeatReactions?.[seat.seatIndex] && (
-                    <AnimatedSeatReaction
-                      key={activeSeatReactions[seat.seatIndex].id}
-                      emoji={activeSeatReactions[seat.seatIndex].emoji}
-                      id={activeSeatReactions[seat.seatIndex].id}
-                    />
                   )}
                 </TouchableOpacity>
               );

@@ -93,6 +93,9 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
       const next = pending.current.shift();
       playing.current = Boolean(next);
       setCurrent(next || null);
+      if (!next) {
+        completion.current?.(null);
+      }
     };
 
     // Absolute safety timeout: gives sufficient buffer for network downloads

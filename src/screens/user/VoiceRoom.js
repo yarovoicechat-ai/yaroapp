@@ -275,7 +275,15 @@ export default function VoiceRoomScreen() {
   } = useVoiceRoom();
 
   const handleEntryEffectComplete = useCallback((entryId) => {
-    setActiveEntryEffect?.((previous) => previous?.entryId === entryId ? null : previous);
+    setActiveEntryEffect?.((previous) => {
+      if (!previous) return null;
+      if (!entryId || previous?.entryId === entryId) return null;
+      const remainingQueued = (previous?.queuedEntries || []).filter(
+        (e) => (e.entryId || e.id) !== entryId
+      );
+      if (remainingQueued.length === 0) return null;
+      return { ...previous, queuedEntries: remainingQueued };
+    });
   }, [setActiveEntryEffect]);
 
   // Modals for Tools, Music, Seat Layout, Themes & Seat Skins (Owner Tools)
@@ -575,15 +583,17 @@ export default function VoiceRoomScreen() {
   // Initialize or synchronize room in context
   useEffect(() => {
     if (route.params?.room || route.params?.roomId || route.params?.id) {
+      const currentActiveId = String(activeRoom?.id || activeRoom?.roomId || activeRoom?.channelName || activeRoom?._id || '');
       if (route.params?.room) {
         const incoming = route.params.room;
-        if (!activeRoom || activeRoom.id !== incoming.id) {
+        const incomingId = String(incoming.id || incoming.roomId || incoming.channelName || incoming._id || '');
+        if (!activeRoom || !currentActiveId || currentActiveId !== incomingId) {
           const isSelf = Boolean(incoming.isSelfHost);
           enterRoom(incoming, isSelf, incoming.seatCount || 8, user);
         }
       } else if (route.params?.roomId || route.params?.id) {
         const incomingId = String(route.params.roomId || route.params.id);
-        if (!activeRoom || String(activeRoom.id) !== incomingId) {
+        if (!activeRoom || !currentActiveId || currentActiveId !== incomingId) {
           const myId = String(user?.userId || user?._id || '');
           const isSelf = Boolean(myId && myId === incomingId);
           const deepLinkedRoom = {

@@ -47,6 +47,7 @@ export const VoiceRoomProvider = ({ children }) => {
   const [seats, setSeats] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [activeEntryEffect, setActiveEntryEffect] = useState(null);
+  const hasPlayedSelfEntranceRef = useRef(false);
   const nameEffectHandlerRef = useRef(null);
   const [activeVipEntry, setActiveVipEntry] = useState(null);
   const [currentRoomTheme, setCurrentRoomTheme] = useState(null);
@@ -139,12 +140,14 @@ export const VoiceRoomProvider = ({ children }) => {
             console.log('📡 [VoiceRoomContext] Reconnecting socket on app foreground...');
             sock.connect();
           } else {
-            // Re-sync room state silently
+            // Re-sync room state silently without replaying entrance effects
             sock.emit('voice_room:join', {
               roomId: activeRoomIdRef.current,
               user: currentUserRef.current,
               isHost: isOwner,
               customSeats: seatCount,
+              silent: true,
+              resync: true,
             });
           }
         }
@@ -901,6 +904,7 @@ export const VoiceRoomProvider = ({ children }) => {
     recentEntryUsersRef.current.clear();
     roomMemberIdsRef.current.clear();
     hasRoomMemberSnapshotRef.current = false;
+    hasPlayedSelfEntranceRef.current = false;
 
     activeRoomIdRef.current = roomId;
     currentUserRef.current = currentUser;
@@ -982,6 +986,7 @@ export const VoiceRoomProvider = ({ children }) => {
     setChatMessages([]);
     roomMemberIdsRef.current.clear();
     hasRoomMemberSnapshotRef.current = false;
+    hasPlayedSelfEntranceRef.current = false;
 
     // Helper to tag current user's seat
     const mapSeatsWithCurrentUser = (rawSeats, myUserId) => {
@@ -1507,6 +1512,8 @@ export const VoiceRoomProvider = ({ children }) => {
               isHost: actuallyOwner,
               customSeats,
               roomTitle: roomData.title,
+              silent: true,
+              resync: true,
             });
           }
         };
@@ -1533,10 +1540,10 @@ export const VoiceRoomProvider = ({ children }) => {
           const eventKey = entryId ? `event:${entryId}` : '';
           const now = Date.now();
           const eventSeenAt = eventKey ? (recentEntryUsersRef.current.get(eventKey) || 0) : 0;
-          const hasSeenEvent = eventKey && eventSeenAt && (now - eventSeenAt < 2000);
+          const hasSeenEvent = eventKey && eventSeenAt && (now - eventSeenAt < 30000);
           const hasRecentUserEvent = userKeys.some((key) => {
             const seenAt = recentEntryUsersRef.current.get(key) || 0;
-            return seenAt && now - seenAt < 1000;
+            return seenAt && now - seenAt < 15000;
           });
           if (hasSeenEvent || (!eventKey && hasRecentUserEvent)) return false;
           userKeys.forEach((key) => recentEntryUsersRef.current.set(key, now));
@@ -1551,6 +1558,16 @@ export const VoiceRoomProvider = ({ children }) => {
           if (!isCurrentRoomEvent(data)) return;
           const userKeys = [data?.user?.userId, data?.userId, data?.user?.id, data?.user?._id]
             .filter(Boolean).map(String);
+          const isSelf = Boolean(
+            currentUserId &&
+            userKeys.some((k) => String(k) === String(currentUserId))
+          );
+          if (isSelf) {
+            if (hasPlayedSelfEntranceRef.current) {
+              return;
+            }
+            hasPlayedSelfEntranceRef.current = true;
+          }
           if (!rememberEntryEvent(data)) return;
           console.warn(`📡 [VoiceRoom] ${eventName} received in Context:`, data?.entryId, data?.user?.name);
           if (data?.user) {
@@ -1851,6 +1868,7 @@ export const VoiceRoomProvider = ({ children }) => {
   // Minimize (Keep in Floating Mode)
   const minimizeRoom = () => {
     setIsMinimized(true);
+    setActiveEntryEffect(null);
     if (navigationRef.current) {
       if (navigationRef.current.canGoBack()) {
         navigationRef.current.goBack();
@@ -1955,6 +1973,7 @@ export const VoiceRoomProvider = ({ children }) => {
     setActiveRoom(null);
     roomMemberIdsRef.current.clear();
     hasRoomMemberSnapshotRef.current = false;
+    hasPlayedSelfEntranceRef.current = false;
     setIsMinimized(false);
     setCurrentSeatIndex(null);
     setIsMuted(true);
@@ -1968,6 +1987,7 @@ export const VoiceRoomProvider = ({ children }) => {
     setBannedChatUsers([]);
     setMutedUsers([]);
     setLocallyMutedUsers([]);
+    hasPlayedSelfEntranceRef.current = false;
     setActiveEntryEffect(null);
     setActiveVipEntry(null);
     recentEntryUsersRef.current?.clear?.();

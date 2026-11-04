@@ -56,7 +56,7 @@ export default function PartyScreen() {
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomTabBarPadding = getTabScreenBottomPadding(insets.bottom);
   const { user } = useContext(AuthContext);
-  const { enterRoom } = useVoiceRoom();
+  const { enterRoom, activeRoom, setIsMinimized } = useVoiceRoom();
 
   const [activeTab, setActiveTab] = useState('Explore');
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -120,6 +120,13 @@ export default function PartyScreen() {
     const isOwner = roomItem.isSelfHost || String(roomItem.ownerId || roomItem.hostId || '') === myId;
     if (isLocked && !isOwner) {
       setLockedRoomTarget(roomItem);
+      return;
+    }
+    const targetRoomId = String(roomItem?.id || roomItem?.roomId || roomItem?.channelName || roomItem?._id || '');
+    const currentActiveId = String(activeRoom?.id || activeRoom?.roomId || activeRoom?.channelName || activeRoom?._id || '');
+    if (activeRoom && currentActiveId && targetRoomId && currentActiveId === targetRoomId) {
+      setIsMinimized?.(false);
+      navigation.navigate('VoiceRoom', { room: activeRoom, isPinVerified: isOwner });
       return;
     }
     enterRoom(roomItem, roomItem.isSelfHost, roomItem.seatCount || 8, user);
@@ -570,6 +577,13 @@ export default function PartyScreen() {
           const target = lockedRoomTarget;
           setLockedRoomTarget(null);
           if (target) {
+            const targetRoomId = String(target?.id || target?.roomId || target?.channelName || target?._id || '');
+            const currentActiveId = String(activeRoom?.id || activeRoom?.roomId || activeRoom?.channelName || activeRoom?._id || '');
+            if (activeRoom && currentActiveId && targetRoomId && currentActiveId === targetRoomId) {
+              setIsMinimized?.(false);
+              navigation.navigate('VoiceRoom', { room: activeRoom, isPinVerified: true });
+              return;
+            }
             enterRoom(target, target.isSelfHost, target.seatCount || 8, user);
             navigation.navigate('VoiceRoom', { room: target, isPinVerified: true });
           }

@@ -1,4 +1,5 @@
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, AppState } from 'react-native';
+import { showRoomOpenSocketNotification } from '../utils/ActivityNotificationService';
 // src/utils/socket.js
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { io } from "socket.io-client";
@@ -139,6 +140,10 @@ export const initSocket = async () => {
     console.log("⚠️ Socket Error:", message);
   });
 
+  socket.on('notification:new', payload => {
+    if (AppState.currentState !== 'active') return;
+    showRoomOpenSocketNotification(payload).catch(error => console.log('Room notification display failed:', error.message));
+  });
   socket.on('identity:name-effect-updated', payload => DeviceEventEmitter.emit('identityNameEffectUpdated', payload));
   return socket;
 };

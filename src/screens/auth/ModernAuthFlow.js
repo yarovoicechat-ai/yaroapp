@@ -266,14 +266,15 @@ export function ProfileDetailsScreen() {
   const { login } = useContext(AuthContext);
 
   const [displayName, setDisplayName] = useState(params.fullName || '');
-  const [dob, setDob] = useState('15 Aug 2000');
+  const [dob, setDob] = useState('');
   const [gender, setGender] = useState('female');
   const [country, setCountry] = useState(params.selectedCountry || DEFAULT_COUNTRY);
   const [language, setLanguage] = useState('English');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [avatarUri, setAvatarUri] = useState(null);
-  const [age, setAge] = useState(26);
+  const [age, setAge] = useState(null);
+  const [countryConfirmed, setCountryConfirmed] = useState(Boolean(params.selectedCountry));
 
   // Date of Birth interactive modal states
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -285,6 +286,7 @@ export function ProfileDetailsScreen() {
   useEffect(() => {
     if (route.params?.selectedCountry) {
       setCountry(route.params.selectedCountry);
+      setCountryConfirmed(true);
     }
   }, [route.params?.selectedCountry]);
 
@@ -311,6 +313,8 @@ export function ProfileDetailsScreen() {
   };
 
   const handleConfirmDate = () => {
+    const selectedDate = new Date(tempYear, tempMonth, tempDay);
+    if (selectedDate.getMonth() !== tempMonth || selectedDate.getDate() !== tempDay) { AlertService.show("Invalid Date", "Choose a valid date of birth.", "warning"); return; }
     if (tempAge < 18) {
       AlertService.show('Age Restriction', 'You must be at least 18 years old to join Yaro.', 'warning');
       return;
@@ -338,12 +342,13 @@ export function ProfileDetailsScreen() {
       selectedCountry: country,
       returnScreen: 'ProfileDetails',
       onSelect: (selected) => {
-        if (selected) setCountry(selected);
+        if (selected) { setCountry(selected); setCountryConfirmed(true); }
       },
     });
   };
 
   const submit = async () => {
+    if (!dob || !age || !countryConfirmed) { AlertService.show("Profile Required", "Select your date of birth and country.", "warning"); return; }
     try {
       setLoading(true);
       const deviceId = await DeviceInfo.getUniqueId();
@@ -471,7 +476,7 @@ export function ProfileDetailsScreen() {
           <Detail
             icon="shield-checkmark-outline"
             label="Age Verification"
-            value={`✓ ${age} Years Old (18+ Verified)`}
+            value={age ? `${age} Years Old (18+ Verified)` : "Select date of birth"}
             valueColor="#10B981"
           />
 
@@ -496,7 +501,7 @@ export function ProfileDetailsScreen() {
                 <TouchableOpacity
                   key={c.code + c.name}
                   style={[s.countryChip, isActive && s.countryChipActive]}
-                  onPress={() => setCountry(c)}
+                  onPress={() => { setCountry(c); setCountryConfirmed(true); }}
                   activeOpacity={0.75}
                 >
                   <Text style={[s.countryChipText, isActive && s.countryChipTextActive]}>
@@ -523,7 +528,7 @@ export function ProfileDetailsScreen() {
             onPress={() => setLanguage(language === 'English' ? 'Hindi' : 'English')}
           />
 
-          <GradientButton title="Next" onPress={() => setStep(2)} />
+          <GradientButton title="Next" onPress={() => { if (!dob || !age || !countryConfirmed) { AlertService.show("Profile Required", "Select your date of birth and country.", "warning"); return; } setStep(2); }} />
         </>
       ) : (
         <>

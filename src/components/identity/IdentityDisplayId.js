@@ -1,261 +1,44 @@
-import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ToastAndroid,
-  Image,
-  Clipboard,
-  Animated,
-  Easing,
-} from 'react-native';
+﻿import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ToastAndroid, Clipboard, Animated, Easing } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import LinearGradient from 'react-native-linear-gradient';
 import SvgaView from '../SvgaView';
+import { resolveDisplayId } from '../../utils/identityId';
 
-/**
- * Identity Display ID Presentation Component
- *
- * Requirements:
- * - Permanent numeric user ID is authoritative (e.g. 1000000002).
- * - Active Official ID / Vanity ID (e.g. 600002 or "BLACK") has an animated text treatment.
- * - When user has a VIP Unique ID, plain boring text ("YARO ID: 12345") is NOT shown.
- * - The ID text has no background; uploaded badge art is rendered separately.
- * - Copying copies the effective ID.
- */
-export default function IdentityDisplayId({
-  userId,
-  officialDisplayId = null,
-  isOfficial = false,
-  customDisplayId = null,
-  badgeUrl = null,
-  badgeText = null,
-  showBadge = true,
-  showCopy = true,
-  showPrefix = false,
-  prefix = 'YARO ID: ',
-  fontSize = 13,
-  textColor,
-  style,
-}) {
-  const permanentIdStr = String(userId || '').trim();
-  const effectiveId = String(
-    isOfficial && officialDisplayId
-      ? officialDisplayId
-      : customDisplayId || officialDisplayId || permanentIdStr
-  ).trim();
-
-  // Sanitize badgeUrl so that avatar frames are never displayed as ID badges
-  const isFrameAsset = Boolean(badgeUrl && /frame/i.test(String(badgeUrl)));
-  const cleanBadgeUrl = isFrameAsset ? null : badgeUrl;
-  const hasSvgaBadge = Boolean(showBadge && cleanBadgeUrl);
-
-  // Determine if user has a VIP / Vanity / Official ID
-  const isVanity = Boolean(
-    isOfficial ||
-    customDisplayId ||
-    (officialDisplayId && String(officialDisplayId) !== permanentIdStr) ||
-    cleanBadgeUrl ||
-    (badgeText && !['ID'].includes(String(badgeText).toUpperCase()))
-  );
-
-  // Animate the ID letters themselves. Keep the badge as a separate asset and
-  // leave the area behind the ID transparent.
+export default function IdentityDisplayId({ userId, officialDisplayId = null, isOfficial = false,
+  customDisplayId = null, badgeUrl = null, badgeText = null, showBadge = true, showCopy = true,
+  showPrefix = true, prefix = 'YARO ID : ', fontSize = 13, textColor = '#64748B', style }) {
+  const { effectiveId, isUnique } = resolveDisplayId({ userId, officialDisplayId, isOfficial, customDisplayId });
+  const cleanBadgeUrl = badgeUrl && !/frame/i.test(String(badgeUrl)) ? badgeUrl : null;
   const idColorAnim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
-    if (!isVanity) return;
-
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(idColorAnim, {
-          toValue: 1,
-          duration: 1600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(idColorAnim, {
-          toValue: 0,
-          duration: 1600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-      ])
-    );
+    if (!isUnique) return undefined;
+    const animation = Animated.loop(Animated.sequence([
+      Animated.timing(idColorAnim, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+      Animated.timing(idColorAnim, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+    ]));
     animation.start();
-
     return () => animation.stop();
-  }, [isVanity, idColorAnim]);
-
-  const animatedIdColor = idColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#FFD700', '#FDE047'],
-  });
-
+  }, [isUnique, idColorAnim]);
   const handleCopy = () => {
-    try {
-      Clipboard.setString(effectiveId);
-      if (ToastAndroid?.show) {
-        ToastAndroid.show(`ID ${effectiveId} copied!`, ToastAndroid.SHORT);
-      }
-    } catch (_) {}
+    if (!effectiveId) return;
+    Clipboard.setString(effectiveId);
+    if (ToastAndroid?.show) ToastAndroid.show(`ID ${effectiveId} copied!`, ToastAndroid.SHORT);
   };
-
-  // 1. VIP / Vanity Unique ID Presentation
-  if (isVanity) {
-    return (
-      <View style={[styles.outerRow, style]}>
-        {hasSvgaBadge ? (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={showCopy ? handleCopy : undefined}
-            style={styles.vipIconWrap}
-          >
-            <SvgaView source={cleanBadgeUrl} style={styles.customBadgeImg} resizeMode="contain" />
-          </TouchableOpacity>
-        ) : showBadge && badgeText ? (
-          <MaterialCommunityIcons
-            name="crown"
-            size={Math.max(18, fontSize + 4)}
-            color="#FFD700"
-            style={styles.vipIconWrap}
-          />
-        ) : null}
-
-        {Boolean(effectiveId) && (
-          <Animated.Text
-            style={[
-              styles.vipIdText,
-              { fontSize: Math.max(13, fontSize + 1), color: animatedIdColor },
-            ]}
-            numberOfLines={1}
-          >
-            {effectiveId}
-          </Animated.Text>
-        )}
-
-        {/* Copy Button */}
-        {showCopy && (
-          <TouchableOpacity
-            onPress={handleCopy}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={styles.copyButton}
-          >
-            <Icon name="copy-outline" size={Math.max(15, fontSize + 2)} color="#FFD700" />
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  }
-
-  // 2. Standard ID Presentation (when user has regular numeric ID)
-  return (
-    <View style={[styles.container, style]}>
-      {showPrefix && (
-        <Text style={[styles.prefixText, { fontSize }]}>{prefix}</Text>
-      )}
-
-      {showBadge && (
-        <View style={styles.badgeWrapper}>
-          {hasSvgaBadge ? (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={showCopy ? handleCopy : undefined}
-            >
-              <SvgaView source={cleanBadgeUrl} style={styles.customBadgeImg} resizeMode="contain" />
-            </TouchableOpacity>
-          ) : (
-            <LinearGradient
-              colors={['#CA8A04', '#A16207']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.regularSealCircle}
-            >
-              <Text style={styles.regularSealText}>{badgeText || 'ID'}</Text>
-            </LinearGradient>
-          )}
-        </View>
-      )}
-
-      {Boolean(effectiveId) && (
-        <Text
-          style={[
-            styles.regularIdText,
-            textColor ? { color: textColor } : null,
-            { fontSize: fontSize + 1 },
-          ]}
-          numberOfLines={1}
-        >
-          {effectiveId}
-        </Text>
-      )}
-
-      {showCopy && (
-        <TouchableOpacity
-          onPress={handleCopy}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={styles.copyButton}
-        >
-          <Icon name="copy-outline" size={Math.max(15, fontSize + 2)} color="#FFD700" />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+  const color = isUnique ? idColorAnim.interpolate({ inputRange: [0, 1], outputRange: ['#FFD700', '#FDE047'] }) : textColor;
+  const IdText = isUnique ? Animated.Text : Text;
+  return <View style={[styles.row, style]}>
+    {isUnique ? showBadge && (cleanBadgeUrl ? <SvgaView source={cleanBadgeUrl} style={styles.badge} resizeMode="contain" /> : <MaterialCommunityIcons name="shield-crown" size={fontSize + 5} color="#FFD700" style={styles.badgeFallback} />) : showPrefix && <Text style={[styles.prefix, { fontSize, color: textColor }]}>{prefix}</Text>}
+    <IdText numberOfLines={1} style={[styles.id, { fontSize, color }, isUnique && styles.unique]}>{effectiveId}</IdText>
+    {showCopy && Boolean(effectiveId) && <TouchableOpacity accessibilityLabel={`Copy ID ${effectiveId}`} onPress={handleCopy} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.copy}><Icon name="copy-outline" size={fontSize + 2} color={isUnique ? '#FFD700' : textColor} /></TouchableOpacity>}
+  </View>;
 }
-
 const styles = StyleSheet.create({
-  outerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  prefixText: {
-    color: '#64748B',
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  vipIconWrap: {
-    marginRight: 5,
-    justifyContent: 'center',
-  },
-  customBadgeImg: {
-    width: 58,
-    height: 20,
-  },
-  vipIdText: {
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textShadowColor: 'rgba(212, 175, 55, 0.55)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
-  },
-  badgeWrapper: {
-    marginRight: 5,
-  },
-  regularSealCircle: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  regularSealText: {
-    color: '#F8FAFC',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  regularIdText: {
-    color: '#64748B',
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  copyButton: {
-    marginLeft: 6,
-    padding: 2,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', minWidth: 0, flexShrink: 1 },
+  prefix: { fontWeight: '500', includeFontPadding: false },
+  id: { fontWeight: '600', flexShrink: 1, includeFontPadding: false, letterSpacing: 0 },
+  unique: { fontWeight: '800', textShadowColor: 'rgba(212,175,55,0.35)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 3 },
+  badge: { width: 38, height: 20, marginRight: 3 },
+  badgeFallback: { marginRight: 3 },
+  copy: { marginLeft: 4, padding: 2 },
 });

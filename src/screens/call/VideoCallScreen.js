@@ -58,15 +58,22 @@ export default function VideoCallScreen() {
   const { clearCall } = useCall();
 
   const {
-    channelName = 'yaro_video_' + Date.now(),
+    channelName = '',
     transactionId = '',
     name = 'Host',
     image = '',
     gender,
-    agora = {},
+    agora: rawAgora,
     isCaller = false,
     maxMinutes = 15,
   } = route.params || {};
+
+  const agora = useMemo(() => {
+    if (typeof rawAgora === 'string') {
+      try { return JSON.parse(rawAgora) || {}; } catch (_) { return {}; }
+    }
+    return rawAgora || {};
+  }, [rawAgora]);
 
   const partnerId =
     route.params?.hostId ||
@@ -292,6 +299,7 @@ export default function VideoCallScreen() {
   // Initialize Agora Video Engine
   useEffect(() => {
     let engine = null;
+    let cancelled = false;
 
     const setupVideoCall = async () => {
       try {
@@ -303,6 +311,7 @@ export default function VideoCallScreen() {
           ]);
           cameraGranted = granted[PermissionsAndroid.PERMISSIONS.CAMERA] === PermissionsAndroid.RESULTS.GRANTED;
           const audioGranted = granted[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED;
+          if (cancelled || isLeavingRef.current) return;
           setHasCameraPermission(cameraGranted);
           if (!cameraGranted) {
             setIsCameraOn(false);
@@ -317,10 +326,14 @@ export default function VideoCallScreen() {
             );
           }
           if (!audioGranted) {
-            console.warn('⚠️ Audio permission not granted:', granted);
+            throw new Error('Microphone permission is required for this call.');
           }
         }
 
+        if (cancelled || isLeavingRef.current) return;
+        if (!channelName || !getRoleAgoraCredentials(agora, isCaller)) {
+          throw new Error('Call connection details are unavailable.');
+        }
         InCallManager.start({ media: 'video', auto: true });
         InCallManager.setSpeakerphoneOn(true);
 
@@ -383,37 +396,42 @@ export default function VideoCallScreen() {
           onUserOffline: (connection, u, reason) => {
             console.log('👤 Remote user offline:', u);
             setRemoteUid(null);
-            handleEndCall();
+            setTimeout(() => { if (!cancelled) handleEndCall(); }, 0);
           },
           onError: (err, msg) => {
             console.log('⚠️ Agora video error:', err, msg);
           },
         });
 
-        engine.joinChannel(token, channelName, uid, {
+        const joinResult = engine.joinChannel(token, channelName, uid, {
           clientRoleType: ClientRoleType.ClientRoleBroadcaster,
           publishCameraTrack: cameraGranted,
           publishMicrophoneTrack: true,
           autoSubscribeAudio: true,
           autoSubscribeVideo: true,
         });
+        if (typeof joinResult === 'number' && joinResult < 0) throw new Error('Call connection failed.');
       } catch (err) {
         console.log('Agora video initialization failed:', err?.message);
+        if (!cancelled && !isLeavingRef.current) {
+          AlertService.show('Call unavailable', err?.message || 'Please try calling again.', 'error');
+          handleEndCall();
+        }
       }
     };
 
     setupVideoCall();
 
     return () => {
+      cancelled = true;
       try {
         InCallManager.stop();
-        if (engine) {
-          engine.stopPreview();
-          engine.leaveChannel();
-          engine.release();
+        if (engine && agoraEngineRef.current === engine) {
+          agoraEngineRef.current = null;
+          try { engine.stopPreview(); } catch (_) {}
+          AgoraClientService.releaseEngine(engine);
         }
       } catch (_) {}
-      setIsEngineReady(false);
     };
   }, [agora, channelName, isCaller]);
 
@@ -476,10 +494,10 @@ export default function VideoCallScreen() {
       if (giftBannerTimerRef.current) clearTimeout(giftBannerTimerRef.current);
       InCallManager.stop();
       if (agoraEngineRef.current) {
-        agoraEngineRef.current.stopPreview();
-        agoraEngineRef.current.leaveChannel();
-        agoraEngineRef.current.release();
+        const engineToRelease = agoraEngineRef.current;
         agoraEngineRef.current = null;
+        try { engineToRelease.stopPreview(); } catch (_) {}
+        AgoraClientService.releaseEngine(engineToRelease);
       }
 
       if (transactionId) {

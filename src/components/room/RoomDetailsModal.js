@@ -1,3 +1,4 @@
+import IdentityDisplayId from '../identity/IdentityDisplayId';
 import React from 'react';
 import {
   View,
@@ -116,20 +117,7 @@ export default function RoomDetailsModal({
 
             {/* ID */}
             <View style={styles.idRow}>
-              {effectiveBadgeUrl ? (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={handleCopyRoomId}
-                  style={styles.modalBadgeWrap}
-                >
-                  <SvgaView source={effectiveBadgeUrl} style={styles.modalBadgeSvga} resizeMode="contain" />
-                </TouchableOpacity>
-              ) : (
-                <Text style={[styles.roomIdText, hasUnique && styles.roomIdTextVip]}>ID:{roomId}</Text>
-              )}
-              <TouchableOpacity onPress={handleCopyRoomId} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Icon name="copy-outline" size={14} color="#94A3B8" style={{ marginLeft: 6 }} />
-              </TouchableOpacity>
+              <IdentityDisplayId userId={owner?.userId || room?.roomId || room?.id} customDisplayId={roomId} badgeUrl={effectiveBadgeUrl} showBadge showPrefix showCopy textColor="#94A3B8" />
             </View>
 
             {/* Stats Row: Total Diamonds | Members */}

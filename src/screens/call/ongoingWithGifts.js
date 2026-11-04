@@ -373,6 +373,7 @@ const OnGoing = ({ route, navigation }) => {
   // Gift State
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [gifts, setGifts] = useState([]);
+  const featuredGifts = useMemo(() => gifts.slice(0, 6), [gifts]);
   const [loadingGifts, setLoadingGifts] = useState(false);
 
   // Custom UI Selection States
@@ -491,7 +492,7 @@ const OnGoing = ({ route, navigation }) => {
         try { eng.muteAllRemoteAudioStreams(true); } catch (_) {}
         try { eng.disableAudio(); } catch (_) {}
         try { eng.leaveChannel(); } catch (_) {}
-        try { eng.release(); } catch (_) {}
+        try { AgoraClientService.releaseEngine(eng); } catch (_) {}
         console.log('[CALL] AGORA TEARDOWN COMPLETE');
       }
     } catch (e) {
@@ -558,7 +559,9 @@ const OnGoing = ({ route, navigation }) => {
       }
 
       try {
-        await requestMicrophonePermission();
+        const granted = await requestMicrophonePermission();
+        if (callEndedRef.current || isLeavingRef.current || agoraEngineRef.current !== engine) return;
+        if (!granted) { endCall('Microphone permission denied'); return; }
       } catch (permErr) {
         console.warn('[CALL] Microphone permission request notice:', permErr);
       }
@@ -608,7 +611,7 @@ const OnGoing = ({ route, navigation }) => {
 
         engine.addListener('onUserOffline', (connection, remoteUid, reason) => {
           if (callEndedRef.current || isLeavingRef.current) return;
-          endCall('Other user disconnected');
+          setTimeout(() => endCall('Other user disconnected'), 0);
         });
 
         engine.addListener('onError', (err, msg) => {
@@ -618,12 +621,12 @@ const OnGoing = ({ route, navigation }) => {
             console.error('Fatal Agora RTC Token or Connection Error:', err, msg);
             joinRequestedRef.current = false;
             hasJoinedChannelRef.current = false;
-            endCall('Call connection failed');
+            setTimeout(() => endCall('Call connection failed'), 0);
           }
         });
       } catch (initErr) {
         console.error('Failed to configure Agora RTC Engine:', initErr);
-        try { engine.release(); } catch (_) {}
+        try { AgoraClientService.releaseEngine(engine); } catch (_) {}
         agoraEngineRef.current = null;
         endCall('Call setup error');
         return;
@@ -849,7 +852,7 @@ const OnGoing = ({ route, navigation }) => {
           const eng = agoraEngineRef.current;
           agoraEngineRef.current = null;
           try { eng.leaveChannel(); } catch (_) {}
-          try { eng.release(); } catch (_) {}
+          try { AgoraClientService.releaseEngine(eng); } catch (_) {}
           joinRequestedRef.current = false;
           hasJoinedChannelRef.current = false;
           isAgoraInitializingRef.current = false;

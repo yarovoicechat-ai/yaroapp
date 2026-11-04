@@ -19,7 +19,12 @@ import {
   showMessageNotification,
 } from './src/utils/MessageNotificationService';
 
+import { isActivityNotification, showActivityNotification, handleActivityNotificationEvent } from './src/utils/ActivityNotificationService';
+
 notifee.onBackgroundEvent(async event => {
+  if (isActivityNotification(event.detail?.notification?.data)) {
+    return handleActivityNotificationEvent(event);
+  }
   if (event.detail?.notification?.data?.type === 'message') {
     return handleMessageNotificationEvent(event);
   }
@@ -33,6 +38,8 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
     await showIncomingCallNotification(remoteMessage.data);
   } else if (remoteMessage?.data?.type === 'call_state') {
     await applyTerminalCallState(remoteMessage.data);
+  } else if (isActivityNotification(remoteMessage?.data) && !remoteMessage.notification) {
+    await showActivityNotification(remoteMessage.data);
   } else if (remoteMessage?.data?.type === 'message') {
     await showMessageNotification(remoteMessage.data);
   }

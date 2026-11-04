@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { AuthProvider } from "./src/context/AuthProvider";
@@ -8,7 +8,7 @@ import { NotificationListen, requestUserPermission } from "./src/utils/Notificat
 
 import { navigationRef } from "./src/utils/navigationRef";
 
-import { StatusBar, StyleSheet, View } from "react-native";
+import { NativeModules, StatusBar, StyleSheet, View } from "react-native";
 import FloatingVoiceRoomWidget from "./src/components/FloatingVoiceRoomWidget";
 
 const AppTheme = {
@@ -53,6 +53,13 @@ const linking = {
 
 const AppWrapper = () => {
   const ui = useUI();
+  const [activeScreen, setActiveScreen] = useState('');
+  const syncActiveScreen = () => setActiveScreen(navigationRef.getCurrentRoute()?.name || '');
+  const rootBackground = activeScreen === 'VoiceRoom' ? '#0C0806' : '#FFFFFF';
+
+  useEffect(() => {
+    NativeModules.SystemBars?.setRoomAppearance(activeScreen === 'VoiceRoom');
+  }, [activeScreen]);
 
   useEffect(() => {
     setAlertRef(ui);
@@ -74,14 +81,16 @@ const AppWrapper = () => {
   }, []);
 
   return (
-    <View style={styles.appRoot}>
+    <View style={[styles.appRoot, { backgroundColor: rootBackground }]}>
       <NavigationContainer
         ref={navigationRef}
-        theme={AppTheme}
+        theme={{ ...AppTheme, colors: { ...AppTheme.colors, background: rootBackground } }}
         linking={linking}
         onReady={() => {
+          syncActiveScreen();
           executePendingDeepLink();
         }}
+        onStateChange={syncActiveScreen}
       >
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
         <AppNavigator />

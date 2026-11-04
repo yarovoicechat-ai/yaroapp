@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { AppState, DeviceEventEmitter } from 'react-native';
+import { AppState, DeviceEventEmitter, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiUtil } from '../utils/apiUtil';
 import { initSocket, getSocket } from '../sockets/';
@@ -52,7 +52,21 @@ export const AuthProvider = ({ children }) => {
     userRef.current = user;
   }, [user]);
 
+  const warmedImagesRef = useRef(new Set());
   const syncEquippedState = useCallback((profile) => {
+    // Warm only the equipped previews; never download the entire store at login.
+    const assets = [profile?.equippedFrameAsset, profile?.equippedChatBubbleAsset,
+      profile?.equippedEntryAsset, profile?.equippedTagAsset];
+    for (const asset of assets) {
+      const rawUri = asset?.coverImageUrl || asset?.imageUrl;
+      if (typeof rawUri !== 'string' || !rawUri.trim()) continue;
+      const uri = rawUri.startsWith('/') ? 'https://api.yaroapp.in' + rawUri : rawUri;
+      if (!/^https?:\/\//i.test(uri) || !/\.(png|jpe?g|webp|gif)(?:[?#]|$)/i.test(uri) || warmedImagesRef.current.has(uri)) continue;
+      if (warmedImagesRef.current.size >= 64) warmedImagesRef.current.clear();
+      warmedImagesRef.current.add(uri);
+      Image.prefetch(uri).then(ok => { if (!ok) warmedImagesRef.current.delete(uri); })
+        .catch(() => warmedImagesRef.current.delete(uri));
+    }
     setEquippedFrameState(profile?.equippedFrame || null);
     setEquippedMicWaveState(profile?.equippedMicWave || null);
     setEquippedEntryState(

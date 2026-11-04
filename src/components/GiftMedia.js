@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Platform,
@@ -38,6 +38,7 @@ const GiftMedia = ({
   onError,
 }) => {
   const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [source]);
   const type = useMemo(() => inferType(source, mediaType), [source, mediaType]);
   const flattenedStyle = StyleSheet.flatten(style) || {};
   const width = flattenedStyle.width || '100%';

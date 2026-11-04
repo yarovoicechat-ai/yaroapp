@@ -241,7 +241,7 @@ const OTPVerificationPhoneAuth = () => {
 
             {/* Verify Button */}
             <TouchableOpacity
-              onPress={handleVerifyOtp}
+              onPress={handleContinue}
               disabled={loading}
               activeOpacity={0.85}
               style={styles.primaryButtonWrapper}

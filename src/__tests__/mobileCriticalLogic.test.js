@@ -311,3 +311,20 @@ describe('5. Call Billing & Diamond Balance Edge Cases', () => {
     expect(validateCallerBalance(null, 100)).toBe(false);
   });
 });
+
+
+describe('Agora teardown regression', () => {
+  test('next call with the same App ID gets a fresh engine; duplicate teardown is harmless', () => {
+    const oldEngine = { leaveChannel: jest.fn(), release: jest.fn() };
+    const nextEngine = { leaveChannel: jest.fn(), release: jest.fn() };
+    AgoraClientService.registerEngine(oldEngine, 'same-project');
+    AgoraClientService.releaseEngine(oldEngine);
+    AgoraClientService.releaseEngine(oldEngine);
+    expect(oldEngine.release).toHaveBeenCalledTimes(1);
+    const next = AgoraClientService.prepareEngineForAppId('same-project', () => nextEngine);
+    expect(next.engine).toBe(nextEngine);
+    // An old screen cleaning up late must not evict the new call's engine.
+    AgoraClientService.releaseEngine(oldEngine);
+    expect(AgoraClientService.prepareEngineForAppId('same-project').engine).toBe(nextEngine);
+  });
+});

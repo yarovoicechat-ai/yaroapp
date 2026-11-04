@@ -70,7 +70,7 @@ export default function RoomLockModal({
         if (res.data?.success) {
           AlertService.show('Room Locked', '4-digit password set successfully!', 'success');
           if (onSuccess) onSuccess(pin);
-          onClose();
+          onClose(true);
         } else {
           AlertService.show('Notice', res.data?.message || 'Failed to set room lock', 'info');
         }
@@ -78,7 +78,7 @@ export default function RoomLockModal({
         const res = await apiUtil.post(`/voice-club/rooms/${roomId}/verify-pin`, { pin });
         if (res.data?.success && res.data?.valid) {
           if (onSuccess) onSuccess(pin);
-          onClose();
+          onClose(true);
         } else {
           AlertService.show('Access Denied', res.data?.message || 'Incorrect password', 'info');
           setPin('');
@@ -100,7 +100,7 @@ export default function RoomLockModal({
       });
       if (res.data?.success) {
         AlertService.show('Room Unlocked', 'Room is now public and unlocked', 'success');
-        if (onUnlockRoom) onUnlockRoom();
+        if (onUnlockRoom) onUnlockRoom({ alreadyUnlocked: true });
         onClose();
       } else {
         AlertService.show('Notice', res.data?.message || 'Failed to unlock room', 'info');

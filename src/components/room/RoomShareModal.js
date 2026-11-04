@@ -11,7 +11,7 @@ import {
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AlertService } from '../../utils/AlertService';
+import { buildRoomShare } from '../../utils/shareLinks';
 
 /**
  * RoomShareModal
@@ -32,20 +32,22 @@ export default function RoomShareModal({
 
   if (!visible) return null;
 
-  const shareText = `Join me in ${roomName} on Yaro! Room ID: ${roomId || ''}`;
+  const sharePayload = roomId ? buildRoomShare(roomId, roomName) : null;
+  const shareText = sharePayload?.message || '';
 
   const handleWhatsApp = async () => {
+    if (!sharePayload) return;
     try {
       const url = `whatsapp://send?text=${encodeURIComponent(shareText)}`;
       const canOpen = await Linking.canOpenURL(url);
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        await Share.share({ message: shareText });
+        await Share.share(sharePayload);
       }
       onClose();
     } catch (e) {
-      Share.share({ message: shareText }).catch(() => {});
+      Share.share(sharePayload).catch(() => {});
       onClose();
     }
   };
@@ -55,7 +57,7 @@ export default function RoomShareModal({
     if (onShareWithFriends) {
       onShareWithFriends();
     } else {
-      AlertService.show('Invitation Sent', 'Room link shared with your Yaro friends!', 'success');
+      if (sharePayload) Share.share(sharePayload).catch(() => {});
     }
   };
 
@@ -94,6 +96,7 @@ export default function RoomShareModal({
             <TouchableOpacity
               style={styles.optionItem}
               onPress={handleWhatsApp}
+              accessibilityLabel="Share room on WhatsApp"
               activeOpacity={0.8}
             >
               <View style={[styles.iconCircle, { backgroundColor: '#25D366' }]}>

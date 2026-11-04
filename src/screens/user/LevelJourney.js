@@ -194,7 +194,7 @@ export default function LevelJourney() {
         (item.type === 'profile_border' && equippedBorder === item.name) ||
         (item.type === 'custom_id' && equippedCustomId === item.name) ||
         (item.type === 'theme' && equippedTheme === item.id) ||
-        (item.type === 'mic' && equippedMicWave === item.name)
+        (item.type === 'mic' && equippedMic === item.name)
       ) {
         return 'EQUIPPED';
       }

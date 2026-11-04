@@ -1437,17 +1437,7 @@ export const VoiceRoomProvider = ({ children }) => {
           setJoinedNotification((previous) => previous && !matchesLeavingUser(previous) ? previous : null);
           setActiveEntryEffect((previous) => previous && !matchesLeavingUser(previous) ? previous : null);
           setActiveVipEntry((previous) => previous && !matchesLeavingUser(previous) ? previous : null);
-          if (!data?.announcementSent && data?.user?.name && (!currentUserId || String(data.user.userId) !== String(currentUserId))) {
-            setChatMessages((prev) => [
-              ...prev,
-              {
-                id: 'sys-leave-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-                type: 'system',
-                text: `🚶 ${data.user.name} left the room`,
-                timestamp: Date.now(),
-              },
-            ]);
-          }
+
         });
 
         // 6.1 Moved to Audience by Admin/Host (User stays in room, mic muted)
@@ -1476,6 +1466,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 7. Chat Message Broadcast
         sock.on('voice_room:chat_message', (msg) => {
+          if (msg?.type === 'system' && /(?:joined (?:the )?room|left (?:the )?room|took seat|vacated seat|approved for Live seat)/i.test(msg.text || '')) return;
           if (msg) {
             // Ignore redundant text-based gift messages if any
             if (msg.type === 'gift' && !msg.giftImage && !msg.transactionId) {
@@ -1524,6 +1515,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 9. Error notifications
         sock.on('voice_room:error', (err) => {
+          if (err?.code === 'ROOM_PIN_REQUIRED') { setActiveRoom(previous => previous ? { ...previous, isLocked: true, hasPin: true, mode: 'Private (PIN)', pinRequiredAt: Date.now() } : previous); return; }
           if (err?.message) {
             AlertService.show('Voice Room', err.message, 'warning');
           }
@@ -1930,7 +1922,7 @@ export const VoiceRoomProvider = ({ children }) => {
       try { engine.muteLocalAudioStream(true); } catch (_) {}
       try { engine.enableLocalAudio(false); } catch (_) {}
       try { engine.leaveChannel(); } catch (_) {}
-      try { engine.release(); } catch (_) {}
+      try { AgoraClientService.releaseEngine(engine); } catch (_) {}
     }
     setAgoraStatus('disconnected');
     setAgoraErrorMessage(null);

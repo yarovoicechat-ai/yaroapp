@@ -66,11 +66,16 @@ class MainActivity : ReactActivity() {
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 
   fun enterCallPictureInPicture() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isCallActive && !isInPictureInPictureMode) {
-      val params = PictureInPictureParams.Builder()
-        .setAspectRatio(Rational(9, 16))
-        .build()
-      enterPictureInPictureMode(params)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isCallActive && !isInPictureInPictureMode &&
+      packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+      try {
+        val params = PictureInPictureParams.Builder()
+          .setAspectRatio(Rational(9, 16))
+          .build()
+        enterPictureInPictureMode(params)
+      } catch (error: RuntimeException) {
+        android.util.Log.w("CallPip", "Unable to enter picture-in-picture", error)
+      }
     }
   }
 

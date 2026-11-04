@@ -10,6 +10,7 @@ import {
 } from './CallNotificationService';
 import { handleMessageNotificationEvent } from './MessageNotificationService';
 import { getSocket } from '../sockets';
+import { isActivityNotification, showActivityNotification, handleActivityNotificationEvent } from './ActivityNotificationService';
 import {
     applyTerminalCallState,
     canOpenIncomingCall,
@@ -83,7 +84,7 @@ const navigateWithRetry = (screen, params, options = {}) => {
             clearInterval(timer);
             navigationRetryTimers.delete(key);
             if (resetRoot) {
-                if (screen === 'OnGoing' || screen === 'Incomming') {
+                if (['OnGoing', 'VideoCall', 'Incomming'].includes(screen)) {
                     navigationRef.resetRoot({
                         index: 1,
                         routes: [{ name: 'MainTabs' }, { name: screen, params }],
@@ -109,7 +110,7 @@ const handleAcceptedCallNavigation = data => {
 
     const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
     const alreadyOnThisCall =
-        currentRoute?.name === 'OnGoing' &&
+        ['OnGoing', 'VideoCall'].includes(currentRoute?.name) &&
         String(currentRoute?.params?.transactionId) === String(params.transactionId);
     if (alreadyOnThisCall) {
         clearStoredCallState(params.transactionId)
@@ -117,7 +118,7 @@ const handleAcceptedCallNavigation = data => {
         return;
     }
 
-    navigateWithRetry('OnGoing', params, {
+    navigateWithRetry(params.isVideo ? 'VideoCall' : 'OnGoing', params, {
         resetRoot: true,
         key: `call-${params.transactionId}`,
         onNavigated: () => {
@@ -181,7 +182,7 @@ const handleNotificationNavigation = async remoteMessage => {
         if (!await canOpenIncomingCall(liveParams)) return;
         const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
         if (
-            ['Incomming', 'OnGoing'].includes(currentRoute?.name) &&
+            ['Incomming', 'OnGoing', 'VideoCall'].includes(currentRoute?.name) &&
             String(currentRoute?.params?.transactionId || '') === String(liveParams.transactionId)
         ) return;
 
@@ -208,6 +209,10 @@ const handleNotificationNavigation = async remoteMessage => {
         navigateWithRetry('Kyc');
     } else if (remoteMessage?.data?.type === 'missed_call' || remoteMessage?.data?.action === 'open_activity') {
         navigateWithRetry('Notifications');
+    } else if (remoteMessage?.data?.type === 'system' || remoteMessage?.data?.action === 'open_system_messages') {
+        navigateWithRetry('SystemMessage');
+    } else if (remoteMessage?.data?.type === 'room_open' && remoteMessage?.data?.roomId) {
+        navigateWithRetry('VoiceRoom', { roomId: remoteMessage.data.roomId });
     } else if (remoteMessage?.data?.action === 'login_redirect') {
         navigateWithRetry('SignIn');
     }
@@ -244,9 +249,20 @@ const checkPendingMessagePayload = async () => {
     await handleNotificationNavigation({ data: JSON.parse(pending) });
 };
 
+const checkPendingActivityPayload = async () => {
+    const pending = await AsyncStorage.getItem('pendingActivityNotification');
+    if (!pending) return;
+    const data = JSON.parse(pending);
+    await handleNotificationNavigation({ data });
+    await AsyncStorage.removeItem('pendingActivityNotification');
+};
+
 export const NotificationListen = () => {
     const appStateSubscription = AppState.addEventListener('change', nextState => {
-        if (nextState === 'active') checkPendingCallPayload();
+        if (nextState === 'active') {
+            checkPendingCallPayload();
+            checkPendingActivityPayload().catch(error => console.log('Activity notification restore:', error.message));
+        }
     });
     const unsubscribeTokenRefresh = messaging().onTokenRefresh(async fcmToken => {
         await AsyncStorage.setItem('fcmToken', fcmToken);
@@ -259,7 +275,9 @@ export const NotificationListen = () => {
 
     // FCM remains active even when Home.js and its socket listener are not mounted.
     const unsubscribeMessage = messaging().onMessage(async remoteMessage => {
-        if (remoteMessage.data?.type === 'call_state') {
+        if (isActivityNotification(remoteMessage.data)) {
+            await showActivityNotification(remoteMessage.data);
+        } else if (remoteMessage.data?.type === 'call_state') {
             await applyTerminalAndClose(remoteMessage.data);
         } else if (remoteMessage.data?.type === 'call') {
             // Socket.IO normally opens the live incoming screen immediately. Keep
@@ -270,7 +288,7 @@ export const NotificationListen = () => {
                 setTimeout(() => {
                     const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
                     const currentCallId = String(currentRoute?.params?.transactionId || '');
-                    if (!['Incomming', 'OnGoing'].includes(currentRoute?.name) || currentCallId !== transactionId) {
+                    if (!['Incomming', 'OnGoing', 'VideoCall'].includes(currentRoute?.name) || currentCallId !== transactionId) {
                         handleNotificationNavigation(remoteMessage);
                     }
                 }, 1500);
@@ -287,6 +305,11 @@ export const NotificationListen = () => {
 
     const unsubscribeNotifee = notifee.onForegroundEvent(async event => {
         try {
+            if (isActivityNotification(event.detail?.notification?.data)) {
+                const data = await handleActivityNotificationEvent(event);
+                if (data) await checkPendingActivityPayload();
+                return;
+            }
             if (event.detail?.notification?.data?.type === 'message') {
                 const messageResult = await handleMessageNotificationEvent(event);
                 if (messageResult?.action === 'open') {
@@ -315,7 +338,10 @@ export const NotificationListen = () => {
     notifee.getInitialNotification().then(async initial => {
         if (!initial) return;
         const data = initial.notification?.data;
-        if (data?.type === 'message') {
+        if (isActivityNotification(data)) {
+            await handleNotificationNavigation({ data });
+            await AsyncStorage.removeItem('pendingActivityNotification');
+        } else if (data?.type === 'message') {
             const result = await handleMessageNotificationEvent({
                 type: EventType.PRESS,
                 detail: initial,
@@ -338,6 +364,7 @@ export const NotificationListen = () => {
         }
     }).catch(error => console.error('Initial local notification failed:', error.message));
     checkPendingCallPayload();
+    checkPendingActivityPayload().catch(error => console.log('Activity notification restore:', error.message));
     checkPendingMessagePayload().catch(error =>
         console.error('Pending message restore failed:', error.message));
 

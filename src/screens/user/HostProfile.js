@@ -1,3 +1,4 @@
+import { buildProfileShare } from '../../utils/shareLinks';
 import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import {
   View,
@@ -66,12 +67,7 @@ const HostProfile = () => {
   const handleShareHost = async () => {
     try {
       const targetHostId = host._id || host.id || host.userId || route.params?.hostId || '';
-      const shareUrl = `https://yaroapp.in/user/${targetHostId}`;
-      await Share.share({
-        title: `${host.name || 'Host'}'s Profile on Yaro App`,
-        message: `🌟 Check out ${host.name || 'Host'} on Yaro App! (ID: ${targetHostId})\n👇 Tap to view profile & connect: ${shareUrl}`,
-        url: shareUrl,
-      });
+      await Share.share(buildProfileShare(targetHostId, host.name || 'Host'));
     } catch (e) {
       console.log('[HostProfile] Share error:', e.message);
     }

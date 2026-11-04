@@ -21,6 +21,7 @@ class MainApplication : Application(), ReactApplication {
               add(CallPipPackage())
               add(FloatingCallPackage())
               add(LocalMusicPackage())
+              add(SystemBarsPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

@@ -42,6 +42,8 @@ const EditProfile = () => {
   const [name, setName] = useState('');
   const [userId, setUserId] = useState('');
   const [bio, setBio] = useState('');
+  const [profileAge, setProfileAge] = useState('');
+  const [profileCountry, setProfileCountry] = useState('');
   const [defaultBios, setDefaultBios] = useState([]);
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [photoPickerVisible, setPhotoPickerVisible] = useState(false);
@@ -53,6 +55,8 @@ const EditProfile = () => {
       setName(user.name || '');
       setUserId(user.userId?.toString() || '');
       setBio(user.bio || '');
+      setProfileAge(user.age ? String(user.age) : '');
+      setProfileCountry(typeof user.country === 'object' ? user.country?.name || '' : user.country || '');
       setSelectedLanguages(user.language || []);
       setSelectedAvatar(user.image || user.avatar || user.profilePic || '');
       fetchAvatars(user.gender || 'male');
@@ -209,6 +213,7 @@ const EditProfile = () => {
       return;
     }
 
+    if (!profileCountry.trim() || !Number.isInteger(Number(profileAge)) || Number(profileAge) < 18 || Number(profileAge) > 120) { AlertService.show('Profile Required', 'Enter your country and a valid age (18–120).', 'error'); return; }
     setSaving(true);
     try {
       const targetId = userId || user?._id || user?.userId;
@@ -216,6 +221,8 @@ const EditProfile = () => {
         name: trimmedName.slice(0, 20),
         bio,
         language: selectedLanguages,
+        age: Number(profileAge),
+        country: profileCountry.trim() === (typeof user.country === 'object' ? user.country?.name : user.country) ? user.country : { name: profileCountry.trim(), code: '', flag: '' },
       };
       if (selectedAvatar && selectedAvatar.trim() !== '') {
         updatePayload.image = selectedAvatar;
@@ -390,6 +397,8 @@ const EditProfile = () => {
             </View>
           </View>
 
+          <View style={styles.fieldGroup}><Text style={styles.fieldLabel}>Age</Text><View style={styles.inputBox}><TextInput style={styles.textInput} value={profileAge} onChangeText={setProfileAge} keyboardType="number-pad" maxLength={3} placeholder="Your age" placeholderTextColor="#94A3B8" /></View></View>
+          <View style={styles.fieldGroup}><Text style={styles.fieldLabel}>Country</Text><View style={styles.inputBox}><TextInput style={styles.textInput} value={profileCountry} onChangeText={setProfileCountry} placeholder="Your country" placeholderTextColor="#94A3B8" /></View></View>
           {/* User ID Field with Copy */}
           <View style={styles.fieldGroup}>
             <View style={styles.fieldLabelRow}>

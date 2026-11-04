@@ -1,3 +1,4 @@
+import { buildProfileShare } from '../../utils/shareLinks';
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import {
   View,
@@ -22,7 +23,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthContext } from '../../context/AuthProvider';
-import { VoiceRoomContext } from '../../context/VoiceRoomContext';
+import { useVoiceRoom } from '../../context/VoiceRoomContext';
 import { AlertService } from '../../utils/AlertService';
 import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
 import SvgaView from '../../components/SvgaView';
@@ -50,7 +51,7 @@ export default function UserProfileScreen() {
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomSafePadding = getStackScreenBottomPadding(insets.bottom, 16);
   const { user: currentUser } = useContext(AuthContext);
-  const voiceRoomContext = useContext(VoiceRoomContext);
+  const voiceRoomContext = useVoiceRoom();
   const activeRoom = voiceRoomContext?.activeRoom;
   const maximizeRoom = voiceRoomContext?.maximizeRoom;
 
@@ -210,13 +211,8 @@ export default function UserProfileScreen() {
 
   const handleShare = async () => {
     try {
-      const shareId = targetUser.displayId || targetUser.userId;
-      const shareUrl = `https://yaroapp.in/user/${shareId}`;
-      await Share.share({
-        title: `${targetUser.name}'s Profile on Yaro`,
-        message: `👑 Check out ${targetUser.name}'s profile on Yaro! (ID: ${shareId})\n👇 Tap to view: ${shareUrl}`,
-        url: shareUrl,
-      });
+      const shareId = targetUser.userId || targetUser._id || targetUser.id || targetUser.displayId;
+      await Share.share(buildProfileShare(shareId, targetUser.name));
     } catch (e) {
       console.log('Share error:', e.message);
     }
@@ -502,11 +498,7 @@ export default function UserProfileScreen() {
 
         {/* ID & Online Status */}
         <View style={styles.idStatusRow}>
-          <TouchableOpacity style={styles.idCopyPill} onPress={handleCopyId} activeOpacity={0.8}>
-            <Text style={styles.idIcon}>🆔</Text>
-            <Text style={styles.idNumberText}>{targetUser.displayId}</Text>
-            <Icon name="copy-outline" size={13} color="#FDE047" />
-          </TouchableOpacity>
+          <IdentityDisplayId userId={targetUser.userId} officialDisplayId={targetUser.officialDisplayId || targetUser.displayId} customDisplayId={targetUser.customDisplayId} isOfficial={targetUser.isOfficial} badgeUrl={targetUser.badgeUrl} badgeText={targetUser.uniqueIdBadge?.badgeName} showPrefix showBadge showCopy textColor="#94A3B8" />
           <Text style={styles.onlineStatusText}>{targetUser.lastOnlineText}</Text>
         </View>
 

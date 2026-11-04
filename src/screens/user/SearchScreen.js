@@ -218,13 +218,8 @@ export default function SearchScreen() {
   };
 
   const navigateToUserProfile = (item) => {
-    const isHost = item.role === 'host' || item.isHost;
-    const resolvedId = item._id || item.userId || item.id || item.displayId || item.name;
-    if (isHost) {
-      navigation.navigate('HostProfile', { host: item, id: resolvedId });
-    } else {
-      navigation.navigate('UserProfile', { user: item, userId: resolvedId, id: resolvedId });
-    }
+    const resolvedId = item.userId || item._id || item.id;
+    navigation.navigate('UserProfile', { user: item, userId: resolvedId, id: resolvedId });
   };
 
   const renderUserItem = ({ item }) => {
@@ -270,7 +265,7 @@ export default function SearchScreen() {
               isOfficial={Boolean(item.isOfficial)}
               badgeUrl={idBadgeUrl}
               badgeText={item.uniqueIdBadge?.badgeName || item.officialBadge?.badgeText || null}
-              showBadge={Boolean(idBadgeUrl)}
+              showBadge={true}
               showCopy={false}
               showPrefix={true}
               fontSize={12}

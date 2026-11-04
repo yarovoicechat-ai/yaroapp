@@ -48,6 +48,10 @@ export const getCallParams = data => {
     ringExpiresAt: data?.ringExpiresAt,
     eventAt: data?.eventAt,
     agora,
+    isVideo: data?.isVideo === true || data?.isVideo === 'true' || data?.callType === 'video',
+    callType: data?.callType,
+    callerId: data?.callerId,
+    gender: data?.gender,
     isCaller: false,
     fromNotification: true,
   };

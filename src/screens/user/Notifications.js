@@ -188,6 +188,12 @@ const Notifications = () => {
                         <Text style={styles.date}>{item.date}</Text>
                     </View>
                     <Text style={styles.body}>{item.body}</Text>
+                    {item.data?.type === 'room_open' && item.data?.roomId ? (
+                        <TouchableOpacity style={styles.callbackButton} onPress={() => navigation.navigate('VoiceRoom', { roomId: item.data.roomId })}>
+                            <Icon name="meeting-room" size={16} color="#fff" />
+                            <Text style={styles.callbackText}>Join room</Text>
+                        </TouchableOpacity>
+                    ) : null}
                     {item.type === 'event' ? (
                         <View style={styles.eventMeta}>
                             {Number(item.data?.rewardCoins || 0) > 0 ? (

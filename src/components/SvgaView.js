@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Image } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { NavigationContext } from '@react-navigation/native';
 import GiftMedia, { NativeSvgaPlayer as NativeSvga } from './GiftMedia';
 
 const normalizeUrl = (url) => {
@@ -39,12 +39,15 @@ export default function SvgaView({
   onError,
 }) {
   const [failed, setFailed] = React.useState(false);
-  let isFocused = true;
-  try {
-    isFocused = useIsFocused();
-  } catch (_) {
-    isFocused = true;
-  }
+  const navigation = React.useContext(NavigationContext);
+  const subscribeToFocus = React.useCallback(callback => {
+    if (!navigation) return () => {};
+    const focus = navigation.addListener('focus', callback);
+    const blur = navigation.addListener('blur', callback);
+    return () => { focus(); blur(); };
+  }, [navigation]);
+  const readFocus = React.useCallback(() => navigation?.isFocused() ?? true, [navigation]);
+  const isFocused = React.useSyncExternalStore(subscribeToFocus, readFocus, readFocus);
   const src = normalizeUrl(source);
   const normalizedFallback = normalizeUrl(fallbackImage);
 
@@ -71,12 +74,11 @@ export default function SvgaView({
             resizeMode={resizeMode}
           />
         ) : null}
-        {isFocused ? (
-          <NativeSvga
+        <NativeSvga
             key={src}
             source={src}
             loops={loops}
-            autoPlay={autoPlay}
+            autoPlay={autoPlay && isFocused}
             scaleMode={scaleMode || (resizeMode === 'cover' ? 'aspectFill' : resizeMode === 'stretch' ? 'fill' : 'aspectFit')}
             resizeMode={resizeMode}
             muteBuiltInAudio={muteBuiltInAudio}
@@ -87,13 +89,7 @@ export default function SvgaView({
             }}
             style={StyleSheet.absoluteFillObject}
           />
-        ) : normalizedFallback ? (
-          <Image
-            source={{ uri: normalizedFallback }}
-            style={[StyleSheet.absoluteFillObject, style]}
-            resizeMode={resizeMode}
-          />
-        ) : null}
+
       </View>
     );
   }

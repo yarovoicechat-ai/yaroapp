@@ -151,7 +151,7 @@ export default function RoomUserProfileModal({
     (targetUserId && currentAuthId && targetUserId === currentAuthId)
   );
 
-  const displayData = resolvedProfile || user;
+  const displayData = { ...user, ...(resolvedProfile || {}), effectiveIdentity: resolvedProfile?.effectiveIdentity || user?.effectiveIdentity };
   const targetName = displayData.name || displayData.userName || 'User';
   const targetGender = displayData.gender || '';
   const targetAge = displayData.age ?? null;
@@ -173,6 +173,7 @@ export default function RoomUserProfileModal({
     : [];
 
   const uniqueId =
+    displayData.effectiveIdentity?.customDisplayId ||
     displayData.customDisplayId ||
     displayData.equippedCustomId ||
     displayData.uniqueId ||
@@ -439,10 +440,10 @@ export default function RoomUserProfileModal({
             {/* 5. YARO ID / Unique ID with SVGA Badge & Followers Row */}
             <View style={styles.idFollowersRow}>
               <IdentityDisplayId
-                userId={targetUserId || displayData.userId}
+                userId={displayData.userId || targetUserId}
                 customDisplayId={hasUniqueId ? uniqueId : null}
-                officialDisplayId={displayData.officialDisplayId || (displayData.isOfficial ? displayData.displayId : null)}
-                isOfficial={Boolean(displayData.isOfficial)}
+                officialDisplayId={displayData.officialDisplayId || (displayData.isOfficial || displayData.effectiveIdentity?.isOfficial ? displayData.displayId || displayData.effectiveIdentity?.displayId : null)}
+                isOfficial={Boolean(displayData.isOfficial || displayData.effectiveIdentity?.isOfficial)}
                 badgeUrl={uniqueIdBadgeUrl}
                 badgeText={uniqueIdBadgeText}
                 showBadge={true}
@@ -1104,7 +1105,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   identityDisplayWrap: {
-    marginRight: 4,
+    flexShrink: 1,
+    minWidth: 0,
   },
   mazaIdText: {
     fontSize: 13,

@@ -18,6 +18,7 @@ let cachedAppConfig = {
 
 let activeEngineInstance = null;
 let currentEngineAppId = null;
+const releasedEngines = new WeakSet();
 
 export const AgoraClientService = {
   /**
@@ -72,14 +73,7 @@ export const AgoraClientService = {
 
     if (activeEngineInstance && currentEngineAppId && currentEngineAppId !== targetAppId) {
       console.warn(`🔄 [AgoraService] App ID switched from ${currentEngineAppId} to ${targetAppId}. Releasing previous engine instance...`);
-      try {
-        activeEngineInstance.leaveChannel();
-        activeEngineInstance.release();
-      } catch (err) {
-        console.warn('Engine release warning:', err?.message || err);
-      }
-      activeEngineInstance = null;
-      currentEngineAppId = null;
+      this.releaseEngine(activeEngineInstance);
     }
 
     if (!activeEngineInstance && typeof createEngineFn === 'function') {
@@ -97,11 +91,14 @@ export const AgoraClientService = {
    * Cleans up engine on final call / room exit.
    */
   releaseEngine(engine) {
-    if (engine) {
-      try {
-        engine.leaveChannel();
-      } catch (_) {}
+    if (!engine || releasedEngines.has(engine)) return;
+    releasedEngines.add(engine);
+    if (activeEngineInstance === engine) {
+      activeEngineInstance = null;
+      currentEngineAppId = null;
     }
+    try { engine.leaveChannel(); } catch (_) {}
+    try { engine.release(); } catch (_) {}
   },
 };
 

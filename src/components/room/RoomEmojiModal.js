@@ -26,7 +26,7 @@ export default function RoomEmojiModal({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none"
       statusBarTranslucent
       onRequestClose={onClose}
     >
@@ -53,9 +53,9 @@ export default function RoomEmojiModal({
                   onClose();
                   onSelectEmoji && onSelectEmoji(emoji);
                 }}
-                activeOpacity={0.7}
+                activeOpacity={1}
               >
-                <Text style={styles.emojiText}>{emoji}</Text>
+                <Text allowFontScaling={false} style={styles.emojiText}>{emoji}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingTop: 12,
     paddingHorizontal: 16,
-    maxHeight: 320,
+    maxHeight: 420,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
@@ -105,9 +105,9 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   emojiBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 18,
     backgroundColor: '#1E2338',
     alignItems: 'center',
     justifyContent: 'center',
@@ -115,6 +115,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   emojiText: {
-    fontSize: 24,
+    color: '#FFFFFF',
+    fontSize: 36,
+    lineHeight: 46,
+    includeFontPadding: false,
   },
 });

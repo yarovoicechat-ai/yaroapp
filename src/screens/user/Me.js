@@ -1,3 +1,4 @@
+import { buildProfileShare } from '../../utils/shareLinks';
 import React, { useContext, useEffect, useState, useCallback } from 'react';
 import {
   View,
@@ -71,12 +72,7 @@ export default function MeScreen() {
   const handleShareProfile = async () => {
     try {
       const shareId = user?.userId || user?._id || '';
-      const shareUrl = `https://yaroapp.in/user/${shareId}`;
-      await Share.share({
-        title: `${user?.name || 'Yaro User'}'s Profile`,
-        message: `👤 Connect with ${user?.name || 'Yaro User'} on Yaro App! (ID: ${shareId})\n👇 Tap to view profile: ${shareUrl}`,
-        url: shareUrl,
-      });
+      await Share.share(buildProfileShare(shareId, user?.name));
     } catch (e) {
       console.log('Share error:', e.message);
     }
@@ -242,7 +238,7 @@ export default function MeScreen() {
       ),
       onPress: () => navigation.navigate('VerificationHub'),
     },
-    {
+    ...(isApprovedHost ? [{
       id: 'idManage',
       label: 'ID Manage',
       icon: (
@@ -251,7 +247,7 @@ export default function MeScreen() {
         </View>
       ),
       onPress: () => navigation.navigate('IdManage'),
-    },
+    }] : []),
     {
       id: 'medal',
       label: 'Medal',
@@ -485,7 +481,7 @@ export default function MeScreen() {
                   showPrefix={true}
                   showCopy={true}
                   fontSize={12}
-                  textColor="#FEF08A"
+                  textColor="#94A3B8"
                 />
               </TouchableOpacity>
 

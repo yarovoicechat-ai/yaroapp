@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, Dimensions, Image, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import VipMicWave from './VipMicWave';
@@ -12,76 +12,14 @@ const seatNameEffect = user => user?.nameEffect || user?.effectiveIdentity?.name
   ((user?.equippedVipId || user?.equippedSvipId)
     ? { colors: ['#FFE890', '#FFF8D6', '#E9B74D'], animationType: 'shimmer' } : undefined);
 
-const AnimatedSeatReaction = React.memo(function AnimatedSeatReaction({ emoji, id, size = 54 }) {
-  const anim = React.useRef(new Animated.Value(0)).current;
-
-  React.useEffect(() => {
-    anim.setValue(0);
-    Animated.sequence([
-      Animated.spring(anim, {
-        toValue: 1,
-        friction: 4,
-        tension: 70,
-        useNativeDriver: true,
-      }),
-      Animated.timing(anim, {
-        toValue: 2,
-        duration: 1800,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [id, anim]);
-
-  const translateY = anim.interpolate({
-    inputRange: [0, 0.4, 1, 2],
-    outputRange: [3, 0, -2, -2],
-  });
-
-  const translateX = anim.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1, 1.5, 2],
-    outputRange: [0, -1, 1, -1, 1, -1, 0],
-  });
-
-  const scale = anim.interpolate({
-    inputRange: [0, 0.35, 0.7, 1.4, 2],
-    outputRange: [0.3, 1.05, 1, 1, 0.5],
-  });
-
-  const opacity = anim.interpolate({
-    inputRange: [0, 0.1, 1.3, 2],
-    outputRange: [0, 1, 1, 0],
-  });
-
+const AnimatedSeatReaction = React.memo(function SeatReaction({ emoji, size = 54 }) {
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: Math.round(size * 0.08),
-        width: size * 0.62,
-        height: size * 0.62,
-        alignItems: 'center',
-        justifyContent: 'center',
-        alignSelf: 'center',
-        zIndex: 99999,
-        elevation: 99999,
-        transform: [{ translateY }, { translateX }, { scale }],
-        opacity,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: Math.round(size * 0.5),
-          includeFontPadding: false,
-          textAlign: 'center',
-          textShadowColor: 'rgba(0,0,0,0.65)',
-          textShadowOffset: { width: 0, height: 2 },
-          textShadowRadius: 6,
-        }}
-      >
-        {emoji}
-      </Text>
-    </Animated.View>
+    <View pointerEvents="none" style={{ position: 'absolute', top: -Math.round(size * 0.16),
+      width: size * 1.25, height: size * 1.25, alignItems: 'center', justifyContent: 'center',
+      alignSelf: 'center', zIndex: 99999, elevation: 99999 }}>
+      <Text allowFontScaling={false} style={{ color: '#FFFFFF', fontSize: Math.round(size * 0.95),
+        lineHeight: Math.ceil(size * 1.15), includeFontPadding: false, textAlign: 'center' }}>{emoji}</Text>
+    </View>
   );
 });
 
@@ -203,7 +141,7 @@ export default function VoiceRoomSeatGrid({
         {bottomSeatRows.map((row, rowIdx) => (
           <View key={`bottom-row-${rowIdx}`} style={[styles.seatsRow, { marginTop: 10 }]}>
             {row.map((seat) => {
-              const seatNum = `No.${seat.seatIndex + 1}`;
+              const seatNum = `No.${seat.seatIndex - 1}`;
               const isOccupied = Boolean(seat.user);
               const seatWidth = isCompactLayout ? (width - 16) / 5 : (width - 24) / 4;
               const circleSize = isCompactLayout ? 50 : 58;

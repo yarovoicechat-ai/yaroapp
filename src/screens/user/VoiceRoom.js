@@ -1,3 +1,5 @@
+import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
+import { buildRoomShare } from '../../utils/shareLinks';
 import { getRoomSeatConfig } from '../../utils/roomSeats';
 import { roomKeyboardLift } from '../../utils/roomKeyboard';
 import { appendRoomMention } from '../../utils/roomMention';
@@ -324,7 +326,10 @@ export default function VoiceRoomScreen() {
   const [keyboardTop, setKeyboardTop] = useState(null);
   const measureRoomViewport = useCallback(() => {
     roomViewportRef.current?.measureInWindow((x, y, measuredWidth, measuredHeight) => {
-      if (measuredHeight > 0) setViewportBottom(y + measuredHeight);
+      // Android's measureInWindow excludes the status-bar origin while
+      // keyboard endCoordinates.screenY is in screen coordinates.
+      const windowOrigin = Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0;
+      if (measuredHeight > 0) setViewportBottom(y + measuredHeight + windowOrigin);
     });
   }, []);
   const keyboardLift = isKeyboardVisible
@@ -483,27 +488,13 @@ export default function VoiceRoomScreen() {
 
   const handleShareRoom = async () => {
     try {
-      const shareRoomId =
-        room?.uniqueId ||
-        room?.customDisplayId ||
-        room?.displayId ||
-        user?.customDisplayId ||
-        user?.uniqueId ||
-        room.id ||
-        room.roomId ||
-        route.params?.roomId ||
-        '';
+      const shareRoomId = room.id || room.roomId || route.params?.roomId || room?.uniqueId || '';
       if (!shareRoomId) {
         AlertService.show('Room unavailable', 'This room does not have a valid ID yet.', 'warning');
         return;
       }
       const shareTitle = currentRoomTitle || room.title || 'Voice Party Lounge';
-      const shareUrl = `https://yaroapp.in/room/${shareRoomId}`;
-      await Share.share({
-        title: `Join ${shareTitle} on Yaro App`,
-        message: `🎙️ Join my Live Voice Party Room on Yaro App!\n🔥 Room: "${shareTitle}" (Room ID: ${shareRoomId})\n👇 Tap to join directly: ${shareUrl}`,
-        url: shareUrl,
-      });
+      await Share.share(buildRoomShare(shareRoomId, shareTitle));
     } catch (err) {
       console.log('Share room error:', err);
     }
@@ -764,7 +755,8 @@ export default function VoiceRoomScreen() {
     );
   };
 
-  const handleUnlockRoom = async () => {
+  const handleUnlockRoom = async (options = {}) => {
+    if (options.alreadyUnlocked) { setCurrentRoomLocked(false); setHasRoomPin(false); setEditRoomLocked(false); setIsPinVerified(true); return; }
     try {
       const targetRoomId = room?.id || room?.roomId || route?.params?.roomId;
       const res = await apiUtil.post(`/voice-club/rooms/${targetRoomId}/lock`, {
@@ -787,6 +779,7 @@ export default function VoiceRoomScreen() {
   // Balance & Chat
   const [inputText, setInputText] = useState('');
   const chatListRef = useRef(null);
+  const [chatContentWidth, setChatContentWidth] = useState(null);
   const textInputRef = useRef(null);
 
   // Seat Action Modal for Host/Admin
@@ -1082,14 +1075,21 @@ export default function VoiceRoomScreen() {
     }
   }, [room?.title, room?.coverImage, room?.about]);
 
-  // Prompt PIN when a non-admin enters a locked room
+  // Verification belongs to this room, never to a previous room session.
+  useEffect(() => {
+    setIsPinVerified(Boolean(route?.params?.isPinVerified && String(route?.params?.room?.id || route?.params?.roomId || '') === String(room.id || room.roomId)));
+  }, [room.id, room.roomId]);
+  useEffect(() => {
+    if (room.pinRequiredAt) { setIsPinVerified(false); setRoomLockModalMode('enter_pin'); setRoomLockModalVisible(true); }
+  }, [room.pinRequiredAt]);
+  // Prompt PIN when a member enters a locked room
   useEffect(() => {
     const isLocked = Boolean(currentRoomLocked || room.isLocked || /private\s*\(pin\)/i.test(room.mode || ''));
-    if (isLocked && !isCurrentUserAdmin && !isRoomOwner && !isPinVerified) {
+    if (isLocked && !isEffectiveGlobalRoomManager && !isRoomOwner && !isPinVerified) {
       setRoomLockModalMode('enter_pin');
       setRoomLockModalVisible(true);
     }
-  }, [currentRoomLocked, room.isLocked, room.mode, isCurrentUserAdmin, isRoomOwner, isPinVerified]);
+  }, [currentRoomLocked, room.isLocked, room.mode, isEffectiveGlobalRoomManager, isRoomOwner, isPinVerified]);
 
   const [roomDetailsModalVisible, setRoomDetailsModalVisible] = useState(false);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
@@ -1717,6 +1717,7 @@ export default function VoiceRoomScreen() {
   const hasThemeWallpaper = Boolean(resolvedThemeImage);
 
   return (
+    <KeyboardAvoidingView style={styles.screenContainer} enabled={Platform.OS === 'ios'} behavior="padding">
     <View ref={roomViewportRef} collapsable={false} style={styles.screenContainer} onLayout={measureRoomViewport}>
     <ImageBackground
       source={resolvedThemeImage || DEFAULT_ROOM_BG}
@@ -1764,13 +1765,7 @@ export default function VoiceRoomScreen() {
             </Text>
             <View style={styles.headerRoomSubRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {roomBadgeUrl ? (
-                  <View style={{ height: 16, marginRight: 4, justifyContent: 'center', alignItems: 'center' }}>
-                    <SvgaView source={roomBadgeUrl} style={{ width: 48, height: 16 }} resizeMode="contain" />
-                  </View>
-                ) : (
-                  <Text style={styles.headerRoomIdText}>ID:{displayRoomId}</Text>
-                )}
+                <IdentityDisplayId userId={room?.hostId || room?.owner?.userId || seats[0]?.user?.userId || room?.id || room?.roomId} customDisplayId={displayRoomId} badgeUrl={roomBadgeUrl} showBadge showPrefix showCopy={false} fontSize={10} textColor="#CBD5E1" />
               </View>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -2048,7 +2043,7 @@ export default function VoiceRoomScreen() {
       {/* Floating Reaction Emojis Overlay (Audience only, seated users show on avatar) */}
       <View style={styles.floatingReactionsContainer} pointerEvents="none">
         {reactions.filter((r) => r.seatIndex === undefined || r.seatIndex === null).map((r) => (
-          <Text key={r.id} style={styles.floatingEmoji}>
+          <Text key={r.id} allowFontScaling={false} style={styles.floatingEmoji}>
             {r.emoji}
           </Text>
         ))}
@@ -2070,13 +2065,16 @@ export default function VoiceRoomScreen() {
         <FlatList
           ref={chatListRef}
           data={chatMessages}
+          extraData={chatContentWidth}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           style={styles.chatFlatList}
           onContentSizeChange={() => {
             chatListRef.current?.scrollToEnd({ animated: true });
           }}
-          onLayout={() => {
+          onLayout={({ nativeEvent }) => {
+            const nextWidth = nativeEvent.layout.width;
+            if (nextWidth > 0) setChatContentWidth(nextWidth);
             chatListRef.current?.scrollToEnd({ animated: false });
           }}
           renderItem={({ item }) => {
@@ -2102,6 +2100,7 @@ export default function VoiceRoomScreen() {
               return (
                 <View style={{ marginBottom: 4 }}>
                   <ResponsiveChatBubble
+                    availableWidth={chatContentWidth}
                     message={item}
                     sender={{ name: item.roomHostName, avatar: item.avatar }}
                     onPressUser={(u) => {
@@ -2141,6 +2140,7 @@ export default function VoiceRoomScreen() {
             }
             return (
               <ResponsiveChatBubble
+                availableWidth={chatContentWidth}
                 message={item}
                 sender={{ name: item.user, avatar: item.avatar }}
                 isVip={Boolean(item.isVip || item.vipLevel)}
@@ -2175,10 +2175,11 @@ export default function VoiceRoomScreen() {
             <Text style={{ fontSize: 24 }}>💰</Text>
           </TouchableOpacity>
 
-          {/* Floating Quick Chat Trigger */}
+          {/* Private inbox shortcut */}
           <TouchableOpacity
             style={styles.floatingChatBubbleBtn}
-            onPress={() => setIsChatBarExpanded((prev) => !prev)}
+            accessibilityLabel="Inbox"
+            onPress={() => navigation.navigate('MainTabs', { screen: 'ChatScreen' })}
             activeOpacity={0.85}
           >
             <MaterialCommunityIcons name="chat" size={20} color="#FFFFFF" />
@@ -2272,7 +2273,7 @@ export default function VoiceRoomScreen() {
             {/* 3. Chat bubble icon (opens floating chat input) */}
             <TouchableOpacity
               style={styles.controlCircleBtn}
-              onPress={() => setIsChatBarExpanded((prev) => !prev)}
+              onPress={() => navigation.navigate('MainTabs', { screen: 'ChatScreen' })}
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons name="chat-processing-outline" size={22} color="#FFF" />
@@ -2567,9 +2568,9 @@ export default function VoiceRoomScreen() {
       {/* MODAL: ROOM LOCK (MATCHING media_1792690965383.png & media_1792690977464.png & media_1792691000624.png) */}
       <RoomLockModal
         visible={roomLockModalVisible}
-        onClose={() => {
+        onClose={(verified = false) => {
           setRoomLockModalVisible(false);
-          if (roomLockModalMode === 'enter_pin' && !isCurrentUserAdmin && !isRoomOwner && !isPinVerified) {
+          if (roomLockModalMode === 'enter_pin' && verified !== true && !isEffectiveGlobalRoomManager && !isRoomOwner && !isPinVerified) {
             handleLeaveCompletely();
             navigation.goBack();
           }
@@ -2580,6 +2581,7 @@ export default function VoiceRoomScreen() {
         onUnlockRoom={handleUnlockRoom}
         onSuccess={(pin) => {
           setIsPinVerified(true);
+          if (roomLockModalMode === 'enter_pin') enterRoom(room, false, room.seatCount || 8, user);
           if (roomLockModalMode === 'set_pin') {
             setCurrentRoomLocked(true);
             setHasRoomPin(true);
@@ -2854,7 +2856,7 @@ export default function VoiceRoomScreen() {
         onClose={() => setRoomDetailsModalVisible(false)}
         room={{
           id: displayRoomId,
-          uniqueId: room.uniqueId || user?.customDisplayId,
+          uniqueId: room.uniqueId || room.customDisplayId || (isRoomOwner ? user?.customDisplayId : null) || seats[0]?.user?.customDisplayId,
           badgeUrl: roomBadgeUrl,
           title: currentRoomTitle || room.title || room.roomName || room.name || 'Voice Room',
           coverImage: currentRoomCover || room.coverImage,
@@ -2882,7 +2884,7 @@ export default function VoiceRoomScreen() {
         onClose={() => setGroupModalVisible(false)}
         room={{
           id: currentRoomId || room?.id || room?.roomId || route?.params?.roomId || displayRoomId,
-          uniqueId: room.uniqueId || user?.customDisplayId,
+          uniqueId: room.uniqueId || room.customDisplayId || (isRoomOwner ? user?.customDisplayId : null) || seats[0]?.user?.customDisplayId,
           title: currentRoomTitle || room.title || 'Voice Room',
           coverImage: currentRoomCover || room.coverImage,
           tag: room.tag || '',
@@ -2909,7 +2911,7 @@ export default function VoiceRoomScreen() {
         onClose={() => setRoomSettingsModalVisible(false)}
         room={{
           id: displayRoomId,
-          uniqueId: room.uniqueId || user?.customDisplayId,
+          uniqueId: room.uniqueId || room.customDisplayId || (isRoomOwner ? user?.customDisplayId : null) || seats[0]?.user?.customDisplayId,
           badgeUrl: roomBadgeUrl,
           title: currentRoomTitle || room.title || 'Voice Room',
           coverImage: currentRoomCover || room.coverImage,
@@ -3004,6 +3006,7 @@ export default function VoiceRoomScreen() {
 
     </ImageBackground>
     </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -3638,7 +3641,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   floatingEmoji: {
-    fontSize: 26,
+    color: '#FFFFFF',
+    fontSize: 42,
+    lineHeight: 52,
     marginBottom: 6,
   },
   bottomControlBar: {

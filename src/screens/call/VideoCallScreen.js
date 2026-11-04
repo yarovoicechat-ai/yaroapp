@@ -361,6 +361,8 @@ export default function VideoCallScreen() {
         engine.muteAllRemoteAudioStreams(false);
         engine.setDefaultAudioRouteToSpeakerphone(true);
         engine.setEnableSpeakerphone(true);
+        engine.adjustPlaybackSignalVolume(150);
+        engine.adjustRecordingSignalVolume(100);
         if (cameraGranted) {
           engine.startPreview(VideoSourceType.VideoSourceCameraPrimary);
         }
@@ -372,7 +374,13 @@ export default function VideoCallScreen() {
             setIsChannelJoined(true);
             try {
               engine.muteLocalVideoStream(!cameraGranted);
+              engine.muteLocalAudioStream(false);
               engine.muteAllRemoteVideoStreams(false);
+              engine.muteAllRemoteAudioStreams(false);
+              engine.setDefaultAudioRouteToSpeakerphone(true);
+              engine.setEnableSpeakerphone(true);
+              engine.adjustPlaybackSignalVolume(150);
+              engine.adjustRecordingSignalVolume(100);
             } catch (_) {}
           },
           onUserJoined: (connection, u, elapsed) => {
@@ -395,8 +403,10 @@ export default function VideoCallScreen() {
           },
           onUserOffline: (connection, u, reason) => {
             console.log('👤 Remote user offline:', u);
-            setRemoteUid(null);
-            setTimeout(() => { if (!cancelled) handleEndCall(); }, 0);
+            if (remoteUid && (u === remoteUid || !remoteUid)) {
+              setRemoteUid(null);
+              setTimeout(() => { if (!cancelled && !isLeavingRef.current) handleEndCall(); }, 1200);
+            }
           },
           onError: (err, msg) => {
             console.log('⚠️ Agora video error:', err, msg);
@@ -410,7 +420,10 @@ export default function VideoCallScreen() {
           autoSubscribeAudio: true,
           autoSubscribeVideo: true,
         });
-        if (typeof joinResult === 'number' && joinResult < 0) throw new Error('Call connection failed.');
+        console.log('🎥 [VideoCall] joinResult code:', joinResult);
+        if (typeof joinResult === 'number' && joinResult < 0 && joinResult !== -5 && joinResult !== -17) {
+          throw new Error(`Call connection failed (code ${joinResult}).`);
+        }
       } catch (err) {
         console.log('Agora video initialization failed:', err?.message);
         if (!cancelled && !isLeavingRef.current) {

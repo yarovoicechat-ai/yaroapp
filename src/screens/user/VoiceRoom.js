@@ -85,6 +85,7 @@ import RoomShareModal from '../../components/room/RoomShareModal';
 import RoomGatherFollowersModal from '../../components/room/RoomGatherFollowersModal';
 import RoomMessageNoticeModal from '../../components/room/RoomMessageNoticeModal';
 import RoomAnnouncementModal from '../../components/room/RoomAnnouncementModal';
+import RoomInboxModal from '../../components/room/RoomInboxModal';
 import {
   resolveEntryAssets,
   resolveRoomTheme,
@@ -299,6 +300,7 @@ export default function VoiceRoomScreen() {
   const [roomLockModalMode, setRoomLockModalMode] = useState('set_pin');
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [gatherFollowersVisible, setGatherFollowersVisible] = useState(false);
+  const [roomInboxModalVisible, setRoomInboxModalVisible] = useState(false);
 
   // Periodic on-mic heartbeat for Room Tasks (10 min, 30 min, 120 min)
   useEffect(() => {
@@ -2189,7 +2191,7 @@ export default function VoiceRoomScreen() {
           <TouchableOpacity
             style={styles.floatingChatBubbleBtn}
             accessibilityLabel="Inbox"
-            onPress={() => navigation.navigate('MainTabs', { screen: 'ChatScreen' })}
+            onPress={() => setRoomInboxModalVisible(true)}
             activeOpacity={0.85}
           >
             <MaterialCommunityIcons name="chat" size={20} color="#FFFFFF" />
@@ -2283,7 +2285,7 @@ export default function VoiceRoomScreen() {
             {/* 3. Chat bubble icon (opens floating chat input) */}
             <TouchableOpacity
               style={styles.controlCircleBtn}
-              onPress={() => navigation.navigate('MainTabs', { screen: 'ChatScreen' })}
+              onPress={() => setIsChatBarExpanded(true)}
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons name="chat-processing-outline" size={22} color="#FFF" />
@@ -3012,6 +3014,23 @@ export default function VoiceRoomScreen() {
         onSave={handleSaveAnnouncement}
         saving={isSavingRoomSettings}
         styles={styles}
+      />
+
+      {/* In-Room Private Inbox Popup Modal */}
+      <RoomInboxModal
+        visible={roomInboxModalVisible}
+        onClose={() => setRoomInboxModalVisible(false)}
+        onOpenConversation={(item) => {
+          const participant = item?.user || item?.participant || {};
+          const receiverId = participant._id || participant.id || participant.userId;
+          if (receiverId) {
+            navigation.navigate('Chat', {
+              receiverId,
+              name: participant.name || 'User',
+              avatar: participant.avatar || participant.image,
+            });
+          }
+        }}
       />
 
     </ImageBackground>

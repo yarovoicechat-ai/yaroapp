@@ -34,47 +34,64 @@ export default function RoomExitModal({
         />
 
         <View style={styles.dialogBox}>
+          {/* Top Close Button */}
+          <TouchableOpacity
+            style={styles.cornerCloseBtn}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Icon name="close" size={18} color="#94A3B8" />
+          </TouchableOpacity>
+
           <View style={styles.dialogIconWrap}>
-            <MaterialCommunityIcons name="broadcast" size={32} color="#8B5CF6" />
+            <MaterialCommunityIcons name="broadcast" size={28} color="#A78BFA" />
           </View>
           <Text style={styles.dialogTitle}>Voice Room</Text>
           <Text style={styles.dialogSub}>
-            Do you want to keep listening in the background with a floating window, or exit the room completely?
+            Choose whether to keep listening in a floating circle or leave completely.
           </Text>
 
-          <View style={styles.dialogBtnRow}>
-            {/* Keep Option */}
-            <TouchableOpacity
-              style={styles.keepBtn}
-              onPress={() => {
-                onClose();
-                onKeepFloating && onKeepFloating();
-              }}
-              activeOpacity={0.85}
-            >
-              <LinearGradient colors={['#8B5CF6', '#6D28D9']} style={styles.keepGradient}>
-                <MaterialCommunityIcons
-                  name="picture-in-picture-top-right"
-                  size={18}
-                  color="#FFF"
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={styles.keepBtnText}>Keep (Floating)</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+          {/* Circular Action Buttons Row */}
+          <View style={styles.actionRow}>
+            {/* Keep Circle Button */}
+            <View style={styles.actionItem}>
+              <TouchableOpacity
+                style={styles.circleBtnWrap}
+                onPress={() => {
+                  onClose();
+                  onKeepFloating && onKeepFloating();
+                }}
+                activeOpacity={0.75}
+              >
+                <View style={styles.keepCircle}>
+                  <MaterialCommunityIcons
+                    name="picture-in-picture-top-right"
+                    size={30}
+                    color="#C4B5FD"
+                  />
+                </View>
+              </TouchableOpacity>
+              <Text style={styles.actionTitle}>Keep</Text>
+              <Text style={styles.actionSub}>Floating Window</Text>
+            </View>
 
-            {/* Leave Option */}
-            <TouchableOpacity
-              style={styles.leaveBtn}
-              onPress={() => {
-                onClose();
-                onLeaveCompletely && onLeaveCompletely();
-              }}
-              activeOpacity={0.85}
-            >
-              <Icon name="exit-outline" size={18} color="#EF4444" style={{ marginRight: 6 }} />
-              <Text style={styles.leaveBtnText}>Leave Room</Text>
-            </TouchableOpacity>
+            {/* Leave Circle Button */}
+            <View style={styles.actionItem}>
+              <TouchableOpacity
+                style={styles.circleBtnWrap}
+                onPress={() => {
+                  onClose();
+                  onLeaveCompletely && onLeaveCompletely();
+                }}
+                activeOpacity={0.75}
+              >
+                <View style={styles.leaveCircle}>
+                  <Icon name="exit-outline" size={28} color="#F87171" />
+                </View>
+              </TouchableOpacity>
+              <Text style={styles.leaveActionTitle}>Leave</Text>
+              <Text style={styles.actionSub}>Exit Room</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -85,83 +102,125 @@ export default function RoomExitModal({
 const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
   },
   dialogBox: {
     width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#1E2338',
-    borderRadius: 22,
-    padding: 24,
+    maxWidth: 330,
+    backgroundColor: 'rgba(24, 20, 48, 0.94)',
+    borderRadius: 26,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    elevation: 16,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    position: 'relative',
   },
-  dialogIconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+  cornerCloseBtn: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+  },
+  dialogIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(139, 92, 246, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   dialogTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#FFF',
-    marginBottom: 8,
+    color: '#FFFFFF',
+    marginBottom: 6,
+    letterSpacing: 0.3,
   },
   dialogSub: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#94A3B8',
     textAlign: 'center',
-    lineHeight: 19,
-    marginBottom: 22,
+    lineHeight: 18,
+    marginBottom: 24,
+    paddingHorizontal: 12,
   },
-  dialogBtnRow: {
-    width: '100%',
-    gap: 10,
-  },
-  keepBtn: {
-    width: '100%',
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-  },
-  keepGradient: {
-    flex: 1,
+  actionRow: {
     flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    gap: 36,
+    width: '100%',
+    paddingBottom: 6,
+  },
+  actionItem: {
+    alignItems: 'center',
+    minWidth: 90,
+  },
+  circleBtnWrap: {
+    marginBottom: 8,
+  },
+  keepCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(139, 92, 246, 0.22)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(167, 139, 250, 0.55)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  keepBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  leaveBtn: {
-    width: '100%',
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    flexDirection: 'row',
+  leaveCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(239, 68, 68, 0.18)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(248, 113, 113, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  leaveBtnText: {
+  actionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#EF4444',
+    color: '#C4B5FD',
+    marginBottom: 2,
+  },
+  leaveActionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F87171',
+    marginBottom: 2,
+  },
+  actionSub: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
   },
 });

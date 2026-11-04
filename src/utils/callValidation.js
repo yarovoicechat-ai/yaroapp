@@ -21,8 +21,12 @@ export const parseAgoraPayload = value => {
 
 export const getRoleAgoraCredentials = (value, isCaller) => {
   const agora = parseAgoraPayload(value);
-  const token = isCaller ? agora.callerToken : agora.hostToken;
-  const rawUid = isCaller ? agora.callerAgoraUid : agora.hostAgoraUid;
+  const token = isCaller
+    ? (agora.callerToken || agora.token)
+    : (agora.hostToken || agora.token);
+  const rawUid = isCaller
+    ? (agora.callerAgoraUid !== undefined ? agora.callerAgoraUid : (agora.uid !== undefined ? agora.uid : agora.agoraUid))
+    : (agora.hostAgoraUid !== undefined ? agora.hostAgoraUid : (agora.uid !== undefined ? agora.uid : agora.agoraUid));
   const uid = Number(rawUid);
   const appId = typeof agora.appId === 'string' ? agora.appId.trim() : '';
 
@@ -36,7 +40,17 @@ export const getRoleAgoraCredentials = (value, isCaller) => {
   ) {
     return null;
   }
-  return { appId, token: token.trim(), uid, agora };
+  return {
+    appId,
+    token: token.trim(),
+    uid,
+    agora: {
+      ...agora,
+      appId,
+      [isCaller ? 'callerToken' : 'hostToken']: token.trim(),
+      [isCaller ? 'callerAgoraUid' : 'hostAgoraUid']: uid,
+    },
+  };
 };
 
 export const getValidOngoingCall = (data, isCaller) => {

@@ -209,6 +209,9 @@ export const VoiceRoomProvider = ({ children }) => {
         engine.setClientRole(role);
         engine.enableLocalAudio(true);
         engine.muteLocalAudioStream(!canPublish);
+        if (canPublish) {
+          engine.adjustRecordingSignalVolume(micVolume || 100);
+        }
         engine.updateChannelMediaOptions({
           clientRoleType: role,
           publishMicrophoneTrack: canPublish,
@@ -336,10 +339,10 @@ export const VoiceRoomProvider = ({ children }) => {
       engine.enableLocalAudio(true);
       engine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
       engine.setAudioProfile(AudioProfileType.AudioProfileMusicHighQuality);
-      engine.setDefaultAudioRouteToSpeakerphone(true);
-      engine.setEnableSpeakerphone(true);
+      engine.setDefaultAudioRouteToSpeakerphone(speakerphoneEnabled);
+      engine.setEnableSpeakerphone(speakerphoneEnabled);
       engine.muteAllRemoteAudioStreams(false);
-      engine.adjustPlaybackSignalVolume(100);
+      engine.adjustPlaybackSignalVolume(150);
       engine.adjustRecordingSignalVolume(micVolume || 100);
       engine.enableAudioVolumeIndication(200, 3, true);
 
@@ -353,6 +356,11 @@ export const VoiceRoomProvider = ({ children }) => {
           console.warn('🎙️ [VoiceRoom] Agora Voice joined successfully! Channel:', conn?.channelId, 'UID:', conn?.localUid);
           setAgoraStatus('connected');
           setAgoraErrorMessage(null);
+          try {
+            engine.setDefaultAudioRouteToSpeakerphone(speakerphoneEnabled);
+            engine.setEnableSpeakerphone(speakerphoneEnabled);
+            engine.adjustPlaybackSignalVolume(150);
+          } catch (_) {}
           const desired = desiredLocalAudioRef.current;
           syncLocalMicState(desired.isOnSeat, desired.isMuted);
           try {
@@ -788,10 +796,13 @@ export const VoiceRoomProvider = ({ children }) => {
     const next = Boolean(enabled);
     setSpeakerphoneEnabledState(next);
     try {
-      agoraEngineRef.current?.setEnableSpeakerphone(next);
       agoraEngineRef.current?.setDefaultAudioRouteToSpeakerphone(next);
-      InCallManager.setForceSpeakerphoneOn(next);
-      InCallManager.setSpeakerphoneOn(next);
+      agoraEngineRef.current?.setEnableSpeakerphone(next);
+      agoraEngineRef.current?.adjustPlaybackSignalVolume(next ? 150 : 100);
+      try {
+        InCallManager.setForceSpeakerphoneOn(next);
+        InCallManager.setSpeakerphoneOn(next);
+      } catch (_) {}
     } catch (err) {
       console.warn('Speaker route update notice:', err?.message || err);
     }
@@ -938,12 +949,9 @@ export const VoiceRoomProvider = ({ children }) => {
     setLocallyMutedUsers([]);
 
     try {
-      InCallManager.start({ media: 'audio', auto: false, ringback: '' });
       InCallManager.setKeepScreenOn(true);
-      InCallManager.setForceSpeakerphoneOn(speakerphoneEnabled);
-      InCallManager.setSpeakerphoneOn(speakerphoneEnabled);
     } catch (inCallErr) {
-      console.warn('InCallManager start notice:', inCallErr?.message);
+      console.warn('InCallManager keepScreen notice:', inCallErr?.message);
     }
 
     const hostObj = actuallyOwner

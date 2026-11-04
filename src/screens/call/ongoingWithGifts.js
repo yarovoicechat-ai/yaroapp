@@ -578,7 +578,7 @@ const OnGoing = ({ route, navigation }) => {
         engine.setEnableSpeakerphone(isSpeakerOn);
         engine.muteLocalAudioStream(isMuted);
         engine.muteAllRemoteAudioStreams(false);
-        engine.adjustPlaybackSignalVolume(100);
+        engine.adjustPlaybackSignalVolume(150);
         engine.adjustRecordingSignalVolume(100);
 
         engine.addListener('onJoinChannelSuccess', (connection, elapsed) => {
@@ -595,7 +595,10 @@ const OnGoing = ({ route, navigation }) => {
             engine.enableLocalAudio(!isMuted);
             engine.muteLocalAudioStream(isMuted);
             engine.muteAllRemoteAudioStreams(false);
+            engine.setDefaultAudioRouteToSpeakerphone(isSpeakerOn);
             engine.setEnableSpeakerphone(isSpeakerOn);
+            engine.adjustPlaybackSignalVolume(150);
+            engine.adjustRecordingSignalVolume(100);
             engine.updateChannelMediaOptions({
               publishMicrophoneTrack: !isMuted,
               autoSubscribeAudio: true,

@@ -120,7 +120,7 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
         toValue: 8, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true,
       }),
       Animated.delay(2000),
-      Animated.timing(bulletOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+      Animated.timing(bulletOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
     ]);
     comingTranslateX.setValue(width);
     comingOpacity.setValue(0);
@@ -422,6 +422,8 @@ const styles = StyleSheet.create({
     height: 52,
     width: width - 16,
     maxWidth: width - 16,
+    backgroundColor: 'rgba(20, 24, 40, 0.92)',
+    borderRadius: 26,
   },
   bulletBannerImageStyle: {
     borderRadius: 26,

@@ -278,12 +278,15 @@ export default function VoiceRoomScreen() {
   const handleEntryEffectComplete = useCallback((entryId) => {
     setActiveEntryEffect?.((previous) => {
       if (!previous) return null;
-      if (!entryId || previous?.entryId === entryId) return null;
+      if (!entryId) return null;
       const remainingQueued = (previous?.queuedEntries || []).filter(
         (e) => (e.entryId || e.id) !== entryId
       );
       if (remainingQueued.length === 0) return null;
-      return { ...previous, queuedEntries: remainingQueued };
+      return {
+        ...remainingQueued[0],
+        queuedEntries: remainingQueued,
+      };
     });
   }, [setActiveEntryEffect]);
 

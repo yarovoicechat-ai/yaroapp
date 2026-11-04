@@ -1356,6 +1356,9 @@ export const VoiceRoomProvider = ({ children }) => {
               data.user,
             ]);
           }
+          if (data?.user) {
+            acceptEntryEffect(data, 'voice_room:user_joined');
+          }
           const isSelf = Boolean(
             currentUserId &&
             (String(data?.user?.userId) === String(currentUserId) ||
@@ -1537,7 +1540,7 @@ export const VoiceRoomProvider = ({ children }) => {
         });
 
         // 10. Room Entry & VIP Entry effects
-        const rememberEntryEvent = (data) => {
+        const rememberEntryEvent = (data, isRichEffect = false) => {
           const userKeys = [...new Set([
             data?.user?.userId,
             data?.userId,
@@ -1548,12 +1551,13 @@ export const VoiceRoomProvider = ({ children }) => {
           const eventKey = entryId ? `event:${entryId}` : '';
           const now = Date.now();
           const eventSeenAt = eventKey ? (recentEntryUsersRef.current.get(eventKey) || 0) : 0;
-          const hasSeenEvent = eventKey && eventSeenAt && (now - eventSeenAt < 30000);
+          const hasSeenEvent = eventKey && eventSeenAt && (now - eventSeenAt < 6000);
           const hasRecentUserEvent = userKeys.some((key) => {
             const seenAt = recentEntryUsersRef.current.get(key) || 0;
-            return seenAt && now - seenAt < 15000;
+            return seenAt && now - seenAt < 3000;
           });
-          if (hasSeenEvent || (!eventKey && hasRecentUserEvent)) return false;
+          // Do not suppress rich entry effect with vehicle/banner if only bare join event was seen
+          if (hasSeenEvent || (!isRichEffect && hasRecentUserEvent)) return false;
           userKeys.forEach((key) => recentEntryUsersRef.current.set(key, now));
           if (eventKey) recentEntryUsersRef.current.set(eventKey, now);
           if (recentEntryUsersRef.current.size > 200) {
@@ -1576,7 +1580,8 @@ export const VoiceRoomProvider = ({ children }) => {
             }
             hasPlayedSelfEntranceRef.current = true;
           }
-          if (!rememberEntryEvent(data)) return;
+          const isRichEffect = Boolean(data?.entry || data?.effect || data?.entrance || data?.hasEntry);
+          if (!rememberEntryEvent(data, isRichEffect)) return;
           console.warn(`📡 [VoiceRoom] ${eventName} received in Context:`, data?.entryId, data?.user?.name);
           if (data?.user) {
             const entryUserIds = [data.user.userId, data.userId, data.user.id, data.user._id].filter(Boolean).map(String);
@@ -1643,10 +1648,14 @@ export const VoiceRoomProvider = ({ children }) => {
             equippedFrameAsset: currentUser?.equippedFrameAsset || null,
             equippedEntry: currentUser?.equippedEntryAsset || currentUser?.equippedEntry || null,
             equippedEntryAsset: currentUser?.equippedEntryAsset || null,
+            equippedVehicle: currentUser?.equippedVehicleAsset || currentUser?.equippedVehicle || null,
+            equippedVehicleAsset: currentUser?.equippedVehicleAsset || null,
             equippedTassel: currentUser?.equippedTasselAsset || currentUser?.equippedTassel || null,
             equippedTasselAsset: currentUser?.equippedTasselAsset || null,
             equippedEntrance: currentUser?.equippedEntranceAsset || currentUser?.equippedEntrance || null,
             equippedEntranceAsset: currentUser?.equippedEntranceAsset || null,
+            wealthLevel: currentUser?.wealthLevel ?? currentUser?.level ?? 1,
+            nameEffect: currentUser?.nameEffect || null,
           },
           isHost: actuallyOwner,
           customSeats,

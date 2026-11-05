@@ -86,6 +86,7 @@ import RoomGatherFollowersModal from '../../components/room/RoomGatherFollowersM
 import RoomMessageNoticeModal from '../../components/room/RoomMessageNoticeModal';
 import RoomAnnouncementModal from '../../components/room/RoomAnnouncementModal';
 import RoomInboxModal from '../../components/room/RoomInboxModal';
+import useInboxMessages from '../../hooks/useInboxMessages';
 import {
   resolveEntryAssets,
   resolveRoomTheme,
@@ -304,6 +305,7 @@ export default function VoiceRoomScreen() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [gatherFollowersVisible, setGatherFollowersVisible] = useState(false);
   const [roomInboxModalVisible, setRoomInboxModalVisible] = useState(false);
+  const { unreadCount: inboxUnreadCount } = useInboxMessages();
 
   // Periodic on-mic heartbeat for Room Tasks (10 min, 30 min, 120 min)
   useEffect(() => {
@@ -391,18 +393,28 @@ export default function VoiceRoomScreen() {
   // Room Reactions & Seat Moving Reactions State
   const [reactions, setReactions] = useState([]);
   const [seatReactions, setSeatReactions] = useState({});
+  const lastDisplayedReactionIdRef = useRef('');
+  const seatsRef = useRef(seats);
+  seatsRef.current = seats;
+  const roomRef = useRef(room);
+  roomRef.current = room;
 
   // Broadcast Reaction Listener (All users in room see floating reactions & seat moving reactions)
   useEffect(() => {
     if (lastReaction?.emoji) {
-      const id = lastReaction.id || ('react-' + Date.now() + Math.random());
+      const rxId = String(lastReaction.id || '');
+      if (rxId && lastDisplayedReactionIdRef.current === rxId) return;
+      lastDisplayedReactionIdRef.current = rxId;
+      const id = rxId || ('react-' + Date.now() + Math.random());
       let reactionSeatIndex = (typeof lastReaction.seatIndex === 'number') ? lastReaction.seatIndex : undefined;
+      const currentSeats = seatsRef.current || [];
+      const currentRoom = roomRef.current || {};
       if (reactionSeatIndex === undefined && lastReaction.userId) {
         const targetUid = String(lastReaction.userId);
-        const seatWithUser = seats.find(
+        const seatWithUser = currentSeats.find(
           (s) => s.user && (
             String(s.user.userId || s.user._id || s.user.id) === targetUid ||
-            (s.seatIndex === 0 && (String(room?.hostId) === targetUid || String(room?.ownerId) === targetUid))
+            (s.seatIndex === 0 && (String(currentRoom?.hostId) === targetUid || String(currentRoom?.ownerId) === targetUid))
           )
         );
         if (seatWithUser) {
@@ -435,7 +447,7 @@ export default function VoiceRoomScreen() {
         }
       }, 2500);
     }
-  }, [lastReaction, seats, room]);
+  }, [lastReaction]);
 
   // Image 2 Announcement & Notice States
   const [roomAnnouncement, setRoomAnnouncement] = useState('');
@@ -800,6 +812,7 @@ export default function VoiceRoomScreen() {
   // Seat Action Modal for Host/Admin
   const [selectedSeatForAction, setSelectedSeatForAction] = useState(null);
   const [seatActionModalVisible, setSeatActionModalVisible] = useState(false);
+  const [inviteTargetSeatIndex, setInviteTargetSeatIndex] = useState(null);
   const [isChatBarExpanded, setIsChatBarExpanded] = useState(false);
   const isUserOnSeat = currentSeatIndex !== null && currentSeatIndex !== undefined && currentSeatIndex !== -1;
 
@@ -2198,6 +2211,13 @@ export default function VoiceRoomScreen() {
             activeOpacity={0.85}
           >
             <MaterialCommunityIcons name="chat" size={20} color="#FFFFFF" />
+            {Number(inboxUnreadCount) > 0 && (
+              <View style={styles.floatingInboxBadge}>
+                <Text style={styles.floatingInboxBadgeText}>
+                  {Number(inboxUnreadCount) > 99 ? '99+' : Number(inboxUnreadCount)}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -2815,7 +2835,10 @@ export default function VoiceRoomScreen() {
       {/* MODAL: ROOM ONLINE USERS LIST */}
       <RoomOnlineUsersModal
         visible={onlineUsersModalVisible}
-        onClose={() => setOnlineUsersModalVisible(false)}
+        onClose={() => {
+          setOnlineUsersModalVisible(false);
+          setInviteTargetSeatIndex(null);
+        }}
         onSelectUser={(u) => {
           setSelectedProfileUser(u);
           setProfileModalVisible(true);
@@ -2825,6 +2848,24 @@ export default function VoiceRoomScreen() {
         seats={seats}
         roomOwnerId={actualHostUserId}
         admins={admins}
+        inviteSeatIndex={inviteTargetSeatIndex}
+        onInviteToSeat={(targetUser, seatIdx) => {
+          const sock = getSocket();
+          const roomId = currentRoomId || room?.id || room?.roomId || route?.params?.roomId;
+          const targetId = targetUser?.userId || targetUser?._id || targetUser?.id;
+          if (sock && roomId && targetId) {
+            sock.emit('voice_room:invite_seat', {
+              roomId,
+              targetUserId: targetId,
+              seatIndex: seatIdx != null ? seatIdx : 1,
+            });
+            AlertService.show(
+              'Invitation Sent',
+              `Invited ${targetUser.name || 'user'} to mic ${seatIdx != null ? Number(seatIdx) + 1 : ''}.`,
+              'success'
+            );
+          }
+        }}
       />
 
 
@@ -2977,6 +3018,10 @@ export default function VoiceRoomScreen() {
         applyLiveSeat={applyLiveSeat}
         user={user}
         isModerator={isCurrentUserAdmin}
+        onInviteToSeat={(seatIdx) => {
+          setInviteTargetSeatIndex(seatIdx);
+          setOnlineUsersModalVisible(true);
+        }}
         setOnlineUsersModalVisible={setOnlineUsersModalVisible}
         bottomSafePadding={bottomSafePadding}
         styles={styles}
@@ -3028,9 +3073,8 @@ export default function VoiceRoomScreen() {
           const receiverId = participant._id || participant.id || participant.userId;
           if (receiverId) {
             navigation.navigate('Chat', {
-              receiverId,
-              name: participant.name || 'User',
-              avatar: participant.avatar || participant.image,
+              conversationId: item._id || item.id,
+              otherUser: participant,
             });
           }
         }}
@@ -5613,6 +5657,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 6,
+  },
+  floatingInboxBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  floatingInboxBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '900',
   },
 
   // Announcement Edit Modal

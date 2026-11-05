@@ -377,18 +377,18 @@ const OnGoing = ({ route, navigation }) => {
   const [loadingGifts, setLoadingGifts] = useState(false);
 
   // Custom UI Selection States
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeTab, setActiveTab] = useState('Popular');
   const [selectedPopupGift, setSelectedPopupGift] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [showQtyDropdown, setShowQtyDropdown] = useState(false);
   const [activeGift, setActiveGift] = useState(null);
 
-  // Dynamic Categories System: Automatically extracts ANY new category created in Admin Panel
+  // Dynamic Categories System: Automatically extracts ANY new category created in Admin Panel (All removed, Popular shown)
   const categories = useMemo(() => {
     const catalogCategories = gifts
       .map((gift) => typeof gift.category === 'string' ? gift.category.trim() : gift.category?.name?.trim())
-      .filter(Boolean);
-    return ['All', ...Array.from(new Set(catalogCategories))];
+      .filter((name) => name && !['all', 'popular'].includes(name.toLowerCase()));
+    return ['Popular', ...Array.from(new Set(catalogCategories))];
   }, [gifts]);
 
   const quantities = [1, 5, 10, 52, 99, 520, 1314];
@@ -396,7 +396,7 @@ const OnGoing = ({ route, navigation }) => {
   const openGiftModal = () => {
     setSelectedPopupGift(null);
     setSelectedQuantity(1);
-    setActiveTab('All');
+    setActiveTab('Popular');
     setShowGiftModal(true);
   };
 

@@ -38,8 +38,12 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
     await showIncomingCallNotification(remoteMessage.data);
   } else if (remoteMessage?.data?.type === 'call_state') {
     await applyTerminalCallState(remoteMessage.data);
-  } else if (isActivityNotification(remoteMessage?.data) && !remoteMessage.notification) {
-    await showActivityNotification(remoteMessage.data);
+  } else if (isActivityNotification(remoteMessage?.data) || remoteMessage?.notification) {
+    await showActivityNotification({
+      ...(remoteMessage?.data || {}),
+      title: remoteMessage?.data?.title || remoteMessage?.notification?.title,
+      body: remoteMessage?.data?.body || remoteMessage?.notification?.body,
+    });
   } else if (remoteMessage?.data?.type === 'message') {
     await showMessageNotification(remoteMessage.data);
   }

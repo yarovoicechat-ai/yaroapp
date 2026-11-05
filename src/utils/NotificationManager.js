@@ -8,7 +8,7 @@ import {
     getCallParams,
     handleCallNotificationEvent,
 } from './CallNotificationService';
-import { handleMessageNotificationEvent } from './MessageNotificationService';
+import { handleMessageNotificationEvent, showMessageNotification } from './MessageNotificationService';
 import { getSocket } from '../sockets';
 import { isActivityNotification, showActivityNotification, handleActivityNotificationEvent } from './ActivityNotificationService';
 import {
@@ -17,8 +17,54 @@ import {
     clearStoredCallState,
 } from './callLifecycle';
 
+export const ensureAllNotificationChannels = async () => {
+    try {
+        if (Platform.OS === 'android') {
+            await notifee.createChannels([
+                {
+                    id: 'activity_notifications_v1',
+                    name: 'Activity & Room Alerts',
+                    importance: 4, // AndroidImportance.HIGH
+                    sound: 'default',
+                    vibration: true,
+                },
+                {
+                    id: 'chat_messages_v2',
+                    name: 'Chat messages',
+                    importance: 4, // AndroidImportance.HIGH
+                    sound: 'default',
+                    vibration: true,
+                },
+                {
+                    id: 'incoming_call_v2',
+                    name: 'Incoming Calls',
+                    importance: 4, // AndroidImportance.HIGH
+                    sound: 'default',
+                    vibration: true,
+                },
+                {
+                    id: 'call_channel',
+                    name: 'Calls & General',
+                    importance: 4, // AndroidImportance.HIGH
+                    sound: 'default',
+                    vibration: true,
+                },
+                {
+                    id: 'default',
+                    name: 'General Notifications',
+                    importance: 3, // AndroidImportance.DEFAULT
+                    sound: 'default',
+                },
+            ]);
+        }
+    } catch (channelErr) {
+        console.log('Channel creation notice:', channelErr.message);
+    }
+};
+
 export const requestUserPermission = async () => {
     try {
+        await ensureAllNotificationChannels();
         if (Platform.OS === 'android' && Platform.Version >= 33) {
             try {
                 await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
@@ -260,6 +306,7 @@ const checkPendingActivityPayload = async () => {
 export const NotificationListen = () => {
     const appStateSubscription = AppState.addEventListener('change', nextState => {
         if (nextState === 'active') {
+            syncFCMToken();
             checkPendingCallPayload();
             checkPendingActivityPayload().catch(error => console.log('Activity notification restore:', error.message));
         }
@@ -275,8 +322,17 @@ export const NotificationListen = () => {
 
     // FCM remains active even when Home.js and its socket listener are not mounted.
     const unsubscribeMessage = messaging().onMessage(async remoteMessage => {
-        if (isActivityNotification(remoteMessage.data)) {
-            await showActivityNotification(remoteMessage.data);
+        if (remoteMessage.data?.type === 'message') {
+            const current = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
+            if (current?.name !== 'Chat' || String(current?.params?.conversationId) !== String(remoteMessage.data.conversationId)) {
+                await showMessageNotification(remoteMessage.data);
+            }
+        } else if (isActivityNotification(remoteMessage.data) || remoteMessage.notification) {
+            await showActivityNotification({
+                ...(remoteMessage.data || {}),
+                title: remoteMessage.data?.title || remoteMessage.notification?.title,
+                body: remoteMessage.data?.body || remoteMessage.notification?.body,
+            });
         } else if (remoteMessage.data?.type === 'call_state') {
             await applyTerminalAndClose(remoteMessage.data);
         } else if (remoteMessage.data?.type === 'call') {

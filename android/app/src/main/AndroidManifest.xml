@@ -70,7 +70,7 @@
       <!-- Default Notification Channel Fallback -->
       <meta-data
         android:name="com.google.firebase.messaging.default_notification_channel_id"
-        android:value="call_channel"
+        android:value="activity_notifications_v1"
         tools:replace="android:value" />
 
       <activity

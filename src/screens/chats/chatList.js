@@ -19,6 +19,7 @@ import { apiUtil } from '../../utils/apiUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { AuthContext } from '../../context/AuthProvider';
 import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
+import useInboxMessages from '../../hooks/useInboxMessages';
 
 const diamondIcon = require('../../assets/icons/diamond.png');
 
@@ -48,41 +49,24 @@ const LUCKY_REWARD_BAG_ENTRY = {
   snippet: 'Open your gift box and check received rewards',
   time: '',
   unreadCount: 0,
-  icon: 'card-giftcard',
+  icon: 'gift',
 };
 
-export default function ChatListScreen() {
+export default function ChatListScreen({ embedded = false, onNavigate, onClose } = {}) {
   const insets = useSafeAreaInsets();
-  const topSafeInset = getAppTopSafeInset(insets.top);
-  const bottomTabBarPadding = getTabScreenBottomPadding(insets.bottom);
+  const topSafeInset = embedded ? 0 : getAppTopSafeInset(insets.top);
+  const bottomTabBarPadding = embedded ? 16 : getTabScreenBottomPadding(insets.bottom);
   const navigation = useNavigation();
+  const openScreen = (name, params) => onNavigate ? onNavigate(name, params) : navigation.navigate(name, params);
   const { user } = useContext(AuthContext);
   const [activeSubTab, setActiveSubTab] = useState('all_messages');
-  const [conversations, setConversations] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { conversations, loading, refresh: fetchConversations } = useInboxMessages();
   const [calls, setCalls] = useState([]);
   const [loadingCalls, setLoadingCalls] = useState(false);
   const [giftHistory, setGiftHistory] = useState([]);
   const [loadingGifts, setLoadingGifts] = useState(false);
   const [systemNotices, setSystemNotices] = useState([]);
   const [loadingNotices, setLoadingNotices] = useState(false);
-
-  const fetchConversations = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await apiUtil.get('/chat/conversations');
-      const list = res.data?.data?.conversations || res.data?.data || [];
-      if (Array.isArray(list)) {
-        setConversations(list);
-      } else {
-        setConversations([]);
-      }
-    } catch (e) {
-      setConversations([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const fetchCalls = useCallback(async () => {
     try {
@@ -215,7 +199,7 @@ export default function ChatListScreen() {
           style={styles.cardWrapper}
           onPress={() => {
             if (item.id === 'm_system_notice') {
-              navigation.navigate('SystemNoticeScreen');
+              openScreen('SystemNoticeScreen');
               return;
             }
             if (item.actionTab) {
@@ -254,7 +238,7 @@ export default function ChatListScreen() {
       <TouchableOpacity
         activeOpacity={0.8}
         style={styles.cardWrapper}
-        onPress={() => navigation.navigate('Chat', { conversationId: item._id, otherUser: other })}
+        onPress={() => openScreen('Chat', { conversationId: item._id, otherUser: other })}
       >
         <View style={styles.avatarWrapper}>
           <Image source={getUserAvatar(other)} style={styles.userAvatarImg} />
@@ -275,6 +259,9 @@ export default function ChatListScreen() {
         </View>
 
         <View style={styles.cardRightMeta}>
+          {Number(item.unreadCount) > 0 && <View style={styles.unreadBadgePill}>
+            <Text style={styles.unreadBadgeVal}>{Number(item.unreadCount) > 99 ? '99+' : Number(item.unreadCount)}</Text>
+          </View>}
           <Icon name="chevron-forward" size={18} color="#CBD5E1" style={{ marginTop: 4 }} />
         </View>
       </TouchableOpacity>
@@ -328,7 +315,7 @@ export default function ChatListScreen() {
           activeOpacity={0.8}
           style={styles.callBackBtn}
           onPress={() => {
-            navigation.navigate('OneToOne', { hostId: item.hostId || item.id });
+            openScreen('OneToOne', { hostId: item.hostId || item.id });
           }}
         >
           <Icon name="call" size={16} color="#6C5CE7" />
@@ -382,7 +369,7 @@ export default function ChatListScreen() {
         activeOpacity={0.8}
         onPress={() => {
           if (item.type === 'follow') {
-            navigation.navigate('Followers', { initialTab: 'followers' });
+            openScreen('Followers', { initialTab: 'followers' });
           }
         }}
       >
@@ -416,7 +403,7 @@ export default function ChatListScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />
+      {!embedded && <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />}
       <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={StyleSheet.absoluteFillObject} />
 
       {/* Main Title Row - Top header removed as requested */}
@@ -447,13 +434,22 @@ export default function ChatListScreen() {
             style={styles.actionCircleBtn}
             activeOpacity={0.8}
             onPress={() => {
-              if (activeSubTab === 'calls') navigation.navigate('CallHistory');
-              else if (activeSubTab === 'gifts') navigation.navigate('GiftsScreen');
-              else if (activeSubTab === 'system') navigation.navigate('SystemNoticeScreen');
+              if (activeSubTab === 'calls') openScreen('CallHistory');
+              else if (activeSubTab === 'gifts') openScreen('GiftsScreen');
+              else if (activeSubTab === 'system') openScreen('SystemNoticeScreen');
             }}
           >
             <Icon name={activeSubTab === 'all_messages' ? 'search' : 'open-outline'} size={20} color="#1E293B" />
           </TouchableOpacity>
+          {embedded && onClose && (
+            <TouchableOpacity
+              style={[styles.actionCircleBtn, { marginLeft: 8 }]}
+              activeOpacity={0.8}
+              onPress={onClose}
+            >
+              <Icon name="close" size={20} color="#1E293B" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -537,7 +533,7 @@ export default function ChatListScreen() {
                 </Text>
                 <TouchableOpacity
                   style={styles.primaryActionBtn}
-                  onPress={() => navigation.navigate('OneToOne')}
+                  onPress={() => openScreen('OneToOne')}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.primaryActionBtnText}>Find Hosts to Call</Text>

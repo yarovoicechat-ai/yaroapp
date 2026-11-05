@@ -1,7 +1,7 @@
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const isActivityNotification = data => ['missed_call', 'room_open', 'system'].includes(data?.type);
+export const isActivityNotification = data => ['missed_call', 'room_open', 'system', 'event'].includes(data?.type) || Boolean(data?.title || data?.body);
 
 export const showActivityNotification = async rawData => {
   if (!isActivityNotification(rawData)) return;

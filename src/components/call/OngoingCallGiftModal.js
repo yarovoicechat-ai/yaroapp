@@ -27,7 +27,8 @@ export default function OngoingCallGiftModal({
   onSend,
   styles,
 }) {
-  const filteredGifts = activeTab.toLowerCase() === 'all'
+  const isPopular = !activeTab || ['all', 'popular'].includes(activeTab.toLowerCase());
+  const filteredGifts = isPopular
     ? allGifts
     : allGifts.filter((gift) => {
       const category = typeof gift.category === 'string' ? gift.category : gift.category?.name || '';

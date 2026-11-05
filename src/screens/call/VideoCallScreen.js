@@ -100,7 +100,7 @@ export default function VideoCallScreen() {
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [gifts, setGifts] = useState([]);
   const [loadingGifts, setLoadingGifts] = useState(false);
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeTab, setActiveTab] = useState('Popular');
   const [selectedGift, setSelectedGift] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [showQtyPicker, setShowQtyPicker] = useState(false);
@@ -190,12 +190,12 @@ export default function VideoCallScreen() {
   const categories = useMemo(() => {
     const cats = gifts
       .map((g) => (typeof g.category === 'string' ? g.category.trim() : g.category?.name?.trim()))
-      .filter(Boolean);
-    return ['All', ...Array.from(new Set(cats))];
+      .filter((name) => name && !['all', 'popular'].includes(name.toLowerCase()));
+    return ['Popular', ...Array.from(new Set(cats))];
   }, [gifts]);
 
   const filteredGifts = useMemo(() => {
-    if (activeTab.toLowerCase() === 'all') return gifts;
+    if (!activeTab || ['all', 'popular'].includes(activeTab.toLowerCase())) return gifts;
     return gifts.filter((g) => {
       const c = typeof g.category === 'string' ? g.category : g.category?.name || '';
       return c.toLowerCase() === activeTab.toLowerCase();

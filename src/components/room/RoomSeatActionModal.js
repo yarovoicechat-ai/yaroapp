@@ -13,6 +13,7 @@ export default function RoomSeatActionModal({
   takeSeat,
   user,
   setOnlineUsersModalVisible,
+  onInviteToSeat,
   bottomSafePadding = 16,
   styles = {},
 }) {
@@ -121,7 +122,11 @@ export default function RoomSeatActionModal({
               style={styles.emptySeatActionItem || { alignItems: 'center', minWidth: 64 }}
               onPress={() => {
                 onClose?.();
-                setOnlineUsersModalVisible?.(true);
+                if (onInviteToSeat) {
+                  onInviteToSeat(selectedSeat?.seatIndex ?? 1);
+                } else {
+                  setOnlineUsersModalVisible?.(true);
+                }
               }}
               activeOpacity={0.75}
             >

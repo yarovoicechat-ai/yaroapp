@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 import React, { useContext, useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import {
   View,
@@ -6,6 +13,7 @@ import {
   StyleSheet,
   Image,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   Dimensions,
   KeyboardAvoidingView,
@@ -17,7 +25,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { apiUtil } from '../../utils/apiUtil';
 import { AuthContext } from '../../context/AuthProvider';
 import { getSocket } from '../../sockets';
@@ -44,6 +52,7 @@ const getMessageKey = (message) => message?.transactionId
 
 const Massage = ({ route }) => {
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const { user, fetchUserProfile } = useContext(AuthContext);
@@ -60,6 +69,23 @@ const Massage = ({ route }) => {
   const [resolvingConversation, setResolvingConversation] = useState(!isMongoId(routeConversationId));
 
   const [messages, setMessages] = useState([]);
+  const readContextRef = useRef({});
+  readContextRef.current = { conversationId, userId: String(user?._id || user?.id || ''), isFocused };
+  const seenMessageIdsRef = useRef(new Set());
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 75, minimumViewTime: 500 }).current;
+  const onViewableMessagesChanged = useRef(({ viewableItems }) => {
+    const context = readContextRef.current;
+    if (!context.isFocused || !context.conversationId) return;
+    const ids = viewableItems.map(({ item }) => item).filter(item =>
+      /^[a-f\d]{24}$/i.test(String(item?._id || '')) &&
+      String(item.sender?._id || item.sender) !== context.userId && item.status !== 'seen' &&
+      !seenMessageIdsRef.current.has(String(item._id))
+    ).map(item => String(item._id));
+    if (!ids.length) return;
+    ids.forEach(id => seenMessageIdsRef.current.add(id));
+    apiUtil.post('/chat/seen', { conversationId: context.conversationId, messageIds: ids })
+      .catch(() => ids.forEach(id => seenMessageIdsRef.current.delete(id)));
+  }).current;
   const [inputText, setInputText] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
   const [calling, setCalling] = useState(false);
@@ -67,7 +93,7 @@ const Massage = ({ route }) => {
   const [sendingGift, setSendingGift] = useState(false);
   const [gifts, setGifts] = useState([]);
   const [loadingGifts, setLoadingGifts] = useState(false);
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeTab, setActiveTab] = useState('Popular');
   const [selectedGift, setSelectedGift] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [activeGift, setActiveGift] = useState(null);
@@ -109,7 +135,7 @@ const Massage = ({ route }) => {
     const catalogCategories = gifts
       .map((gift) => typeof gift.category === 'string' ? gift.category.trim() : gift.category?.name?.trim())
       .filter(Boolean);
-    return ['All', ...Array.from(new Set(catalogCategories))];
+    return ['Popular', ...Array.from(new Set(catalogCategories)).filter(name => !['all', 'popular'].includes(name.toLowerCase()))];
   }, [gifts]);
   const comboQuantities = [1, 10, 99, 520];
 
@@ -135,7 +161,7 @@ const Massage = ({ route }) => {
   }, []);
 
   const getFilteredGifts = () => {
-    if (!activeTab || activeTab.toLowerCase() === 'all') return gifts;
+    if (!activeTab || ['all', 'popular'].includes(activeTab.toLowerCase())) return gifts;
     return gifts.filter((gift) => {
       const cat = typeof gift.category === 'string' ? gift.category : gift.category?.name || '';
       return cat.toLowerCase() === activeTab.toLowerCase();
@@ -262,10 +288,7 @@ const Massage = ({ route }) => {
     socket.emit('joinConversation', { conversationId });
     console.log('Joined conversation:', conversationId);
 
-    // Mark all existing unread messages as seen when opening the chat
-    socket.emit('markSeen', { conversationId });
-
-    socket.on('newMessageNotification', ({ conversationId: convId, message: msgWrapper }) => {
+    const handleNewMessage = ({ conversationId: convId, message: msgWrapper }) => {
       console.log('New message event received:', { convId, msgWrapper });
       if (convId === conversationId) {
         const newMsg = msgWrapper?.message || msgWrapper;
@@ -274,22 +297,20 @@ const Massage = ({ route }) => {
           setMessages(prev => prev.some((existing) => String(existing._id || existing.id) === String(newMsg._id || newMsg.id))
             ? prev
             : [...prev, newMsg]);
-          if (user?._id && newMsg.sender !== user._id) {
-            console.log('Marking message as seen for:', convId);
-            socket.emit('markSeen', { conversationId });
-          }
         }
       }
-    });
+    };
+    socket.on('newMessageNotification', handleNewMessage);
 
-    socket.on('messagesSeen', ({ conversationId: seenConvId, id: seenById }) => {
+    const handleMessagesSeen = ({ conversationId: seenConvId, id: seenById, messageIds }) => {
       console.log('Messages seen event:', { seenConvId, seenById });
       if (seenConvId === conversationId && otherUser?._id && seenById === otherUser._id) {
         setMessages(prev =>
-          prev.map(msg => ({ ...msg, status: 'seen' }))
+          prev.map(msg => !messageIds || messageIds.includes(String(msg._id)) ? { ...msg, status: 'seen' } : msg)
         );
       }
-    });
+    };
+    socket.on('messagesSeen', handleMessagesSeen);
 
     const handleGiftReceived = (gift) => {
       if (!gift) return;
@@ -329,8 +350,8 @@ const Massage = ({ route }) => {
     return () => {
       console.log('Cleaning up socket listeners');
       if (giftTimerRef.current) clearTimeout(giftTimerRef.current);
-      socket.off('newMessageNotification');
-      socket.off('messagesSeen');
+      socket.off('newMessageNotification', handleNewMessage);
+      socket.off('messagesSeen', handleMessagesSeen);
       socket.off('giftReceived', handleGiftReceived);
       socket.off('gift:received', handleGiftReceived);
       socket.emit('exitChat', { conversationId });
@@ -356,11 +377,23 @@ const Massage = ({ route }) => {
       return;
     }
 
-    const userBalance = Number((user?.diamonds || 0) + (user?.coins || 0));
-    if (userBalance < 35) {
+    const userBalance = Number(user?.diamonds || 0);
+    const hostTypes = otherUser?.hostTypes || [];
+    const hasCallHosting = Boolean(
+      otherUser?.isHost ||
+      otherUser?.isApprovedHost ||
+      otherUser?.isHostApproved ||
+      otherUser?.hostingApproved ||
+      String(otherUser?.hostStatus || '').toLowerCase() === 'approved' ||
+      ['host', 'agency'].includes(String(otherUser?.role || '').toLowerCase()) ||
+      (Array.isArray(hostTypes) && hostTypes.some(type => ['voice', 'video', 'voice_call', 'video_call', 'call', 'audio'].includes(String(type).toLowerCase())))
+    );
+    const isSenderExempt = ['admin', 'superadmin', 'root'].includes(String(user?.role || '').toLowerCase());
+    const paidChat = hasCallHosting && !isSenderExempt;
+    if (paidChat && userBalance < 2) {
       AlertService.show(
         'Insufficient Diamonds',
-        'Sending a message requires 35 Diamonds. Please recharge your wallet.',
+        'A message to a call host costs 2 Diamonds. Please recharge your wallet.',
         'error',
         [
           { text: 'Cancel', style: 'cancel' },
@@ -394,6 +427,7 @@ const Massage = ({ route }) => {
         recipientId: targetReceiverId,
         content: messageContentToSend,
         conversationId,
+        requestId: tempMessage._id,
       });
 
       const { message: msgWrapper } = res.data?.data || {};
@@ -652,7 +686,7 @@ const Massage = ({ route }) => {
           >
             <Icon name="chevron-left" size={22} color="#1E293B" />
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.navUserInfo}
             activeOpacity={0.8}
@@ -687,20 +721,21 @@ const Massage = ({ route }) => {
         </View>
 
         {/* Message Thread */}
-        <ScrollView
+        <FlatList
           ref={scrollViewRef}
+          data={messages}
+          keyExtractor={(msg, index) => String(msg?._id || msg?.transactionId || index)}
+          viewabilityConfig={viewabilityConfig}
+          onViewableItemsChanged={onViewableMessagesChanged}
           contentContainerStyle={[styles.chatThread, { paddingBottom: inputBarHeight + 16 }]}
           onContentSizeChange={() =>
             scrollViewRef.current?.scrollToEnd({ animated: true })
           }
           showsVerticalScrollIndicator={false}
-        >
-          {/* Today Date Divider Pill */}
-          <View style={styles.dateDividerPill}>
+          ListHeaderComponent={<View style={styles.dateDividerPill}>
             <Text style={styles.dateDividerText}>Today</Text>
-          </View>
-
-          {messages.map((msg, index) => {
+          </View>}
+          renderItem={({ item: msg, index }) => {
             if (!msg) return null;
             const isSent = msg.sender === user._id;
             const msgTime = msg.updatedAt ? new Date(msg.updatedAt).toLocaleTimeString([], {
@@ -777,8 +812,8 @@ const Massage = ({ route }) => {
                 </View>
               </View>
             );
-          })}
-        </ScrollView>
+          }}
+        />
 
         {/* Animated Gift Popup Overlay on Chat Screen */}
         {activeGift && (
@@ -818,7 +853,7 @@ const Massage = ({ route }) => {
               onPress={() => {
                 setSelectedGift(null);
                 setSelectedQuantity(1);
-                setActiveTab('All');
+                setActiveTab('Popular');
                 setShowGiftModal(true);
               }}
             >
@@ -828,7 +863,7 @@ const Massage = ({ route }) => {
             <TouchableOpacity style={styles.cameraIconBtn}>
               <Icon name="photo-camera" size={20} color="#fff" />
             </TouchableOpacity>
-            
+
             <TextInput
               placeholder="Type your message (max 50)..."
               placeholderTextColor="#94A3B8"
@@ -1194,7 +1229,7 @@ const styles = StyleSheet.create({
   messageRowRight: {
     justifyContent: 'flex-end',
   },
-  
+
   // Asymmetric Message bubbles (Tails)
   bubbleWrapperLeft: {
     alignItems: 'flex-start',

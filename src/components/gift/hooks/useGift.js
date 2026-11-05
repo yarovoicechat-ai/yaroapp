@@ -80,7 +80,7 @@ export function useGift({
 
   const filteredGifts = useMemo(() => {
     let result = gifts;
-    if (activeCategory && activeCategory.toLowerCase() !== 'all') {
+    if (activeCategory && !['all', 'popular'].includes(activeCategory.toLowerCase())) {
       result = result.filter(gift => giftMatchesCategory(gift, activeCategory));
     }
     if (searchQuery.trim()) {

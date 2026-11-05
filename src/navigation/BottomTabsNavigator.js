@@ -281,9 +281,17 @@ export default function BottomTabsNavigator() {
       }
     };
 
+    const handleUnreadRefresh = () => {
+      fetchUnread();
+    };
+
     socket.on("newMessageNotification", handleNewMessage);
+    socket.on("chatUnreadUpdated", handleUnreadRefresh);
+    socket.on("messagesSeen", handleUnreadRefresh);
     return () => {
       socket.off("newMessageNotification", handleNewMessage);
+      socket.off("chatUnreadUpdated", handleUnreadRefresh);
+      socket.off("messagesSeen", handleUnreadRefresh);
     };
   }, [user]);
 

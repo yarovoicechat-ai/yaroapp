@@ -6,6 +6,7 @@ import {
   Modal,
   TouchableOpacity,
   FlatList,
+  ScrollView,
   TextInput,
   Dimensions,
   Platform,
@@ -222,7 +223,8 @@ export default function RoomMusicModal({
     const seconds = Math.floor(Math.max(0, Number(ms) || 0) / 1000);
     return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
   };
-  const [activeTab, setActiveTab] = useState('local'); // 'presets' | 'local'
+  const [activeTab, setActiveTab] = useState('presets'); // 'presets' | 'local'
+  const [moreSettingsVisible, setMoreSettingsVisible] = useState(false);
   const [deviceSongs, setDeviceSongs] = useState([]);
   const [loadingDeviceSongs, setLoadingDeviceSongs] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -669,7 +671,20 @@ export default function RoomMusicModal({
             </TouchableOpacity>
           </View>
 
-          {/* Volume & Equalizer Section (Up to 400% Loud Boost & Bass Manager) */}
+          <TouchableOpacity
+            style={styles.moreSettingsToggleBtn}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: moreSettingsVisible }}
+            onPress={() => setMoreSettingsVisible(value => !value)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name={moreSettingsVisible ? "chevron-up-circle" : "tune-vertical"} size={17} color="#C4B5FD" />
+            <Text style={styles.moreSettingsToggleText}>
+              {moreSettingsVisible ? "Hide Settings" : "More Settings (Volume & Bass)"}
+            </Text>
+            <MaterialCommunityIcons name={moreSettingsVisible ? "chevron-up" : "chevron-down"} size={16} color="#94A3B8" style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+          {moreSettingsVisible && <ScrollView style={{ maxHeight: 260 }} nestedScrollEnabled>
           <View style={styles.volumeCard}>
             {/* Music gain: processed 5x PCM, scaled through Agora's 0-100 range. */}
             <View style={styles.volumeRow}>
@@ -861,6 +876,7 @@ export default function RoomMusicModal({
             </View>
           </View>
 
+          </ScrollView>}
           {/* 2 Tabs: Local Songs (Phone Storage) & Preset Songs */}
           <View style={styles.tabsRow}>
             <TouchableOpacity
@@ -1461,5 +1477,24 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: '700',
+  },
+  moreSettingsToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.35)',
+    borderRadius: 16,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    alignSelf: 'center',
+    marginVertical: 8,
+  },
+  moreSettingsToggleText: {
+    color: '#E2E8F0',
+    fontSize: 12.5,
+    fontWeight: '700',
+    marginLeft: 6,
   },
 });

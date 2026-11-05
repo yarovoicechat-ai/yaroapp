@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiUtil } from '../utils/apiUtil';
 import { initSocket, getSocket } from '../sockets/';
 import { attachSocketListeners } from '../utils/initializeSocket';
-import { syncFCMToken } from '../utils/NotificationManager';
+import { syncFCMToken, requestUserPermission } from '../utils/NotificationManager';
 import { AUTH_SESSION_EXPIRED_EVENT, clearAuthSession } from '../utils/authSession';
 import { mergeCanonicalUser } from '../utils/cosmeticResolver';
 
@@ -256,7 +256,7 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(true);
     await Promise.allSettled([
       fetchUserProfile(),
-      syncFCMToken(),
+      requestUserPermission(),
       (async () => {
         getSocket()?.disconnect();
         const socket = await initSocket();

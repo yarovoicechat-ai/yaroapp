@@ -20,6 +20,8 @@ export default function RoomOnlineUsersModal({
   seats = [],
   roomOwnerId,
   admins = [],
+  inviteSeatIndex = null,
+  onInviteToSeat = null,
   bottomSafePadding = 16,
 }) {
   if (!visible) return null;
@@ -188,6 +190,20 @@ export default function RoomOnlineUsersModal({
                       </View>
                     </View>
                   </View>
+
+                  {!isSeated && onInviteToSeat && (
+                    <TouchableOpacity
+                      style={styles.inviteButton}
+                      onPress={() => {
+                        onInviteToSeat(u, inviteSeatIndex);
+                        onClose();
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialCommunityIcons name="account-plus" size={14} color="#FFF" style={{ marginRight: 3 }} />
+                      <Text style={styles.inviteButtonText}>Invite</Text>
+                    </TouchableOpacity>
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -356,5 +372,19 @@ const styles = StyleSheet.create({
     color: '#38BDF8',
     fontSize: 9.5,
     fontWeight: '800',
+  },
+  inviteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  inviteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

@@ -834,6 +834,8 @@ export const VoiceRoomProvider = ({ children }) => {
     sock.off('voice_room:chat_message');
     sock.off('voice_room:chat_cleared');
     sock.off('voice_room:reaction_received');
+    sock.off('voice_room:reaction');
+    sock.off('voice_room:seat_invitation');
     sock.off('voice_room:error');
     sock.off('voice_room:theme_updated');
     sock.off('voice_room:seat_skin_updated');
@@ -1167,7 +1169,25 @@ export const VoiceRoomProvider = ({ children }) => {
           }
         };
         sock.on('voice_room:reaction_received', handleReactionReceived);
-        sock.on('voice_room:reaction', handleReactionReceived);
+
+        // 1.15 Seat invitation listener
+        sock.on('voice_room:seat_invitation', (data) => {
+          if (!data) return;
+          AlertService.show(
+            'Seat Invitation 🎤',
+            `${data.hostName || 'The Host'} invited you to speak on Seat ${Number(data.seatIndex || 0) + 1}.`,
+            'info',
+            [
+              { text: 'Decline', style: 'cancel' },
+              {
+                text: 'Accept',
+                onPress: () => {
+                  takeSeat(Number(data.seatIndex || 1));
+                },
+              },
+            ]
+          );
+        });
 
         // 1.2 All seats locked broadcast
         sock.on('voice_room:all_seats_locked', (data) => {

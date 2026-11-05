@@ -5,11 +5,11 @@ export const giftCategories = categories => {
   });
   const popular = byName.get('popular') || { name: 'Popular', slug: 'popular', icon: '??' };
   byName.delete('popular'); byName.delete('all');
-  return [{ ...popular, icon: popular.icon || '??' }, { name: 'All', slug: 'all' }, ...byName.values()];
+  return [{ ...popular, icon: popular.icon || 'star' }, ...byName.values()];
 };
 export const giftMatchesCategory = (gift, category) => {
   const requested = String(category || 'all').trim().toLowerCase();
-  if (requested === 'all') return true;
+  if (requested === 'all' || requested === 'popular') return true;
   const name = String(gift.categoryId?.name || gift.category || '').trim().toLowerCase();
   return name === requested || (requested === 'popular' && gift.isHot === true);
 };

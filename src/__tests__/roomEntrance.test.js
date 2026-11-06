@@ -40,6 +40,20 @@ test('plain joins queue once and do not display a fabricated ride', async () => 
   expect(tree.toJSON()).toBeNull();
 });
 
+test('queued entries are not replayed when another arrival updates the queue after 1.2 seconds', async () => {
+  let now = 10000;
+  jest.spyOn(Date, 'now').mockImplementation(() => now);
+  const first = { eventId: 'membership-a', user: { name: 'First' } };
+  const second = { eventId: 'membership-b', user: { name: 'Second' } };
+  await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={{ queuedEntries: [first] }} />); });
+  now += 5000;
+  await act(async () => tree.update(<RoomEntryEffectEngine activeEntry={{ queuedEntries: [first, second] }} />));
+  await act(async () => finish.shift()({ finished: true }));
+  expect(JSON.stringify(tree.toJSON())).toContain('Second');
+  await act(async () => finish.shift()({ finished: true }));
+  expect(tree.toJSON()).toBeNull();
+});
+
 test('entry uses Coming copy and only adds the large avatar when configured', async () => {
   const entry = { entryId: 'ride', user: { name: 'Rider' }, entry: {
     animationUrl: 'bike.svga', metadata: { showAvatar: true, comingText: 'is coming' },

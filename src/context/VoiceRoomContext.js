@@ -1,7 +1,7 @@
 import { getRoomSeatConfig } from '../utils/roomSeats';
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { AppState, NativeModules } from 'react-native';
-import { navigationRef } from '../utils/navigationRef';
+import { navigationRef, navigate } from '../utils/navigationRef';
 import { AlertService } from '../utils/AlertService';
 import { getSocket, initSocket } from '../sockets';
 import { apiUtil } from '../utils/apiUtil';
@@ -13,6 +13,7 @@ import {
   AudioMixingStateType,
   AudioMixingReasonType,
   AudioProfileType,
+  AudioScenarioType,
 } from 'react-native-agora';
 import InCallManager from 'react-native-incall-manager';
 import { AgoraClientService } from '../services/agoraService';
@@ -338,13 +339,22 @@ export const VoiceRoomProvider = ({ children }) => {
       engine.enableAudio();
       engine.enableLocalAudio(true);
       engine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
-      engine.setAudioProfile(AudioProfileType.AudioProfileMusicHighQuality);
-      engine.setDefaultAudioRouteToSpeakerphone(speakerphoneEnabled);
-      engine.setEnableSpeakerphone(speakerphoneEnabled);
+      engine.setAudioProfile(
+        AudioProfileType.AudioProfileSpeechStandard,
+        AudioScenarioType?.AudioScenarioGameStreaming ?? AudioScenarioType?.AudioScenarioDefault ?? 3
+      );
+      engine.setDefaultAudioRouteToSpeakerphone(true);
+      engine.setEnableSpeakerphone(true);
       engine.muteAllRemoteAudioStreams(false);
       engine.adjustPlaybackSignalVolume(150);
       engine.adjustRecordingSignalVolume(micVolume || 100);
       engine.enableAudioVolumeIndication(200, 3, true);
+
+      try {
+        InCallManager.start({ media: 'audio', auto: false });
+        InCallManager.setForceSpeakerphoneOn(true);
+        InCallManager.setSpeakerphoneOn(true);
+      } catch (_) {}
 
       engine.registerEventHandler({
         onJoinChannelSuccess: (conn) => {
@@ -357,9 +367,14 @@ export const VoiceRoomProvider = ({ children }) => {
           setAgoraStatus('connected');
           setAgoraErrorMessage(null);
           try {
-            engine.setDefaultAudioRouteToSpeakerphone(speakerphoneEnabled);
-            engine.setEnableSpeakerphone(speakerphoneEnabled);
+            engine.setDefaultAudioRouteToSpeakerphone(true);
+            engine.setEnableSpeakerphone(true);
+            engine.muteAllRemoteAudioStreams(false);
             engine.adjustPlaybackSignalVolume(150);
+          } catch (_) {}
+          try {
+            InCallManager.setForceSpeakerphoneOn(true);
+            InCallManager.setSpeakerphoneOn(true);
           } catch (_) {}
           const desired = desiredLocalAudioRef.current;
           syncLocalMicState(desired.isOnSeat, desired.isMuted);
@@ -1172,7 +1187,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 1.15 Seat invitation listener
         sock.on('voice_room:seat_invitation', (data) => {
-          if (!data) return;
+          if (!isCurrentRoomEvent(data)) return;
           AlertService.show(
             'Seat Invitation 🎤',
             `${data.hostName || 'The Host'} invited you to speak on Seat ${Number(data.seatIndex || 0) + 1}.`,
@@ -1182,7 +1197,10 @@ export const VoiceRoomProvider = ({ children }) => {
               {
                 text: 'Accept',
                 onPress: () => {
-                  takeSeat(Number(data.seatIndex || 1));
+                  sock.emit('voice_room:take_seat', {
+                    roomId: data.roomId,
+                    seatIndex: Number(data.seatIndex ?? 1),
+                  });
                 },
               },
             ]
@@ -1376,7 +1394,7 @@ export const VoiceRoomProvider = ({ children }) => {
               data.user,
             ]);
           }
-          if (data?.user) {
+          if (data?.user && !data?.announcementSent) {
             acceptEntryEffect(data, 'voice_room:user_joined');
           }
           const isSelf = Boolean(
@@ -1906,20 +1924,37 @@ export const VoiceRoomProvider = ({ children }) => {
   const minimizeRoom = () => {
     setIsMinimized(true);
     setActiveEntryEffect(null);
-    if (navigationRef.current) {
-      if (navigationRef.current.canGoBack()) {
-        navigationRef.current.goBack();
-      } else {
-        navigationRef.current.navigate('MainTabs');
+    try {
+      if (navigationRef && typeof navigationRef.isReady === 'function' && navigationRef.isReady()) {
+        if (navigationRef.canGoBack && navigationRef.canGoBack()) {
+          navigationRef.goBack();
+        } else {
+          navigationRef.navigate('MainTabs');
+        }
+      } else if (typeof navigate === 'function') {
+        navigate('MainTabs');
       }
+    } catch (navErr) {
+      console.warn('Navigation minimize error:', navErr);
     }
   };
 
   // Maximize (Restore from Floating Mode)
   const maximizeRoom = () => {
     setIsMinimized(false);
-    if (navigationRef.current && activeRoom) {
-      navigationRef.current.navigate('VoiceRoom', { room: activeRoom });
+    const targetRoom = activeRoom;
+    if (targetRoom) {
+      const roomId = targetRoom.id || targetRoom.roomId || targetRoom._id;
+      const roomParams = { room: targetRoom, roomId };
+      try {
+        if (navigationRef && typeof navigationRef.isReady === 'function' && navigationRef.isReady()) {
+          navigationRef.navigate('VoiceRoom', roomParams);
+        } else if (typeof navigate === 'function') {
+          navigate('VoiceRoom', roomParams);
+        }
+      } catch (navErr) {
+        console.warn('Navigation maximize error:', navErr);
+      }
     }
   };
 
@@ -2032,12 +2067,18 @@ export const VoiceRoomProvider = ({ children }) => {
     recentJoinUsersRef.current?.clear?.();
     setIsMusicPlaying(false);
     setCurrentTrack(null);
-    if (navigationRef.current) {
-      if (navigationRef.current.canGoBack()) {
-        navigationRef.current.goBack();
-      } else {
-        navigationRef.current.navigate('MainTabs');
+    try {
+      if (navigationRef && typeof navigationRef.isReady === 'function' && navigationRef.isReady()) {
+        if (navigationRef.canGoBack && navigationRef.canGoBack()) {
+          navigationRef.goBack();
+        } else {
+          navigationRef.navigate('MainTabs');
+        }
+      } else if (typeof navigate === 'function') {
+        navigate('MainTabs');
       }
+    } catch (navErr) {
+      console.warn('Navigation leave error:', navErr);
     }
   };
 

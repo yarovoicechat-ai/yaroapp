@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { navigationRef } from '../utils/navigationRef';
+import { navigationRef, navigate } from '../utils/navigationRef';
 import { FloatingCallBridge } from '../services/FloatingCallBridge';
 import { getSocket } from '../sockets';
 
@@ -33,8 +33,12 @@ export const CallProvider = ({ children }) => {
         if (callData?.onExpand) {
           console.log(`[CALL_DEBUG] RESTORE_CALL tx=${txId}`);
           callData.onExpand();
-        } else if (callData?.params && navigationRef.current) {
-          navigationRef.current.navigate('OnGoing', callData.params);
+        } else if (callData?.params) {
+          if (navigationRef && typeof navigationRef.isReady === 'function' && navigationRef.isReady()) {
+            navigationRef.navigate('OnGoing', callData.params);
+          } else if (typeof navigate === 'function') {
+            navigate('OnGoing', callData.params);
+          }
         }
       },
       onEndCall: () => {

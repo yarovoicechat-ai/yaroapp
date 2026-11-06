@@ -24,6 +24,8 @@ import {
   createAgoraRtcEngine,
   ChannelProfileType,
   ClientRoleType,
+  AudioProfileType,
+  AudioScenarioType,
 } from 'react-native-agora';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import OngoingCallSafetyModal from '../../components/call/OngoingCallSafetyModal';
@@ -66,7 +68,7 @@ const OnGoing = ({ route, navigation }) => {
 
   const [timer, setTimer] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(false);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [isRemoteMuted, setIsRemoteMuted] = useState(false);
   const [callEnded, setCallEnded] = useState(false);
   const [endReason, setEndReason] = useState('');
@@ -573,6 +575,10 @@ const OnGoing = ({ route, navigation }) => {
         engine.enableAudio();
         engine.enableLocalAudio(true);
         engine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
+        engine.setAudioProfile(
+          AudioProfileType.AudioProfileSpeechStandard,
+          AudioScenarioType?.AudioScenarioDefault ?? 0
+        );
         engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
         engine.setDefaultAudioRouteToSpeakerphone(isSpeakerOn);
         engine.setEnableSpeakerphone(isSpeakerOn);

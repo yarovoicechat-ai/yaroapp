@@ -3,6 +3,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const isActivityNotification = data => ['missed_call', 'room_open', 'system', 'event'].includes(data?.type) || Boolean(data?.title || data?.body);
 
+export const showRoomOpenSocketNotification = async payload => {
+  const notification = payload?.notification || payload;
+  if (notification?.data?.type !== 'room_open') return;
+  await showActivityNotification({ ...notification.data,
+    notificationId: notification.data.notificationId || String(notification._id || ''),
+    title: notification.title,
+    body: notification.message || notification.body || '',
+  });
+};
+
 export const showActivityNotification = async rawData => {
   if (!isActivityNotification(rawData)) return;
   const data = Object.fromEntries(Object.entries(rawData).filter(([, value]) => value != null)

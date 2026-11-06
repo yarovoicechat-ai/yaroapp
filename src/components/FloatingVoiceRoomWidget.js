@@ -66,7 +66,7 @@ export default function FloatingVoiceRoomWidget() {
 
         // Check if it's a tap rather than a drag
         const distance = Math.hypot(gesture.dx, gesture.dy);
-        if (distance < 6) {
+        if (distance < 14) {
           maximizeRoom && maximizeRoom();
           return;
         }

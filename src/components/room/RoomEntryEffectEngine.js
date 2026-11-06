@@ -39,11 +39,12 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
 
   useEffect(() => {
     mounted.current = true;
+    const seenEntries = seen.current;
     return () => {
       mounted.current = false;
       pending.current = [];
       playing.current = false;
-      seen.current.clear();
+      seenEntries.clear();
     };
   }, []);
 
@@ -53,11 +54,11 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
     for (const event of activeEntry.queuedEntries || [activeEntry]) {
       const id = String(
         event.entryId ||
+        event.eventId ||
         event.id ||
         ('join:' + (event.user?.userId || event.userId || 'u') + ':' + (event.timestamp || now))
       );
-      const lastSeen = seen.current.get(id);
-      if (lastSeen && (now - lastSeen < 1200)) continue;
+      if (seen.current.has(id)) continue;
       seen.current.set(id, now);
       if (seen.current.size > 200) {
         const first = seen.current.keys().next().value;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -6,20 +6,20 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { apiUtil } from '../../utils/apiUtil';
+import { AuthContext } from '../../context/AuthProvider';
 import { AlertService } from '../../utils/AlertService';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (width - 56) / 3;
-
-const MEDALS_DATA = [];
-const STORE_MEDALS = [];
 
 export default function Medal() {
   const insets = useSafeAreaInsets();
@@ -27,36 +27,80 @@ export default function Medal() {
   const navigation = useNavigation();
 
   const [activeTab, setActiveTab] = useState('my'); // 'my' or 'store'
-  const [medals, setMedals] = useState(MEDALS_DATA);
+  const { user, setUser } = useContext(AuthContext);
+  const [medals, setMedals] = useState([]);
+  const [storeMedals, setStoreMedals] = useState([]);
+  const [busy, setBusy] = useState(false);
   const [selectedMedalId, setSelectedMedalId] = useState(null);
 
-  const selectedMedal = medals.find((m) => m.id === selectedMedalId) || null;
+  const loadMedals = useCallback(async () => {
+    const [inventory, catalog] = await Promise.all([
+      apiUtil.get('/store/inventory'),
+      apiUtil.get('/store/items', { params: { category: 'Badge', activeOnly: true } }),
+    ]);
+    const mapMedal = entry => {
+      const item = entry.catalogItem || entry;
+      return { ...entry, id: String(entry.itemId || item._id || entry._id),
+        name: item.name || entry.name, imageUrl: item.imageUrl || entry.imageUrl,
+        description: item.desc || '', primaryColor: '#F59E0B', secondaryColor: '#FEF3C7',
+        iconType: 'ribbon_star', isOwned: Boolean(entry.catalogItem),
+        isEquipped: user?.equippedBadge === (item.name || entry.name),
+        cost: `${item.priceOptions?.find(option => option.days === 30)?.diamonds ?? item.price} diamonds`,
+        progress: item.validity || '30 Days' };
+    };
+    const owned = (inventory.data?.data?.items || []).filter(entry =>
+      String(entry.catalogItem?.category || entry.category).toLowerCase() === 'badge').map(mapMedal);
+    setMedals(owned);
+    setSelectedMedalId(previous => owned.some(item => item.id === previous) ? previous : owned[0]?.id || null);
+    setStoreMedals((catalog.data?.data?.items || []).map(mapMedal));
+  }, [user?.equippedBadge]);
+
+  useFocusEffect(useCallback(() => {
+    loadMedals().catch(error => AlertService.error('Medals', error?.message || 'Could not load medals'));
+  }, [loadMedals]));
+
+  const selectedMedal = medals.find((m) => m.id === selectedMedalId) || medals[0] || null;
 
   const handleSelectMedal = (medal) => {
     setSelectedMedalId(medal.id);
   };
 
-  const handleEquipToggle = (medal) => {
-    setMedals((prev) =>
-      prev.map((m) => {
-        if (m.id === medal.id) {
-          const newEquipped = !m.isEquipped;
-          if (newEquipped) {
-            AlertService.show('Medal Displayed', `${m.name} is now proudly shown on your profile!`, 'success');
-          } else {
-            AlertService.show('Medal Hidden', `${m.name} is no longer displayed on your profile.`, 'info');
-          }
-          return { ...m, isEquipped: newEquipped };
-        }
-        return m;
-      })
-    );
+  const handleEquipToggle = async (medal) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const response = await apiUtil.post('/store/equip', {
+        itemId: medal.id, name: medal.name, category: 'Badge', equipped: !medal.isEquipped,
+      });
+      const updated = response.data?.data?.user || response.data?.data;
+      if (updated) setUser(previous => ({ ...previous, ...updated }));
+      setMedals(previous => previous.map(item => ({ ...item,
+        isEquipped: item.id === medal.id && !medal.isEquipped })));
+    } catch (error) { AlertService.error('Medals', error?.message || 'Could not update medal'); }
+    finally { setBusy(false); }
+  };
+
+  const buyMedal = async medal => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const response = await apiUtil.post('/store/buy', { itemId: medal.id, durationDays: 30 });
+      if (response.data?.data?.remainingDiamonds !== undefined) {
+        setUser(previous => ({ ...previous, diamonds: response.data.data.remainingDiamonds }));
+      }
+      await loadMedals();
+      setActiveTab('my');
+    } catch (error) { AlertService.error('Medals', error?.message || 'Could not buy medal'); }
+    finally { setBusy(false); }
   };
 
   const renderMedalGraphic = (medal, size = 'small') => {
     const isLarge = size === 'large';
     const containerDim = isLarge ? 94 : 52;
     const starDim = isLarge ? 54 : 32;
+
+    if (medal.imageUrl) return <Image source={{ uri: medal.imageUrl }}
+      style={{ width: containerDim, height: containerDim }} resizeMode="contain" />;
 
     switch (medal.iconType) {
       case 'ribbon_star':
@@ -373,9 +417,9 @@ export default function Medal() {
               Medal store items will appear here when available.
             </Text>
 
-            {STORE_MEDALS.length === 0 ? (
+            {storeMedals.length === 0 ? (
               <Text style={styles.emptyMedalsText}>No medal store items are available yet.</Text>
-            ) : STORE_MEDALS.map((sMedal) => (
+            ) : storeMedals.map((sMedal) => (
               <View key={sMedal.id} style={styles.storeCard}>
                 <View style={styles.storeMedalGraphic}>
                   {renderMedalGraphic(sMedal, 'small')}
@@ -393,7 +437,11 @@ export default function Medal() {
                 <TouchableOpacity
                   style={styles.storeBuyBtn}
                   activeOpacity={0.8}
-                  onPress={() => AlertService.show('Medal Store', `Requirements for ${sMedal.name}: ${sMedal.description}`, 'info')}
+                  disabled={busy}
+                  onPress={() => AlertService.show('Buy Medal', `Buy ${sMedal.name} for ${sMedal.cost}?`, 'info', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Buy', onPress: () => buyMedal(sMedal) },
+                  ])}
                 >
                   <Text style={styles.storeBuyBtnText}>{sMedal.cost}</Text>
                 </TouchableOpacity>

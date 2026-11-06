@@ -7,7 +7,7 @@
 import { apiUtil } from '../utils/apiUtil';
 
 // Fallback App ID in case of initial offline network state
-const DEFAULT_FALLBACK_APP_ID = 'd23c897f9305450faa7809ffcf666e57';
+const DEFAULT_FALLBACK_APP_ID = 'a728e57756ce4e9caebe4ace185c8bae';
 
 let cachedAppConfig = {
   appId: DEFAULT_FALLBACK_APP_ID,

@@ -281,7 +281,7 @@ export default function VoiceRoomScreen() {
       if (!previous) return null;
       if (!entryId) return null;
       const remainingQueued = (previous?.queuedEntries || []).filter(
-        (e) => (e.entryId || e.id) !== entryId
+          (e) => (e.entryId || e.eventId || e.id) !== entryId
       );
       if (remainingQueued.length === 0) return null;
       return {

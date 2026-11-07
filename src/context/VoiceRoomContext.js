@@ -1,7 +1,7 @@
 import { getRoomSeatConfig } from '../utils/roomSeats';
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { AppState, NativeModules } from 'react-native';
-import { navigationRef, navigate } from '../utils/navigationRef';
+import { navigationRef, navigate, navigateToVoiceRoom } from '../utils/navigationRef';
 import { AlertService } from '../utils/AlertService';
 import { getSocket, initSocket } from '../sockets';
 import { apiUtil } from '../utils/apiUtil';
@@ -31,6 +31,10 @@ const VoiceRoomContext = createContext();
 
 export const VoiceRoomProvider = ({ children }) => {
   const [activeRoom, setActiveRoom] = useState(null);
+  const activeRoomRef = useRef(null);
+  useEffect(() => {
+    activeRoomRef.current = activeRoom;
+  }, [activeRoom]);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [currentSeatIndex, setCurrentSeatIndex] = useState(null);
@@ -1941,21 +1945,17 @@ export const VoiceRoomProvider = ({ children }) => {
 
   // Maximize (Restore from Floating Mode)
   const maximizeRoom = () => {
-    setIsMinimized(false);
-    const targetRoom = activeRoom;
+    const targetRoom = activeRoomRef.current || activeRoom;
     if (targetRoom) {
       const roomId = targetRoom.id || targetRoom.roomId || targetRoom._id;
-      const roomParams = { room: targetRoom, roomId };
+      const roomParams = { room: targetRoom, roomId, isPinVerified: true };
       try {
-        if (navigationRef && typeof navigationRef.isReady === 'function' && navigationRef.isReady()) {
-          navigationRef.navigate('VoiceRoom', roomParams);
-        } else if (typeof navigate === 'function') {
-          navigate('VoiceRoom', roomParams);
-        }
+        navigateToVoiceRoom(roomParams);
       } catch (navErr) {
         console.warn('Navigation maximize error:', navErr);
       }
     }
+    setIsMinimized(false);
   };
 
   // Leave completely

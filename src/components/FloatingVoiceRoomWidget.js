@@ -42,32 +42,45 @@ export default function FloatingVoiceRoomWidget() {
   const bar1 = useRef(new Animated.Value(4)).current;
   const bar2 = useRef(new Animated.Value(10)).current;
   const bar3 = useRef(new Animated.Value(6)).current;
+  const hasMoved = useRef(false);
+
+  const handleBubbleTap = () => {
+    maximizeRoom && maximizeRoom();
+  };
 
   // PanResponder to allow dragging anywhere on screen
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (_, gesture) => {
-        // Only take gesture if dragged more than 4 pixels
-        return Math.abs(gesture.dx) > 4 || Math.abs(gesture.dy) > 4;
+        return Math.abs(gesture.dx) > 6 || Math.abs(gesture.dy) > 6;
+      },
+      onMoveShouldSetPanResponderCapture: (_, gesture) => {
+        return Math.abs(gesture.dx) > 6 || Math.abs(gesture.dy) > 6;
       },
       onPanResponderGrant: () => {
+        hasMoved.current = false;
         pan.setOffset({
           x: pan.x._value,
           y: pan.y._value,
         });
         pan.setValue({ x: 0, y: 0 });
       },
-      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
-        useNativeDriver: false,
-      }),
+      onPanResponderMove: (_, gesture) => {
+        if (Math.abs(gesture.dx) > 6 || Math.abs(gesture.dy) > 6) {
+          hasMoved.current = true;
+        }
+        pan.x.setValue(gesture.dx);
+        pan.y.setValue(gesture.dy);
+      },
       onPanResponderRelease: (_, gesture) => {
         pan.flattenOffset();
 
         // Check if it's a tap rather than a drag
         const distance = Math.hypot(gesture.dx, gesture.dy);
-        if (distance < 14) {
-          maximizeRoom && maximizeRoom();
+        if (!hasMoved.current || distance < 8) {
+          handleBubbleTap();
           return;
         }
 
@@ -162,65 +175,71 @@ export default function FloatingVoiceRoomWidget() {
       ]}
       {...panResponder.panHandlers}
     >
-      <Animated.View
-        style={[
-          styles.circleBubble,
-          { transform: [{ scale: pulseAnim }] },
-        ]}
+      <TouchableOpacity
+        activeOpacity={0.88}
+        onPress={handleBubbleTap}
+        style={styles.touchableBubble}
       >
-        <LinearGradient
-          colors={['#8B5CF6', '#EC4899', '#3B82F6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradientRing}
+        <Animated.View
+          style={[
+            styles.circleBubble,
+            { transform: [{ scale: pulseAnim }] },
+          ]}
         >
-          <View style={styles.innerCircle}>
-            <Image source={{ uri: roomImage }} style={styles.roomAvatar} />
+          <LinearGradient
+            colors={['#8B5CF6', '#EC4899', '#3B82F6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradientRing}
+          >
+            <View style={styles.innerCircle}>
+              <Image source={{ uri: roomImage }} style={styles.roomAvatar} />
 
-            {/* Dark gradient overlay for contrast */}
-            <LinearGradient
-              colors={['transparent', 'rgba(15, 23, 42, 0.7)']}
-              style={StyleSheet.absoluteFillObject}
-            />
+              {/* Dark gradient overlay for contrast */}
+              <LinearGradient
+                colors={['transparent', 'rgba(15, 23, 42, 0.7)']}
+                style={StyleSheet.absoluteFillObject}
+              />
 
-            {/* Live Equalizer indicator in bottom of circle */}
-            <View style={styles.equalizerWrap}>
-              <Animated.View style={[styles.eqBar, { height: bar1 }]} />
-              <Animated.View style={[styles.eqBar, { height: bar2 }]} />
-              <Animated.View style={[styles.eqBar, { height: bar3 }]} />
+              {/* Live Equalizer indicator in bottom of circle */}
+              <View style={styles.equalizerWrap}>
+                <Animated.View style={[styles.eqBar, { height: bar1 }]} />
+                <Animated.View style={[styles.eqBar, { height: bar2 }]} />
+                <Animated.View style={[styles.eqBar, { height: bar3 }]} />
+              </View>
             </View>
+          </LinearGradient>
+
+          {/* Live Green Status Dot */}
+          <View style={styles.liveIndicator}>
+            <View style={styles.innerLiveDot} />
           </View>
-        </LinearGradient>
+        </Animated.View>
+      </TouchableOpacity>
 
-        {/* Live Green Status Dot */}
-        <View style={styles.liveIndicator}>
-          <View style={styles.innerLiveDot} />
-        </View>
+      {/* Small Exit / Close Button on top-right badge */}
+      <TouchableOpacity
+        style={styles.closeBadge}
+        onPress={() => leaveRoom && leaveRoom()}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.8}
+      >
+        <Icon name="close" size={11} color="#FFFFFF" />
+      </TouchableOpacity>
 
-        {/* Small Exit / Close Button on top-right badge */}
-        <TouchableOpacity
-          style={styles.closeBadge}
-          onPress={() => leaveRoom && leaveRoom()}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          activeOpacity={0.8}
-        >
-          <Icon name="close" size={11} color="#FFFFFF" />
-        </TouchableOpacity>
-
-        {/* Small Mic Toggle on top-left badge */}
-        <TouchableOpacity
-          style={[styles.micBadge, !isMuted && styles.micActiveBadge]}
-          onPress={() => toggleMic && toggleMic()}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          activeOpacity={0.8}
-        >
-          <Icon
-            name={isMuted ? 'mic-off' : 'mic'}
-            size={10}
-            color={isMuted ? '#94A3B8' : '#22C55E'}
-          />
-        </TouchableOpacity>
-      </Animated.View>
+      {/* Small Mic Toggle on top-left badge */}
+      <TouchableOpacity
+        style={[styles.micBadge, !isMuted && styles.micActiveBadge]}
+        onPress={() => toggleMic && toggleMic()}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.8}
+      >
+        <Icon
+          name={isMuted ? 'mic-off' : 'mic'}
+          size={10}
+          color={isMuted ? '#94A3B8' : '#22C55E'}
+        />
+      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -232,6 +251,10 @@ const styles = StyleSheet.create({
     left: 0,
     zIndex: 99999,
     elevation: 20,
+    width: WIDGET_SIZE,
+    height: WIDGET_SIZE,
+  },
+  touchableBubble: {
     width: WIDGET_SIZE,
     height: WIDGET_SIZE,
   },

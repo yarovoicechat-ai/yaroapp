@@ -1,3 +1,32 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   View,
@@ -245,21 +274,21 @@ const FALLBACK_KING_TIERS = [
 
 // Reference layout: exactly 15 privileges, displayed in five rows of three.
 const ROYAL_PRIVILEGES = [
-  {key: 'kings_badge', name: 'Aristocracy Badge', icon: 'ribbon', desc: 'Exclusive nobility badge on your profile.', level: 1},
-  {key: 'exclusive_gifts', name: 'Aristocracy Gifts', icon: 'gift', desc: 'Exclusive gifts for nobility members.', level: 1},
-  {key: 'room_list_badge', name: 'Room List Badge', icon: 'home', desc: 'Nobility badge on the room list.', level: 1},
-  {key: 'rank_the_top', name: 'Ranking Surprise', icon: 'podium', desc: 'Priority position in the room member list.', level: 1},
-  {key: 'entry_effect', name: 'Dazzling Entry', icon: 'sparkles', desc: 'Enter the room with a dazzling effect.', level: 1},
-  {key: 'chat_bubble', name: 'Room Text Bubble', icon: 'chatbubble-ellipses', desc: 'Exclusive text bubble in the room.', level: 2},
-  {key: 'profile_card', name: 'Profile Cover', icon: 'person-circle', desc: 'Exclusive nobility profile cover.', level: 2},
-  {key: 'coloured_message', name: 'Coloured Message', icon: 'chatbubbles', desc: 'Send coloured messages in the room.', level: 2},
-  {key: 'mic_seat_aura', name: 'Unique Voice Wave', icon: 'radio', desc: 'A unique voice wave while speaking on mic.', level: 3},
-  {key: 'room_theme', name: 'Room Theme', icon: 'color-palette', desc: 'Exclusive nobility theme for your room.', level: 3},
-  {key: 'apply_mic', name: 'Apply Mic', icon: 'mic', desc: 'Apply for a mic when the seat is locked.', level: 3},
-  {key: 'vehicle', name: 'Vehicle', icon: 'car-sport', desc: 'Arrive in the room with a special vehicle.', level: 4},
-  {key: 'colorful_nick', name: 'Coloured Mic Name', icon: 'text', desc: 'A coloured name while on the mic.', level: 4},
-  {key: 'room_lock', name: 'Room Lock', icon: 'lock-closed', desc: 'Set a password for friends to enter your room.', level: 5},
-  {key: 'store_discount', name: 'Store Discount', icon: 'pricetags', desc: 'Member discounts in the store.', level: 5},
+  { key: 'kings_badge', name: 'Aristocracy Badge', icon: 'ribbon', desc: 'Exclusive nobility badge on your profile.', level: 1 },
+  { key: 'exclusive_gifts', name: 'Aristocracy Gifts', icon: 'gift', desc: 'Exclusive gifts for nobility members.', level: 1 },
+  { key: 'room_list_badge', name: 'Room List Badge', icon: 'home', desc: 'Nobility badge on the room list.', level: 1 },
+  { key: 'rank_the_top', name: 'Ranking Surprise', icon: 'podium', desc: 'Priority position in the room member list.', level: 1 },
+  { key: 'entry_effect', name: 'Dazzling Entry', icon: 'sparkles', desc: 'Enter the room with a dazzling effect.', level: 1 },
+  { key: 'chat_bubble', name: 'Room Text Bubble', icon: 'chatbubble-ellipses', desc: 'Exclusive text bubble in the room.', level: 2 },
+  { key: 'profile_card', name: 'Profile Cover', icon: 'person-circle', desc: 'Exclusive nobility profile cover.', level: 2 },
+  { key: 'coloured_message', name: 'Coloured Message', icon: 'chatbubbles', desc: 'Send coloured messages in the room.', level: 2 },
+  { key: 'mic_seat_aura', name: 'Unique Voice Wave', icon: 'radio', desc: 'A unique voice wave while speaking on mic.', level: 3 },
+  { key: 'room_theme', name: 'Room Theme', icon: 'color-palette', desc: 'Exclusive nobility theme for your room.', level: 3 },
+  { key: 'apply_mic', name: 'Apply Mic', icon: 'mic', desc: 'Apply for a mic when the seat is locked.', level: 3 },
+  { key: 'vehicle', name: 'Vehicle', icon: 'car-sport', desc: 'Arrive in the room with a special vehicle.', level: 4 },
+  { key: 'colorful_nick', name: 'Coloured Mic Name', icon: 'text', desc: 'A coloured name while on the mic.', level: 4 },
+  { key: 'room_lock', name: 'Room Lock', icon: 'lock-closed', desc: 'Set a password for friends to enter your room.', level: 5 },
+  { key: 'store_discount', name: 'Store Discount', icon: 'pricetags', desc: 'Member discounts in the store.', level: 5 },
 ];
 
 export default function KingOfKingsScreen() {
@@ -302,10 +331,12 @@ export default function KingOfKingsScreen() {
       const payload = res?.data?.data || res?.data;
       if (res?.data?.success && Array.isArray(payload?.plans) && payload.plans.length > 0) {
         const enriched = payload.plans.map((raw) => {
-          const mapBenefit = item => ({...item, name: item.name || item.title, desc: item.desc || item.description, unlocked: item.unlocked ?? item.isEnabled});
-          const p = {...raw, tierKey: raw.tierKey || raw.slug, level: raw.level || raw.tierLevel, coinsPrice: raw.coinsPrice ?? raw.priceCoins, bonusCoins: raw.bonusCoins ?? raw.totalReturnCoins ?? 0,
-            rewards: (raw.rewards || []).map(item => ['daily_free_coins', 'daily_coins', 'activation_bonus'].includes(item.key) ? {...mapBenefit(item), key: 'activation_bonus', name: 'Activation bonus', desc: 'Bonus coins credited once when you activate this membership.'} : mapBenefit(item)),
-            privileges: (raw.privileges || []).map(mapBenefit)};
+          const mapBenefit = item => ({ ...item, name: item.name || item.title, desc: item.desc || item.description, unlocked: item.unlocked ?? item.isEnabled });
+          const p = {
+            ...raw, tierKey: raw.tierKey || raw.slug, level: raw.level || raw.tierLevel, coinsPrice: raw.coinsPrice ?? raw.priceCoins, bonusCoins: raw.bonusCoins ?? raw.totalReturnCoins ?? 0,
+            rewards: (raw.rewards || []).map(item => ['daily_free_coins', 'daily_coins', 'activation_bonus'].includes(item.key) ? { ...mapBenefit(item), key: 'activation_bonus', name: 'Activation bonus', desc: 'Bonus coins credited once when you activate this membership.' } : mapBenefit(item)),
+            privileges: (raw.privileges || []).map(mapBenefit)
+          };
           const tierNames = ['Viscount', 'Count', 'Marquis', 'Duke', 'King'];
           const levelIndex = Math.max(0, Math.min(4, (p.level || 1) - 1));
           const defaultKey = tierNames[levelIndex].toLowerCase();
@@ -336,7 +367,7 @@ export default function KingOfKingsScreen() {
   }, []);
 
   const currentTier = tiers.find((t) => t.tierKey === activeTierKey) || tiers[0];
-  const referencePrivileges = ROYAL_PRIVILEGES.map(item => ({...item, unlocked: (currentTier.level || currentTier.tierLevel || 1) >= item.level}));
+  const referencePrivileges = ROYAL_PRIVILEGES.map(item => ({ ...item, unlocked: (currentTier.level || currentTier.tierLevel || 1) >= item.level }));
   const userCoins = user?.coins || 0;
   const isEquipped = Boolean(
     (user?.equippedKingTierId || user?.equippedKingNobilityKey) === currentTier.tierKey && new Date(user?.kingExpiresAt || 0).getTime() > Date.now()
@@ -386,7 +417,7 @@ export default function KingOfKingsScreen() {
           <Icon name="chevron-back" size={24} color="#FDE047" />
         </TouchableOpacity>
 
-        <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}><Text style={styles.headerTitle}>King of Kings</Text>{loading && <ActivityIndicator size="small" color="#E9C889" />}</View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text style={styles.headerTitle}>King of Kings</Text>{loading && <ActivityIndicator size="small" color="#E9C889" />}</View>
 
         <TouchableOpacity
           style={styles.iconCircleBtn}
@@ -499,16 +530,16 @@ export default function KingOfKingsScreen() {
             <View style={styles.countPill}><Text style={styles.countText}>{referencePrivileges.filter(item => item.unlocked).length}/15</Text></View>
           </View>
           <Text style={styles.panelDescription}>Discover everything included with {currentTier.name}. Tap a benefit to explore.</Text>
-          {[{items: referencePrivileges, type: 'privilege'}].map(section => (
+          {[{ items: referencePrivileges, type: 'privilege' }].map(section => (
             <View key={section.type}>
               <View style={styles.benefitGrid}>
                 {section.items.map((item, index) => <TouchableOpacity
                   key={item.key || index}
                   accessibilityRole="button"
                   accessibilityLabel={item.name + (item.unlocked ? ', included in this rank' : ', available at a higher rank')}
-                  onPress={() => setSelectedAsset({...item, type: section.type})}
+                  onPress={() => setSelectedAsset({ ...item, type: section.type })}
                   activeOpacity={0.7}
-                  style={[styles.benefitTile, {width: (width - 64) / 3}]}
+                  style={[styles.benefitTile, { width: (width - 64) / 3 }]}
                 >
                   <LinearGradient colors={item.unlocked ? ['#F7DFAB', '#D7A75F'] : ['#E8E4DD', '#D8D3CA']} style={styles.benefitIcon}>
                     <Icon name={item.icon === 'shield-star' ? 'shield-checkmark' : (item.icon || 'sparkles')} size={25} color={item.unlocked ? '#795021' : '#999388'} />
@@ -564,7 +595,7 @@ export default function KingOfKingsScreen() {
       </View>
 
       {/* Asset Preview Modal */}
-            <KingAssetPreviewModal
+      <KingAssetPreviewModal
         visible={Boolean(selectedAsset)}
         onClose={() => setSelectedAsset(null)}
         asset={selectedAsset}
@@ -572,7 +603,7 @@ export default function KingOfKingsScreen() {
       />
 
       {/* Nobility Rules Modal */}
-            <KingRulesModal
+      <KingRulesModal
         visible={showRuleModal}
         onClose={() => setShowRuleModal(false)}
         styles={styles}
@@ -582,8 +613,8 @@ export default function KingOfKingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  royalHero: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 18, paddingBottom: 12, gap: 18},
-  royalEmblem: {alignItems: 'center', justifyContent: 'center'},
+  royalHero: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 18, paddingBottom: 12, gap: 18 },
+  royalEmblem: { alignItems: 'center', justifyContent: 'center' },
   heroBadgeBox: {
     width: 128,
     height: 128,
@@ -621,34 +652,34 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  emblemOuter: {width: 112, height: 124, borderRadius: 36, padding: 2, transform: [{rotate: '-4deg'}]},
-  emblemInner: {flex: 1, backgroundColor: '#241D2D', borderRadius: 34, alignItems: 'center', justifyContent: 'center'},
-  emblemImage: {width: 106, height: 112},
-  emblemLevel: {color: '#D4B77E', fontSize: 8, fontWeight: '800', letterSpacing: 1.8, marginTop: 8},
-  heroDetails: {flex: 1},
-  eyebrow: {color: '#B59F82', fontSize: 8, letterSpacing: 1.5, fontWeight: '700'},
-  royalTitle: {fontSize: 32, fontWeight: '800', color: '#F9E6C0', marginTop: 5},
-  royalSubtitle: {fontSize: 12, color: '#BAA9C8', marginTop: 2},
-  dailyPill: {flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12},
-  dailyPillText: {color: '#E9C889', fontSize: 12, fontWeight: '700', flexShrink: 1},
-  heroDuration: {color: '#9E91AC', fontSize: 10, marginTop: 7},
-  benefitsPanel: {backgroundColor: '#FCF8F0', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 20, paddingTop: 25, paddingBottom: 24, minHeight: 500},
-  panelHeading: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
-  panelEyebrow: {fontSize: 8, letterSpacing: 1.8, color: '#A1845A', fontWeight: '800'},
-  panelTitle: {fontSize: 23, fontWeight: '800', color: '#32283B', marginTop: 5},
-  countPill: {paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#EFE2C9', borderRadius: 14},
-  countText: {color: '#8A612C', fontSize: 12, fontWeight: '800'},
-  panelDescription: {fontSize: 11, lineHeight: 17, color: '#9B9082', marginTop: 10, marginBottom: 24},
-  benefitSectionTitle: {fontSize: 12, fontWeight: '800', color: '#75614A', marginTop: 18, marginBottom: 18},
-  benefitGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 12},
-  benefitTile: {alignItems: 'center', paddingBottom: 16},
-  benefitIcon: {width: 52, height: 55, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#EDD6AD'},
-  benefitLock: {position: 'absolute', bottom: -3, right: -3, backgroundColor: '#A49B8F', borderRadius: 8, padding: 3},
-  benefitName: {fontSize: 11, fontWeight: '700', color: '#4A3C2E', textAlign: 'center', minHeight: 28},
-  benefitNameLocked: {color: '#9B948A'},
-  benefitDescription: {fontSize: 9, lineHeight: 13, color: '#A29788', textAlign: 'center', marginTop: 3},
-  rulesLink: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#EDE3D3', marginTop: 10},
-  rulesLinkText: {fontSize: 11, color: '#98703C'},
+  emblemOuter: { width: 112, height: 124, borderRadius: 36, padding: 2, transform: [{ rotate: '-4deg' }] },
+  emblemInner: { flex: 1, backgroundColor: '#241D2D', borderRadius: 34, alignItems: 'center', justifyContent: 'center' },
+  emblemImage: { width: 106, height: 112 },
+  emblemLevel: { color: '#D4B77E', fontSize: 8, fontWeight: '800', letterSpacing: 1.8, marginTop: 8 },
+  heroDetails: { flex: 1 },
+  eyebrow: { color: '#B59F82', fontSize: 8, letterSpacing: 1.5, fontWeight: '700' },
+  royalTitle: { fontSize: 32, fontWeight: '800', color: '#F9E6C0', marginTop: 5 },
+  royalSubtitle: { fontSize: 12, color: '#BAA9C8', marginTop: 2 },
+  dailyPill: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  dailyPillText: { color: '#E9C889', fontSize: 12, fontWeight: '700', flexShrink: 1 },
+  heroDuration: { color: '#9E91AC', fontSize: 10, marginTop: 7 },
+  benefitsPanel: { backgroundColor: '#FCF8F0', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 20, paddingTop: 25, paddingBottom: 24, minHeight: 500 },
+  panelHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  panelEyebrow: { fontSize: 8, letterSpacing: 1.8, color: '#A1845A', fontWeight: '800' },
+  panelTitle: { fontSize: 23, fontWeight: '800', color: '#32283B', marginTop: 5 },
+  countPill: { paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#EFE2C9', borderRadius: 14 },
+  countText: { color: '#8A612C', fontSize: 12, fontWeight: '800' },
+  panelDescription: { fontSize: 11, lineHeight: 17, color: '#9B9082', marginTop: 10, marginBottom: 24 },
+  benefitSectionTitle: { fontSize: 12, fontWeight: '800', color: '#75614A', marginTop: 18, marginBottom: 18 },
+  benefitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  benefitTile: { alignItems: 'center', paddingBottom: 16 },
+  benefitIcon: { width: 52, height: 55, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#EDD6AD' },
+  benefitLock: { position: 'absolute', bottom: -3, right: -3, backgroundColor: '#A49B8F', borderRadius: 8, padding: 3 },
+  benefitName: { fontSize: 11, fontWeight: '700', color: '#4A3C2E', textAlign: 'center', minHeight: 28 },
+  benefitNameLocked: { color: '#9B948A' },
+  benefitDescription: { fontSize: 9, lineHeight: 13, color: '#A29788', textAlign: 'center', marginTop: 3 },
+  rulesLink: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#EDE3D3', marginTop: 10 },
+  rulesLinkText: { fontSize: 11, color: '#98703C' },
   container: {
     flex: 1,
     backgroundColor: '#191321',
@@ -691,7 +722,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  tabBtnActive: {backgroundColor: 'rgba(232,199,140,0.09)', borderRadius: 12},
+  tabBtnActive: { backgroundColor: 'rgba(232,199,140,0.09)', borderRadius: 12 },
   tabBtnText: {
     fontSize: 14,
     fontWeight: '700',

@@ -306,14 +306,17 @@ export default function KingOfKingsScreen() {
           const p = {...raw, tierKey: raw.tierKey || raw.slug, level: raw.level || raw.tierLevel, coinsPrice: raw.coinsPrice ?? raw.priceCoins, bonusCoins: raw.bonusCoins ?? raw.totalReturnCoins ?? 0,
             rewards: (raw.rewards || []).map(item => ['daily_free_coins', 'daily_coins', 'activation_bonus'].includes(item.key) ? {...mapBenefit(item), key: 'activation_bonus', name: 'Activation bonus', desc: 'Bonus coins credited once when you activate this membership.'} : mapBenefit(item)),
             privileges: (raw.privileges || []).map(mapBenefit)};
-          const isViscount = (p.tierKey === 'viscount' || p.slug === 'viscount' || p.tierKey === 'count' || p.slug === 'count' || p.level === 2);
-          const rankName = isViscount ? 'Viscount' : (p.name || ['Knight', 'Viscount', 'Duke', 'Prince', 'King'][(p.level || 1) - 1] || 'Nobility');
+          const tierNames = ['Viscount', 'Count', 'Marquis', 'Duke', 'King'];
+          const levelIndex = Math.max(0, Math.min(4, (p.level || 1) - 1));
+          const defaultKey = tierNames[levelIndex].toLowerCase();
+          const rankName = p.name || tierNames[levelIndex] || 'Nobility';
+          const tierKey = p.tierKey || p.slug || defaultKey;
           return {
             ...p,
-            tierKey: isViscount ? 'viscount' : p.tierKey,
+            tierKey,
             name: rankName,
-            title: isViscount ? 'Royal Viscount' : (rankName + ' Nobility'),
-            heroBadge: isViscount ? VISCOUNT_BADGE : p.heroBadge,
+            title: p.title || (rankName + ' Nobility'),
+            heroBadge: tierKey === 'viscount' ? VISCOUNT_BADGE : p.heroBadge,
           };
         });
         setTiers(enriched);

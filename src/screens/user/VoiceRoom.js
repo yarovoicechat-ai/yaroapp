@@ -652,6 +652,17 @@ export default function VoiceRoomScreen() {
 
   const isRoomOwner = Boolean(isSelfHostParam || isIdMatch || isContextOwnerMatch);
 
+  // Room support eligibility: User must have room hosting capability or be hosting the room
+  const hasRoomHosting = Boolean(
+    isRoomOwner ||
+    isContextOwnerMatch ||
+    user?.canRoomHost === true ||
+    (Array.isArray(user?.hostTypes) && user.hostTypes.some((t) => ['room', 'room_hosting', 'roomhosting'].includes(String(t).toLowerCase()))) ||
+    (Array.isArray(user?.hostingTypes) && user.hostingTypes.some((t) => ['room', 'room_hosting', 'roomhosting'].includes(String(t).toLowerCase()))) ||
+    (user?.role === 'host' && user?.canRoomHost !== false && (!Array.isArray(user?.hostTypes) || user.hostTypes.length === 0 || user.hostTypes.includes('room'))) ||
+    (user?.hostingStatus === 'approved' && (user?.canRoomHost === true || (Array.isArray(user?.hostTypes) && user.hostTypes.includes('room'))))
+  );
+
   const actualHostName =
     room?.hostName ||
     room?.owner?.name ||
@@ -2051,21 +2062,23 @@ export default function VoiceRoomScreen() {
           </View>
         </View>
 
-        {/* Room Support shortcut */}
-        <TouchableOpacity
-          style={styles.sideEventCard}
-          activeOpacity={0.85}
-          onPress={() => setRoomSupportVisible(true)}
-        >
-          <LinearGradient
-            colors={['#0F766E', '#2563EB']}
-            style={styles.sideEventGradient}
+        {/* Room Support shortcut - only visible to users with room hosting */}
+        {hasRoomHosting && (
+          <TouchableOpacity
+            style={styles.sideEventCard}
+            activeOpacity={0.85}
+            onPress={() => setRoomSupportVisible(true)}
           >
-            <MaterialCommunityIcons name="hand-heart" size={20} color="#CCFBF1" />
-            <Text style={styles.sideEventTitle}>Room</Text>
-            <Text style={styles.sideEventSub}>Support</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={['#0F766E', '#2563EB']}
+              style={styles.sideEventGradient}
+            >
+              <MaterialCommunityIcons name="hand-heart" size={20} color="#CCFBF1" />
+              <Text style={styles.sideEventTitle}>Room</Text>
+              <Text style={styles.sideEventSub}>Support</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Floating Reaction Emojis Overlay (Audience only, seated users show on avatar) */}
@@ -2493,7 +2506,12 @@ export default function VoiceRoomScreen() {
         }}
         onBanRoom={handleOfficialBanRoom}
         onOpenRoomTasks={() => setRoomTasksVisible(true)}
-        onOpenRoomSupport={() => setRoomSupportVisible(true)}
+        hasRoomHosting={hasRoomHosting}
+        onOpenRoomSupport={() => {
+          if (hasRoomHosting) {
+            setRoomSupportVisible(true);
+          }
+        }}
         bottomSafePadding={bottomSafePadding}
       />
 

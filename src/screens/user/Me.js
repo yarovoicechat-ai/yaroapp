@@ -203,6 +203,16 @@ export default function MeScreen() {
       ),
       onPress: () => navigation.navigate('Level'),
     },
+    {
+      id: 'inviteEarn',
+      label: 'Invite & Earn',
+      icon: (
+        <View style={[styles.serviceIconCircle, { backgroundColor: '#FEF3C7' }]}>
+          <MaterialCommunityIcons name="gift" size={26} color="#D97706" />
+        </View>
+      ),
+      onPress: () => navigation.navigate('InviteEarn'),
+    },
     ...(isApprovedHost
       ? [
           {
@@ -705,6 +715,37 @@ export default function MeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Invite & Earn High-Visibility Hero Banner */}
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={() => navigation.navigate('InviteEarn')}
+          style={styles.inviteBannerContainer}
+        >
+          <LinearGradient
+            colors={['#4F46E5', '#7C3AED', '#EC4899']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.inviteBannerGradient}
+          >
+            <View style={styles.inviteBannerLeft}>
+              <View style={styles.inviteBannerBadge}>
+                <MaterialCommunityIcons name="gift" size={13} color="#D97706" style={{ marginRight: 3 }} />
+                <Text style={styles.inviteBannerBadgeText}>INVITE & EARN</Text>
+              </View>
+              <Text style={styles.inviteBannerTitle}>Invite Friends & Earn Diamonds</Text>
+              <Text style={styles.inviteBannerSubtitle} numberOfLines={2}>
+                Friends get 5 Diamonds! You get 3 on signup + 2 on recharge.
+              </Text>
+            </View>
+            <View style={styles.inviteBannerRight}>
+              <View style={styles.inviteBannerBtn}>
+                <Text style={styles.inviteBannerBtnText}>Invite</Text>
+                <MaterialIcons name="chevron-right" size={16} color="#4F46E5" />
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* Services & Features Grid (Strictly 4 items per row) */}
         <View style={styles.servicesGridContainer}>
           <Text style={styles.servicesHeaderTitle}>Services & Features</Text>
@@ -1036,6 +1077,80 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+
+  // Invite & Earn Banner
+  inviteBannerContainer: {
+    marginHorizontal: 4,
+    marginBottom: 16,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  inviteBannerGradient: {
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  inviteBannerLeft: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  inviteBannerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  inviteBannerBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#D97706',
+    letterSpacing: 0.5,
+  },
+  inviteBannerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  inviteBannerSubtitle: {
+    fontSize: 11.5,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.9)',
+    lineHeight: 16,
+  },
+  inviteBannerRight: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inviteBannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  inviteBannerBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#4F46E5',
+    marginRight: 2,
   },
 
   // Services Grid (Strictly 4 items per row: width '25%')

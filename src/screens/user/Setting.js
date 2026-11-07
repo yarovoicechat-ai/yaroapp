@@ -130,6 +130,15 @@ export default function Setting() {
 
   const appSection = [
     {
+      id: 'invite',
+      title: 'Invite Friends & Earn',
+      desc: 'Earn 5 Diamonds per friend (3 on signup + 2 on recharge)',
+      icon: 'gift-outline',
+      iconBg: '#FEF3C7',
+      iconColor: '#D97706',
+      onPress: () => navigation.navigate('InviteEarn'),
+    },
+    {
       id: 'notifications',
       title: 'Notifications',
       desc: 'Call alerts, room notices',

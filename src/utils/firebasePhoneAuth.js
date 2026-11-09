@@ -52,10 +52,27 @@ export const getPhoneAuthError = error => {
   const normalizedCode = String(rawCode || '').toLowerCase().trim();
   const lowerMsg = rawMsg.toLowerCase();
 
-  if (__DEV__) {
-    console.log('[FirebasePhoneAuth Error Raw Code]:', error?.code);
-    console.log('[FirebasePhoneAuth Error Raw Message]:', rawMsg);
-    console.log('[FirebasePhoneAuth Extracted Code]:', normalizedCode);
+  console.log('[FirebasePhoneAuth Error Raw Code]:', error?.code);
+  console.log('[FirebasePhoneAuth Error Raw Message]:', rawMsg);
+  console.log('[FirebasePhoneAuth Extracted Code]:', normalizedCode);
+
+  // App validation / Play Integrity / unauthorized APK
+  if (
+    normalizedCode === 'auth/app-not-authorized' ||
+    normalizedCode === 'auth/play-integrity-token-failed' ||
+    normalizedCode === 'auth/invalid-app-credential' ||
+    normalizedCode === 'auth/captcha-check-failed' ||
+    lowerMsg.includes('app-not-authorized') ||
+    lowerMsg.includes('app validation failed') ||
+    lowerMsg.includes('play integrity') ||
+    lowerMsg.includes('playintegrity') ||
+    lowerMsg.includes('recaptcha')
+  ) {
+    return {
+      title: 'Verification Failed',
+      message: 'Device verification could not be completed. You can sign in using Google instead.',
+      code: normalizedCode || 'auth/app-not-authorized',
+    };
   }
 
   // Explicit check for too-many-requests in code or message
@@ -114,7 +131,7 @@ export const getPhoneAuthError = error => {
     case 'auth/quota-exceeded':
       return {
         title: 'OTP Service Unavailable',
-        message: 'OTP requests are temporarily unavailable. Please try again later.',
+        message: 'OTP requests are temporarily unavailable. Please try again later or continue with Google.',
         code: normalizedCode,
       };
 
@@ -148,8 +165,10 @@ export const getPhoneAuthError = error => {
         };
       }
       return {
-        title: 'Something Went Wrong',
-        message: "We couldn't process your request right now. Please try again.",
+        title: 'Verification Error',
+        message: rawMsg && rawMsg.length < 100 && !rawMsg.includes('[')
+          ? rawMsg
+          : "We couldn't process your request right now. Please try again or use Google Sign-In.",
         code: normalizedCode,
       };
   }

@@ -47,12 +47,25 @@ const HelpAndSupport = () => {
   const handleEnterSupportRoom = async () => {
     try {
       const res = await apiUtil.get('/family/support-room', { suppressGlobalError: true });
-      const supportRoom = res?.data?.data?.room || {
-        id: 'support_official',
-        roomId: 'support_official',
-        channelName: 'support_official',
-        title: '🎧 24/7 Official Customer Support',
-        hostName: 'Customer Support',
+      const serverRoom = res?.data?.data?.room;
+      const supportRoom = serverRoom ? {
+        id: '1000000086',
+        roomId: '1000000086',
+        channelName: '1000000086',
+        title: '🎧 Official Help & Support',
+        hostName: 'Yaro Official Support',
+        category: 'Support',
+        mode: 'Public',
+        seatCount: 8,
+        onlineCount: '1',
+        isSelfHost: false,
+        ...serverRoom,
+      } : {
+        id: '1000000086',
+        roomId: '1000000086',
+        channelName: '1000000086',
+        title: '🎧 Official Help & Support',
+        hostName: 'Yaro Official Support',
         category: 'Support',
         mode: 'Public',
         seatCount: 8,
@@ -65,11 +78,11 @@ const HelpAndSupport = () => {
       navigation.navigate('VoiceRoom', { room: supportRoom });
     } catch (_) {
       const fallbackRoom = {
-        id: 'support_official',
-        roomId: 'support_official',
-        channelName: 'support_official',
-        title: '🎧 24/7 Official Customer Support',
-        hostName: 'Customer Support',
+        id: '1000000086',
+        roomId: '1000000086',
+        channelName: '1000000086',
+        title: '🎧 Official Help & Support',
+        hostName: 'Yaro Official Support',
         category: 'Support',
         mode: 'Public',
         seatCount: 8,

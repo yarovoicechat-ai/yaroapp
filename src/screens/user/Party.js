@@ -176,12 +176,25 @@ export default function PartyScreen() {
   const handleEnterSupportRoom = async () => {
     try {
       const res = await apiUtil.get('/family/support-room', { suppressGlobalError: true });
-      const supportRoom = res?.data?.data?.room || {
-        id: 'support_official',
-        roomId: 'support_official',
-        channelName: 'support_official',
-        title: '🎧 24/7 Official Customer Support',
-        hostName: 'Customer Support',
+      const serverRoom = res?.data?.data?.room;
+      const supportRoom = serverRoom ? {
+        id: '1000000086',
+        roomId: '1000000086',
+        channelName: '1000000086',
+        title: '🎧 Official Help & Support',
+        hostName: 'Yaro Official Support',
+        category: 'Support',
+        mode: 'Public',
+        seatCount: 8,
+        onlineCount: '1',
+        isSelfHost: false,
+        ...serverRoom,
+      } : {
+        id: '1000000086',
+        roomId: '1000000086',
+        channelName: '1000000086',
+        title: '🎧 Official Help & Support',
+        hostName: 'Yaro Official Support',
         category: 'Support',
         mode: 'Public',
         seatCount: 8,
@@ -192,11 +205,11 @@ export default function PartyScreen() {
       navigation.navigate('VoiceRoom', { room: supportRoom });
     } catch (_) {
       const fallbackRoom = {
-        id: 'support_official',
-        roomId: 'support_official',
-        channelName: 'support_official',
-        title: '🎧 24/7 Official Customer Support',
-        hostName: 'Customer Support',
+        id: '1000000086',
+        roomId: '1000000086',
+        channelName: '1000000086',
+        title: '🎧 Official Help & Support',
+        hostName: 'Yaro Official Support',
         category: 'Support',
         mode: 'Public',
         seatCount: 8,
@@ -459,40 +472,6 @@ export default function PartyScreen() {
       >
         {/* 1. Top Nav Tabs & Country Filter Chips */}
         {renderTopNavAndFilters()}
-
-        {/* 1.5 Official Customer Support Live Voice Room Banner */}
-        <TouchableOpacity
-          onPress={handleEnterSupportRoom}
-          activeOpacity={0.88}
-          style={styles.supportBannerWrapper}
-        >
-          <LinearGradient
-            colors={['#1E1B4B', '#312E81', '#4F46E5']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.supportBannerCard}
-          >
-            <View style={styles.supportBannerLeft}>
-              <View style={styles.supportIconBadge}>
-                <MaterialCommunityIcons name="headset" size={24} color="#FBBF24" />
-              </View>
-              <View style={{ marginLeft: 12, flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.supportBannerTitle}>24/7 Official Support Room</Text>
-                  <View style={styles.livePulseDot}>
-                    <Text style={styles.livePulseText}>LIVE</Text>
-                  </View>
-                </View>
-                <Text style={styles.supportBannerSub}>
-                  Direct entry into official customer support voice room
-                </Text>
-              </View>
-            </View>
-            <View style={styles.supportEnterPill}>
-              <Text style={styles.supportEnterPillText}>Join 🎙️</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
 
         {/* 2. First 4 Rooms Grid (before banner) */}
         {loadingRooms && rooms.length === 0 ? (

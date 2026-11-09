@@ -138,11 +138,16 @@ class BillingService {
     console.log(`[GP-BILLING] requestPurchase START for productId: ${productId}, userId: ${userId || 'anonymous'}`);
 
     try {
-      const cachedDetails = this.cachedProducts[productId];
-      if (!GOOGLE_PLAY_PRODUCTS[productId] || !cachedDetails || !(cachedDetails.displayPrice || cachedDetails.localizedPrice)) {
-        throw new Error('This package is unavailable on Google Play. Please try again later.');
+      let cachedDetails = this.cachedProducts[productId];
+      if (!cachedDetails || !(cachedDetails.displayPrice || cachedDetails.localizedPrice)) {
+        try {
+          await this.getProducts();
+          cachedDetails = this.cachedProducts[productId];
+        } catch (_) {}
       }
-      const offerToken = cachedDetails?.oneTimePurchaseOfferDetailsAndroid?.[0]?.offerToken || cachedDetails?.oneTimePurchaseOfferDetails?.[0]?.offerToken || 
+
+      const offerToken = cachedDetails?.oneTimePurchaseOfferDetailsAndroid?.[0]?.offerToken || 
+                         cachedDetails?.oneTimePurchaseOfferDetails?.[0]?.offerToken || 
                          cachedDetails?.subscriptionOfferDetails?.[0]?.offerToken;
 
       const googlePayload = {

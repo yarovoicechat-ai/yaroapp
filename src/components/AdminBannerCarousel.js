@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -12,7 +12,9 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL, apiPublic } from '../utils/apiUtil';
+import { API_BASE_URL, apiPublic, apiUtil } from '../utils/apiUtil';
+import { AuthContext } from '../context/AuthProvider';
+import { useVoiceRoom } from '../context/VoiceRoomContext';
 
 const LIVE_BANNERS_URL = 'https://api.yaroapp.in/api/public/banners';
 const CARD_WIDTH = Dimensions.get('window').width - 32;
@@ -30,6 +32,8 @@ const normalizeBanner = (item, index) => {
 
 export default function AdminBannerCarousel({ placement }) {
   const navigation = useNavigation();
+  const { user } = useContext(AuthContext) || {};
+  const { enterRoom } = useVoiceRoom ? useVoiceRoom() : { enterRoom: () => {} };
   const listRef = useRef(null);
   const [banners, setBanners] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -111,6 +115,50 @@ export default function AdminBannerCarousel({ placement }) {
   }, [fetchBanners]));
 
   const openBanner = async (banner) => {
+    // Check if banner is for Customer Support / Help & Support / Official Room 1000000086
+    const checkStr = `${banner?.title || ''} ${banner?.name || ''} ${banner?.targetScreen || ''} ${banner?.link || ''} ${banner?.linkUrl || ''}`.toLowerCase();
+    const isSupportBanner = 
+      checkStr.includes('help') || 
+      checkStr.includes('support') || 
+      checkStr.includes('1000000086') || 
+      checkStr.includes('official') ||
+      banner?.targetScreen === 'HelpAndSupport';
+
+    if (isSupportBanner) {
+      const officialRoom = {
+        id: '1000000086',
+        roomId: '1000000086',
+        channelName: '1000000086',
+        title: '🎧 Official Help & Support',
+        hostName: 'Yaro Official Support',
+        hostId: '1000000086',
+        category: 'Support',
+        mode: 'Public',
+        seatCount: 8,
+        onlineCount: '1',
+        isSelfHost: false,
+      };
+
+      try {
+        const res = await apiUtil.get('/family/support-room', { suppressGlobalError: true });
+        const serverRoom = res?.data?.data?.room;
+        const targetRoom = serverRoom
+          ? { ...officialRoom, ...serverRoom, id: '1000000086', roomId: '1000000086', channelName: '1000000086' }
+          : officialRoom;
+
+        if (enterRoom) {
+          enterRoom(targetRoom, false, targetRoom.seatCount || 8, user);
+        }
+        navigation.navigate('VoiceRoom', { room: targetRoom });
+      } catch (_) {
+        if (enterRoom) {
+          enterRoom(officialRoom, false, 8, user);
+        }
+        navigation.navigate('VoiceRoom', { room: officialRoom });
+      }
+      return;
+    }
+
     const type = String(banner?.targetType || '').toLowerCase();
     const url = banner?.linkUrl || banner?.link;
     if (type === 'external' && url) {

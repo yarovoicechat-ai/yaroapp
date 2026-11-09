@@ -10,7 +10,7 @@
  */
 export const formatCompactBalance = (value, options = {}) => {
   const amount = Number(value);
-  if (isNaN(amount) || amount === 0) return '0';
+  if (isNaN(amount) || !isFinite(amount) || amount === 0) return '0';
   if (amount < 0) return `-${formatCompactBalance(-amount, options)}`;
 
   if (amount < 1000) {
@@ -20,6 +20,9 @@ export const formatCompactBalance = (value, options = {}) => {
   const { maxDecimals = 1 } = options;
 
   if (amount >= 1e12) {
+    if (amount >= 999.9e12) {
+      return '999T+';
+    }
     const val = amount / 1e12;
     const str = val >= 100 ? Math.floor(val).toString() : val.toFixed(maxDecimals).replace(/\.0$/, '');
     return `${str}T`;

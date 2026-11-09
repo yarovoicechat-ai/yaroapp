@@ -1,3 +1,35 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -142,19 +174,41 @@ export function SignUpScreen() {
     try {
       setLoading(true);
       const deviceId = await DeviceInfo.getUniqueId();
-      const res = await apiPublic.post('/auth/check-user-device', { phoneNumber, deviceId });
-      if (res.data?.canRegister === false || res.data?.userExists) {
-        AlertService.show('Already Registered', res.data.message || 'Please sign in instead.', 'error'); return;
+
+      // 1. Validate device registration limit and user existence with server
+      try {
+        const res = await apiPublic.post('/auth/check-user-device', { phoneNumber, deviceId });
+        if (res.data?.canRegister === false || res.data?.userExists) {
+          AlertService.show('Already Registered', res.data?.message || 'Please sign in instead.', 'info');
+          return;
+        }
+      } catch (checkError) {
+        const serverMsg = checkError?.response?.data?.message;
+        if (serverMsg) {
+          AlertService.show('Registration Notice', serverMsg, 'error');
+          return;
+        }
+        if (!checkError?.response && checkError?.message) {
+          AlertService.show('Network Error', 'Please check your internet connection and try again.', 'error');
+          return;
+        }
       }
-      const verificationId = await sendFirebasePhoneOtp(phoneNumber);
-      navigation.navigate('VerifyOTP', { phoneNumber, fullName: fullName.trim(), password, isResetPassword: false, verificationId });
-    } catch (error) {
-      if (error.response?.status === 409) AlertService.show('Already Registered', error.response?.data?.message || 'Please sign in instead.', 'error');
-      else {
-        try { const verificationId = await sendFirebasePhoneOtp(phoneNumber); navigation.navigate('VerifyOTP', { phoneNumber, fullName: fullName.trim(), password, isResetPassword: false, verificationId }); }
-        catch (otpError) { const info = getPhoneAuthError(otpError); AlertService.show(info.title, info.message, 'error'); }
+
+      // 2. Request Firebase Phone OTP
+      try {
+        const verificationId = await sendFirebasePhoneOtp(phoneNumber);
+        navigation.navigate('VerifyOTP', { phoneNumber, fullName: fullName.trim(), password, isResetPassword: false, verificationId });
+      } catch (otpError) {
+        console.error('[SignUp sendFirebasePhoneOtp error]:', otpError);
+        const info = getPhoneAuthError(otpError);
+        AlertService.show(info.title, info.message, 'error');
       }
-    } finally { setLoading(false); }
+    } catch (unexpectedError) {
+      console.error('[SignUp submit unexpected error]:', unexpectedError);
+      AlertService.show('Sign Up Error', getApiErrorMessage(unexpectedError, 'Unable to proceed with sign up.'), 'error');
+    } finally {
+      setLoading(false);
+    }
   };
   return (
     <AuthScreen contentStyle={s.formContent}>
@@ -177,7 +231,7 @@ export function OtpScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { phoneNumber, fullName, password, isResetPassword } = route.params || {};
-  const [otp, setOtp] = useState(['','','','','','']);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [verificationId, setVerificationId] = useState(route.params?.verificationId || null);
   const [loading, setLoading] = useState(false);
   const [seconds, setSeconds] = useState(60);
@@ -206,7 +260,7 @@ export function OtpScreen() {
   };
   const resend = async () => {
     if (seconds > 0 || loading) return;
-    try { setLoading(true); clearFirebasePhoneSession(); const id = await sendFirebasePhoneOtp(phoneNumber, true); setVerificationId(id); setOtp(['','','','','','']); setSeconds(60); refs.current[0]?.focus(); }
+    try { setLoading(true); clearFirebasePhoneSession(); const id = await sendFirebasePhoneOtp(phoneNumber, true); setVerificationId(id); setOtp(['', '', '', '', '', '']); setSeconds(60); refs.current[0]?.focus(); }
     catch (error) { const info = getPhoneAuthError(error); AlertService.show(info.title, info.message, 'error'); }
     finally { setLoading(false); }
   };
@@ -214,7 +268,7 @@ export function OtpScreen() {
     <AuthScreen contentStyle={s.formContent}>
       <BackButton onPress={() => navigation.goBack()} /><AuthHeader title="Verify OTP" subtitle={<>We have sent a 6-digit code to{`\n`}<Text style={s.phoneStrong}>{phoneNumber}</Text></>} />
       <View style={s.otpRow}>{otp.map((v, i) => <TextInput key={i} ref={r => refs.current[i] = r} style={[s.otpBox, v && s.otpBoxOn]} value={v} onChangeText={x => change(x, i)} onKeyPress={e => { if (e.nativeEvent.key === 'Backspace' && !v && i) refs.current[i - 1]?.focus(); }} keyboardType="number-pad" maxLength={1} textAlign="center" />)}</View>
-      <View style={s.resendRow}><Text style={s.smallText}>Didn't receive code? </Text><TouchableOpacity onPress={resend} disabled={seconds > 0}><Text style={[s.link, seconds > 0 && s.muted]}>Resend {seconds > 0 ? `(00:${String(seconds).padStart(2,'0')})` : ''}</Text></TouchableOpacity></View>
+      <View style={s.resendRow}><Text style={s.smallText}>Didn't receive code? </Text><TouchableOpacity onPress={resend} disabled={seconds > 0}><Text style={[s.link, seconds > 0 && s.muted]}>Resend {seconds > 0 ? `(00:${String(seconds).padStart(2, '0')})` : ''}</Text></TouchableOpacity></View>
       <GradientButton title="Verify" onPress={verify} loading={loading} style={s.otpButton} />
     </AuthScreen>
   );
@@ -235,7 +289,7 @@ export function ForgotPasswordScreen() {
 export function SetPasswordScreen() {
   const navigation = useNavigation(); const route = useRoute(); const { phoneNumber, firebaseIdToken, isResetPassword } = route.params || {};
   const [password, setPassword] = useState(''); const [confirm, setConfirm] = useState(''); const [show, setShow] = useState(false); const [showConfirm, setShowConfirm] = useState(false); const [loading, setLoading] = useState(false);
-  const requirements = [[password.length >= 8,'At least 8 characters'],[/\d/.test(password),'Include a number'],[/[^A-Za-z0-9]/.test(password),'Include a special character'],[/[a-z]/.test(password) && /[A-Z]/.test(password),'Use uppercase and lowercase letters']];
+  const requirements = [[password.length >= 8, 'At least 8 characters'], [/\d/.test(password), 'Include a number'], [/[^A-Za-z0-9]/.test(password), 'Include a special character'], [/[a-z]/.test(password) && /[A-Z]/.test(password), 'Use uppercase and lowercase letters']];
   const submit = async () => {
     if (!requirements.every(([met]) => met) || password !== confirm) return AlertService.show('Check Password', password !== confirm ? 'Passwords do not match.' : 'Please meet all password requirements.', 'error');
     if (!isResetPassword) return navigation.navigate('ProfileDetails', { phoneNumber, firebaseIdToken, password });
@@ -248,7 +302,7 @@ export function SetPasswordScreen() {
       <BackButton onPress={() => navigation.goBack()} /><AuthHeader title={isResetPassword ? 'Set New Password' : 'Create Password'} subtitle="Create a secure password for your account." />
       <AuthField icon="lock-closed-outline" label="New Password" placeholder="Enter new password" value={password} onChangeText={setPassword} secureTextEntry={!show} right={<Eye shown={show} onPress={() => setShow(!show)} />} />
       <AuthField icon="lock-closed-outline" label="Confirm Password" placeholder="Re-enter new password" value={confirm} onChangeText={setConfirm} secureTextEntry={!showConfirm} right={<Eye shown={showConfirm} onPress={() => setShowConfirm(!showConfirm)} />} />
-      <View style={s.requirements}>{requirements.map(([met,label]) => <View key={label} style={s.requirement}><Icon name="checkmark-circle" size={17} color={met ? '#18B767' : '#BEC4D5'} /><Text style={[s.requirementText, met && s.requirementMet]}>{label}</Text></View>)}</View>
+      <View style={s.requirements}>{requirements.map(([met, label]) => <View key={label} style={s.requirement}><Icon name="checkmark-circle" size={17} color={met ? '#18B767' : '#BEC4D5'} /><Text style={[s.requirementText, met && s.requirementMet]}>{label}</Text></View>)}</View>
       <GradientButton title={isResetPassword ? 'Update Password' : 'Next'} onPress={submit} loading={loading} />
     </AuthScreen>
   );

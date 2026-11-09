@@ -31,36 +31,19 @@ import { buildProfileShare } from '../../utils/shareLinks';
 
 const { width } = Dimensions.get('window');
 
-// Default showcase collections strictly matching the new design
-const SHOWCASE_BADGES = [
-  { id: 'b1', name: 'VIP Legend', icon: 'crown', colors: ['#F59E0B', '#B45309'], sub: 'VIP Legend' },
-  { id: 'b2', name: 'Top Speaker', icon: 'microphone-variant', colors: ['#8B5CF6', '#6D28D9'], sub: 'Top Speaker' },
-  { id: 'b3', name: 'Room Star', icon: 'star-four-points', colors: ['#38BDF8', '#0284C7'], sub: 'Room Star' },
-  { id: 'b4', name: '100-Day Streak', icon: 'fire', colors: ['#EF4444', '#B91C1C'], sub: '100-Day Streak', badgeNum: '100' },
-  { id: 'b5', name: 'Royal Supporter', icon: 'heart-flash', colors: ['#EC4899', '#BE185D'], sub: 'Royal Supporter' },
-];
-
-const SHOWCASE_VEHICLES = [
-  { id: 'v1', name: 'Galaxy Rider', icon: 'car-sports', colors: ['#8B5CF6', '#3B82F6'], sub: 'Galaxy Rider' },
-  { id: 'v2', name: 'Golden Pegasus', icon: 'horse-variant-fast', colors: ['#F59E0B', '#D97706'], sub: 'Golden Pegasus' },
-  { id: 'v3', name: 'Abyss Dragon', icon: 'motorbike', colors: ['#EF4444', '#7F1D1D'], sub: 'Abyss Dragon' },
-  { id: 'v4', name: 'Moon Chariot', icon: 'shield-car', colors: ['#FBBF24', '#B45309'], sub: 'Moon Chariot' },
-];
-
-const SHOWCASE_FRAMES = [
-  { id: 'f1', name: 'Celestial Crown', icon: 'crown-outline', colors: ['#F59E0B', '#D97706'], sub: 'Celestial Crown' },
-  { id: 'f2', name: 'Galaxy Orbit', icon: 'orbit', colors: ['#A855F7', '#7C3AED'], sub: 'Galaxy Orbit' },
-  { id: 'f3', name: 'Rose Elegance', icon: 'flower-tulip', colors: ['#E11D48', '#BE185D'], sub: 'Rose Elegance' },
-  { id: 'f4', name: 'Ice Crystal', icon: 'snowflake', colors: ['#38BDF8', '#0284C7'], sub: 'Ice Crystal' },
-];
-
-const SHOWCASE_GIFTS = [
-  { id: 'g1', name: 'Cosmic Castle', icon: 'castle', colors: ['#EC4899', '#8B5CF6'], sub: 'Cosmic Castle' },
-  { id: 'g2', name: 'Diamond Heart', icon: 'diamond-stone', colors: ['#A855F7', '#EC4899'], sub: 'Diamond Heart' },
-  { id: 'g3', name: 'Golden Lion', icon: 'crown', colors: ['#F59E0B', '#D97706'], sub: 'Golden Lion' },
-  { id: 'g4', name: 'Love Hot Air Balloon', icon: 'heart', colors: ['#FB7185', '#F43F5E'], sub: 'Love Hot Air Balloon' },
-  { id: 'g5', name: 'Shooting Star', icon: 'star-shooting', colors: ['#60A5FA', '#FBBF24'], sub: 'Shooting Star' },
-];
+const PROFILE_ASSETS = {
+  crownWreath: require('../../assets/profile_avatar_crown_wreath.png'),
+  honorMedals: require('../../assets/profile_honor_medals.png'),
+  clubBanner: require('../../assets/profile_club_banner.png'),
+  cpBanner: require('../../assets/profile_cp_banner.png'),
+  friendsPreview: require('../../assets/profile_friends_preview.png'),
+  supportersPreview: require('../../assets/profile_supporters_preview.png'),
+  badgesPreview: require('../../assets/profile_badges_preview.png'),
+  vehiclesPreview: require('../../assets/profile_vehicles_preview.png'),
+  framesPreview: require('../../assets/profile_frames_preview.png'),
+  giftsPreview: require('../../assets/profile_gifts_preview.png'),
+  headerCrown: require('../../assets/medals/medal_header_crown.png'),
+};
 
 export default function UserProfileScreen() {
   const navigation = useNavigation();
@@ -113,7 +96,8 @@ export default function UserProfileScreen() {
 
   useEffect(() => {
     const fetchUserById = async () => {
-      const uid = route.params?.userId ||
+      const uid =
+        route.params?.userId ||
         route.params?.id ||
         incomingUser?._id ||
         incomingUser?.userId ||
@@ -145,36 +129,45 @@ export default function UserProfileScreen() {
     const raw = fetchedUser || route.params?.user || route.params?.host || {};
     const fallbackId = route.params?.userId || route.params?.id || '';
     const identity = raw.effectiveIdentity || {};
-    const officialBadge = raw.officialBadge || identity.officialBadge || {};
-    const uniqueIdBadge = raw.uniqueIdBadge || identity.uniqueIdBadge || {};
-
-    const rawCurrentRoom = (raw.isInRoom && raw.currentRoomId) ? raw.currentRoomId : null;
-    const cpPartner = (raw.cpPartner && (raw.cpPartner.name || raw.cpPartner.partnerName || raw.cpPartner._id)) ? raw.cpPartner : null;
-    const family = (raw.family && (raw.family.name || raw.family._id)) ? raw.family : null;
-
-    const showcase = raw.showcase || {};
-    const tags = Array.isArray(raw.tags) && raw.tags.length > 0
-      ? raw.tags
-      : ['🎙️ Voice Host', '🔥 Active', '💎 VIP', '⭐ Top Gifter'];
+    const rawCurrentRoom = raw.isInRoom && raw.currentRoomId ? raw.currentRoomId : null;
+    const cpPartner =
+      raw.cpPartner && (raw.cpPartner.name || raw.cpPartner.partnerName || raw.cpPartner._id)
+        ? raw.cpPartner
+        : null;
+    const family = raw.family && (raw.family.name || raw.family._id) ? raw.family : null;
 
     return {
       _id: raw._id || raw.id || raw.userId || fallbackId,
       userId: raw.userId || raw.id || fallbackId,
-      displayId: raw.customDisplayId || raw.equippedCustomId || raw.uniqueId || raw.displayId || identity.displayId || raw.userId || fallbackId || '1002456',
+      displayId:
+        raw.customDisplayId ||
+        raw.equippedCustomId ||
+        raw.uniqueId ||
+        raw.displayId ||
+        identity.displayId ||
+        raw.userId ||
+        fallbackId ||
+        '1000000002',
       name: raw.name || raw.hostName || raw.userName || 'Black',
       avatar: raw.avatar || raw.coverImage || raw.image || null,
+      country: raw.country || { flag: '🇬🇧', name: 'United Kingdom' },
       isVerified: Boolean(raw.isProfileVerified || raw.isVerified !== false),
-      eliteBadgeText: raw.verifiedTitle || raw.roleTitle || 'Elite Speaker',
-      bio: raw.bio || raw.about || '🎙️ Voice lover · Group chat host · Good vibes only ✨\nMusic, late-night talks, and meeting amazing people here. 💜',
-      followersCount: Number(raw.followersCount ?? (Array.isArray(raw.followers) ? raw.followers.length : 128600)),
-      followingCount: Number(raw.followingCount ?? (Array.isArray(raw.following) ? raw.following.length : 678)),
-      visitorsCount: Number(raw.visitorsCount ?? 42300),
-      family: family || raw.family || { name: 'Black Empire' },
-      cpPartner: cpPartner || raw.cpPartner || { name: 'Luna ♡' },
-      friendsCount: Number(raw.friendsCount ?? 2158),
-      supportersCount: Number(raw.supportersCount ?? 9642),
-      tags,
-      showcase,
+      roleBadgeText: raw.roleBadgeText || raw.verifiedTitle || 'Country Manager',
+      bio: raw.bio || raw.about || 'Owner of ✔ D A B H A I M A R T I C L U B 🔥',
+      followersCount: Number(
+        raw.followersCount ?? (Array.isArray(raw.followers) ? raw.followers.length : 150000)
+      ),
+      followingCount: Number(
+        raw.followingCount ?? (Array.isArray(raw.following) ? raw.following.length : 150000)
+      ),
+      visitorsCount: Number(raw.visitorsCount ?? 150000),
+      svipLevel: Number(raw.svipLevel || 1),
+      wealthLevel: Number(raw.wealthLevel || 15),
+      charmLevel: Number(raw.charmLevel || 15),
+      family: family || { name: 'BASTI AGENCY', level: 25, memberCount: 156000 },
+      cpPartner: cpPartner || { name: 'Nisha ♡', partnerName: 'Aftab', level: 13 },
+      friendsCount: Number(raw.friendsCount ?? 3),
+      supportersCount: Number(raw.supportersCount ?? 3),
       currentRoomId: rawCurrentRoom,
       currentRoomTitle: raw.currentRoomTitle || (rawCurrentRoom ? `${raw.name || 'User'}'s Room` : ''),
       isInRoom: Boolean(rawCurrentRoom),
@@ -207,8 +200,16 @@ export default function UserProfileScreen() {
 
   const handleMoreOptions = () => {
     Alert.alert('User Options', targetUser.name, [
-      { text: 'Report User', onPress: () => AlertService.show('Reported', 'Report submitted for review.', 'info') },
-      { text: 'Block User', style: 'destructive', onPress: () => AlertService.show('Blocked', `${targetUser.name} has been blocked.`, 'success') },
+      {
+        text: 'Report User',
+        onPress: () => AlertService.show('Reported', 'Report submitted for review.', 'info'),
+      },
+      {
+        text: 'Block User',
+        style: 'destructive',
+        onPress: () =>
+          AlertService.show('Blocked', `${targetUser.name} has been blocked.`, 'success'),
+      },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -224,13 +225,19 @@ export default function UserProfileScreen() {
       if (res.data?.success) {
         AlertService.show(
           nextState ? 'Following' : 'Unfollowed',
-          nextState ? `You are now following ${targetUser.name}!` : `You unfollowed ${targetUser.name}`,
+          nextState
+            ? `You are now following ${targetUser.name}!`
+            : `You unfollowed ${targetUser.name}`,
           'success'
         );
       }
     } catch (err) {
       setIsFollowing(!nextState);
-      AlertService.show('Notice', err.response?.data?.message || 'Could not update follow status', 'error');
+      AlertService.show(
+        'Notice',
+        err.response?.data?.message || 'Could not update follow status',
+        'error'
+      );
     } finally {
       setFollowLoading(false);
     }
@@ -248,14 +255,9 @@ export default function UserProfileScreen() {
     if (targetUser.currentRoomId) {
       navigation.navigate('VoiceRoom', {
         roomId: String(targetUser.currentRoomId),
-        room: {
-          _id: String(targetUser.currentRoomId),
-          roomId: String(targetUser.currentRoomId),
-          title: targetUser.currentRoomTitle,
-        },
       });
     } else {
-      AlertService.show('Not In Room', `${targetUser.name} is not currently in any voice room.`, 'info');
+      AlertService.show('Room Notice', `${targetUser.name} is not currently in a room.`, 'info');
     }
   };
 
@@ -298,146 +300,172 @@ export default function UserProfileScreen() {
 
   return (
     <View style={styles.screenContainer}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      {/* Soft Pastel Lavender / Pink Backdrop Gradient */}
-      <LinearGradient
-        colors={['#EFE7F6', '#F8F1FD', '#FBF6FD', '#FFFFFF']}
-        locations={[0, 0.25, 0.55, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* Top Navigation Bar */}
-      <View style={[styles.topNavBar, { paddingTop: topSafeInset + 6 }]}>
-        <TouchableOpacity
-          style={styles.navIconBtn}
-          onPress={handleBack}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Icon name="chevron-back" size={26} color="#1E1B2E" />
-        </TouchableOpacity>
-
-        <View style={styles.topRightActions}>
-          <TouchableOpacity
-            style={styles.navIconBtn}
-            onPress={handleShare}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Icon name="share-outline" size={23} color="#1E1B2E" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navIconBtn}
-            onPress={handleMoreOptions}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Icon name="ellipsis-horizontal" size={24} color="#1E1B2E" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Light Soft Background for Cards Area */}
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#F8F9FD' }]} />
 
       <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: topSafeInset + 48, paddingBottom: bottomSafePadding + 70 },
-        ]}
+        contentContainerStyle={{ paddingBottom: bottomSafePadding + 90 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* HERO SECTION: Glowing Waves + Golden Crown Avatar */}
-        <View style={styles.heroSection}>
-          {/* Subtle audio waveform graphics + mic in the aura */}
-          <View style={styles.audioWaveAura}>
-            <View style={styles.waveBarsLeft}>
-              <View style={[styles.waveBar, { height: 16 }]} />
-              <View style={[styles.waveBar, { height: 28 }]} />
-              <View style={[styles.waveBar, { height: 42 }]} />
-              <View style={[styles.waveBar, { height: 26 }]} />
-              <View style={[styles.waveBar, { height: 14 }]} />
+        {/* ======================================================== */}
+        {/* 1. HERO SECTION: Royal Dark Black/Gold Curved Canopy */}
+        {/* ======================================================== */}
+        <View style={styles.heroSectionWrap}>
+          {/* Deep dark luxury gradient */}
+          <LinearGradient
+            colors={['#0F0619', '#1A0C2B', '#140A22', '#0A0312']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.8, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+
+          {/* Watermark Royal Crown in background */}
+          <Image
+            source={PROFILE_ASSETS.headerCrown}
+            style={styles.heroBackgroundCrownWatermark}
+            resizeMode="contain"
+          />
+
+          {/* Top Navigation Bar inside Hero */}
+          <View style={[styles.topNavBar, { paddingTop: topSafeInset + 6 }]}>
+            <TouchableOpacity
+              style={styles.navIconBtn}
+              onPress={handleBack}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              activeOpacity={0.7}
+            >
+              <Icon name="chevron-back" size={26} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            {/* Centered Golden YARO Brand */}
+            <View style={styles.navBrandCenter}>
+              <Text style={styles.navBrandText}>·||· YARO ·||·</Text>
             </View>
 
-            <View style={styles.micAuraCircle}>
-              <Icon name="mic" size={24} color="#C084FC" />
+            <View style={styles.topRightActions}>
+              <TouchableOpacity
+                style={styles.navIconBtn}
+                onPress={handleShare}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                activeOpacity={0.7}
+              >
+                <Icon name="share-outline" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.navIconBtn}
+                onPress={handleMoreOptions}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                activeOpacity={0.7}
+              >
+                <Icon name="ellipsis-horizontal" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* AVATAR WITH MAJESTIC GOLDEN CROWN */}
-          <View style={styles.avatarCrownContainer}>
-            {/* Golden Tiara Crown on top of Avatar */}
-            <View style={styles.goldenCrownWrap}>
-              <LinearGradient
-                colors={['#FDE047', '#F59E0B', '#D97706']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.crownBase}
-              >
-                <MaterialCommunityIcons name="crown" size={34} color="#FEF08A" />
-              </LinearGradient>
-              <View style={styles.crownRubyGem} />
-            </View>
-
-            {/* Circular Avatar */}
-            <View style={styles.avatarOuterRing}>
+          {/* Avatar Crown Wreath Container */}
+          <View style={styles.avatarWreathContainer}>
+            <Image
+              source={PROFILE_ASSETS.crownWreath}
+              style={styles.crownWreathImg}
+              resizeMode="contain"
+            />
+            <View style={styles.avatarInnerCircle}>
               <Image
                 source={getUserAvatar(targetUser)}
                 style={styles.avatarImg}
+                resizeMode="cover"
               />
             </View>
           </View>
 
-          {/* USER NAME + VERIFIED BLACK CHECKMARK */}
+          {/* User Name + Country Flag + Verified Shield */}
           <View style={styles.nameRow}>
-            <Text style={styles.userNameText}>{targetUser.name}</Text>
-            {targetUser.isVerified && (
-              <MaterialIcons name="verified" size={20} color="#0F172A" style={styles.verifiedCheck} />
-            )}
+            <Text style={styles.countryFlagText}>{targetUser.country?.flag || '🇬🇧'}</Text>
+            <Text style={styles.userNameText} numberOfLines={1}>
+              {targetUser.name || 'Black'}
+            </Text>
+            <MaterialIcons name="verified" size={19} color="#F59E0B" style={styles.verifiedCheck} />
           </View>
 
-          {/* BADGE PILLS ROW: Elite Speaker + ID Pill */}
-          <View style={styles.identityPillsRow}>
+          {/* YARO ID Row */}
+          <TouchableOpacity
+            style={styles.yaroIdRow}
+            onPress={handleCopyId}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.yaroIdText}>
+              YARO ID : {targetUser.displayId || targetUser.userId}
+            </Text>
+            <Icon name="copy-outline" size={13} color="#D1D5DB" style={{ marginLeft: 5 }} />
+          </TouchableOpacity>
+
+          {/* Role Badge: ✔ Country Manager */}
+          <View style={styles.roleBadgeRow}>
+            <MaterialCommunityIcons
+              name="shield-check"
+              size={14}
+              color="#F59E0B"
+              style={{ marginRight: 4 }}
+            />
+            <Text style={styles.roleBadgeText}>
+              {targetUser.roleBadgeText || 'Country Manager'}
+            </Text>
+          </View>
+
+          {/* 5 Pill Tags Row */}
+          <View style={styles.pillBadgesRow}>
             <LinearGradient
-              colors={['#4C1D95', '#7C3AED']}
+              colors={['#FDE68A', '#F59E0B', '#D97706']}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.eliteBadgePill}
+              end={{ x: 1, y: 1 }}
+              style={styles.svipPill}
             >
-              <MaterialCommunityIcons name="crown" size={13} color="#FBBF24" />
-              <Text style={styles.eliteBadgeText}>{targetUser.eliteBadgeText}</Text>
+              <Text style={styles.svipPillText}>SVIP {targetUser.svipLevel || 1}</Text>
             </LinearGradient>
 
-            <TouchableOpacity
-              style={styles.idPill}
-              onPress={handleCopyId}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.idPillText}>ID: {targetUser.displayId}</Text>
-              <Icon name="copy-outline" size={12} color="#64748B" />
-            </TouchableOpacity>
-          </View>
+            <View style={styles.nicknamePill}>
+              <Text style={styles.nicknamePillText}>{targetUser.name || 'Black'}</Text>
+            </View>
 
-          {/* TAG PILLS ROW: Voice Host | Active | VIP | Top Gifter */}
-          <View style={styles.tagPillsRow}>
-            <View style={[styles.tagPill, { backgroundColor: '#FDF2F8', borderColor: '#FCE7F3' }]}>
-              <Text style={[styles.tagPillText, { color: '#BE185D' }]}>🎙️ Voice Host</Text>
+            <View style={styles.officialPill}>
+              <Text style={styles.officialPillText}>OFFICIAL</Text>
             </View>
-            <View style={[styles.tagPill, { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' }]}>
-              <Text style={[styles.tagPillText, { color: '#EA580C' }]}>🔥 Active</Text>
+
+            <View style={styles.wealthLevelPill}>
+              <Text style={styles.wealthLevelPillText}>
+                Lev. {targetUser.wealthLevel || 15}
+              </Text>
             </View>
-            <View style={[styles.tagPill, { backgroundColor: '#FEFCE8', borderColor: '#FEF08A' }]}>
-              <Text style={[styles.tagPillText, { color: '#CA8A04' }]}>💎 VIP</Text>
-            </View>
-            <View style={[styles.tagPill, { backgroundColor: '#FDF2F8', borderColor: '#FBCFE8' }]}>
-              <Text style={[styles.tagPillText, { color: '#E11D48' }]}>⭐ Top Gifter</Text>
+
+            <View style={styles.charmLevelPill}>
+              <Text style={styles.charmLevelPillText}>
+                Lev. {targetUser.charmLevel || 15}
+              </Text>
             </View>
           </View>
 
-          {/* STATS ROW: Followers | Following | Visitors */}
+          {/* 8 Honor Medals Row */}
+          <View style={styles.honorMedalsRowWrap}>
+            <Image
+              source={PROFILE_ASSETS.honorMedals}
+              style={styles.honorMedalsImg}
+              resizeMode="contain"
+            />
+          </View>
+
+          {/* Stats Row: Followers | Following | Visitors */}
           <View style={styles.statsRow}>
             <TouchableOpacity
               style={styles.statCol}
               onPress={() => navigation.navigate('Followers', { tab: 'followers' })}
               activeOpacity={0.7}
             >
-              <Text style={styles.statNum}>{formatCompactBalance(targetUser.followersCount)}</Text>
+              <Text style={styles.statNum}>
+                {formatCompactBalance(targetUser.followersCount || 150000)}
+              </Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
 
@@ -448,8 +476,10 @@ export default function UserProfileScreen() {
               onPress={() => navigation.navigate('Followers', { tab: 'following' })}
               activeOpacity={0.7}
             >
-              <Text style={styles.statNum}>{formatCompactBalance(targetUser.followingCount)}</Text>
-              <Text style={styles.statLabel}>Following</Text>
+              <Text style={styles.statNum}>
+                {formatCompactBalance(targetUser.followingCount || 150000)}
+              </Text>
+              <Text style={styles.statLabel}>Followings</Text>
             </TouchableOpacity>
 
             <View style={styles.statDivider} />
@@ -459,262 +489,245 @@ export default function UserProfileScreen() {
               onPress={() => navigation.navigate('Visitors')}
               activeOpacity={0.7}
             >
-              <Text style={styles.statNum}>{formatCompactBalance(targetUser.visitorsCount)}</Text>
+              <Text style={styles.statNum}>
+                {formatCompactBalance(targetUser.visitorsCount || 150000)}
+              </Text>
               <Text style={styles.statLabel}>Visitors</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Golden Convex Bottom Arch Trim */}
+          <View style={styles.goldenArchTrim} />
         </View>
 
-        {/* "ABOUT ME" CARD */}
-        <View style={styles.cardContainer}>
-          <View style={styles.aboutHeaderRow}>
-            <View style={styles.aboutTitleWrap}>
-              <View style={styles.aboutIconCircle}>
-                <Icon name="person" size={15} color="#9333EA" />
-              </View>
-              <Text style={styles.cardTitle}>About Me</Text>
+        {/* ======================================================== */}
+        {/* 2. CONTENT CARDS (NO MOMENT TAB - AS REQUESTED!) */}
+        {/* ======================================================== */}
+        <View style={styles.cardsContentWrap}>
+          {/* Card 1: About Me */}
+          <TouchableOpacity
+            style={styles.luxuryContentCard}
+            onPress={() => (isOwnProfile ? navigation.navigate('EditProfile') : null)}
+            activeOpacity={isOwnProfile ? 0.7 : 1}
+          >
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardHeaderText}>About Me</Text>
+              <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </View>
+            <View style={styles.bioContentRow}>
+              <Text style={styles.bioLabelText}>Bio</Text>
+              <Text style={styles.bioContentText} numberOfLines={2}>
+                {targetUser.bio || 'Owner of ✔ D A B H A I M A R T I C L U B 🔥'}
+              </Text>
+            </View>
+          </TouchableOpacity>
 
-            {isOwnProfile && (
-              <TouchableOpacity
-                style={styles.editBtn}
-                onPress={() => navigation.navigate('EditProfile')}
-                activeOpacity={0.7}
-              >
-                <Icon name="pencil" size={13} color="#64748B" />
-                <Text style={styles.editText}>Edit</Text>
-              </TouchableOpacity>
-            )}
+          {/* Card 2: Club (Golden Agency Banner) */}
+          <View style={styles.luxuryContentCard}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardHeaderText}>Club</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Family')}
+              activeOpacity={0.8}
+              style={styles.bannerImgBtn}
+            >
+              <Image
+                source={PROFILE_ASSETS.clubBanner}
+                style={styles.bannerCardImg}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
           </View>
 
-          <Text style={styles.bioText}>{targetUser.bio}</Text>
-        </View>
-
-        {/* 2X2 QUICK INFO GRID: Family | CP | Friends | Supporters */}
-        <View style={styles.gridRowWrap}>
-          {/* Card 1: Family */}
-          <TouchableOpacity
-            style={styles.gridCard}
-            onPress={() => navigation.navigate('Family')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.gridCardLeft}>
-              <LinearGradient
-                colors={['#7C3AED', '#581C87']}
-                style={styles.gridIconCircle}
+          {/* Card 3: CP (Couple / Partner) */}
+          <View style={styles.luxuryContentCard}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardHeaderText}>CP</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('CpSpace')}
+                style={styles.cardHeaderRightLink}
+                activeOpacity={0.7}
               >
-                <MaterialCommunityIcons name="shield-crown" size={18} color="#FBBF24" />
-              </LinearGradient>
-              <View style={styles.gridTextCol}>
-                <Text style={styles.gridTitle}>Family</Text>
-                <Text style={styles.gridSub} numberOfLines={1}>{targetUser.family?.name || 'Black Empire'}</Text>
-              </View>
+                <Text style={styles.cardHeaderRightLinkText}>CP Center</Text>
+                <Icon name="chevron-forward" size={15} color="#94A3B8" />
+              </TouchableOpacity>
             </View>
-            <Icon name="chevron-forward" size={16} color="#94A3B8" />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('CpSpace')}
+              activeOpacity={0.8}
+              style={styles.bannerImgBtn}
+            >
+              <Image
+                source={PROFILE_ASSETS.cpBanner}
+                style={styles.bannerCardImg}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
 
-          {/* Card 2: CP */}
-          <TouchableOpacity
-            style={styles.gridCard}
-            onPress={() => navigation.navigate('CpSpace')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.gridCardLeft}>
-              <LinearGradient
-                colors={['#F43F5E', '#EC4899']}
-                style={styles.gridIconCircle}
-              >
-                <MaterialCommunityIcons name="heart-multiple" size={18} color="#FFFFFF" />
-              </LinearGradient>
-              <View style={styles.gridTextCol}>
-                <Text style={styles.gridTitle}>CP</Text>
-                <Text style={styles.gridSub} numberOfLines={1}>{targetUser.cpPartner?.name || 'Luna ♡'}</Text>
-              </View>
-            </View>
-            <Icon name="chevron-forward" size={16} color="#94A3B8" />
-          </TouchableOpacity>
+          {/* Card 4: Friend (3) */}
+          <View style={styles.luxuryContentCard}>
+            <TouchableOpacity
+              style={styles.cardHeaderRow}
+              onPress={() => navigation.navigate('Followers', { tab: 'friends' })}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cardHeaderText}>Friend (3)</Text>
+              <Icon name="chevron-forward" size={17} color="#94A3B8" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Followers', { tab: 'friends' })}
+              activeOpacity={0.85}
+              style={styles.bannerImgBtn}
+            >
+              <Image
+                source={PROFILE_ASSETS.friendsPreview}
+                style={styles.friendsCardImg}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
 
-          {/* Card 3: Friends */}
+          {/* Card 5: Supporter */}
           <TouchableOpacity
-            style={styles.gridCard}
-            onPress={() => navigation.navigate('Followers', { tab: 'friends' })}
-            activeOpacity={0.8}
-          >
-            <View style={styles.gridCardLeft}>
-              <LinearGradient
-                colors={['#3B82F6', '#1D4ED8']}
-                style={styles.gridIconCircle}
-              >
-                <MaterialCommunityIcons name="account-group" size={18} color="#FFFFFF" />
-              </LinearGradient>
-              <View style={styles.gridTextCol}>
-                <Text style={styles.gridTitle}>Friends</Text>
-                <Text style={styles.gridSub} numberOfLines={1}>{formatCompactBalance(targetUser.friendsCount)}</Text>
-              </View>
-            </View>
-            <Icon name="chevron-forward" size={16} color="#94A3B8" />
-          </TouchableOpacity>
-
-          {/* Card 4: Supporters */}
-          <TouchableOpacity
-            style={styles.gridCard}
+            style={styles.luxuryContentCard}
             onPress={() => navigation.navigate('Ranking')}
             activeOpacity={0.8}
           >
-            <View style={styles.gridCardLeft}>
-              <LinearGradient
-                colors={['#F59E0B', '#D97706']}
-                style={styles.gridIconCircle}
-              >
-                <MaterialCommunityIcons name="shield-star" size={18} color="#FEF08A" />
-              </LinearGradient>
-              <View style={styles.gridTextCol}>
-                <Text style={styles.gridTitle}>Supporters</Text>
-                <Text style={styles.gridSub} numberOfLines={1}>{formatCompactBalance(targetUser.supportersCount)}</Text>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardHeaderText}>Supporter</Text>
+              <View style={styles.supporterAvatarsRight}>
+                <Image
+                  source={PROFILE_ASSETS.supportersPreview}
+                  style={styles.supportersPreviewImg}
+                  resizeMode="contain"
+                />
+                <Icon name="chevron-forward" size={17} color="#94A3B8" style={{ marginLeft: 6 }} />
               </View>
             </View>
-            <Icon name="chevron-forward" size={16} color="#94A3B8" />
           </TouchableOpacity>
-        </View>
 
-        {/* SECTION 1: BADGES */}
-        <View style={styles.showcaseCard}>
-          <View style={styles.showcaseHeader}>
-            <View style={styles.showcaseTitleLeft}>
-              <View style={[styles.showcaseIconWrap, { backgroundColor: '#F3E8FF' }]}>
-                <MaterialCommunityIcons name="star-circle" size={16} color="#9333EA" />
+          {/* Card 6: Room */}
+          <TouchableOpacity
+            style={styles.luxuryContentCard}
+            onPress={handleEnterRoom}
+            activeOpacity={0.8}
+          >
+            <View style={styles.cardHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.cardHeaderText}>Room</Text>
+                {targetUser.isInRoom && (
+                  <View style={styles.liveRoomTag}>
+                    <Text style={styles.liveRoomTagText}>LIVE</Text>
+                  </View>
+                )}
               </View>
-              <Text style={styles.cardTitle}>Badges</Text>
+              <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </View>
+            {targetUser.isInRoom && (
+              <Text style={styles.activeRoomDesc} numberOfLines={1}>
+                {targetUser.currentRoomTitle || `${targetUser.name}'s Live Club`}
+              </Text>
+            )}
+          </TouchableOpacity>
 
+          {/* Card 7: Badge (16) -> Navigates to Medal Center! */}
+          <View style={styles.luxuryContentCard}>
+            <TouchableOpacity
+              style={styles.cardHeaderRow}
+              onPress={() => navigation.navigate('Medal')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cardHeaderText}>Badge (16)</Text>
+              <Icon name="chevron-forward" size={17} color="#94A3B8" />
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('Medal')}
-              style={styles.viewAllBtn}
-              activeOpacity={0.7}
+              activeOpacity={0.85}
+              style={styles.bannerImgBtn}
             >
-              <Text style={styles.viewAllText}>View All ({targetUser.showcase?.badgesCount || 25})</Text>
-              <Icon name="chevron-forward" size={14} color="#64748B" />
+              <Image
+                source={PROFILE_ASSETS.badgesPreview}
+                style={styles.badgesCardImg}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.showcaseScroll}>
-            {(targetUser.showcase?.badges?.length ? targetUser.showcase.badges : SHOWCASE_BADGES).map((b) => (
-              <View key={b.id || b._id} style={styles.showcaseItem}>
-                <LinearGradient colors={b.colors || ['#F59E0B', '#B45309']} style={styles.badgeIconCircle}>
-                  <MaterialCommunityIcons name={b.icon || 'crown'} size={28} color="#FFFFFF" />
-                  {b.badgeNum && (
-                    <View style={styles.badgeNumTag}>
-                      <Text style={styles.badgeNumTagText}>{b.badgeNum}</Text>
-                    </View>
-                  )}
-                </LinearGradient>
-                <Text style={styles.showcaseItemLabel} numberOfLines={1}>{b.name}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* SECTION 2: VEHICLES */}
-        <View style={styles.showcaseCard}>
-          <View style={styles.showcaseHeader}>
-            <View style={styles.showcaseTitleLeft}>
-              <View style={[styles.showcaseIconWrap, { backgroundColor: '#EDE9FE' }]}>
-                <MaterialCommunityIcons name="car-sports" size={16} color="#7C3AED" />
-              </View>
-              <Text style={styles.cardTitle}>Vehicles</Text>
-            </View>
-
+          {/* Card 8: Vehicle (14) -> Navigates to Store */}
+          <View style={styles.luxuryContentCard}>
             <TouchableOpacity
-              onPress={() => navigation.navigate('Store')}
-              style={styles.viewAllBtn}
+              style={styles.cardHeaderRow}
+              onPress={() => navigation.navigate('Store', { category: 'Vehicle' })}
               activeOpacity={0.7}
             >
-              <Text style={styles.viewAllText}>View All ({targetUser.showcase?.vehiclesCount || 18})</Text>
-              <Icon name="chevron-forward" size={14} color="#64748B" />
+              <Text style={styles.cardHeaderText}>Vehicle (14)</Text>
+              <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </TouchableOpacity>
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.showcaseScroll}>
-            {(targetUser.showcase?.vehicles?.length ? targetUser.showcase.vehicles : SHOWCASE_VEHICLES).map((v) => (
-              <View key={v.id || v._id} style={styles.showcaseItem}>
-                <LinearGradient colors={v.colors || ['#8B5CF6', '#3B82F6']} style={styles.vehicleIconCircle}>
-                  <MaterialCommunityIcons name={v.icon || 'car-sports'} size={30} color="#FFFFFF" />
-                </LinearGradient>
-                <Text style={styles.showcaseItemLabel} numberOfLines={1}>{v.name}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* SECTION 3: FRAMES */}
-        <View style={styles.showcaseCard}>
-          <View style={styles.showcaseHeader}>
-            <View style={styles.showcaseTitleLeft}>
-              <View style={[styles.showcaseIconWrap, { backgroundColor: '#EEF2FF' }]}>
-                <MaterialCommunityIcons name="image-filter-frames" size={16} color="#4F46E5" />
-              </View>
-              <Text style={styles.cardTitle}>Frames</Text>
-            </View>
-
             <TouchableOpacity
-              onPress={() => navigation.navigate('Frame')}
-              style={styles.viewAllBtn}
-              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Store', { category: 'Vehicle' })}
+              activeOpacity={0.85}
+              style={styles.bannerImgBtn}
             >
-              <Text style={styles.viewAllText}>View All ({targetUser.showcase?.framesCount || 32})</Text>
-              <Icon name="chevron-forward" size={14} color="#64748B" />
+              <Image
+                source={PROFILE_ASSETS.vehiclesPreview}
+                style={styles.vehiclesCardImg}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.showcaseScroll}>
-            {(targetUser.showcase?.frames?.length ? targetUser.showcase.frames : SHOWCASE_FRAMES).map((f) => (
-              <View key={f.id || f._id} style={styles.showcaseItem}>
-                <View style={styles.framePreviewWrap}>
-                  <LinearGradient colors={f.colors || ['#F59E0B', '#D97706']} style={styles.frameBorderCircle}>
-                    <View style={styles.frameInnerHole} />
-                  </LinearGradient>
-                </View>
-                <Text style={styles.showcaseItemLabel} numberOfLines={1}>{f.name}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
+          {/* Card 9: Frame (12) -> Navigates to Store */}
+          <View style={styles.luxuryContentCard}>
+            <TouchableOpacity
+              style={styles.cardHeaderRow}
+              onPress={() => navigation.navigate('Store', { category: 'Frames' })}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cardHeaderText}>Frame (12)</Text>
+              <Icon name="chevron-forward" size={17} color="#94A3B8" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Store', { category: 'Frames' })}
+              activeOpacity={0.85}
+              style={styles.bannerImgBtn}
+            >
+              <Image
+                source={PROFILE_ASSETS.framesPreview}
+                style={styles.framesCardImg}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
 
-        {/* SECTION 4: GIFTS */}
-        <View style={styles.showcaseCard}>
-          <View style={styles.showcaseHeader}>
-            <View style={styles.showcaseTitleLeft}>
-              <View style={[styles.showcaseIconWrap, { backgroundColor: '#FDF2F8' }]}>
-                <MaterialCommunityIcons name="gift-outline" size={16} color="#DB2777" />
-              </View>
-              <Text style={styles.cardTitle}>Gifts</Text>
-            </View>
-
+          {/* Card 10: Gift (203) -> Navigates to Gifts / Store */}
+          <View style={styles.luxuryContentCard}>
+            <TouchableOpacity
+              style={styles.cardHeaderRow}
+              onPress={() => navigation.navigate('GiftsScreen')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cardHeaderText}>Gift (203)</Text>
+              <Icon name="chevron-forward" size={17} color="#94A3B8" />
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('GiftsScreen')}
-              style={styles.viewAllBtn}
-              activeOpacity={0.7}
+              activeOpacity={0.85}
+              style={styles.bannerImgBtn}
             >
-              <Text style={styles.viewAllText}>View All ({targetUser.showcase?.giftsCount || 56})</Text>
-              <Icon name="chevron-forward" size={14} color="#64748B" />
+              <Image
+                source={PROFILE_ASSETS.giftsPreview}
+                style={styles.giftsCardImg}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.showcaseScroll}>
-            {(targetUser.showcase?.gifts?.length ? targetUser.showcase.gifts : SHOWCASE_GIFTS).map((g) => (
-              <View key={g.id || g.giftId || g._id} style={styles.showcaseItem}>
-                <LinearGradient colors={g.colors || ['#EC4899', '#8B5CF6']} style={styles.giftIconCircle}>
-                  <MaterialCommunityIcons name={g.icon || 'gift'} size={28} color="#FFFFFF" />
-                </LinearGradient>
-                <Text style={styles.showcaseItemLabel} numberOfLines={1}>{g.name}</Text>
-              </View>
-            ))}
-          </ScrollView>
         </View>
       </ScrollView>
 
-      {/* FLOATING BOTTOM ACTION BAR: Follow, Chat, Call (if not viewing own profile) */}
-      {!isOwnProfile && (
+      {/* Floating Bottom Action Bar */}
+      {!isOwnProfile ? (
         <View style={[styles.bottomBarContainer, { paddingBottom: bottomSafePadding + 8 }]}>
           {targetUser.isInRoom && (
             <TouchableOpacity
@@ -770,6 +783,24 @@ export default function UserProfileScreen() {
             </TouchableOpacity>
           )}
         </View>
+      ) : (
+        <View style={[styles.bottomBarContainer, { paddingBottom: bottomSafePadding + 8 }]}>
+          <TouchableOpacity
+            style={styles.editProfileFullBtn}
+            onPress={() => navigation.navigate('EditProfile')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#FDE68A', '#F59E0B', '#D97706']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.editProfileGradient}
+            >
+              <Icon name="pencil" size={18} color="#1E1000" style={{ marginRight: 6 }} />
+              <Text style={styles.editProfileBtnText}>Edit Profile</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -778,555 +809,447 @@ export default function UserProfileScreen() {
 const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
-    backgroundColor: '#FAF5FB',
+    backgroundColor: '#0F0619',
+  },
+  heroSectionWrap: {
+    width: '100%',
+    paddingBottom: 24,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#0F0619',
+  },
+  heroBackgroundCrownWatermark: {
+    position: 'absolute',
+    top: 40,
+    right: -20,
+    width: 200,
+    height: 160,
+    opacity: 0.12,
   },
   topNavBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    marginBottom: 8,
   },
   navIconBtn: {
-    padding: 6,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navBrandCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navBrandText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#F59E0B',
+    letterSpacing: 2,
   },
   topRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  scrollContent: {
-    paddingHorizontal: 0,
-  },
-
-  /* Hero Section */
-  heroSection: {
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    position: 'relative',
-  },
-  audioWaveAura: {
-    position: 'absolute',
-    top: 24,
-    left: 20,
-    right: 20,
-    height: 100,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    zIndex: 1,
-    opacity: 0.6,
-  },
-  waveBarsLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginLeft: 10,
-  },
-  waveBar: {
-    width: 3,
-    backgroundColor: '#DDD6FE',
-    borderRadius: 2,
-  },
-  micAuraCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F3E8FF',
+  avatarWreathContainer: {
+    width: 140,
+    height: 110,
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#E9D5FF',
-  },
-
-  /* Avatar & Crown */
-  avatarCrownContainer: {
-    alignItems: 'center',
     position: 'relative',
-    marginTop: 10,
-    zIndex: 5,
+    marginTop: 4,
+    marginBottom: 6,
   },
-  goldenCrownWrap: {
+  crownWreathImg: {
     position: 'absolute',
-    top: -24,
-    zIndex: 10,
-    alignItems: 'center',
+    width: 136,
+    height: 104,
+    zIndex: 2,
   },
-  crownBase: {
-    width: 52,
-    height: 38,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#F59E0B',
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  crownRubyGem: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#E11D48',
-    position: 'absolute',
-    bottom: 4,
-    borderWidth: 1,
-    borderColor: '#FEF08A',
-  },
-  avatarOuterRing: {
-    width: 106,
-    height: 106,
-    borderRadius: 53,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#DC2626',
-    shadowColor: '#C084FC',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 8,
+  avatarInnerCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    zIndex: 1,
   },
   avatarImg: {
     width: '100%',
     height: '100%',
-    borderRadius: 50,
   },
-
-  /* Name & Check */
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 14,
-    gap: 6,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 4,
+  },
+  countryFlagText: {
+    fontSize: 16,
+    marginRight: 6,
   },
   userNameText: {
-    fontSize: 24,
+    fontSize: 19,
     fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.3,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   verifiedCheck: {
-    marginTop: 2,
+    marginLeft: 6,
   },
-
-  /* Identity Pills: Crown Badge + ID Pill */
-  identityPillsRow: {
+  yaroIdRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    gap: 8,
-  },
-  eliteBadgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4.5,
-    borderRadius: 20,
-    shadowColor: '#7C3AED',
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  eliteBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11.5,
-    fontWeight: '800',
-  },
-  idPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  idPillText: {
-    color: '#475569',
-    fontSize: 11.5,
-    fontWeight: '600',
-  },
-
-  /* Tags Row */
-  tagPillsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 7,
-    marginTop: 12,
+    marginBottom: 4,
   },
-  tagPill: {
+  yaroIdText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#CBD5E1',
+    letterSpacing: 0.4,
+  },
+  roleBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  roleBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FDE68A',
+  },
+  pillBadgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  svipPill: {
     paddingHorizontal: 9,
-    paddingVertical: 3.5,
-    borderRadius: 14,
-    borderWidth: 1,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
-  tagPillText: {
+  svipPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1E1000',
+  },
+  nicknamePill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+  },
+  nicknamePillText: {
     fontSize: 11,
     fontWeight: '700',
+    color: '#FDE68A',
   },
-
-  /* Stats Row */
+  officialPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: '#DC2626',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  officialPillText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  wealthLevelPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: '#2563EB',
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+  },
+  wealthLevelPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  charmLevelPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: '#7C3AED',
+    borderWidth: 1,
+    borderColor: '#8B5CF6',
+  },
+  charmLevelPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  honorMedalsRowWrap: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  honorMedalsImg: {
+    width: width - 48,
+    height: 36,
+  },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    width: '100%',
-    marginTop: 18,
-    paddingVertical: 8,
+    paddingHorizontal: 24,
   },
   statCol: {
     alignItems: 'center',
     flex: 1,
   },
   statNum: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11.5,
+    color: '#94A3B8',
     fontWeight: '500',
-    color: '#64748B',
-    marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: 24,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  goldenArchTrim: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(245, 158, 11, 0.4)',
   },
 
-  /* About Me Card */
-  cardContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 16,
-    shadowColor: '#C084FC',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#F3E8FF',
+  /* Cards content container */
+  cardsContentWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
   },
-  aboutHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  aboutTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  aboutIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#F3E8FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTitle: {
-    fontSize: 15.5,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  editBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-  },
-  editText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  bioText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#475569',
-  },
-
-  /* 2x2 Grid */
-  gridRowWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: 12,
-    marginTop: 14,
-    justifyContent: 'space-between',
-  },
-  gridCard: {
-    width: (width - 40) / 2,
+  luxuryContentCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
-    padding: 12,
+    padding: 14,
     marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#C084FC',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#F3E8FF',
+    borderColor: '#F1F5F9',
   },
-  gridCardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    flex: 1,
-  },
-  gridIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gridTextCol: {
-    flex: 1,
-  },
-  gridTitle: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  gridSub: {
-    fontSize: 11.5,
-    color: '#64748B',
-    marginTop: 1.5,
-  },
-
-  /* Showcase Sections */
-  showcaseCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    marginHorizontal: 16,
-    marginTop: 12,
-    paddingTop: 14,
-    paddingBottom: 16,
-    shadowColor: '#C084FC',
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#F3E8FF',
-  },
-  showcaseHeader: {
+  cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 6,
   },
-  showcaseTitleLeft: {
+  cardHeaderText: {
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  cardHeaderRightLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  showcaseIconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewAllBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  viewAllText: {
+  cardHeaderRightLinkText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#64748B',
+    marginRight: 2,
   },
-  showcaseScroll: {
-    paddingHorizontal: 14,
-    gap: 12,
+  bioContentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 2,
   },
-  showcaseItem: {
-    alignItems: 'center',
-    width: 66,
+  bioLabelText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#94A3B8',
+    marginRight: 12,
   },
-  showcaseItemLabel: {
-    fontSize: 10.5,
+  bioContentText: {
+    flex: 1,
+    fontSize: 12.5,
     fontWeight: '600',
-    color: '#475569',
-    textAlign: 'center',
-    marginTop: 7,
+    color: '#334155',
+    lineHeight: 18,
   },
-
-  badgeIconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  bannerImgBtn: {
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
+    marginTop: 4,
   },
-  badgeNumTag: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#EF4444',
+  bannerCardImg: {
+    width: width - 60,
+    height: (width - 60) * (48 / 445),
+  },
+  friendsCardImg: {
+    width: width - 60,
+    height: (width - 60) * (75 / 445),
+  },
+  supporterAvatarsRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  supportersPreviewImg: {
+    width: 90,
+    height: 26,
+  },
+  liveRoomTag: {
+    marginLeft: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderWidth: 1,
-    borderColor: '#FFF',
+    backgroundColor: '#EF4444',
   },
-  badgeNumTagText: {
-    color: '#FFF',
-    fontSize: 8,
+  liveRoomTagText: {
+    fontSize: 9.5,
     fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  activeRoomDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  badgesCardImg: {
+    width: width - 60,
+    height: (width - 60) * (71 / 445),
+  },
+  vehiclesCardImg: {
+    width: width - 60,
+    height: (width - 60) * (36 / 445),
+  },
+  framesCardImg: {
+    width: width - 60,
+    height: (width - 60) * (39 / 445),
+  },
+  giftsCardImg: {
+    width: width - 60,
+    height: (width - 60) * (86 / 445),
   },
 
-  vehicleIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-
-  framePreviewWrap: {
-    width: 52,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  frameBorderCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 3,
-  },
-  frameInnerHole: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F8FAFC',
-  },
-
-  giftIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-
-  /* Floating Bottom Action Bar */
+  /* Bottom Bar */
   bottomBarContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F3E8FF',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     paddingTop: 10,
-    shadowColor: '#C084FC',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    gap: 10,
+  },
+  chatActionBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FAF5FF',
+    borderWidth: 1.2,
+    borderColor: '#DDD6FE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatActionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#7C3AED',
+    marginLeft: 6,
+  },
+  followActionBtn: {
+    flex: 1.5,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  followGradient: {
+    width: '100%',
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  followActionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  callActionBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inRoomActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F59E0B',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#8B5CF6',
   },
   inRoomActionText: {
+    fontSize: 12.5,
+    fontWeight: '700',
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
+    marginLeft: 4,
   },
-  chatActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    backgroundColor: '#F3E8FF',
-    borderWidth: 1,
-    borderColor: '#E9D5FF',
+  editProfileFullBtn: {
+    width: '100%',
+    height: 46,
+    borderRadius: 23,
+    overflow: 'hidden',
   },
-  chatActionText: {
-    color: '#7C3AED',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  followActionBtn: {
-    flex: 1,
-    marginHorizontal: 8,
-  },
-  followGradient: {
+  editProfileGradient: {
+    width: '100%',
+    height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 10,
-    borderRadius: 22,
   },
-  followActionText: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
-  callActionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#10B981',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#10B981',
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 4,
+  editProfileBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E1000',
   },
 });

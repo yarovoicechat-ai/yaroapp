@@ -32,6 +32,7 @@ import AdminBannerCarousel from '../../components/AdminBannerCarousel';
 import CountryPickerModal from '../../components/party/CountryPickerModal';
 import CreateRoomModal from '../../components/party/CreateRoomModal';
 import RoomLockModal from '../../components/room/RoomLockModal';
+import SvgaView from '../../components/SvgaView';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 44) / 2;
@@ -322,8 +323,9 @@ export default function PartyScreen() {
             style={styles.trophyIconBtn}
             onPress={() => navigation.navigate('Ranking')}
           >
-            <Image
-              source={require('../../assets/icons/trophy_hd.png')}
+            <SvgaView
+              source="asset:///animations/game_ranking_enter.svga"
+              fallbackImage={require('../../assets/icons/trophy_hd.png')}
               style={styles.trophyIconImg}
               resizeMode="contain"
             />
@@ -697,23 +699,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   trophyIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1.5,
-    borderColor: '#FDE68A',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 1.5 },
-    shadowOpacity: 0.25,
-    shadowRadius: 2.5,
   },
   trophyIconImg: {
-    width: 25,
-    height: 25,
+    width: 38,
+    height: 38,
   },
   crownBadgeBtn: {
     alignItems: 'center',

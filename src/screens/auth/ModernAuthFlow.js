@@ -583,8 +583,13 @@ export function ProfileDetailsScreen() {
     isResetPassword: Boolean(route.params?.isResetPassword),
   });
 
+  const [googleIdToken, setGoogleIdToken] = useState(params.idToken || route.params?.googleIdToken || null);
+
   useEffect(() => {
-    if (route.params?.idToken) authDataRef.current.idToken = route.params.idToken;
+    if (route.params?.idToken) {
+      authDataRef.current.idToken = route.params.idToken;
+      setGoogleIdToken(route.params.idToken);
+    }
     if (route.params?.phoneNumber) authDataRef.current.phoneNumber = route.params.phoneNumber;
     if (route.params?.password) authDataRef.current.password = route.params.password;
     if (route.params?.fullName) authDataRef.current.fullName = route.params.fullName;
@@ -692,12 +697,13 @@ export function ProfileDetailsScreen() {
       };
 
       const authData = authDataRef.current;
-      const isGoogle = Boolean(authData.idToken || params.idToken);
+      const effectiveIdToken = googleIdToken || authData.idToken || params.idToken;
+      const isGoogle = Boolean(effectiveIdToken);
 
       let url;
       if (isGoogle) {
         url = '/auth/user-google-auth';
-        payload.googleIdToken = authData.idToken || params.idToken;
+        payload.googleIdToken = effectiveIdToken;
       } else {
         url = '/auth/user-signup';
         payload.name = displayName.trim() || authData.fullName || params.fullName;

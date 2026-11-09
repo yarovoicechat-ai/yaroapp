@@ -55,12 +55,13 @@ const MobileVerification = () => {
   const handleContinue = async () => {
     if (loading) return;
 
-    if (!mobileNumber || mobileNumber.length < 10) {
-      AlertService.show('Invalid Phone Number', 'Please enter a valid 10-digit mobile number.', 'error');
+    const cleanMobile = mobileNumber.replace(/\D/g, '').replace(/^0+/, '');
+    if (!cleanMobile || cleanMobile.length < 6 || cleanMobile.length > 15) {
+      AlertService.show('Invalid Phone Number', 'Please enter a valid mobile number (without leading 0).', 'error');
       return;
     }
 
-    const fullPhone = `${selectedCountry.code}${mobileNumber}`;
+    const fullPhone = `${selectedCountry.code}${cleanMobile}`;
     const deviceId = await DeviceInfo.getUniqueId();
 
     try {
@@ -71,46 +72,48 @@ const MobileVerification = () => {
         deviceId,
       });
       const data = response.data;
+      const status = response.status || data?.statusCode;
 
-      if (data.statusCode === 200 && data.success) {
+      if ((status === 200 || data.statusCode === 200) && data.success) {
         await sendOtpAndNavigate(fullPhone);
-      } else if (data.statusCode === 400) {
+      } else if (status === 400 || data?.statusCode === 400) {
         AlertService.show(
           'Already Registered',
           data.message || 'Phone number already registered. Please log in.',
           'error',
           [{ text: 'Go to Login', onPress: () => navigation.navigate('LoginScreen') }]
         );
-      } else if (data.statusCode === 403) {
+      } else if (status === 403 || data?.statusCode === 403) {
         AlertService.show(
           'Blocked',
           data.message || 'This device already has an account. Please try with another device.',
           'error'
         );
       } else {
-        AlertService.show('Something Went Wrong', data.message || 'We couldn\'t process your request right now. Please try again.', 'error');
+        AlertService.show('Notice', data.message || 'We couldn\'t process your request right now. Please try again.', 'error');
       }
     } catch (err) {
       if (__DEV__) console.log('API Error:', err);
       const data = err.response?.data;
+      const status = err.response?.status || data?.statusCode;
 
-      if (data?.statusCode === 400) {
+      if (status === 400) {
         AlertService.show(
           'Already Registered',
-          data.message || 'Phone number already registered. Please log in.',
+          data?.message || 'Phone number already registered. Please log in.',
           'error',
           [{ text: 'Go to Login', onPress: () => navigation.navigate('LoginScreen') }]
         );
-      } else if (data?.statusCode === 403) {
+      } else if (status === 403) {
         AlertService.show(
           'Blocked',
-          data.message || 'This device already has an account. Please try with another device.',
+          data?.message || 'This device already has an account. Please try with another device.',
           'error'
         );
-      } else if (data?.statusCode === 200 && data?.success) {
+      } else if (status === 200 && data?.success) {
         await sendOtpAndNavigate(fullPhone);
       } else {
-        AlertService.show('Network Error', 'Please check your internet connection and try again.', 'error');
+        AlertService.show('Notice', data?.message || 'Unable to verify phone number. Please try again.', 'error');
       }
     } finally {
       setLoading(false);

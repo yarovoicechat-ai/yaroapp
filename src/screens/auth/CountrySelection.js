@@ -23,7 +23,7 @@ import { countries } from '../../constants/countries';
 
 const { width, height } = Dimensions.get('window');
 
-const RECOMMENDED_IDS = ['1', '2', '3', '4']; // India (+91), US (+1), UK (+44), Canada (+1)
+const RECOMMENDED_IDS = ['1', '104', '17', '2', '3', '4']; // India (+91), Pakistan (+92), Bangladesh (+880), US (+1), UK (+44), Canada (+1)
 
 const CountrySelectionScreen = () => {
   const insets = useSafeAreaInsets();

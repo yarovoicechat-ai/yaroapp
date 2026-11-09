@@ -65,12 +65,13 @@ const WelcomeAvatars = [
 const DEFAULT_COUNTRY = { name: 'India', code: '+91', flag: '🇮🇳' };
 const POPULAR_COUNTRIES = [
   { name: 'India', code: '+91', flag: '🇮🇳' },
-  { name: 'United States', code: '+1', flag: '🇺🇸' },
-  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+  { name: 'Pakistan', code: '+92', flag: '🇵🇰' },
+  { name: 'Bangladesh', code: '+880', flag: '🇧🇩' },
+  { name: 'Nepal', code: '+977', flag: '🇳🇵' },
   { name: 'UAE', code: '+971', flag: '🇦🇪' },
   { name: 'Saudi Arabia', code: '+966', flag: '🇸🇦' },
-  { name: 'Nepal', code: '+977', flag: '🇳🇵' },
-  { name: 'Bangladesh', code: '+880', flag: '🇧🇩' },
+  { name: 'United States', code: '+1', flag: '🇺🇸' },
+  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
 ];
 const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -121,63 +122,215 @@ export function WelcomeScreen() {
   );
 }
 
+export function PhoneInputField({
+  country,
+  phone,
+  onChangePhone,
+  onOpenCountryPicker,
+  onSelectCountry,
+  popularCountries = POPULAR_COUNTRIES,
+  label = 'Mobile Number',
+  placeholder = 'Mobile number',
+}) {
+  return (
+    <View style={s.phoneContainer}>
+      {!!label && <Text style={s.phoneLabel}>{label}</Text>}
+      <View style={s.phoneInputBox}>
+        <TouchableOpacity
+          style={s.phoneCountryPickerBtn}
+          onPress={onOpenCountryPicker}
+          activeOpacity={0.7}
+        >
+          <Text style={s.phoneCountryFlag}>{country.flag}</Text>
+          <Text style={s.phoneCountryCode}>{country.code}</Text>
+          <Icon name="chevron-down" size={14} color="#64748B" style={{ marginLeft: 2 }} />
+        </TouchableOpacity>
+        <View style={s.phoneDivider} />
+        <TextInput
+          style={s.phoneTextInput}
+          placeholder={placeholder}
+          placeholderTextColor="#9AA2C2"
+          selectionColor={AUTH_COLORS.purple}
+          keyboardType="phone-pad"
+          maxLength={15}
+          value={phone}
+          onChangeText={onChangePhone}
+        />
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={s.authCountryChipsRow}
+      >
+        {popularCountries.map((c) => {
+          const isActive = country.code === c.code && country.name === c.name;
+          return (
+            <TouchableOpacity
+              key={`auth-chip-${c.code}-${c.name}`}
+              style={[s.authCountryChip, isActive && s.authCountryChipActive]}
+              onPress={() => onSelectCountry(c)}
+              activeOpacity={0.75}
+            >
+              <Text style={[s.authCountryChipText, isActive && s.authCountryChipTextActive]}>
+                {c.flag} {c.code}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+        <TouchableOpacity
+          style={s.authCountryChip}
+          onPress={onOpenCountryPicker}
+          activeOpacity={0.75}
+        >
+          <Text style={s.authCountryChipText}>🌍 More...</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
+
 export function SignInScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
   const { login } = useContext(AuthContext);
+  const [country, setCountry] = useState(route.params?.selectedCountry || DEFAULT_COUNTRY);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    if (route.params?.selectedCountry) {
+      setCountry(route.params.selectedCountry);
+    }
+  }, [route.params?.selectedCountry]);
+
+  const handleOpenCountrySelect = () => {
+    navigation.navigate('CountrySelection', {
+      selectedCountry: country,
+      returnScreen: 'SignIn',
+      onSelect: (selected) => {
+        if (selected) setCountry(selected);
+      },
+    });
+  };
+
   const submit = async () => {
-    if (phone.length < 10 || !password) return AlertService.show('Check details', 'Enter a valid mobile number and password.', 'error');
+    const cleanDigits = phone.replace(/\D/g, '').replace(/^0+/, '');
+    if (cleanDigits.length < 6 || !password) {
+      return AlertService.show('Check details', 'Enter a valid mobile number and password.', 'error');
+    }
+    const fullPhoneNumber = `${country.code}${cleanDigits}`;
 
     try {
       setLoading(true);
       const deviceId = await DeviceInfo.getUniqueId();
-      const res = await apiPublic.post('/auth/user-login', { phoneNumber: `+91${phone}`, password, deviceId, userFrom: 'app' });
+      const res = await apiPublic.post('/auth/user-login', {
+        phoneNumber: fullPhoneNumber,
+        password,
+        deviceId,
+        userFrom: 'app',
+      });
       if (!res.data.success) throw new Error(res.data.message || 'Login failed.');
       const { accessToken, refreshToken, role, gender } = res.data.data;
       await login({ accessToken, refreshToken, role, gender, isRegister: false });
-    } catch (error) { AlertService.show('Login Failed', getApiErrorMessage(error, error.message || 'Please try again.'), 'error'); }
-    finally { setLoading(false); }
+    } catch (error) {
+      AlertService.show('Login Failed', getApiErrorMessage(error, error.message || 'Please try again.'), 'error');
+    } finally {
+      setLoading(false);
+    }
   };
+
   return (
     <AuthScreen contentStyle={s.formContent}>
-      <BackButton onPress={() => navigation.goBack()} /><AuthHeader title="Sign In" subtitle="Welcome back! Glad to see you again." />
-      <AuthField icon="phone-portrait-outline" label="Mobile Number" placeholder="98765 43210" value={phone} onChangeText={v => setPhone(v.replace(/\D/g, ''))} keyboardType="phone-pad" maxLength={10} />
-      <AuthField icon="lock-closed-outline" label="Password" placeholder="Enter your password" value={password} onChangeText={setPassword} secureTextEntry={!show} right={<Eye shown={show} onPress={() => setShow(!show)} />} />
-      <View style={s.optionRow}><TouchableOpacity style={s.checkRow} onPress={() => setRemember(!remember)}><View style={[s.checkbox, remember && s.checkboxOn]}>{remember && <Icon name="checkmark" size={13} color="#FFF" />}</View><Text style={s.smallText}>Remember me</Text></TouchableOpacity><TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}><Text style={s.link}>Forgot Password?</Text></TouchableOpacity></View>
+      <BackButton onPress={() => navigation.goBack()} />
+      <AuthHeader title="Sign In" subtitle="Welcome back! Glad to see you again." />
+      <PhoneInputField
+        country={country}
+        phone={phone}
+        onChangePhone={v => setPhone(v.replace(/\D/g, ''))}
+        onOpenCountryPicker={handleOpenCountrySelect}
+        onSelectCountry={setCountry}
+        placeholder="Enter mobile number"
+      />
+      <AuthField
+        icon="lock-closed-outline"
+        label="Password"
+        placeholder="Enter your password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry={!show}
+        right={<Eye shown={show} onPress={() => setShow(!show)} />}
+      />
+      <View style={s.optionRow}>
+        <TouchableOpacity style={s.checkRow} onPress={() => setRemember(!remember)}>
+          <View style={[s.checkbox, remember && s.checkboxOn]}>
+            {remember && <Icon name="checkmark" size={13} color="#FFF" />}
+          </View>
+          <Text style={s.smallText}>Remember me</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword', { selectedCountry: country })}>
+          <Text style={s.link}>Forgot Password?</Text>
+        </TouchableOpacity>
+      </View>
       <GradientButton title="Sign In" onPress={submit} loading={loading} />
       <Divider />
-      <TouchableOpacity style={s.roundSocial} disabled={googleLoading} onPress={() => googleAuth(navigation, login, setGoogleLoading)}>{googleLoading ? <ActivityIndicator color={AUTH_COLORS.purple} /> : <Image source={GoogleLogo} style={s.googleIcon} />}</TouchableOpacity>
-      <FooterLink text="Don't have an account?" action="Sign Up" onPress={() => navigation.navigate('SignUp')} />
+      <TouchableOpacity
+        style={s.roundSocial}
+        disabled={googleLoading}
+        onPress={() => googleAuth(navigation, login, setGoogleLoading)}
+      >
+        {googleLoading ? <ActivityIndicator color={AUTH_COLORS.purple} /> : <Image source={GoogleLogo} style={s.googleIcon} />}
+      </TouchableOpacity>
+      <FooterLink text="Don't have an account?" action="Sign Up" onPress={() => navigation.navigate('SignUp', { selectedCountry: country })} />
     </AuthScreen>
   );
 }
 
 export function SignUpScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
   const { login } = useContext(AuthContext);
+  const [country, setCountry] = useState(route.params?.selectedCountry || DEFAULT_COUNTRY);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    if (route.params?.selectedCountry) {
+      setCountry(route.params.selectedCountry);
+    }
+  }, [route.params?.selectedCountry]);
+
+  const handleOpenCountrySelect = () => {
+    navigation.navigate('CountrySelection', {
+      selectedCountry: country,
+      returnScreen: 'SignUp',
+      onSelect: (selected) => {
+        if (selected) setCountry(selected);
+      },
+    });
+  };
+
   const submit = async () => {
     if (!fullName.trim()) return AlertService.show('Name Required', 'Please enter your full name.', 'error');
-    if (phone.length < 10) return AlertService.show('Invalid Number', 'Please enter a valid 10-digit mobile number.', 'error');
+    const cleanDigits = phone.replace(/\D/g, '').replace(/^0+/, '');
+    if (cleanDigits.length < 6) return AlertService.show('Invalid Number', 'Please enter a valid mobile number.', 'error');
     if (password.length < 8) return AlertService.show('Password Required', 'Password must be at least 8 characters.', 'error');
-    const phoneNumber = `+91${phone}`;
+
+    const fullPhoneNumber = `${country.code}${cleanDigits}`;
     try {
       setLoading(true);
       const deviceId = await DeviceInfo.getUniqueId();
 
       // 1. Validate device registration limit and user existence with server
       try {
-        const res = await apiPublic.post('/auth/check-user-device', { phoneNumber, deviceId });
+        const res = await apiPublic.post('/auth/check-user-device', { phoneNumber: fullPhoneNumber, deviceId });
         if (res.data?.canRegister === false || res.data?.userExists) {
           AlertService.show('Already Registered', res.data?.message || 'Please sign in instead.', 'info');
           return;
@@ -196,8 +349,15 @@ export function SignUpScreen() {
 
       // 2. Request Firebase Phone OTP
       try {
-        const verificationId = await sendFirebasePhoneOtp(phoneNumber);
-        navigation.navigate('VerifyOTP', { phoneNumber, fullName: fullName.trim(), password, isResetPassword: false, verificationId });
+        const verificationId = await sendFirebasePhoneOtp(fullPhoneNumber);
+        navigation.navigate('VerifyOTP', {
+          phoneNumber: fullPhoneNumber,
+          fullName: fullName.trim(),
+          password,
+          isResetPassword: false,
+          verificationId,
+          selectedCountry: country,
+        });
       } catch (otpError) {
         console.error('[SignUp sendFirebasePhoneOtp error]:', otpError);
         const info = getPhoneAuthError(otpError);
@@ -210,19 +370,53 @@ export function SignUpScreen() {
       setLoading(false);
     }
   };
+
   return (
     <AuthScreen contentStyle={s.formContent}>
-      <BackButton onPress={() => navigation.goBack()} /><AuthHeader title="Sign Up" subtitle="Create your account and start your Yaro journey." />
-      <AuthField icon="person-outline" label="Full Name" placeholder="Enter your name" value={fullName} onChangeText={setFullName} autoCapitalize="words" />
-      <AuthField icon="phone-portrait-outline" label="Mobile Number" placeholder="98765 43210" value={phone} onChangeText={v => setPhone(v.replace(/\D/g, ''))} keyboardType="phone-pad" maxLength={10} />
-      <AuthField icon="lock-closed-outline" label="Password" placeholder="Create a password" value={password} onChangeText={setPassword} secureTextEntry={!show} right={<Eye shown={show} onPress={() => setShow(!show)} />} />
+      <BackButton onPress={() => navigation.goBack()} />
+      <AuthHeader title="Sign Up" subtitle="Create your account and start your Yaro journey." />
+      <AuthField
+        icon="person-outline"
+        label="Full Name"
+        placeholder="Enter your name"
+        value={fullName}
+        onChangeText={setFullName}
+        autoCapitalize="words"
+      />
+      <PhoneInputField
+        country={country}
+        phone={phone}
+        onChangePhone={v => setPhone(v.replace(/\D/g, ''))}
+        onOpenCountryPicker={handleOpenCountrySelect}
+        onSelectCountry={setCountry}
+        placeholder="Enter mobile number"
+      />
+      <AuthField
+        icon="lock-closed-outline"
+        label="Password"
+        placeholder="Create a password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry={!show}
+        right={<Eye shown={show} onPress={() => setShow(!show)} />}
+      />
       <GradientButton title="Next" onPress={submit} loading={loading} />
       <Divider />
       <View style={s.socialRow}>
-        <TouchableOpacity style={s.roundSocial} disabled={googleLoading} onPress={() => googleAuth(navigation, login, setGoogleLoading)}>{googleLoading ? <ActivityIndicator color={AUTH_COLORS.purple} /> : <Image source={GoogleLogo} style={s.googleIcon} />}</TouchableOpacity>
-        {Platform.OS === 'ios' && <TouchableOpacity style={s.roundSocial}><Icon name="logo-apple" size={23} color="#050505" /></TouchableOpacity>}
+        <TouchableOpacity
+          style={s.roundSocial}
+          disabled={googleLoading}
+          onPress={() => googleAuth(navigation, login, setGoogleLoading)}
+        >
+          {googleLoading ? <ActivityIndicator color={AUTH_COLORS.purple} /> : <Image source={GoogleLogo} style={s.googleIcon} />}
+        </TouchableOpacity>
+        {Platform.OS === 'ios' && (
+          <TouchableOpacity style={s.roundSocial}>
+            <Icon name="logo-apple" size={23} color="#050505" />
+          </TouchableOpacity>
+        )}
       </View>
-      <FooterLink text="Already have an account?" action="Sign In" onPress={() => navigation.navigate('SignIn')} />
+      <FooterLink text="Already have an account?" action="Sign In" onPress={() => navigation.navigate('SignIn', { selectedCountry: country })} />
     </AuthScreen>
   );
 }
@@ -230,7 +424,7 @@ export function SignUpScreen() {
 export function OtpScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { phoneNumber, fullName, password, isResetPassword } = route.params || {};
+  const { phoneNumber, fullName, password, isResetPassword, selectedCountry } = route.params || {};
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [verificationId, setVerificationId] = useState(route.params?.verificationId || null);
   const [loading, setLoading] = useState(false);
@@ -243,11 +437,14 @@ export function OtpScreen() {
     try {
       const firebaseIdToken = await user.getIdToken(true);
       await signOutFirebasePhoneUser();
-      if (isResetPassword) navigation.replace('SetPassword', { phoneNumber, isResetPassword, firebaseIdToken });
-      else navigation.replace('ProfileDetails', { phoneNumber, fullName, password, firebaseIdToken });
+      if (isResetPassword) {
+        navigation.replace('SetPassword', { phoneNumber, isResetPassword, firebaseIdToken, selectedCountry });
+      } else {
+        navigation.replace('ProfileDetails', { phoneNumber, fullName, password, firebaseIdToken, selectedCountry });
+      }
     }
     catch (error) { completed.current = false; const info = getPhoneAuthError(error); AlertService.show(info.title, info.message, 'error'); }
-  }, [fullName, isResetPassword, navigation, password, phoneNumber]);
+  }, [fullName, isResetPassword, navigation, password, phoneNumber, selectedCountry]);
   useEffect(() => { let mounted = true; getOtpResendCooldown(phoneNumber, 60).then(v => mounted && setSeconds(v > 0 ? v : 60)); return () => { mounted = false; }; }, [phoneNumber]);
   useEffect(() => auth.onAuthStateChanged(user => { if (isFirebaseUserForPhone(user, phoneNumber)) finish(user); }), [finish, phoneNumber]);
   useEffect(() => { if (seconds <= 0) return; const timer = setTimeout(() => setSeconds(v => v - 1), 1000); return () => clearTimeout(timer); }, [seconds]);
@@ -275,24 +472,82 @@ export function OtpScreen() {
 }
 
 export function ForgotPasswordScreen() {
-  const navigation = useNavigation(); const [phone, setPhone] = useState(''); const [loading, setLoading] = useState(false);
-  const submit = async () => {
-    if (phone.length < 10) return AlertService.show('Invalid Phone Number', 'Please enter a valid 10-digit mobile number.', 'error');
-    const phoneNumber = `+91${phone}`;
-    try { setLoading(true); const res = await apiPublic.post('/auth/forgot-password', { phoneNumber }); if (!res.data?.success) throw new Error(res.data?.message); const verificationId = await sendFirebasePhoneOtp(phoneNumber); navigation.navigate('VerifyOTP', { phoneNumber, isResetPassword: true, verificationId }); }
-    catch (error) { const info = error.response ? { title: 'Unable to continue', message: error.response?.data?.message || error.message } : getPhoneAuthError(error); AlertService.show(info.title, info.message, 'error'); }
-    finally { setLoading(false); }
+  const navigation = useNavigation();
+  const route = useRoute();
+  const [country, setCountry] = useState(route.params?.selectedCountry || DEFAULT_COUNTRY);
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (route.params?.selectedCountry) {
+      setCountry(route.params.selectedCountry);
+    }
+  }, [route.params?.selectedCountry]);
+
+  const handleOpenCountrySelect = () => {
+    navigation.navigate('CountrySelection', {
+      selectedCountry: country,
+      returnScreen: 'ForgotPassword',
+      onSelect: (selected) => {
+        if (selected) setCountry(selected);
+      },
+    });
   };
-  return <AuthScreen contentStyle={s.formContent}><BackButton onPress={() => navigation.goBack()} /><AuthHeader title="Forgot Password" subtitle="Enter your mobile number to receive an OTP to reset your password." /><AuthField icon="phone-portrait-outline" label="Mobile Number" placeholder="98765 43210" value={phone} onChangeText={v => setPhone(v.replace(/\D/g, ''))} keyboardType="phone-pad" maxLength={10} /><GradientButton title="Send OTP" onPress={submit} loading={loading} /><FooterLink text="Remember your password?" action="Sign In" onPress={() => navigation.navigate('SignIn')} /></AuthScreen>;
+
+  const submit = async () => {
+    const cleanDigits = phone.replace(/\D/g, '').replace(/^0+/, '');
+    if (cleanDigits.length < 6) return AlertService.show('Invalid Phone Number', 'Please enter a valid mobile number.', 'error');
+    const fullPhoneNumber = `${country.code}${cleanDigits}`;
+    try {
+      setLoading(true);
+      const res = await apiPublic.post('/auth/forgot-password', { phoneNumber: fullPhoneNumber });
+      if (!res.data?.success) throw new Error(res.data?.message);
+      const verificationId = await sendFirebasePhoneOtp(fullPhoneNumber);
+      navigation.navigate('VerifyOTP', {
+        phoneNumber: fullPhoneNumber,
+        isResetPassword: true,
+        verificationId,
+        selectedCountry: country,
+      });
+    } catch (error) {
+      const info = error.response ? { title: 'Unable to continue', message: error.response?.data?.message || error.message } : getPhoneAuthError(error);
+      AlertService.show(info.title, info.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AuthScreen contentStyle={s.formContent}>
+      <BackButton onPress={() => navigation.goBack()} />
+      <AuthHeader title="Forgot Password" subtitle="Enter your mobile number to receive an OTP to reset your password." />
+      <PhoneInputField
+        country={country}
+        phone={phone}
+        onChangePhone={v => setPhone(v.replace(/\D/g, ''))}
+        onOpenCountryPicker={handleOpenCountrySelect}
+        onSelectCountry={setCountry}
+        placeholder="Enter mobile number"
+      />
+      <GradientButton title="Send OTP" onPress={submit} loading={loading} />
+      <FooterLink text="Remember your password?" action="Sign In" onPress={() => navigation.navigate('SignIn', { selectedCountry: country })} />
+    </AuthScreen>
+  );
 }
 
 export function SetPasswordScreen() {
-  const navigation = useNavigation(); const route = useRoute(); const { phoneNumber, firebaseIdToken, isResetPassword } = route.params || {};
-  const [password, setPassword] = useState(''); const [confirm, setConfirm] = useState(''); const [show, setShow] = useState(false); const [showConfirm, setShowConfirm] = useState(false); const [loading, setLoading] = useState(false);
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { phoneNumber, firebaseIdToken, isResetPassword, selectedCountry } = route.params || {};
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [show, setShow] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
   const requirements = [[password.length >= 8, 'At least 8 characters'], [/\d/.test(password), 'Include a number'], [/[^A-Za-z0-9]/.test(password), 'Include a special character'], [/[a-z]/.test(password) && /[A-Z]/.test(password), 'Use uppercase and lowercase letters']];
   const submit = async () => {
     if (!requirements.every(([met]) => met) || password !== confirm) return AlertService.show('Check Password', password !== confirm ? 'Passwords do not match.' : 'Please meet all password requirements.', 'error');
-    if (!isResetPassword) return navigation.navigate('ProfileDetails', { phoneNumber, firebaseIdToken, password });
+    if (!isResetPassword) return navigation.navigate('ProfileDetails', { phoneNumber, firebaseIdToken, password, selectedCountry });
     try { setLoading(true); const res = await apiPublic.post('/auth/reset-password', { phoneNumber, newPassword: password, firebaseIdToken }); if (!res.data.success) throw new Error(res.data.message); navigation.replace('PasswordSuccess'); }
     catch (error) { AlertService.show('Reset Failed', getApiErrorMessage(error, error.message || 'Please try again.'), 'error'); }
     finally { setLoading(false); }
@@ -828,4 +1083,19 @@ const s = StyleSheet.create({
   presetAvatarBtn: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: '#E2E8F0', overflow: 'hidden' },
   presetAvatarBtnActive: { borderColor: AUTH_COLORS.purple, borderWidth: 3 },
   presetAvatarImg: { width: '100%', height: '100%' },
+
+  // Phone Input & Country Selector Styles
+  phoneContainer: { marginBottom: 14 },
+  phoneLabel: { color: '#7780A1', fontSize: 11, marginBottom: 6, fontWeight: '600' },
+  phoneInputBox: { minHeight: 58, borderRadius: 15, borderWidth: 1, borderColor: '#E2E5F0', flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 12 },
+  phoneCountryPickerBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingRight: 6 },
+  phoneCountryFlag: { fontSize: 20, marginRight: 5 },
+  phoneCountryCode: { fontSize: 14.5, fontWeight: '700', color: '#1E293B' },
+  phoneDivider: { width: 1, height: 26, backgroundColor: '#CBD5E1', marginHorizontal: 8 },
+  phoneTextInput: { flex: 1, fontSize: 15, fontWeight: '600', color: AUTH_COLORS.ink, paddingVertical: 8 },
+  authCountryChipsRow: { flexDirection: 'row', marginTop: 8, marginBottom: 2 },
+  authCountryChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, marginRight: 6 },
+  authCountryChipActive: { borderColor: AUTH_COLORS.purple, backgroundColor: '#FAF5FF' },
+  authCountryChipText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  authCountryChipTextActive: { color: AUTH_COLORS.purple, fontWeight: '700' },
 });

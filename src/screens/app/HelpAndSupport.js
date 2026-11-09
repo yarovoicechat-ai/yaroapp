@@ -41,7 +41,7 @@ const HelpAndSupport = () => {
   const { t } = useTranslation();
   const chatScrollRef = useRef(null);
   const { user } = useContext(AuthContext);
-  const { enterRoom } = useVoiceRoom ? useVoiceRoom() : { enterRoom: () => {} };
+  const { enterRoom } = useVoiceRoom ? useVoiceRoom() : { enterRoom: () => { } };
 
   // Direct entry into Official Customer Support Voice Room
   const handleEnterSupportRoom = async () => {
@@ -867,10 +867,10 @@ const HelpAndSupport = () => {
           {showHelpBot
             ? 'Yaro Assistant'
             : showTicketHistory
-            ? 'Ticket History'
-            : showTicketForm
-            ? 'New Ticket'
-            : t('help.title') || 'Help & Support'}
+              ? 'Ticket History'
+              : showTicketForm
+                ? 'New Ticket'
+                : t('help.title') || 'Help & Support'}
         </Text>
 
         <TouchableOpacity

@@ -6,6 +6,7 @@ android/app/build/
 android/build/
 android/.gradle/
 android/.cxx/
+android/.kotlin/
 android/local.properties
 android/captures/
 *.apk

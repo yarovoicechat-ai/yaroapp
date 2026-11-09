@@ -19,6 +19,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import GiftCategoryTabs from './GiftCategoryTabs';
 import GiftCard from './GiftCard';
 import ReceiverSelector from './ReceiverSelector';
+import { roomGiftRecipients, resolveGiftRecipients } from '../../utils/giftRecipients';
 import GiftLevelBar from './GiftLevelBar';
 import GiftHistoryModal from './GiftHistoryModal';
 import InsufficientBalanceModal from './InsufficientBalanceModal';
@@ -150,39 +151,13 @@ export default function GiftPanel({
     return () => backHandler.remove();
   }, [visible, onClose, panY]);
 
-  // Single recipient safety: On open, reset multi-select mode to FALSE so multi-gift is never auto-selected
   useEffect(() => {
-    if (visible) {
-      if (typeof setIsMultiSelectMode === 'function') {
-        setIsMultiSelectMode(false);
-      }
-      // If multiple receivers or 'all' were previously selected, collapse to just 1 single receiver
-      const nonAll = selectedReceivers.filter((r) => r && !r.isAll && r.id !== 'all');
-      if (selectedReceivers.length > 1 || selectedReceivers.some((r) => r && (r.isAll || r.id === 'all'))) {
-        if (nonAll.length > 0) {
-          setSelectedReceivers([nonAll[0]]);
-        } else {
-          const defaultHost = {
-            id: room.hostId || room.ownerId || 'host',
-            userId: room.hostId || room.ownerId || 'host',
-            name: room.hostName || 'Host',
-            avatar: room.hostAvatar || room.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-            seatNumber: '1',
-          };
-          setSelectedReceivers([defaultHost]);
-        }
-      } else if (selectedReceivers.length === 0) {
-        const defaultHost = {
-          id: room.hostId || room.ownerId || 'host',
-          userId: room.hostId || room.ownerId || 'host',
-          name: room.hostName || 'Host',
-          avatar: room.hostAvatar || room.coverImage || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-          seatNumber: '1',
-        };
-        setSelectedReceivers([defaultHost]);
-      }
-    }
-  }, [visible, room?.hostId, room?.ownerId, room?.hostName, room?.hostAvatar, room?.coverImage]);
+    if (!visible) return;
+    setIsMultiSelectMode?.(false);
+    const recipients = roomGiftRecipients(room, seats, user);
+    const retained = resolveGiftRecipients(selectedReceivers, recipients);
+    setSelectedReceivers(retained.length ? [retained[0]] : recipients.slice(0, 1));
+  }, [visible, room?.hostId, room?.ownerId]);
 
   const handleSelectReceiver = useCallback(
     (receiver) => {
@@ -298,6 +273,7 @@ export default function GiftPanel({
           <ReceiverSelector
             room={room}
             seats={seats}
+            user={user}
             selectedReceivers={selectedReceivers}
             onSelectReceiver={handleSelectReceiver}
             isMultiSelectMode={isMultiSelectMode}

@@ -60,6 +60,7 @@ export const AgoraClientService = {
    * Registers the active engine instance and its bound App ID.
    */
   registerEngine(engine, appId) {
+    releasedEngines.delete(engine);
     activeEngineInstance = engine;
     currentEngineAppId = appId;
   },
@@ -78,6 +79,9 @@ export const AgoraClientService = {
 
     if (!activeEngineInstance && typeof createEngineFn === 'function') {
       activeEngineInstance = createEngineFn();
+      // Agora 4.x returns the same JS singleton after native release/reinitialize.
+      // Each new native lifecycle must be eligible for teardown again.
+      releasedEngines.delete(activeEngineInstance);
       currentEngineAppId = targetAppId;
     }
 

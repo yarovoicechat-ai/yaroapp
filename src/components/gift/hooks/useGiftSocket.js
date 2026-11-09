@@ -109,30 +109,35 @@ export function useGiftSocket({
       onGiftReceivedRef.current && onGiftReceivedRef.current(payload);
 
       if (onRoomNotificationRef.current && payload.sender && payload.gift && isAppActiveRef.current) {
-        const receiverText =
+        const recipients =
           Array.isArray(payload.receivers) && payload.receivers.length > 0
-            ? payload.receivers.map((r) => r.name || 'Recipient').join(', ')
-            : payload.receiver?.name || 'Everyone';
-        const primaryReceiver = payload.receivers?.[0] || payload.receiver || null;
+            ? payload.receivers
+            : payload.receiver
+            ? [payload.receiver]
+            : [{ name: 'Everyone', avatar: '' }];
 
-        onRoomNotificationRef.current({
-          id: `notif_${txId || Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        const giftImage =
+          payload.gift.image ||
+          payload.gift.giftImage ||
+          payload.gift.previewUrl ||
+          payload.giftImage ||
+          '';
+
+        const notifs = recipients.map((rec, idx) => ({
+          id: `notif_${txId || Date.now()}_${rec.id || rec.userId || idx}_${Math.random().toString(36).substr(2, 4)}`,
           senderName: payload.sender.name || 'User',
           senderAvatar: payload.sender.avatar || payload.sender.image,
           giftName: payload.gift.name,
           giftIcon: payload.gift.icon,
-          giftImage:
-            payload.gift.image ||
-            payload.gift.giftImage ||
-            payload.gift.previewUrl ||
-            payload.giftImage ||
-            '',
+          giftImage,
           quantity: payload.quantity || 1,
-          receiverText,
-          receiverAvatar: primaryReceiver?.avatar || primaryReceiver?.image || '',
-          receivers: payload.receivers || (primaryReceiver ? [primaryReceiver] : []),
-          timestamp: Date.now(),
-        });
+          receiverText: rec.name || 'Recipient',
+          receiverAvatar: rec.avatar || rec.image || '',
+          receivers: [rec],
+          timestamp: Date.now() + idx,
+        }));
+
+        onRoomNotificationRef.current(notifs);
       }
 
       if (onComboUpdateRef.current && payload.comboCount > 1 && isAppActiveRef.current) {

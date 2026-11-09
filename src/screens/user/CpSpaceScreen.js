@@ -54,21 +54,68 @@ const RING_PRESETS = [
   },
 ];
 
+const CP_LEVEL_PERKS = {
+  1: {
+    level: 1,
+    label: 'Lv.1',
+    intimacyReq: '0 - 999 Intimacy',
+    frameTitle: 'Emerald Love Frame',
+    themeTitle: 'Emerald Serenity Room',
+    themeBg: ['#065F46', '#047857', '#10B981'],
+    badgeDesc: 'Lv.1 Couple Crest displayed on room profile & header.',
+  },
+  2: {
+    level: 2,
+    label: 'Lv.2',
+    intimacyReq: '1,000 - 4,999 Intimacy',
+    frameTitle: 'Sapphire Crown Frame',
+    themeTitle: 'Sapphire Starlight Room',
+    themeBg: ['#1E3A8A', '#2563EB', '#60A5FA'],
+    badgeDesc: 'Lv.2 Sapphire Heart Crest with sparkling aura on seat.',
+  },
+  3: {
+    level: 3,
+    label: 'Lv.3',
+    intimacyReq: '5,000 - 19,999 Intimacy',
+    frameTitle: 'Ruby Passion Frame',
+    themeTitle: 'Ruby Romance Castle',
+    themeBg: ['#881337', '#BE123C', '#FB7185'],
+    badgeDesc: 'Lv.3 Royal Ruby Crest with exclusive love fanfare.',
+  },
+  4: {
+    level: 4,
+    label: 'Lv.4',
+    intimacyReq: '20,000 - 49,999 Intimacy',
+    frameTitle: 'Amethyst Sovereign Frame',
+    themeTitle: 'Amethyst Aurora Palace',
+    themeBg: ['#581C87', '#7E22CE', '#C084FC'],
+    badgeDesc: 'Lv.4 Imperial Amethyst Crest with global room entry notice.',
+  },
+  5: {
+    level: 5,
+    label: 'Lv.5',
+    intimacyReq: '50,000+ Intimacy',
+    frameTitle: 'Eternal Sovereign Frame',
+    themeTitle: 'Golden Eternity Kingdom',
+    themeBg: ['#78350F', '#B45309', '#FBBF24'],
+    badgeDesc: 'Lv.5 Eternal Sovereign Gold Crest with Hall of Fame glory.',
+  },
+};
+
 export default function CpSpaceScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user } = useContext(AuthContext);
 
-  const [activeTab, setActiveTab] = useState('space'); // 'space' | 'leaderboard'
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState(1);
 
   // Active CP Data
   const [myCp, setMyCp] = useState(null);
   const [partner, setPartner] = useState(null);
   const [daysTogether, setDaysTogether] = useState(0);
   const [isCheckedInToday, setIsCheckedInToday] = useState(false);
-  const [nextLevelIntimacy, setNextLevelIntimacy] = useState(1000);
   const [checkingIn, setCheckingIn] = useState(false);
 
   // Proposals
@@ -78,7 +125,9 @@ export default function CpSpaceScreen() {
   // Leaderboard Data
   const [couples, setCouples] = useState([]);
 
-  // Propose Modal
+  // Modals
+  const [helpModalVisible, setHelpModalVisible] = useState(false);
+  const [rankModalVisible, setRankModalVisible] = useState(false);
   const [proposeModalVisible, setProposeModalVisible] = useState(false);
   const [targetId, setTargetId] = useState('');
   const [selectedRing, setSelectedRing] = useState(RING_PRESETS[0]);
@@ -108,10 +157,8 @@ export default function CpSpaceScreen() {
         setPartner(myPayload.partner || null);
         setDaysTogether(myPayload.daysTogether || 1);
         setIsCheckedInToday(Boolean(myPayload.isCheckedInToday));
-        setNextLevelIntimacy(myPayload.nextLevelIntimacy || 1000);
         setIncomingProposals(myPayload.incomingProposals || []);
         setOutgoingProposals(myPayload.outgoingProposals || []);
-        setActiveTab('space');
       } else {
         setMyCp(null);
         setPartner(null);
@@ -262,567 +309,529 @@ export default function CpSpaceScreen() {
     );
   };
 
-  const top3Couples = couples.slice(0, 3);
-
-  // Helper to get self & partner info cleanly
   const selfUser = user || {};
   const currentPartner = partner || (myCp ? (String(myCp.user1?._id) === String(selfUser?._id || selfUser?.id) ? myCp.user2 : myCp.user1) : null);
+  const currentPerk = CP_LEVEL_PERKS[selectedLevel] || CP_LEVEL_PERKS[1];
 
   return (
     <View style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      {/* Romantic Hero Header */}
+      {/* Main Gradient Background (Dreamy Pink Palace) */}
       <LinearGradient
-        colors={['#4C0519', '#881337', '#BE123C']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: getAppTopSafeInset(insets.top) + 8 }]}
-      >
-        <View style={styles.navRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-            <Icon name="chevron-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.navTitle}>CP Love Space 💖</Text>
+        colors={['#4A0429', '#831843', '#BE185D', '#FB7185', '#FCE7F3']}
+        locations={[0, 0.22, 0.48, 0.8, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* App Bar / Navigation Header */}
+      <View style={[styles.topHeader, { paddingTop: getAppTopSafeInset(insets.top) + 6 }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.headerIconBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Icon name="chevron-back" size={26} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>CP Center</Text>
+
+        <View style={styles.headerRightActions}>
           <TouchableOpacity
-            onPress={() => setProposeModalVisible(true)}
-            style={styles.proposePillBtn}
+            onPress={() => setRankModalVisible(true)}
+            style={styles.headerIconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Rankings"
           >
-            <MaterialCommunityIcons name="ring" size={16} color="#FFFFFF" />
-            <Text style={styles.proposePillText}>Propose</Text>
+            <MaterialCommunityIcons name="crown-outline" size={22} color="#FDE047" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setHelpModalVisible(true)}
+            style={styles.headerIconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Help"
+          >
+            <Icon name="help-circle-outline" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Tab switch */}
-        <View style={styles.tabsRow}>
-          <TouchableOpacity
-            onPress={() => setActiveTab('space')}
-            style={[styles.tabBtn, activeTab === 'space' && styles.tabBtnActive]}
-          >
-            <Text style={[styles.tabBtnText, activeTab === 'space' && styles.tabBtnTextActive]}>
-              💖 Our Love Nest
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setActiveTab('leaderboard')}
-            style={[styles.tabBtn, activeTab === 'leaderboard' && styles.tabBtnActive]}
-          >
-            <Text style={[styles.tabBtnText, activeTab === 'leaderboard' && styles.tabBtnTextActive]}>
-              👑 Love Ranking
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-
-      {/* Main Content */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FB7185" />}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
       >
         {loading && !refreshing ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#FB7185" />
-            <Text style={styles.loadingText}>Entering romantic space...</Text>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>Opening CP Center...</Text>
           </View>
-        ) : activeTab === 'space' ? (
-          myCp ? (
-            /* ACTIVE CP LOVE NEST VIEW */
-            <View>
-              {/* Couple Palace Hero Card */}
-              <LinearGradient
-                colors={['#881337', '#9F1239', '#E11D48']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.coupleHeroCard}
-              >
-                {/* Ring & CP Title Banner */}
-                <View style={styles.topRingBadge}>
-                  <MaterialCommunityIcons name="ring" size={14} color="#FBBF24" />
-                  <Text style={styles.topRingBadgeText}>
-                    {myCp.ringName || 'Diamond Promise Ring'}
-                  </Text>
-                  <Text style={styles.cpTitleText}>• {myCp.cpTitle || 'Eternal Soulmates'}</Text>
+        ) : (
+          <>
+            {/* INCOMING PROPOSALS NOTICE BANNER */}
+            {incomingProposals.length > 0 && (
+              <View style={styles.incomingBannerContainer}>
+                <LinearGradient
+                  colors={['#BE185D', '#E11D48']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.incomingBannerCard}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.incomingTitle}>Incoming Romantic Confession 💌</Text>
+                    <Text style={styles.incomingSender} numberOfLines={1}>
+                      {incomingProposals[0]?.sender?.name || 'Someone'} proposed to you with a {incomingProposals[0]?.ringName || 'Diamond Ring'}!
+                    </Text>
+                  </View>
+                  <View style={styles.incomingActions}>
+                    <TouchableOpacity
+                      onPress={() => handleRespondProposal(incomingProposals[0]?._id, 'accept')}
+                      style={styles.incomingAcceptBtn}
+                    >
+                      <Text style={styles.incomingAcceptText}>Accept 💍</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleRespondProposal(incomingProposals[0]?._id, 'decline')}
+                      style={styles.incomingDeclineBtn}
+                    >
+                      <Text style={styles.incomingDeclineText}>Decline</Text>
+                    </TouchableOpacity>
+                  </View>
+                </LinearGradient>
+              </View>
+            )}
+
+            {/* TOP WINGED HEART HERO SECTION */}
+            <View style={styles.wingedHeartHeroWrap}>
+              {/* Angelic Winged Heart Backdrop */}
+              <View style={styles.wingsContainer}>
+                {/* Left Feathered Wing */}
+                <View style={styles.leftWingWrap}>
+                  <MaterialCommunityIcons
+                    name="wing"
+                    size={90}
+                    color="rgba(255, 255, 255, 0.88)"
+                    style={{ transform: [{ scaleX: -1 }, { rotate: '12deg' }] }}
+                  />
                 </View>
 
-                {/* Dual Avatar Presentation */}
-                <View style={styles.dualAvatarsRow}>
-                  {/* User Avatar */}
-                  <View style={styles.avatarCol}>
-                    <View style={styles.avatarGlowCircle}>
+                {/* Center Glowing Heart */}
+                <View style={styles.centerPinkHeart}>
+                  <MaterialCommunityIcons name="heart" size={175} color="#FFAEC0" />
+                </View>
+
+                {/* Right Feathered Wing */}
+                <View style={styles.rightWingWrap}>
+                  <MaterialCommunityIcons
+                    name="wing"
+                    size={90}
+                    color="rgba(255, 255, 255, 0.88)"
+                    style={{ transform: [{ rotate: '12deg' }] }}
+                  />
+                </View>
+              </View>
+
+              {/* Overlaid Avatars & Badges Row */}
+              <View style={styles.heroAvatarsRow}>
+                {/* User Avatar (Left) */}
+                <View style={styles.avatarCol}>
+                  <View style={styles.goldRingShell}>
+                    <Image
+                      source={getUserAvatar({
+                        avatar: selfUser?.avatar || selfUser?.image,
+                        gender: selfUser?.gender,
+                      })}
+                      style={styles.heroAvatarImg}
+                    />
+                  </View>
+                  <Text style={styles.heroUserName} numberOfLines={1}>
+                    {selfUser?.name || 'You'}
+                  </Text>
+                </View>
+
+                {/* Center Green Winged Heart Badge */}
+                <View style={styles.centerHeartBadgeWrap}>
+                  <Image
+                    source={require('../../assets/cp/cp_lv0_heart.png')}
+                    style={styles.lv0HeartImage}
+                    resizeMode="contain"
+                  />
+                  <View style={styles.lv0HeartTextOverlay}>
+                    <Text style={styles.lv0DaysText}>
+                      {myCp ? `${daysTogether} Days` : '0 Days'}
+                    </Text>
+                    <Text style={styles.lv0LevelText}>
+                      {myCp ? `LV.${myCp.cpLevel || 1}` : 'LV.0'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Partner Avatar / Invite Placeholder (Right) */}
+                <View style={styles.avatarCol}>
+                  {myCp && currentPartner ? (
+                    <>
+                      <View style={styles.goldRingShell}>
+                        <Image
+                          source={getUserAvatar({
+                            avatar: currentPartner?.avatar || currentPartner?.image,
+                            gender: currentPartner?.gender,
+                          })}
+                          style={styles.heroAvatarImg}
+                        />
+                      </View>
+                      <Text style={styles.heroUserName} numberOfLines={1}>
+                        {currentPartner?.name || 'Partner'}
+                      </Text>
+                    </>
+                  ) : (
+                    <View style={styles.inviteContainer}>
+                      <TouchableOpacity
+                        onPress={() => setProposeModalVisible(true)}
+                        activeOpacity={0.8}
+                        style={styles.placeholderDashedCircle}
+                      >
+                        <Icon name="add" size={32} color="#FFFFFF" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => setProposeModalVisible(true)}
+                        activeOpacity={0.85}
+                        style={styles.inviteBtnTouch}
+                      >
+                        <Image
+                          source={require('../../assets/cp/cp_invite_btn.png')}
+                          style={styles.inviteBtnImage}
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Status Subtitle */}
+              <Text style={styles.cpSubtitleText}>
+                {myCp
+                  ? `Anniversary • ${daysTogether} Days together with ${currentPartner?.name || 'Soulmate'} 💖`
+                  : "You don't have CP yet."}
+              </Text>
+            </View>
+
+            {/* PRIVILEGES SECTION */}
+            <View style={styles.privilegesSectionWrapper}>
+              {/* Ribbon Header Banner */}
+              <View style={styles.privilegesRibbonWrap}>
+                <Image
+                  source={require('../../assets/cp/cp_privileges_header.png')}
+                  style={styles.privilegesRibbonImg}
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Privileges Card Container */}
+              <View style={styles.privilegesCardBox}>
+                {/* Level Stepper Bar */}
+                <View style={styles.stepperWrap}>
+                  <View style={styles.stepperConnectingLine} />
+                  {[1, 2, 3, 4, 5].map((lvl) => {
+                    const isSelected = selectedLevel === lvl;
+                    return (
+                      <TouchableOpacity
+                        key={lvl}
+                        onPress={() => setSelectedLevel(lvl)}
+                        activeOpacity={0.8}
+                        style={styles.stepperItem}
+                      >
+                        <View style={[styles.stepIconRing, isSelected && styles.stepIconRingSelected]}>
+                          <MaterialCommunityIcons
+                            name="heart"
+                            size={isSelected ? 18 : 15}
+                            color={isSelected ? '#FBBF24' : '#E2E8F0'}
+                          />
+                          <Text style={[styles.stepInnerLvlText, isSelected && styles.stepInnerLvlTextSelected]}>
+                            LV{lvl}
+                          </Text>
+                        </View>
+                        <Text style={[styles.stepOuterLabel, isSelected && styles.stepOuterLabelSelected]}>
+                          Lv.{lvl}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* PREVIEW 1: CP ICON */}
+                <Text style={styles.perkSectionTitle}>CP Icon</Text>
+                <View style={styles.perkPreviewCard}>
+                  <View style={styles.cpIconPreviewRow}>
+                    <View style={styles.previewAvatarShell}>
                       <Image
                         source={getUserAvatar({
                           avatar: selfUser?.avatar || selfUser?.image,
                           gender: selfUser?.gender,
                         })}
-                        style={styles.avatarImg}
+                        style={styles.previewAvatarImg}
                       />
                     </View>
-                    <Text style={styles.partnerName} numberOfLines={1}>
-                      {selfUser?.name || 'You'}
-                    </Text>
-                    <View style={styles.selfTagPill}>
-                      <Text style={styles.selfTagText}>You</Text>
-                    </View>
-                  </View>
-
-                  {/* Pulsating Connector */}
-                  <View style={styles.heartConnectorCol}>
-                    <MaterialCommunityIcons name="heart-pulse" size={38} color="#FFE4E6" />
-                    <Text style={styles.intimacyScoreText}>
-                      {(myCp.intimacyScore || 520).toLocaleString()} 💖
-                    </Text>
-                    <LinearGradient colors={['#F59E0B', '#D97706']} style={styles.cpLvlBadge}>
-                      <Text style={styles.cpLvlBadgeText}>Lv.{myCp.cpLevel || 1}</Text>
-                    </LinearGradient>
-                  </View>
-
-                  {/* Partner Avatar */}
-                  <View style={styles.avatarCol}>
-                    <View style={styles.avatarGlowCircle}>
+                    <Image
+                      source={require('../../assets/cp/cp_badge_level1.png')}
+                      style={styles.badgePreviewImage}
+                      resizeMode="contain"
+                    />
+                    <View style={styles.previewAvatarShell}>
                       <Image
                         source={getUserAvatar({
                           avatar: currentPartner?.avatar || currentPartner?.image,
-                          gender: currentPartner?.gender,
+                          gender: currentPartner?.gender || 'female',
                         })}
-                        style={styles.avatarImg}
+                        style={styles.previewAvatarImg}
                       />
                     </View>
-                    <Text style={styles.partnerName} numberOfLines={1}>
-                      {currentPartner?.name || 'Partner'}
-                    </Text>
-                    <View style={[styles.selfTagPill, { backgroundColor: '#F43F5E' }]}>
-                      <Text style={styles.selfTagText}>Soulmate</Text>
+                  </View>
+                </View>
+
+                {/* PREVIEW 2: CP FRAME & CP ROOM THEME */}
+                <Text style={styles.perkSectionTitle}>CP Frame & CP Room Theme</Text>
+                <View style={styles.perkPreviewCard}>
+                  <View style={styles.frameThemeRow}>
+                    {/* Frame Preview */}
+                    <View style={styles.framePreviewCol}>
+                      <View style={styles.frameOuterRing}>
+                        <Image
+                          source={getUserAvatar({
+                            avatar: selfUser?.avatar || selfUser?.image,
+                            gender: selfUser?.gender,
+                          })}
+                          style={styles.frameAvatarInside}
+                        />
+                        <View style={styles.frameTagBadge}>
+                          <Text style={styles.frameTagText}>Lv.{selectedLevel}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.frameTitleLabel}>{currentPerk.frameTitle}</Text>
+                    </View>
+
+                    {/* Room Theme Preview */}
+                    <View style={styles.themePreviewCol}>
+                      <LinearGradient
+                        colors={currentPerk.themeBg}
+                        style={styles.themeThumbnailCard}
+                      >
+                        <MaterialCommunityIcons name="heart-multiple" size={24} color="rgba(255,255,255,0.85)" />
+                        <View style={styles.themePillWrap}>
+                          <Text style={styles.themePillText}>Lv.{selectedLevel} Theme</Text>
+                        </View>
+                      </LinearGradient>
+                      <Text style={styles.frameTitleLabel}>{currentPerk.themeTitle}</Text>
                     </View>
                   </View>
                 </View>
 
-                {/* Anniversary Counter */}
-                <View style={styles.anniversaryBanner}>
-                  <Icon name="calendar-heart-outline" size={16} color="#FFE4E6" />
-                  <Text style={styles.anniversaryText}>
-                    Together for <Text style={{ fontWeight: '800', color: '#FFF' }}>{daysTogether}</Text> Days
-                  </Text>
-                </View>
-
-                {/* Intimacy Progress Bar */}
-                <View style={styles.intimacyTrackBox}>
-                  <View style={styles.intimacyRow}>
-                    <Text style={styles.intimacyLabel}>Affection Progression</Text>
-                    <Text style={styles.intimacyValue}>
-                      {myCp.intimacyScore || 0} / {nextLevelIntimacy}
-                    </Text>
+                {/* PREVIEW 3: CP BADGE */}
+                <Text style={styles.perkSectionTitle}>CP Badge</Text>
+                <View style={styles.perkPreviewCard}>
+                  <View style={styles.badgeProfileCard}>
+                    <View style={styles.badgeProfileHeader}>
+                      <Icon name="chevron-back" size={16} color="#CBD5E1" />
+                      <View style={styles.badgeProfileAvatars}>
+                        <Image
+                          source={getUserAvatar({
+                            avatar: selfUser?.avatar || selfUser?.image,
+                            gender: selfUser?.gender,
+                          })}
+                          style={styles.badgeMiniAvatar}
+                        />
+                        <Image
+                          source={require('../../assets/cp/cp_lv0_heart.png')}
+                          style={styles.badgeMiniHeart}
+                          resizeMode="contain"
+                        />
+                        <Image
+                          source={getUserAvatar({
+                            avatar: currentPartner?.avatar || currentPartner?.image,
+                            gender: currentPartner?.gender || 'female',
+                          })}
+                          style={styles.badgeMiniAvatar}
+                        />
+                      </View>
+                      <Icon name="share-social-outline" size={16} color="#CBD5E1" />
+                    </View>
+                    <View style={styles.badgeProfileInfo}>
+                      <Text style={styles.badgeCoupleNameText} numberOfLines={1}>
+                        {myCp
+                          ? `${selfUser?.name || 'You'} & ${currentPartner?.name || 'Soulmate'}`
+                          : `${selfUser?.name || 'Ansh'} & Soulmate`}
+                      </Text>
+                      <Text style={styles.badgeIdText}>
+                        ID: {selfUser?.customDisplayId || selfUser?.userId || '12546620'}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.intimacyTrack}>
-                    <LinearGradient
-                      colors={['#F43F5E', '#FDE047']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={[
-                        styles.intimacyFill,
-                        {
-                          width: `${Math.min(
-                            100,
-                            Math.round(((myCp.intimacyScore || 0) / Math.max(1, nextLevelIntimacy)) * 100)
-                          )}%`,
-                        },
-                      ]}
+                </View>
+              </View>
+            </View>
+
+            {/* ACTIVE CP ROMANTIC ACTIONS (If coupled) */}
+            {myCp && (
+              <View style={styles.activeCpCard}>
+                <Text style={styles.activeCpSectionTitle}>Couple Space Features 💖</Text>
+
+                <View style={styles.activeCpButtonsGrid}>
+                  <TouchableOpacity
+                    onPress={handleCheckin}
+                    disabled={isCheckedInToday || checkingIn}
+                    style={[styles.cpActionBtn, isCheckedInToday && styles.cpActionBtnDisabled]}
+                  >
+                    <MaterialCommunityIcons
+                      name={isCheckedInToday ? 'check-circle' : 'heart-flash'}
+                      size={20}
+                      color="#FFFFFF"
                     />
-                  </View>
-                </View>
-              </LinearGradient>
-
-              {/* Daily Sweet Check-in Card */}
-              <LinearGradient
-                colors={['#1E1B4B', '#312E81']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.checkinCard}
-              >
-                <View style={styles.checkinLeft}>
-                  <MaterialCommunityIcons name="heart-flash" size={30} color="#FB7185" />
-                  <View style={{ marginLeft: 12, flex: 1 }}>
-                    <Text style={styles.checkinHeading}>Daily Sweet Check-in</Text>
-                    <Text style={styles.checkinSub}>
-                      Nurture your affection tree & earn +100 Intimacy daily!
+                    <Text style={styles.cpActionBtnText}>
+                      {isCheckedInToday ? 'Checked In Today' : 'Daily Sweet (+100 💖)'}
                     </Text>
-                  </View>
-                </View>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={handleCheckin}
-                  disabled={isCheckedInToday || checkingIn}
-                  style={[
-                    styles.checkinBtn,
-                    isCheckedInToday ? styles.checkinBtnDisabled : styles.checkinBtnActive,
-                  ]}
-                >
-                  {checkingIn ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.checkinBtnText}>
-                      {isCheckedInToday ? '✓ Done Today' : 'Sign In 💖'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </LinearGradient>
-
-              {/* Ring Showcase & Upgrade Card */}
-              <View style={styles.ringCard}>
-                <View style={styles.ringCardTop}>
-                  <Image
-                    source={{ uri: myCp.ringImage || RING_PRESETS[0].image }}
-                    style={styles.ringShowcaseImg}
-                  />
-                  <View style={{ flex: 1, marginLeft: 14 }}>
-                    <Text style={styles.ringHeading}>{myCp.ringName || 'Diamond Promise Ring'}</Text>
-                    <Text style={styles.ringTierPill}>Tier {myCp.ringTier || 1} Sacred Bond</Text>
-                    <Text style={styles.ringDesc}>
-                      Grants exclusive couple seat sparkle and matching room entrance fanfare.
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => setRingModalVisible(true)}
-                  style={styles.upgradeRingBtn}
-                >
-                  <MaterialCommunityIcons name="ring" size={16} color="#FFFFFF" />
-                  <Text style={styles.upgradeRingBtnText}>Upgrade Ring 💍</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Couple Privileges Grid */}
-              <View style={styles.perksCard}>
-                <Text style={styles.perksHeading}>Sacred CP Privileges 👑</Text>
-                <View style={styles.perksGrid}>
-                  <View style={styles.perkItem}>
-                    <MaterialCommunityIcons name="card-account-details-star" size={24} color="#FB7185" />
-                    <Text style={styles.perkLabel}>Dual Card</Text>
-                    <Text style={styles.perkDesc}>Highlighted soulmate badge</Text>
-                  </View>
-                  <View style={styles.perkItem}>
-                    <MaterialCommunityIcons name="seat-passenger" size={24} color="#F43F5E" />
-                    <Text style={styles.perkLabel}>CP Seat Aura</Text>
-                    <Text style={styles.perkDesc}>Heart pulse on mic seat</Text>
-                  </View>
-                  <View style={styles.perkItem}>
-                    <MaterialCommunityIcons name="tree" size={24} color="#10B981" />
-                    <Text style={styles.perkLabel}>Love Tree</Text>
-                    <Text style={styles.perkDesc}>Daily affection water</Text>
-                  </View>
-                  <View style={styles.perkItem}>
-                    <MaterialCommunityIcons name="star-shooting" size={24} color="#FBBF24" />
-                    <Text style={styles.perkLabel}>Entry Fanfare</Text>
-                    <Text style={styles.perkDesc}>Paired room entry banner</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Love Wall / Sweet Memories Timeline */}
-              <View style={styles.loveWallCard}>
-                <View style={styles.wallHeaderRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Icon name="heart" size={18} color="#F43F5E" />
-                    <Text style={styles.wallTitle}>Love Wall Memories 💌</Text>
-                  </View>
                   <TouchableOpacity
                     onPress={() => setNoteModalVisible(true)}
-                    style={styles.writeNoteBtn}
+                    style={[styles.cpActionBtn, { backgroundColor: '#BE185D' }]}
                   >
-                    <Icon name="pencil" size={14} color="#FB7185" />
-                    <Text style={styles.writeNoteText}>Write Note</Text>
+                    <MaterialCommunityIcons name="email-heart-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.cpActionBtnText}>Love Wall Notes</Text>
                   </TouchableOpacity>
-                </View>
 
-                {Array.isArray(myCp.loveWall) && myCp.loveWall.length > 0 ? (
-                  myCp.loveWall.map((note, i) => (
-                    <View key={i} style={styles.noteItem}>
-                      <Image
-                        source={getUserAvatar({
-                          avatar: note.sender?.avatar,
-                          gender: note.sender?.gender,
-                        })}
-                        style={styles.noteAvatar}
-                      />
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                          <Text style={styles.noteAuthor}>{note.sender?.name || 'Soulmate'}</Text>
-                          <Text style={styles.noteDate}>
-                            {new Date(note.createdAt).toLocaleDateString()}
-                          </Text>
-                        </View>
-                        <Text style={styles.noteBodyText}>{note.text}</Text>
-                      </View>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.emptyWallText}>
-                    No love notes written yet. Be the first to leave a sweet memory! ❤️
-                  </Text>
-                )}
-              </View>
-
-              {/* Dissolve CP Action */}
-              <View style={styles.dissolveRow}>
-                <TouchableOpacity onPress={handleDissolveCp} style={styles.dissolveBtn}>
-                  <Icon name="heart-dislike-outline" size={18} color="#EF4444" />
-                  <Text style={styles.dissolveBtnText}>Dissolve CP Bond</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            /* SINGLE / NO CP VIEW */
-            <View>
-              {/* Incoming Proposals Card (if any) */}
-              {incomingProposals.length > 0 && (
-                <View style={styles.proposalsSection}>
-                  <Text style={styles.proposalSectionTitle}>Incoming Confessions 💌</Text>
-                  {incomingProposals.map((prop) => (
-                    <View key={prop._id} style={styles.proposalCard}>
-                      <Image
-                        source={getUserAvatar({
-                          avatar: prop.sender?.avatar,
-                          gender: prop.sender?.gender,
-                        })}
-                        style={styles.proposalAvatar}
-                      />
-                      <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={styles.proposerName}>{prop.sender?.name || 'Secret Admirer'}</Text>
-                        <Text style={styles.proposerRing}>Offered: {prop.ringName || 'Diamond Ring'} 💍</Text>
-                        <Text style={styles.proposalMsg} numberOfLines={2}>
-                          "{prop.message}"
-                        </Text>
-                        <View style={styles.proposalActionsRow}>
-                          <TouchableOpacity
-                            onPress={() => handleRespondProposal(prop._id, 'accept')}
-                            style={styles.acceptPropBtn}
-                          >
-                            <Text style={styles.acceptPropText}>Accept 💖</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => handleRespondProposal(prop._id, 'decline')}
-                            style={styles.declinePropBtn}
-                          >
-                            <Text style={styles.declinePropText}>Decline</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Outgoing proposals notice */}
-              {outgoingProposals.length > 0 && (
-                <View style={styles.outgoingCard}>
-                  <Icon name="time-outline" size={18} color="#FBBF24" />
-                  <Text style={styles.outgoingText}>
-                    Waiting for {outgoingProposals[0]?.receiver?.name || 'partner'} to respond to your romantic proposal...
-                  </Text>
-                </View>
-              )}
-
-              {/* Grand Empty CP Welcome Banner */}
-              <View style={styles.emptyContainer}>
-                <LinearGradient
-                  colors={['#881337', '#BE123C']}
-                  style={styles.emptyRingCircle}
-                >
-                  <MaterialCommunityIcons name="heart-multiple-outline" size={60} color="#FFFFFF" />
-                </LinearGradient>
-                <Text style={styles.emptyTitle}>Find Your Soulmate & Enter CP Space</Text>
-                <Text style={styles.emptySub}>
-                  Form a sacred couple bond, wear matching diamond rings, display dual frames in rooms, and water your daily intimacy tree.
-                </Text>
-
-                <TouchableOpacity
-                  onPress={() => setProposeModalVisible(true)}
-                  style={styles.proposeLargeBtn}
-                >
-                  <LinearGradient
-                    colors={['#F43F5E', '#E11D48']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.proposeLargeGrad}
+                  <TouchableOpacity
+                    onPress={() => setRingModalVisible(true)}
+                    style={[styles.cpActionBtn, { backgroundColor: '#9D174D' }]}
                   >
                     <MaterialCommunityIcons name="ring" size={20} color="#FFFFFF" />
-                    <Text style={styles.proposeLargeText}>Send Romantic Proposal 💍</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+                    <Text style={styles.cpActionBtnText}>Upgrade Ring</Text>
+                  </TouchableOpacity>
 
-              {/* CP Perks Showcase */}
-              <View style={styles.perksCard}>
-                <Text style={styles.perksHeading}>Couple Privileges Awaiting You</Text>
-                <View style={styles.perksGrid}>
-                  <View style={styles.perkItem}>
-                    <MaterialCommunityIcons name="card-account-details-star" size={24} color="#FB7185" />
-                    <Text style={styles.perkLabel}>Couple Card</Text>
-                    <Text style={styles.perkDesc}>Special dual profile highlight</Text>
-                  </View>
-                  <View style={styles.perkItem}>
-                    <MaterialCommunityIcons name="seat-passenger" size={24} color="#F43F5E" />
-                    <Text style={styles.perkLabel}>CP Seat Aura</Text>
-                    <Text style={styles.perkDesc}>Rippling heart effects on mics</Text>
-                  </View>
-                  <View style={styles.perkItem}>
-                    <MaterialCommunityIcons name="tree" size={24} color="#10B981" />
-                    <Text style={styles.perkLabel}>Love Tree</Text>
-                    <Text style={styles.perkDesc}>Water daily for diamonds</Text>
-                  </View>
-                  <View style={styles.perkItem}>
-                    <MaterialCommunityIcons name="star-shooting" size={24} color="#FBBF24" />
-                    <Text style={styles.perkLabel}>Entry Fanfare</Text>
-                    <Text style={styles.perkDesc}>Paired entrance into rooms</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          )
-        ) : (
-          /* LEADERBOARD VIEW */
-          <View>
-            {/* Top 3 Podium */}
-            {top3Couples.length >= 3 && (
-              <View style={styles.podiumContainer}>
-                {/* #2 Silver */}
-                <View style={[styles.podiumCol, { marginTop: 24 }]}>
-                  <View style={styles.podiumDualWrap}>
-                    <Image
-                      source={getUserAvatar({
-                        avatar: top3Couples[1]?.user1?.avatar,
-                        gender: top3Couples[1]?.user1?.gender,
-                      })}
-                      style={styles.podiumMiniAvatar}
-                    />
-                    <MaterialCommunityIcons name="heart" size={14} color="#F43F5E" />
-                    <Image
-                      source={getUserAvatar({
-                        avatar: top3Couples[1]?.user2?.avatar,
-                        gender: top3Couples[1]?.user2?.gender,
-                      })}
-                      style={styles.podiumMiniAvatar}
-                    />
-                  </View>
-                  <Text style={styles.podiumNames} numberOfLines={1}>
-                    {top3Couples[1]?.user1?.name} & {top3Couples[1]?.user2?.name}
-                  </Text>
-                  <Text style={styles.podiumScore}>
-                    {(top3Couples[1]?.intimacyScore || 0).toLocaleString()} 💖
-                  </Text>
-                </View>
-
-                {/* #1 Gold */}
-                <View style={styles.podiumCol}>
-                  <MaterialCommunityIcons name="crown" size={26} color="#FBBF24" style={{ marginBottom: 2 }} />
-                  <View style={[styles.podiumDualWrap, { borderColor: '#FBBF24', borderWidth: 2 }]}>
-                    <Image
-                      source={getUserAvatar({
-                        avatar: top3Couples[0]?.user1?.avatar,
-                        gender: top3Couples[0]?.user1?.gender,
-                      })}
-                      style={[styles.podiumMiniAvatar, { width: 38, height: 38, borderRadius: 19 }]}
-                    />
-                    <MaterialCommunityIcons name="heart-pulse" size={16} color="#F43F5E" />
-                    <Image
-                      source={getUserAvatar({
-                        avatar: top3Couples[0]?.user2?.avatar,
-                        gender: top3Couples[0]?.user2?.gender,
-                      })}
-                      style={[styles.podiumMiniAvatar, { width: 38, height: 38, borderRadius: 19 }]}
-                    />
-                  </View>
-                  <Text style={[styles.podiumNames, { color: '#FDE047', fontWeight: '800' }]} numberOfLines={1}>
-                    {top3Couples[0]?.user1?.name} & {top3Couples[0]?.user2?.name}
-                  </Text>
-                  <Text style={styles.podiumScore}>
-                    {(top3Couples[0]?.intimacyScore || 0).toLocaleString()} 💖
-                  </Text>
-                </View>
-
-                {/* #3 Bronze */}
-                <View style={[styles.podiumCol, { marginTop: 32 }]}>
-                  <View style={styles.podiumDualWrap}>
-                    <Image
-                      source={getUserAvatar({
-                        avatar: top3Couples[2]?.user1?.avatar,
-                        gender: top3Couples[2]?.user1?.gender,
-                      })}
-                      style={styles.podiumMiniAvatar}
-                    />
-                    <MaterialCommunityIcons name="heart" size={14} color="#F43F5E" />
-                    <Image
-                      source={getUserAvatar({
-                        avatar: top3Couples[2]?.user2?.avatar,
-                        gender: top3Couples[2]?.user2?.gender,
-                      })}
-                      style={styles.podiumMiniAvatar}
-                    />
-                  </View>
-                  <Text style={styles.podiumNames} numberOfLines={1}>
-                    {top3Couples[2]?.user1?.name} & {top3Couples[2]?.user2?.name}
-                  </Text>
-                  <Text style={styles.podiumScore}>
-                    {(top3Couples[2]?.intimacyScore || 0).toLocaleString()} 💖
-                  </Text>
+                  <TouchableOpacity
+                    onPress={handleDissolveCp}
+                    style={[styles.cpActionBtn, { backgroundColor: 'rgba(239, 68, 68, 0.85)' }]}
+                  >
+                    <Icon name="heart-dislike-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.cpActionBtnText}>Dissolve CP</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             )}
-
-            {/* Full Couples List */}
-            {couples.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptySub}>No couples currently on the leaderboard.</Text>
-              </View>
-            ) : (
-              couples.map((cp, idx) => (
-                <View key={cp._id || idx} style={styles.rankCard}>
-                  <View style={styles.rankPill}>
-                    <Text style={styles.rankPillText}>#{idx + 1}</Text>
-                  </View>
-
-                  <View style={styles.coupleAvatarsRow}>
-                    <Image
-                      source={getUserAvatar({
-                        avatar: cp.user1?.avatar,
-                        gender: cp.user1?.gender,
-                      })}
-                      style={styles.tinyAvatar}
-                    />
-                    <MaterialCommunityIcons
-                      name="heart"
-                      size={14}
-                      color="#F43F5E"
-                      style={{ marginHorizontal: 2 }}
-                    />
-                    <Image
-                      source={getUserAvatar({
-                        avatar: cp.user2?.avatar,
-                        gender: cp.user2?.gender,
-                      })}
-                      style={styles.tinyAvatar}
-                    />
-                  </View>
-
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.coupleNames} numberOfLines={1}>
-                      {cp.user1?.name} & {cp.user2?.name}
-                    </Text>
-                    <Text style={styles.coupleRing}>{cp.ringName || 'Diamond Promise Ring'}</Text>
-                  </View>
-
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.coupleScore}>{(cp.intimacyScore || 0).toLocaleString()} 💖</Text>
-                    <Text style={styles.coupleLevelPill}>Lv.{cp.cpLevel || 1}</Text>
-                  </View>
-                </View>
-              ))
-            )}
-          </View>
+          </>
         )}
       </ScrollView>
 
-      {/* PROPOSE MODAL */}
+      {/* HELP & RULES MODAL */}
+      <Modal
+        visible={helpModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHelpModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.helpModalCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>CP Center Rules & Privileges 📖</Text>
+              <TouchableOpacity onPress={() => setHelpModalVisible(false)}>
+                <Icon name="close" size={22} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              <Text style={styles.helpHeading}>1. How to Establish CP</Text>
+              <Text style={styles.helpBody}>
+                Tap the "+ Invite" button, enter your partner's numeric ID, choose a romantic promise ring, and write a heartfelt confession. Once your partner accepts, your CP bond is established!
+              </Text>
+
+              <Text style={styles.helpHeading}>2. Increasing Intimacy Points</Text>
+              <Text style={styles.helpBody}>
+                • Daily Sweet Check-in: +100 Intimacy daily.{'\n'}
+                • Voice Room Gifts: 1 Diamond spent on CP = 1 Charm & Wealth Point.{'\n'}
+                • Chatting & Co-hosting on mic together.
+              </Text>
+
+              <Text style={styles.helpHeading}>3. Privileges by Level</Text>
+              <Text style={styles.helpBody}>
+                • Lv.1 (0 - 999): CP Icon, Emerald Avatar Frame, Serenity Room Theme, Profile Badge.{'\n'}
+                • Lv.2 (1,000 - 4,999): Sapphire Crown Frame, Starlight Theme, Mic Aura.{'\n'}
+                • Lv.3 (5,000 - 19,999): Ruby Passion Frame, Romance Castle, Entry Fanfare.{'\n'}
+                • Lv.4 (20,000 - 49,999): Amethyst Sovereign Frame, Global Room Entry Notice.{'\n'}
+                • Lv.5 (50,000+): Sovereign Eternity Gold Frame, Hall of Fame spotlight.
+              </Text>
+            </ScrollView>
+
+            <TouchableOpacity
+              onPress={() => setHelpModalVisible(false)}
+              style={styles.helpCloseBtn}
+            >
+              <Text style={styles.helpCloseBtnText}>Got it!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* LOVE RANKING MODAL */}
+      <Modal
+        visible={rankModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRankModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.helpModalCard, { height: '80%' }]}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>👑 CP Love Rankings</Text>
+              <TouchableOpacity onPress={() => setRankModalVisible(false)}>
+                <Icon name="close" size={22} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {couples.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptySub}>No couples on leaderboard yet.</Text>
+                </View>
+              ) : (
+                couples.map((cp, idx) => (
+                  <View key={cp._id || idx} style={styles.rankCardItem}>
+                    <Text style={styles.rankIndexText}>#{idx + 1}</Text>
+                    <View style={styles.rankAvatarsRow}>
+                      <Image
+                        source={getUserAvatar({
+                          avatar: cp.user1?.avatar,
+                          gender: cp.user1?.gender,
+                        })}
+                        style={styles.rankAvatarSmall}
+                      />
+                      <MaterialCommunityIcons name="heart" size={14} color="#F43F5E" />
+                      <Image
+                        source={getUserAvatar({
+                          avatar: cp.user2?.avatar,
+                          gender: cp.user2?.gender,
+                        })}
+                        style={styles.rankAvatarSmall}
+                      />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.rankCoupleNames} numberOfLines={1}>
+                        {cp.user1?.name} & {cp.user2?.name}
+                      </Text>
+                      <Text style={styles.rankRingName}>{cp.ringName || 'Diamond Ring'}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.rankScoreText}>{(cp.intimacyScore || 0).toLocaleString()} 💖</Text>
+                      <Text style={styles.rankLevelPill}>Lv.{cp.cpLevel || 1}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PROPOSE / INVITE MODAL */}
       <Modal
         visible={proposeModalVisible}
         transparent
@@ -869,7 +878,7 @@ export default function CpSpaceScreen() {
 
               <Text style={styles.inputLabel}>Love Confession Letter</Text>
               <TextInput
-                style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]}
+                style={[styles.modalInput, { height: 75, textAlignVertical: 'top' }]}
                 placeholder="Write your heartfelt confession here..."
                 placeholderTextColor="#64748B"
                 multiline
@@ -949,29 +958,24 @@ export default function CpSpaceScreen() {
               </TouchableOpacity>
             </View>
 
-            {upgradingRing ? (
-              <ActivityIndicator size="large" color="#FB7185" style={{ marginVertical: 30 }} />
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {RING_PRESETS.map((ring, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    onPress={() => handleUpgradeRing(ring)}
-                    style={styles.ringTierRow}
-                  >
-                    <Image source={{ uri: ring.image }} style={styles.ringTierImg} />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={styles.ringTierName}>{ring.name}</Text>
-                      <Text style={styles.ringTierDesc}>{ring.desc}</Text>
-                      <Text style={styles.ringBonus}>+500 Intimacy Boost</Text>
-                    </View>
-                    <View style={styles.equipBtn}>
-                      <Text style={styles.equipBtnText}>Equip</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
+            <Text style={styles.inputLabel}>Available Romantic Rings</Text>
+            {RING_PRESETS.map((ring, idx) => (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => handleUpgradeRing(ring)}
+                disabled={upgradingRing}
+                style={styles.ringUpgradeRow}
+              >
+                <Image source={{ uri: ring.image }} style={styles.ringUpgradeImg} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.ringUpgradeName}>{ring.name}</Text>
+                  <Text style={styles.ringUpgradeDesc}>{ring.desc}</Text>
+                </View>
+                <LinearGradient colors={['#F43F5E', '#BE123C']} style={styles.ringUpgradeBadge}>
+                  <Text style={styles.ringUpgradeBadgeText}>Upgrade</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
       </Modal>
@@ -982,749 +986,726 @@ export default function CpSpaceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0B15',
+    backgroundColor: '#831843',
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-  },
-  navRow: {
+  topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    zIndex: 50,
   },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerIconBtn: {
+    padding: 6,
   },
-  navTitle: {
+  headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
-  proposePillBtn: {
+  headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#BE123C',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
     gap: 4,
   },
-  proposePillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  tabsRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    borderRadius: 24,
-    padding: 4,
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 9,
-    alignItems: 'center',
-    borderRadius: 20,
-  },
-  tabBtnActive: {
-    backgroundColor: '#BE123C',
-  },
-  tabBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#94A3B8',
-  },
-  tabBtnTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 60,
+    paddingBottom: 40,
   },
   loadingBox: {
-    paddingVertical: 60,
+    paddingVertical: 80,
     alignItems: 'center',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#FDA4AF',
+    color: '#FFFFFF',
   },
-  coupleHeroCard: {
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 14,
+
+  // Incoming Proposals Banner
+  incomingBannerContainer: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 6,
   },
-  topRingBadge: {
+  incomingBannerCard: {
+    borderRadius: 14,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'space-between',
+  },
+  incomingTitle: {
+    color: '#FDE047',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  incomingSender: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  incomingActions: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  incomingAcceptBtn: {
+    backgroundColor: '#10B981',
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-    marginBottom: 14,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
-  topRingBadgeText: {
+  incomingAcceptText: {
+    color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '700',
-    color: '#FBBF24',
+    fontWeight: '800',
   },
-  cpTitleText: {
+  incomingDeclineBtn: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  incomingDeclineText: {
+    color: '#E2E8F0',
     fontSize: 11,
-    color: '#FFE4E6',
   },
-  dualAvatarsRow: {
+
+  // Top Winged Heart Hero Section
+  wingedHeartHeroWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    minHeight: 240,
+  },
+  wingsContainer: {
+    position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  leftWingWrap: {
+    marginRight: -35,
+    marginTop: -25,
+  },
+  centerPinkHeart: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FB7185',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  rightWingWrap: {
+    marginLeft: -35,
+    marginTop: -25,
+  },
+  heroAvatarsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    marginTop: 18,
+    width: '100%',
+    paddingHorizontal: 24,
   },
   avatarCol: {
     alignItems: 'center',
-    width: width * 0.28,
+    width: 85,
   },
-  avatarGlowCircle: {
-    borderWidth: 2.5,
-    borderColor: '#F43F5E',
-    borderRadius: 36,
-    padding: 2,
-    backgroundColor: 'rgba(244, 63, 94, 0.2)',
-  },
-  avatarImg: {
+  goldRingShell: {
     width: 64,
     height: 64,
     borderRadius: 32,
+    borderWidth: 2.2,
+    borderColor: '#FDE047',
+    padding: 2,
+    backgroundColor: 'rgba(253, 224, 71, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  partnerName: {
-    fontSize: 13,
-    fontWeight: '700',
+  heroAvatarImg: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  heroUserName: {
     color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
     marginTop: 6,
+    textAlign: 'center',
   },
-  selfTagPill: {
-    backgroundColor: '#881337',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginTop: 3,
+  centerHeartBadgeWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 12,
+    width: 90,
   },
-  selfTagText: {
+  lv0HeartImage: {
+    width: 82,
+    height: 68,
+  },
+  lv0HeartTextOverlay: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    top: 10,
+  },
+  lv0DaysText: {
+    color: '#FFFFFF',
     fontSize: 9,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  heartConnectorCol: {
+  lv0LevelText: {
+    color: '#FEF08A',
+    fontSize: 9,
+    fontWeight: '900',
+    marginTop: 1,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  inviteContainer: {
     alignItems: 'center',
   },
-  intimacyScoreText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginTop: 4,
-  },
-  cpLvlBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginTop: 4,
-  },
-  cpLvlBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  anniversaryBanner: {
-    flexDirection: 'row',
+  placeholderDashedCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1.8,
+    borderColor: 'rgba(255, 255, 255, 0.75)',
+    borderStyle: 'dashed',
+    backgroundColor: 'rgba(190, 24, 93, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 6,
-    marginTop: 14,
   },
-  anniversaryText: {
-    fontSize: 12,
-    color: '#FFE4E6',
+  inviteBtnTouch: {
+    marginTop: -8,
   },
-  intimacyTrackBox: {
-    marginTop: 14,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.15)',
+  inviteBtnImage: {
+    width: 78,
+    height: 28,
   },
-  intimacyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  intimacyLabel: {
-    fontSize: 11,
-    color: '#FFE4E6',
+  cpSubtitleText: {
+    color: 'rgba(255, 255, 255, 0.92)',
+    fontSize: 12.5,
     fontWeight: '600',
+    marginTop: 16,
+    zIndex: 10,
   },
-  intimacyValue: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  intimacyTrack: {
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    overflow: 'hidden',
-  },
-  intimacyFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  checkinCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-    borderRadius: 16,
-    marginBottom: 14,
-  },
-  checkinLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 10,
-  },
-  checkinHeading: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  checkinSub: {
-    fontSize: 11,
-    color: '#CBD5E1',
-    marginTop: 2,
-  },
-  checkinBtn: {
+
+  // Privileges Section
+  privilegesSectionWrapper: {
+    marginTop: 10,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
   },
-  checkinBtnActive: {
-    backgroundColor: '#BE123C',
+  privilegesRibbonWrap: {
+    alignItems: 'center',
+    zIndex: 15,
+    marginBottom: -22,
   },
-  checkinBtnDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  privilegesRibbonImg: {
+    width: 220,
+    height: 54,
   },
-  checkinBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  privilegesCardBox: {
+    backgroundColor: '#F472B6',
+    borderRadius: 22,
+    borderWidth: 1.8,
+    borderColor: '#FDE047',
+    paddingTop: 30,
+    paddingHorizontal: 12,
+    paddingBottom: 16,
+    shadowColor: '#BE185D',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  ringCard: {
-    backgroundColor: '#1C1425',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.15)',
-  },
-  ringCardTop: {
+
+  // Level Stepper Bar
+  stepperWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  ringShowcaseImg: {
-    width: 58,
-    height: 58,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#FBBF24',
-  },
-  ringHeading: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  ringTierPill: {
-    fontSize: 11,
-    color: '#FBBF24',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  ringDesc: {
-    fontSize: 11,
-    color: '#94A3B8',
-    marginTop: 3,
-  },
-  upgradeRingBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#881337',
-    paddingVertical: 9,
-    borderRadius: 14,
-    marginTop: 12,
-  },
-  upgradeRingBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  perksCard: {
-    backgroundColor: '#1C1425',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  perksHeading: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 12,
-  },
-  perksGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  perkItem: {
-    width: (width - 64) / 2,
-    backgroundColor: '#261B33',
-    padding: 12,
-    borderRadius: 12,
-  },
-  perkLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 6,
-  },
-  perkDesc: {
-    fontSize: 10,
-    color: '#94A3B8',
-    marginTop: 2,
-  },
-  loveWallCard: {
-    backgroundColor: '#1C1425',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.15)',
-  },
-  wallHeaderRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    marginVertical: 10,
+    position: 'relative',
+  },
+  stepperConnectingLine: {
+    position: 'absolute',
+    left: 28,
+    right: 28,
+    top: 15,
+    height: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+  },
+  stepperItem: {
     alignItems: 'center',
-    marginBottom: 10,
   },
-  wallTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FB7185',
-    marginLeft: 6,
-  },
-  writeNoteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  writeNoteText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FB7185',
-  },
-  noteItem: {
-    flexDirection: 'row',
-    backgroundColor: '#261B33',
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  noteAvatar: {
+  stepIconRing: {
     width: 32,
     height: 32,
     borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.2,
+    borderColor: '#FFFFFF',
   },
-  noteAuthor: {
-    fontSize: 12,
+  stepIconRingSelected: {
+    backgroundColor: '#9D174D',
+    borderColor: '#FDE047',
+    borderWidth: 2,
+    transform: [{ scale: 1.15 }],
+  },
+  stepInnerLvlText: {
+    position: 'absolute',
+    fontSize: 7,
+    fontWeight: '900',
+    color: '#1E293B',
+    bottom: 2,
+  },
+  stepInnerLvlTextSelected: {
+    color: '#FDE047',
+  },
+  stepOuterLabel: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 10.5,
     fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  noteDate: {
-    fontSize: 10,
-    color: '#64748B',
-  },
-  noteBodyText: {
-    fontSize: 12,
-    color: '#E2E8F0',
     marginTop: 4,
-    lineHeight: 17,
   },
-  emptyWallText: {
-    fontSize: 12,
-    color: '#94A3B8',
+  stepOuterLabelSelected: {
+    color: '#FEF08A',
+    fontWeight: '900',
+    fontSize: 11.5,
+  },
+
+  // Perk Preview Cards
+  perkSectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
     textAlign: 'center',
-    paddingVertical: 14,
+    marginTop: 12,
+    marginBottom: 6,
+    letterSpacing: 0.3,
   },
-  dissolveRow: {
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  dissolveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
-  },
-  dissolveBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#EF4444',
-  },
-  proposalsSection: {
-    marginBottom: 16,
-  },
-  proposalSectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FB7185',
-    marginBottom: 8,
-  },
-  proposalCard: {
-    flexDirection: 'row',
-    backgroundColor: '#261B33',
+  perkPreviewCard: {
+    backgroundColor: 'rgba(157, 23, 77, 0.48)',
+    borderRadius: 16,
     padding: 12,
-    borderRadius: 14,
-    marginBottom: 8,
+    marginBottom: 4,
     borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  proposalAvatar: {
+
+  // CP Icon Preview Row
+  cpIconPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 4,
+  },
+  previewAvatarShell: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.6,
+    borderColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  previewAvatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  badgePreviewImage: {
+    width: 140,
+    height: 52,
+  },
+
+  // Frame & Theme Preview
+  frameThemeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 6,
+  },
+  framePreviewCol: {
+    alignItems: 'center',
+  },
+  frameOuterRing: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 2.5,
+    borderColor: '#FDE047',
+    padding: 2,
+    backgroundColor: 'rgba(253, 224, 71, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  frameAvatarInside: {
     width: 48,
     height: 48,
     borderRadius: 24,
   },
-  proposerName: {
-    fontSize: 13,
-    fontWeight: '700',
+  frameTagBadge: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    backgroundColor: '#BE185D',
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderWidth: 1,
+    borderColor: '#FDE047',
+  },
+  frameTagText: {
     color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '800',
   },
-  proposerRing: {
-    fontSize: 11,
-    color: '#FBBF24',
-    marginTop: 2,
-  },
-  proposalMsg: {
-    fontSize: 11,
-    color: '#CBD5E1',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  proposalActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  acceptPropBtn: {
-    backgroundColor: '#BE123C',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  acceptPropText: {
-    fontSize: 11,
+  frameTitleLabel: {
+    color: '#FFE4E6',
+    fontSize: 10,
     fontWeight: '700',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  themePreviewCol: {
+    alignItems: 'center',
+  },
+  themeThumbnailCard: {
+    width: 65,
+    height: 75,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FDE047',
+    overflow: 'hidden',
+  },
+  themePillWrap: {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 6,
+  },
+  themePillText: {
     color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '700',
   },
-  declinePropBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+
+  // Badge Profile Card Preview
+  badgeProfileCard: {
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    borderRadius: 14,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.35)',
   },
-  declinePropText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#94A3B8',
-  },
-  outgoingCard: {
+  badgeProfileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 14,
+    justifyContent: 'space-between',
+  },
+  badgeProfileAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  badgeMiniAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: '#FDE047',
+  },
+  badgeMiniHeart: {
+    width: 26,
+    height: 22,
+  },
+  badgeProfileInfo: {
+    marginTop: 6,
+  },
+  badgeCoupleNameText: {
+    color: '#93C5FD',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  badgeIdText: {
+    color: '#F59E0B',
+    fontSize: 9.5,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+
+  // Active CP Features Grid
+  activeCpCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: 'rgba(131, 24, 67, 0.65)',
+    borderRadius: 18,
+    padding: 14,
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.3)',
   },
-  outgoingText: {
-    fontSize: 12,
-    color: '#FDE68A',
-    flex: 1,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 36,
-    paddingHorizontal: 20,
-  },
-  emptyRingCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  activeCpSectionTitle: {
     color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  emptySub: {
     fontSize: 13,
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 20,
-  },
-  proposeLargeBtn: {
-    marginTop: 22,
-    borderRadius: 25,
-    overflow: 'hidden',
-  },
-  proposeLargeGrad: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-  },
-  proposeLargeText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  podiumContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    marginBottom: 20,
-    paddingVertical: 12,
-  },
-  podiumCol: {
-    alignItems: 'center',
-    width: width * 0.28,
-  },
-  podiumDualWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#261B33',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  podiumMiniAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
-  podiumNames: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  podiumScore: {
-    fontSize: 10,
-    color: '#FB7185',
-    marginTop: 2,
-    fontWeight: '700',
-  },
-  rankCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1C1425',
-    borderRadius: 16,
-    padding: 12,
+    fontWeight: '800',
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  rankPill: {
-    width: 28,
-    alignItems: 'center',
+  activeCpButtonsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  rankPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
-  coupleAvatarsRow: {
+  cpActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E11D48',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    flex: 1,
+    minWidth: '45%',
+    justifyContent: 'center',
   },
-  tinyAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  cpActionBtnDisabled: {
+    opacity: 0.6,
   },
-  coupleNames: {
-    fontSize: 13,
-    fontWeight: '700',
+  cpActionBtnText: {
     color: '#FFFFFF',
-  },
-  coupleRing: {
-    fontSize: 10,
-    color: '#FBBF24',
-    marginTop: 2,
-  },
-  coupleScore: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#FB7185',
   },
-  coupleLevelPill: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#CBD5E1',
-    marginTop: 2,
-  },
+
+  // Modals
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  helpModalCard: {
+    width: '100%',
+    backgroundColor: '#1E1B4B',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#F472B6',
   },
   modalBox: {
-    backgroundColor: '#1C1425',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
+    width: '100%',
+    backgroundColor: '#1E1B4B',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#F472B6',
     maxHeight: '85%',
   },
   modalHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#CBD5E1',
-    marginBottom: 6,
-  },
-  modalInput: {
-    backgroundColor: '#261B33',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 13,
-    color: '#FFFFFF',
     marginBottom: 14,
   },
-  ringPickCard: {
-    width: 90,
-    backgroundColor: '#261B33',
+  modalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  helpHeading: {
+    color: '#FDE047',
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  helpBody: {
+    color: '#E2E8F0',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  helpCloseBtn: {
+    marginTop: 14,
+    backgroundColor: '#BE185D',
+    paddingVertical: 10,
     borderRadius: 12,
-    padding: 8,
+    alignItems: 'center',
+  },
+  helpCloseBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  // Propose Modal Inputs
+  inputLabel: {
+    color: '#FDE047',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+    marginTop: 10,
+  },
+  modalInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: '#FFFFFF',
+    fontSize: 13,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  ringPickCard: {
+    width: 85,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 10,
+    padding: 6,
     alignItems: 'center',
     marginRight: 8,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
   ringPickCardActive: {
-    borderColor: '#BE123C',
-    backgroundColor: '#381628',
+    borderColor: '#F43F5E',
+    backgroundColor: 'rgba(244, 63, 94, 0.2)',
   },
   ringPickImg: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: 22,
+    marginBottom: 4,
   },
   ringPickName: {
-    fontSize: 10,
-    fontWeight: '600',
     color: '#FFFFFF',
-    marginTop: 4,
+    fontSize: 10,
+    fontWeight: '700',
     textAlign: 'center',
   },
   ringPickTier: {
-    fontSize: 9,
     color: '#FBBF24',
-    marginTop: 2,
+    fontSize: 9,
+    fontWeight: '600',
+    marginTop: 1,
   },
   submitModalBtn: {
-    backgroundColor: '#BE123C',
-    paddingVertical: 13,
-    borderRadius: 20,
+    backgroundColor: '#BE185D',
+    paddingVertical: 11,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 16,
   },
   submitModalBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
     color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
-  ringTierRow: {
+
+  // Ring Upgrade List
+  ringUpgradeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#261B33',
-    padding: 12,
-    borderRadius: 14,
-    marginBottom: 10,
-  },
-  ringTierImg: {
-    width: 48,
-    height: 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    padding: 10,
     borderRadius: 12,
+    marginBottom: 8,
   },
-  ringTierName: {
-    fontSize: 13,
-    fontWeight: '700',
+  ringUpgradeImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  ringUpgradeName: {
     color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
-  ringTierDesc: {
-    fontSize: 10,
+  ringUpgradeDesc: {
     color: '#94A3B8',
+    fontSize: 10,
     marginTop: 2,
   },
-  ringBonus: {
-    fontSize: 10,
-    color: '#FBBF24',
-    fontWeight: '700',
-    marginTop: 3,
-  },
-  equipBtn: {
-    backgroundColor: '#BE123C',
-    paddingHorizontal: 12,
+  ringUpgradeBadge: {
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 8,
   },
-  equipBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
+  ringUpgradeBadgeText: {
     color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  // Rankings List
+  rankCardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  rankIndexText: {
+    color: '#FDE047',
+    fontSize: 13,
+    fontWeight: '800',
+    width: 24,
+  },
+  rankAvatarsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  rankAvatarSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  rankCoupleNames: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  rankRingName: {
+    color: '#94A3B8',
+    fontSize: 10,
+  },
+  rankScoreText: {
+    color: '#F43F5E',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  rankLevelPill: {
+    backgroundColor: '#BE185D',
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+    marginTop: 2,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  emptySub: {
+    color: '#94A3B8',
+    fontSize: 12,
   },
 });

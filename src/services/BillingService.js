@@ -146,6 +146,10 @@ class BillingService {
         } catch (_) {}
       }
 
+      if (!cachedDetails || !(cachedDetails.displayPrice || cachedDetails.localizedPrice)) {
+        throw new Error('This package is unavailable on Google Play. Please try again later.');
+      }
+
       const offerToken = cachedDetails?.oneTimePurchaseOfferDetailsAndroid?.[0]?.offerToken || 
                          cachedDetails?.oneTimePurchaseOfferDetails?.[0]?.offerToken || 
                          cachedDetails?.subscriptionOfferDetails?.[0]?.offerToken;

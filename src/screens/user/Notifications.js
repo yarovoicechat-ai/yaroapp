@@ -145,6 +145,7 @@ const Notifications = () => {
             navigation.navigate('OutGoing', {
                 ...response.data.data,
                 name: item.data?.targetName || 'User',
+                hostId: item.data?.targetUserId,
                 image: item.data?.targetImage,
                 isCaller: true,
             });

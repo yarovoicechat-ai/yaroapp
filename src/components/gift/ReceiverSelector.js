@@ -1,4 +1,5 @@
 import React from 'react';
+import { roomGiftRecipients } from '../../utils/giftRecipients';
 import {
   View,
   Text,
@@ -11,10 +12,12 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 export default function ReceiverSelector({
   room = {},
+  user = {},
   seats = [],
   selectedReceivers = [],
   onSelectReceiver,
   isMultiSelectMode = false,
+  onToggleMultiSelect,
 }) {
   const isSelected = (id) => {
     if (!id || id === 'all') return false;
@@ -29,17 +32,7 @@ export default function ReceiverSelector({
     onSelectReceiver(receiver);
   };
 
-  const hostUser = {
-    id: room.hostId || room.ownerId || 'host',
-    userId: room.hostId || room.ownerId || 'host',
-    name: room.hostName || 'Host',
-    avatar:
-      room.hostAvatar ||
-      room.coverImage ||
-      'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-    isHost: true,
-    seatNumber: '1',
-  };
+  const recipients = roomGiftRecipients(room, seats, user);
 
   const allOption = {
     id: 'all',
@@ -49,56 +42,23 @@ export default function ReceiverSelector({
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity onPress={onToggleMultiSelect} accessibilityRole="button"
+        accessibilityLabel="Select multiple gift recipients" accessibilityState={{ selected: isMultiSelectMode }}
+        style={{ alignSelf: 'flex-end', padding: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <MaterialCommunityIcons name={isMultiSelectMode ? 'checkbox-marked' : 'checkbox-blank-outline'} size={20} color="#FBBF24" />
+        <Text style={{ color: '#FBBF24', fontWeight: '600' }}>Select multiple</Text>
+      </TouchableOpacity>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.receiversScroll}
       >
-        {/* Host Avatar */}
-        <TouchableOpacity
-          style={styles.recipientBtn}
-          onPress={() => handleSelect(hostUser)}
-          activeOpacity={0.8}
-        >
-          <View
-            style={[
-              styles.avatarRing,
-              (isSelected(hostUser.id) || isAllSelected) && styles.avatarRingSelected,
-            ]}
-          >
-            <Image source={{ uri: hostUser.avatar }} style={styles.avatarImage} />
-            <View style={styles.seatBadge}>
-              <Text style={styles.seatBadgeText}>1</Text>
-            </View>
-          </View>
-          <Text
-            style={[
-              styles.nameText,
-              (isSelected(hostUser.id) || isAllSelected) && styles.nameTextSelected,
-            ]}
-            numberOfLines={1}
-          >
-            {hostUser.name}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Seated Speakers (excluding host duplicate) */}
-        {seats
-          .filter((s) => s.user && s.seatIndex !== 0 && String(s.user.userId || s.user.id || s.user._id) !== String(hostUser.id))
-          .map((s, idx) => {
-            const receiverObj = {
-              id: s.user.id || s.user._id || s.user.userId,
-              userId: s.user.userId,
-              name: s.user.name || `User ${idx + 2}`,
-              avatar: s.user.avatar || s.user.image || 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-              seatIndex: s.seatIndex,
-              seatNumber: String(s.seatIndex + 1),
-            };
+        {recipients.map((receiverObj) => {
             const active = isSelected(receiverObj.id) || isAllSelected;
 
             return (
               <TouchableOpacity
-                key={`seat-${s.seatIndex}-${receiverObj.id}`}
+                key={`seat-${receiverObj.id}`}
                 style={styles.recipientBtn}
                 onPress={() => handleSelect(receiverObj)}
                 activeOpacity={0.8}

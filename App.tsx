@@ -10,6 +10,7 @@ import { navigationRef } from "./src/utils/navigationRef";
 
 import { NativeModules, StatusBar, StyleSheet, View } from "react-native";
 import FloatingVoiceRoomWidget from "./src/components/FloatingVoiceRoomWidget";
+import FloatingVideoCallWidget from "./src/components/FloatingVideoCallWidget";
 
 const AppTheme = {
   ...DefaultTheme,
@@ -96,6 +97,7 @@ const AppWrapper = () => {
         <AppNavigator />
       </NavigationContainer>
       <FloatingVoiceRoomWidget />
+      <FloatingVideoCallWidget />
     </View>
   );
 };

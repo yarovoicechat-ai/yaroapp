@@ -281,6 +281,7 @@ export default function UserProfileScreen() {
         navigation.navigate('OutGoing', {
           ...res.data.data,
           name: targetUser.name,
+          hostId: targetUser._id || targetUser.userId || targetUser.id,
           image: targetUser.avatar,
           isCaller: true,
           isVideo: false,

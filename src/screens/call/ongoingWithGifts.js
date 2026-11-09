@@ -36,6 +36,7 @@ import GiftMedia from '../../components/GiftMedia';
 import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import { AuthContext } from '../../context/AuthProvider';
 import { useCall } from '../../context/CallContext';
+import { useVoiceRoom } from '../../context/VoiceRoomContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
 import { AlertService } from '../../utils/AlertService';
@@ -65,6 +66,7 @@ const OnGoing = ({ route, navigation }) => {
   const { channelName = '', transactionId = '', name = '', agora = {}, isCaller = false, image = '', maxMinutes = 0, gender = '' } = route.params || {};
   const { user, setUser, updateDiamonds, updateCoins, fetchUserProfile } = useContext(AuthContext);
   const { activeCall, setActiveCall, clearCall, globalAgoraEngineRef } = useCall();
+  const { activeRoom, leaveRoom } = useVoiceRoom();
 
   const [timer, setTimer] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
@@ -154,6 +156,8 @@ const OnGoing = ({ route, navigation }) => {
   };
 
   const agoraEngineRef = useRef(null);
+  const localMuteRef = useRef(isMuted);
+  localMuteRef.current = isMuted;
   const isAgoraInitializingRef = useRef(false);
   const joinRequestedRef = useRef(false);
   const hasJoinedChannelRef = useRef(false);
@@ -522,6 +526,8 @@ const OnGoing = ({ route, navigation }) => {
 
   // Initialize Agora Engine
   const initAgora = async () => {
+    // A room engine retains room event handlers; never reuse it for a private call.
+    if (activeRoom) leaveRoom(user, { navigateBack: false });
     if (agoraEngineRef.current || globalAgoraEngineRef?.current || isAgoraInitializingRef.current || callEndedRef.current) {
       if (globalAgoraEngineRef?.current && !agoraEngineRef.current) {
         agoraEngineRef.current = globalAgoraEngineRef.current;
@@ -566,6 +572,8 @@ const OnGoing = ({ route, navigation }) => {
         if (!granted) { endCall('Microphone permission denied'); return; }
       } catch (permErr) {
         console.warn('[CALL] Microphone permission request notice:', permErr);
+        endCall('Microphone permission unavailable');
+        return;
       }
 
       try {
@@ -598,15 +606,15 @@ const OnGoing = ({ route, navigation }) => {
           hasJoinedChannelRef.current = true;
           setIsChannelJoined(true);
           try {
-            engine.enableLocalAudio(!isMuted);
-            engine.muteLocalAudioStream(isMuted);
+            engine.enableLocalAudio(true);
+            engine.muteLocalAudioStream(localMuteRef.current);
             engine.muteAllRemoteAudioStreams(false);
             engine.setDefaultAudioRouteToSpeakerphone(isSpeakerOn);
             engine.setEnableSpeakerphone(isSpeakerOn);
             engine.adjustPlaybackSignalVolume(150);
             engine.adjustRecordingSignalVolume(100);
             engine.updateChannelMediaOptions({
-              publishMicrophoneTrack: !isMuted,
+              publishMicrophoneTrack: !localMuteRef.current,
               autoSubscribeAudio: true,
             });
           } catch (_) {}
@@ -805,6 +813,7 @@ const OnGoing = ({ route, navigation }) => {
       sock.on('callEnded', handleCallEnded);
       sock.on('callConnected', handleCallConnected);
       sock.on('giftReceived', handleGiftReceived);
+      sock.on('gift:received', handleGiftReceived);
       sock.on('balanceUpdated', handleBalanceUpdated);
       sock.on('giftCatalogUpdated', handleGiftCatalogUpdated);
       sock.emit('joinChannel', { transactionId });
@@ -849,6 +858,7 @@ const OnGoing = ({ route, navigation }) => {
           sock.off('callEnded', handleCallEnded);
           sock.off('callConnected', handleCallConnected);
           sock.off('giftReceived', handleGiftReceived);
+          sock.off('gift:received', handleGiftReceived);
           sock.off('balanceUpdated', handleBalanceUpdated);
           sock.off('giftCatalogUpdated', handleGiftCatalogUpdated);
           console.log("🧹 Socket listeners cleaned up on OnGoing screen");
@@ -873,6 +883,19 @@ const OnGoing = ({ route, navigation }) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactionId]);
+
+  // Synchronize mute changes from full-screen and floating call controls.
+  useEffect(() => {
+    const engine = agoraEngineRef.current;
+    if (!engine || !isChannelJoined || callEnded) return;
+    try {
+      engine.enableLocalAudio(true);
+      engine.muteLocalAudioStream(isMuted);
+      engine.updateChannelMediaOptions({ publishMicrophoneTrack: !isMuted });
+    } catch (error) {
+      console.warn('[CALL] Microphone state sync failed:', error);
+    }
+  }, [isMuted, isChannelJoined, callEnded]);
 
   // Toggle Mute
   const toggleMute = () => {

@@ -198,6 +198,7 @@ const HostProfile = () => {
       navigation.navigate('OutGoing', {
         ...response.data.data,
         name: host.name || 'Host',
+        hostId: host._id || host.userId || host.id,
         image: host.image,
         isCaller: true,
       });

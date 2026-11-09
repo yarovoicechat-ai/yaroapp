@@ -2,6 +2,7 @@ package yaro.vc.app
 
 import android.app.PictureInPictureParams
 import android.graphics.Color
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.util.Rational
@@ -82,5 +83,20 @@ class MainActivity : ReactActivity() {
   override fun onUserLeaveHint() {
     if (isCallActive) enterCallPictureInPicture()
     super.onUserLeaveHint()
+  }
+
+  override fun onPictureInPictureModeChanged(inPictureInPicture: Boolean, newConfig: Configuration) {
+    super.onPictureInPictureModeChanged(inPictureInPicture, newConfig)
+    try {
+      val reactContext = reactInstanceManager.currentReactContext
+      if (reactContext != null && reactContext.hasActiveReactInstance()) {
+        val event = com.facebook.react.bridge.Arguments.createMap()
+        event.putBoolean("isInPictureInPictureMode", inPictureInPicture)
+        reactContext.getJSModule(com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+          .emit("onCallPictureInPictureChanged", event)
+      }
+    } catch (error: RuntimeException) {
+      android.util.Log.w("CallPip", "Unable to update picture-in-picture UI", error)
+    }
   }
 }

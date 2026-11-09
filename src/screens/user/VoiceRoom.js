@@ -63,6 +63,7 @@ import {
   receiverPositionRegistry,
 } from '../../components/gift';
 import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
+import { roomGiftRecipients } from '../../utils/giftRecipients';
 import RoomToolsModal from '../../components/room/RoomToolsModal';
 import RoomThreeDotModal from '../../components/room/RoomThreeDotModal';
 import RoomExitModal from '../../components/room/RoomExitModal';
@@ -923,6 +924,7 @@ export default function VoiceRoomScreen() {
   }, [fetchRoomContributors]);
 
   const giftHook = useGift({
+    availableReceivers: roomGiftRecipients(room, seats, user),
     roomId: currentRoomId,
     diamondBalance,
     deductLocalBalance,
@@ -967,23 +969,26 @@ export default function VoiceRoomScreen() {
         ];
       });
 
-      const primaryReceiver = data.receivers?.[0] || null;
-      setRoomGiftNotifications((prev) => [
-        ...prev,
-        {
-          id: `notif_${txId}`,
-          senderName: user?.name || 'You',
-          senderAvatar: user?.image || user?.avatar,
-          giftName,
-          giftIcon: giftVisual.giftIcon,
-          giftImage: giftVisual.giftImage,
-          quantity: data.quantity || 1,
-          receiverText: receiverNames,
-          receiverAvatar: primaryReceiver?.avatar || primaryReceiver?.image || '',
-          receivers: data.receivers || [],
-          timestamp: Date.now(),
-        },
-      ].slice(-5));
+      // Multi-sending patti support: Generate a separate notification patti for each receiver
+      const recipients = Array.isArray(data.receivers) && data.receivers.length > 0
+        ? data.receivers
+        : (data.receiver ? [data.receiver] : [{ name: 'Host', avatar: '' }]);
+
+      const newNotifs = recipients.map((rec, idx) => ({
+        id: `notif_${txId}_${rec.id || rec.userId || idx}_${Math.random().toString(36).substr(2, 4)}`,
+        senderName: user?.name || 'You',
+        senderAvatar: user?.image || user?.avatar,
+        giftName,
+        giftIcon: giftVisual.giftIcon,
+        giftImage: giftVisual.giftImage,
+        quantity: data.quantity || 1,
+        receiverText: rec.name || 'Recipient',
+        receiverAvatar: rec.avatar || rec.image || '',
+        receivers: [rec],
+        timestamp: Date.now() + idx,
+      }));
+
+      setRoomGiftNotifications((prev) => [...prev, ...newNotifs].slice(-15));
 
       const localAnimation = {
         id: 'anim-' + Date.now(),
@@ -1060,7 +1065,11 @@ export default function VoiceRoomScreen() {
       }
     },
     onRoomNotification: (notif) => {
-      setRoomGiftNotifications((prev) => [...prev, notif].slice(-5));
+      if (Array.isArray(notif)) {
+        setRoomGiftNotifications((prev) => [...prev, ...notif].slice(-15));
+      } else if (notif) {
+        setRoomGiftNotifications((prev) => [...prev, notif].slice(-15));
+      }
     },
   });
 

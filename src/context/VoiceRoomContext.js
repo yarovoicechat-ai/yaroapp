@@ -1720,9 +1720,14 @@ export const VoiceRoomProvider = ({ children }) => {
     }
 
     try {
-      await requestMicrophonePermission();
+      const granted = await requestMicrophonePermission();
+      if (!granted) {
+        AlertService.show('Microphone permission needed', 'Allow microphone access in Settings to speak in the room.', 'warning');
+        return false;
+      }
     } catch (permErr) {
       console.warn('Microphone permission check on take seat:', permErr?.message || permErr);
+      return false;
     }
 
     const currentUserId = currentUser?.userId ? String(currentUser.userId) : (currentUser?._id || currentUser?.id ? String(currentUser._id || currentUser.id) : null);
@@ -1959,7 +1964,7 @@ export const VoiceRoomProvider = ({ children }) => {
   };
 
   // Leave completely
-  const leaveRoom = (currentUser) => {
+  const leaveRoom = (currentUser, { navigateBack = true } = {}) => {
     const leavingSeatIndex = currentSeatIndexRef.current;
     // Invalidate pending permission/token requests and delayed retries before teardown.
     roomSessionRef.current += 1;
@@ -2067,6 +2072,7 @@ export const VoiceRoomProvider = ({ children }) => {
     recentJoinUsersRef.current?.clear?.();
     setIsMusicPlaying(false);
     setCurrentTrack(null);
+    if (!navigateBack) return;
     try {
       if (navigationRef && typeof navigationRef.isReady === 'function' && navigationRef.isReady()) {
         if (navigationRef.canGoBack && navigationRef.canGoBack()) {

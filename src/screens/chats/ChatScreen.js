@@ -637,6 +637,7 @@ const Massage = ({ route }) => {
       navigation.navigate('OutGoing', {
         ...data,
         name: otherUser?.name || 'Host',
+        hostId: otherUser?._id || otherUser?.userId || otherUser?.id,
         image: otherUser?.image,
         isCaller: true,
       });

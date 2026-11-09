@@ -40,7 +40,7 @@ describe('1. Agora Project-Selection & Engine Lifecycle', () => {
     const appId = AgoraClientService.getAppId();
     expect(typeof appId).toBe('string');
     expect(appId.length).toBeGreaterThan(0);
-    expect(appId).toBe('d23c897f9305450faa7809ffcf666e57');
+    expect(appId).toBe('a728e57756ce4e9caebe4ace185c8bae');
   });
 
   test('fetches and caches active config for 5 minutes', async () => {
@@ -314,6 +314,18 @@ describe('5. Call Billing & Diamond Balance Edge Cases', () => {
 
 
 describe('Agora teardown regression', () => {
+  test('releases every native lifecycle when Agora returns its JS singleton', () => {
+    const singleton = { leaveChannel: jest.fn(), release: jest.fn() };
+    AgoraClientService.registerEngine(singleton, 'singleton-project');
+    AgoraClientService.releaseEngine(singleton);
+    AgoraClientService.releaseEngine(singleton);
+    expect(singleton.release).toHaveBeenCalledTimes(1);
+    AgoraClientService.prepareEngineForAppId('singleton-project', () => singleton);
+    AgoraClientService.releaseEngine(singleton);
+    AgoraClientService.releaseEngine(singleton);
+    expect(singleton.release).toHaveBeenCalledTimes(2);
+  });
+
   test('next call with the same App ID gets a fresh engine; duplicate teardown is harmless', () => {
     const oldEngine = { leaveChannel: jest.fn(), release: jest.fn() };
     const nextEngine = { leaveChannel: jest.fn(), release: jest.fn() };

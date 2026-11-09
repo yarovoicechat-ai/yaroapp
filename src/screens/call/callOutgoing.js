@@ -181,6 +181,7 @@ const OutGoing = () => {
           } else {
             navigation.replace('OnGoing', {
               ...ongoingCall,
+              hostId: hostId || host?._id || host?.userId,
               name: name || 'User',
               maxMinutes,
               isCaller: true,
@@ -266,6 +267,7 @@ const OutGoing = () => {
       } else {
         navigation.replace('OnGoing', {
           ...ongoingCall,
+          hostId: hostId || host?._id || host?.userId,
           name: name || 'User',
           maxMinutes,
           isCaller: true,

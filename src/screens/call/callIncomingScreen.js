@@ -196,6 +196,7 @@ const Incoming = ({ route }) => {
     } else {
       navigation.replace('OnGoing', {
         ...ongoingCall,
+        callerId,
         name: name || 'Caller',
         maxMinutes,
         isCaller: false,

@@ -28,19 +28,22 @@ function NotificationItem({ item, index, onDismiss }) {
   onDismissRef.current = onDismiss;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        friction: 7,
-        tension: 58,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    const delay = Math.min((index || 0) * 120, 800);
+    const startTimer = setTimeout(() => {
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          friction: 7,
+          tension: 58,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, delay);
 
     const timer = setTimeout(() => {
       Animated.parallel([
@@ -55,14 +58,18 @@ function NotificationItem({ item, index, onDismiss }) {
           useNativeDriver: true,
         }),
       ]).start(() => onDismissRef.current?.(item.id));
-    }, 4200);
+    }, 4200 + delay);
 
-    return () => clearTimeout(timer);
-  }, [item.id, opacityAnim, slideAnim]);
+    return () => {
+      clearTimeout(startTimer);
+      clearTimeout(timer);
+    };
+  }, [item.id, index, opacityAnim, slideAnim]);
 
   const giftVisual = resolveGiftVisual(item);
   const giftImage = giftVisual.giftImage;
   const receiverAvatar = item.receiverAvatar || item.receivers?.[0]?.avatar || DEFAULT_AVATAR;
+  const receiverName = item.receiverText || item.receiverName || item.receivers?.[0]?.name || 'Recipient';
   const colors = Array.isArray(item.colors) && item.colors.length >= 2
     ? item.colors
     : FLOW_COLORS[index % FLOW_COLORS.length];
@@ -112,7 +119,7 @@ function NotificationItem({ item, index, onDismiss }) {
         <View style={styles.receiverWrap}>
           <Image source={{ uri: receiverAvatar }} style={styles.receiverAvatar} />
           <Text style={styles.receiverName} numberOfLines={1}>
-            {item.receiverText || 'Host'}
+            {receiverName}
           </Text>
         </View>
       </LinearGradient>
@@ -125,7 +132,7 @@ export default function GiftRoomNotification({ notifications = [], onDismiss }) 
 
   return (
     <View style={styles.container} pointerEvents="none">
-      {notifications.slice(-5).map((item, index) => (
+      {notifications.slice(-15).map((item, index) => (
         <NotificationItem
           key={item.id}
           item={item}

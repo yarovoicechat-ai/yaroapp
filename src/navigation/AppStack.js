@@ -174,7 +174,7 @@ export default function AppStack() {
       <Stack.Screen name="UPIVerify" component={UPIVerify} />
       <Stack.Screen name="LinkAccount" component={LinkAccount} />
       <Stack.Screen name="Search" component={SearchScreen} />
-      <Stack.Screen name="VideoCall" component={VideoCallScreen} />
+      <Stack.Screen name="VideoCall" component={VideoCallScreen} options={{ gestureEnabled: false, detachPreviousScreen: false }} />
       <Stack.Screen name="LiveStream" component={LiveStreamScreen} />
       <Stack.Screen name="LiveList" component={LiveListScreen} />
       <Stack.Screen name="ShortsFeed" component={ShortsFeedScreen} />

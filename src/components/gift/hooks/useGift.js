@@ -2,6 +2,7 @@ import { giftCategories, giftMatchesCategory } from '../../../utils/giftCatalog'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiUtil } from '../../../utils/apiUtil';
 import { AlertService } from '../../../utils/AlertService';
+import { resolveGiftRecipients } from '../../../utils/giftRecipients';
 
 export const QUANTITY_OPTIONS = [1, 5, 10, 20, 50, 100];
 export const CONFIRMATION_THRESHOLD_DIAMONDS = 50000;
@@ -12,6 +13,7 @@ export function useGift({
   diamondBalance = 0,
   deductLocalBalance,
   onGiftSentSuccess,
+  availableReceivers,
 }) {
   const activeBalance = Number(diamondBalance || 0);
   const activeBalanceRef = useRef(activeBalance);
@@ -96,7 +98,9 @@ export function useGift({
       selectedGift?.priceDiamonds ??
       0,
   );
-  const receiverCount = Math.max(1, selectedReceivers.length);
+  const resolvedReceivers = availableReceivers
+    ? resolveGiftRecipients(selectedReceivers, availableReceivers) : selectedReceivers;
+  const receiverCount = resolvedReceivers.length;
   const totalDiamonds = unitPrice * selectedQuantity * receiverCount;
   const hasSufficientDiamonds = activeBalance >= totalDiamonds;
 
@@ -126,8 +130,13 @@ export function useGift({
     async (overrideGift = null, overrideQty = null, overrideReceivers = null) => {
       const giftToSend = overrideGift || selectedGift;
       const quantity = overrideQty || selectedQuantity;
-      const receivers = overrideReceivers || selectedReceivers;
+      const selection = overrideReceivers || selectedReceivers;
+      const receivers = availableReceivers ? resolveGiftRecipients(selection, availableReceivers) : selection;
       if (!giftToSend) return { success: false, reason: 'NO_GIFT' };
+      if (!receivers.length) {
+        AlertService.show('Select recipient', 'Select another seated user to send a gift.', 'info');
+        return { success: false, reason: 'NO_RECIPIENT' };
+      }
 
       const price = Number(
         giftToSend.price ?? giftToSend.cost ?? giftToSend.priceDiamonds ?? 0,
@@ -197,6 +206,7 @@ export function useGift({
       selectedGift,
       selectedQuantity,
       selectedReceivers,
+      availableReceivers,
       roomId,
       callId,
       deductLocalBalance,

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { navigationRef, navigate } from '../utils/navigationRef';
 import { FloatingCallBridge } from '../services/FloatingCallBridge';
 import { getSocket } from '../sockets';
@@ -35,9 +35,9 @@ export const CallProvider = ({ children }) => {
           callData.onExpand();
         } else if (callData?.params) {
           if (navigationRef && typeof navigationRef.isReady === 'function' && navigationRef.isReady()) {
-            navigationRef.navigate('OnGoing', callData.params);
+            navigationRef.navigate(callData.screen || 'OnGoing', callData.params);
           } else if (typeof navigate === 'function') {
-            navigate('OnGoing', callData.params);
+            navigate(callData.screen || 'OnGoing', callData.params);
           }
         }
       },
@@ -59,13 +59,13 @@ export const CallProvider = ({ children }) => {
     };
   }, []);
 
-  const setCallData = (data) => {
+  const setCallData = useCallback((data) => {
     setActiveCall(data);
-  };
+  }, []);
 
-  const clearCall = () => {
+  const clearCall = useCallback(() => {
     setActiveCall(null);
-  };
+  }, []);
 
   return (
     <CallContext.Provider value={{ activeCall, setActiveCall: setCallData, clearCall, globalAgoraEngineRef }}>

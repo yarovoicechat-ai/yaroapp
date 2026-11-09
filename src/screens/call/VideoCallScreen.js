@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,12 @@ import {
   Platform,
   FlatList,
   Animated,
+  AppState,
+  BackHandler,
+  NativeModules,
+  DeviceEventEmitter,
 } from 'react-native';
-import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
+import { useNavigation, useRoute, CommonActions, StackActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -34,6 +38,7 @@ import {
 } from 'react-native-agora';
 import { AuthContext } from '../../context/AuthProvider';
 import { useCall } from '../../context/CallContext';
+import { useVoiceRoom } from '../../context/VoiceRoomContext';
 import { apiUtil } from '../../utils/apiUtil';
 import { getSocket } from '../../sockets';
 import { getUserAvatar } from '../../utils/avatarUtil';
@@ -43,6 +48,7 @@ import { AgoraClientService } from '../../services/agoraService';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import GiftMedia from '../../components/GiftMedia';
+import { FloatingCallBridge } from '../../services/FloatingCallBridge';
 
 const { width, height } = Dimensions.get('window');
 const VideoRenderer = RtcSurfaceView;
@@ -55,7 +61,8 @@ export default function VideoCallScreen() {
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
   const { user, fetchUserProfile } = useContext(AuthContext);
-  const { clearCall } = useCall();
+  const { clearCall, setActiveCall } = useCall();
+  const { activeRoom, leaveRoom } = useVoiceRoom();
 
   const {
     channelName = '',
@@ -95,6 +102,9 @@ export default function VideoCallScreen() {
   const [isChannelJoined, setIsChannelJoined] = useState(false);
   const [remoteVideoActive, setRemoteVideoActive] = useState(true);
   const [isEngineReady, setIsEngineReady] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const minimizedRef = useRef(false);
+  const callActionsRef = useRef({});
 
   // Gift States
   const [showGiftModal, setShowGiftModal] = useState(false);
@@ -159,6 +169,7 @@ export default function VideoCallScreen() {
     };
 
     const onGiftReceived = (payload) => {
+      if (String(payload?.callId || '') !== String(transactionId)) return;
       console.log('🎁 In-call gift received:', payload);
       const giftData = payload?.gift || payload;
       setActiveGiftBanner({
@@ -176,12 +187,14 @@ export default function VideoCallScreen() {
     sock.on('callEnded', onCallEnded);
     sock.on('endCall', onCallEnded);
     sock.on('giftReceived', onGiftReceived);
+    sock.on('gift:received', onGiftReceived);
     sock.on('callGift', onGiftReceived);
 
     return () => {
       sock.off('callEnded', onCallEnded);
       sock.off('endCall', onCallEnded);
       sock.off('giftReceived', onGiftReceived);
+      sock.off('gift:received', onGiftReceived);
       sock.off('callGift', onGiftReceived);
     };
   }, [transactionId, name]);
@@ -257,6 +270,10 @@ export default function VideoCallScreen() {
     }
 
     try {
+      if (!partnerId) {
+        AlertService.show('Gift unavailable', 'Call participant details are missing. End and restart this call.', 'error');
+        return;
+      }
       setSendingGift(true);
       const res = await apiUtil.post('/gifts/send', {
         requestId: `vg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -334,6 +351,7 @@ export default function VideoCallScreen() {
         if (!channelName || !getRoleAgoraCredentials(agora, isCaller)) {
           throw new Error('Call connection details are unavailable.');
         }
+        if (activeRoom) leaveRoom(user, { navigateBack: false });
         InCallManager.start({ media: 'video', auto: true });
         InCallManager.setSpeakerphoneOn(true);
 
@@ -501,6 +519,9 @@ export default function VideoCallScreen() {
   const handleEndCall = async () => {
     if (isLeavingRef.current) return;
     isLeavingRef.current = true;
+    FloatingCallBridge.stopFloatingCall();
+    NativeModules.CallPip?.setCallActive(false);
+    clearCall();
 
     try {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -525,6 +546,96 @@ export default function VideoCallScreen() {
       navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'MainTabs' }] }));
     }
   };
+
+  const restoreVideoCall = useCallback(() => {
+    if (isLeavingRef.current) return;
+    minimizedRef.current = false;
+    setIsMinimized(false);
+    FloatingCallBridge.stopFloatingCall();
+    const state = navigation.getState();
+    const callIndex = state.routes.findIndex(item => item.key === route.key);
+    if (callIndex >= 0 && state.index > callIndex) {
+      navigation.dispatch(StackActions.pop(state.index - callIndex));
+    }
+  }, [navigation, route.key]);
+
+  const minimizeVideoCall = useCallback(() => {
+    if (isLeavingRef.current || minimizedRef.current) return;
+    minimizedRef.current = true;
+    setIsMinimized(true);
+    setShowGiftModal(false);
+    setSafetyModalVisible(false);
+    navigation.push('MainTabs');
+  }, [navigation]);
+
+  callActionsRef.current = { end: handleEndCall, restore: restoreVideoCall };
+
+  useEffect(() => {
+    if (isLeavingRef.current) return;
+    setActiveCall({
+      type: 'video', screen: 'VideoCall', isMinimized, transactionId, channelName,
+      name, image, timer: callDuration, isMuted, isSpeakerOn, params: route.params,
+      onExpand: () => callActionsRef.current.restore(),
+      onEndCall: () => callActionsRef.current.end(),
+      onToggleMute: () => setIsMuted(value => !value),
+    });
+  }, [isMinimized, callDuration, isMuted, isSpeakerOn, transactionId, channelName, name, image, route.params, setActiveCall]);
+
+  useEffect(() => {
+    const engine = agoraEngineRef.current;
+    if (!engine || !isChannelJoined || isLeavingRef.current) return;
+    engine.enableLocalAudio(true);
+    engine.muteLocalAudioStream(isMuted);
+    engine.updateChannelMediaOptions({ publishMicrophoneTrack: !isMuted });
+    engine.setEnableSpeakerphone(isSpeakerOn);
+    InCallManager.setSpeakerphoneOn(isSpeakerOn);
+    FloatingCallBridge.updateFloatingCallState({ isMuted, isSpeaker: isSpeakerOn });
+  }, [isMuted, isSpeakerOn, isChannelJoined]);
+
+  useEffect(() => {
+    NativeModules.CallPip?.setCallActive(isChannelJoined && !isLeavingRef.current);
+    if (!isMinimized) FloatingCallBridge.stopFloatingCall();
+  }, [isChannelJoined, isMinimized]);
+
+  useEffect(() => {
+    const pip = DeviceEventEmitter.addListener('onCallPictureInPictureChanged', event => {
+      if (event?.isInPictureInPictureMode && minimizedRef.current) {
+        callActionsRef.current.restore();
+      }
+    });
+    return () => pip.remove();
+  }, []);
+
+  useEffect(() => navigation.addListener('focus', () => {
+    minimizedRef.current = false;
+    setIsMinimized(false);
+    FloatingCallBridge.stopFloatingCall();
+  }), [navigation]);
+
+  useEffect(() => {
+    const back = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!navigation.isFocused() || isLeavingRef.current) return false;
+      minimizeVideoCall();
+      return true;
+    });
+    const appState = AppState.addEventListener('change', state => {
+      if (state === 'active') FloatingCallBridge.stopFloatingCall();
+      else if (state === 'background' && minimizedRef.current && !isLeavingRef.current) {
+        FloatingCallBridge.startFloatingCall({ name, image, isMuted, isSpeaker: isSpeakerOn });
+      }
+    });
+    const unsubscribe = FloatingCallBridge.subscribeEvents({
+      onToggleMute: value => setIsMuted(previous => value ?? !previous),
+      onToggleSpeaker: value => setIsSpeakerOn(previous => value ?? !previous),
+    });
+    return () => { back.remove(); appState.remove(); unsubscribe(); };
+  }, [navigation, minimizeVideoCall, name, image, isMuted, isSpeakerOn]);
+
+  useEffect(() => () => {
+    NativeModules.CallPip?.setCallActive(false);
+    FloatingCallBridge.stopFloatingCall();
+    clearCall();
+  }, [transactionId]);
 
   const handleBlockUser = () => {
     const targetUserId = partnerId || route.params?.hostId || route.params?.userId;
@@ -575,6 +686,8 @@ export default function VideoCallScreen() {
       setSubmittingReport(false);
     }
   };
+
+  if (isMinimized) return null;
 
   return (
     <View style={styles.screen}>
@@ -632,6 +745,10 @@ export default function VideoCallScreen() {
           </View>
         </View>
 
+        <TouchableOpacity accessibilityLabel="Minimize video call" accessibilityRole="button"
+          style={styles.safetyBtn} onPress={minimizeVideoCall} activeOpacity={0.8}>
+          <Icon name="chevron-down" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.safetyBtn}
           onPress={() => setSafetyModalVisible(true)}
@@ -854,7 +971,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 6, 32, 0.75)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
-    maxWidth: width * 0.72,
+    maxWidth: width * 0.58,
   },
   metaAvatar: {
     width: 38,

@@ -67,7 +67,12 @@ const getApiErrorMessage = (error, fallback = 'Something went wrong') => {
     }
     return msg || fallback;
   }
-  return error.response?.data?.message || fallback;
+  const data = error.response?.data;
+  if (data?.message) return data.message;
+  if (Array.isArray(data?.errors) && data.errors[0]?.message) return data.errors[0].message;
+  if (Array.isArray(data?.errors) && data.errors[0]?.msg) return data.errors[0].msg;
+  if (typeof data === 'string' && data.length < 150) return data;
+  return error.message || fallback;
 };
 
 const exchangeCoins = async (coins) => {

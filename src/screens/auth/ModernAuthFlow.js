@@ -319,7 +319,24 @@ export function ProfileDetailsScreen() {
   const params = route.params || {};
   const { login } = useContext(AuthContext);
 
-  const [displayName, setDisplayName] = useState(params.fullName || '');
+  const authDataRef = useRef({
+    idToken: route.params?.idToken || null,
+    phoneNumber: route.params?.phoneNumber || null,
+    password: route.params?.password || null,
+    fullName: route.params?.fullName || null,
+    firebaseIdToken: route.params?.firebaseIdToken || null,
+    isResetPassword: Boolean(route.params?.isResetPassword),
+  });
+
+  useEffect(() => {
+    if (route.params?.idToken) authDataRef.current.idToken = route.params.idToken;
+    if (route.params?.phoneNumber) authDataRef.current.phoneNumber = route.params.phoneNumber;
+    if (route.params?.password) authDataRef.current.password = route.params.password;
+    if (route.params?.fullName) authDataRef.current.fullName = route.params.fullName;
+    if (route.params?.firebaseIdToken) authDataRef.current.firebaseIdToken = route.params.firebaseIdToken;
+  }, [route.params]);
+
+  const [displayName, setDisplayName] = useState(params.fullName || authDataRef.current.fullName || '');
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState('female');
   const [country, setCountry] = useState(params.selectedCountry || DEFAULT_COUNTRY);
@@ -395,6 +412,7 @@ export function ProfileDetailsScreen() {
     navigation.navigate('CountrySelection', {
       selectedCountry: country,
       returnScreen: 'ProfileDetails',
+      ...authDataRef.current,
       onSelect: (selected) => {
         if (selected) { setCountry(selected); setCountryConfirmed(true); }
       },
@@ -414,27 +432,30 @@ export function ProfileDetailsScreen() {
         country,
         age,
         dob,
-        name: displayName.trim() || params.fullName || undefined,
+        name: displayName.trim() || authDataRef.current.fullName || params.fullName || undefined,
         avatar: avatarUri || undefined,
       };
 
+      const authData = authDataRef.current;
+      const isGoogle = Boolean(authData.idToken || params.idToken);
+
       let url;
-      if (params.idToken) {
+      if (isGoogle) {
         url = '/auth/user-google-auth';
-        payload.googleIdToken = params.idToken;
+        payload.googleIdToken = authData.idToken || params.idToken;
       } else {
         url = '/auth/user-signup';
-        payload.name = displayName.trim() || params.fullName;
-        payload.phoneNumber = params.phoneNumber;
-        payload.password = params.password;
-        payload.firebaseIdToken = params.firebaseIdToken;
+        payload.name = displayName.trim() || authData.fullName || params.fullName;
+        payload.phoneNumber = authData.phoneNumber || params.phoneNumber;
+        payload.password = authData.password || params.password;
+        payload.firebaseIdToken = authData.firebaseIdToken || params.firebaseIdToken;
       }
 
       const res = await apiPublic.post(url, payload);
       if (!res.data.success) throw new Error(res.data.message || 'Registration failed.');
 
       const { accessToken, refreshToken, role, gender: savedGender, userId } = res.data.data;
-      trackCompletedRegistration(params.idToken ? 'google' : 'phone', userId || params.phoneNumber || params.idToken);
+      trackCompletedRegistration(isGoogle ? 'google' : 'phone', userId || authData.phoneNumber || authData.idToken);
       await AsyncStorage.multiSet([
         ['accessToken', accessToken],
         ['refreshToken', refreshToken],
@@ -443,7 +464,9 @@ export function ProfileDetailsScreen() {
 
       await login({ accessToken, refreshToken, role, gender: savedGender || gender, isRegister: true });
     } catch (error) {
-      AlertService.show('Registration Failed', error.response?.data?.message || error.message || 'Please try again.', 'error');
+      console.error('[Registration Submit Error]:', error?.response?.data || error?.message);
+      const msg = getApiErrorMessage(error, 'Registration failed. Please try again.');
+      AlertService.show('Registration Failed', msg, 'error');
     } finally {
       setLoading(false);
     }

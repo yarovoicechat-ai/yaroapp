@@ -84,9 +84,10 @@ const CountrySelectionScreen = () => {
       }
     }
     if (route.params?.returnScreen) {
+      const { returnScreen, onSelect, selectedCountry: _sc, ...restParams } = route.params;
       navigation.navigate({
-        name: route.params.returnScreen,
-        params: { selectedCountry: country },
+        name: returnScreen,
+        params: { ...restParams, selectedCountry: country },
         merge: true,
       });
       return;

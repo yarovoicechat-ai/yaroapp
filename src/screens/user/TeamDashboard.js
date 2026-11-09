@@ -386,6 +386,15 @@ export default function TeamDashboard() {
           </View>
 
           <View style={styles.actionButtonsRow}>
+            <TouchableOpacity
+              style={[styles.inviteButton, { backgroundColor: '#F59E0B' }]}
+              onPress={() => navigation.navigate('Medal')}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="medal" size={17} color="#fff" style={{ marginRight: 5 }} />
+              <Text style={styles.inviteButtonText}>Medal Center</Text>
+            </TouchableOpacity>
+
             {allowedInviteRoles.length > 0 && (
               <TouchableOpacity
                 style={styles.inviteButton}

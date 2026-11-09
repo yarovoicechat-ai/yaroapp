@@ -28,6 +28,7 @@ export default function RoomSettingsModal({
   user,
   badgeUrl,
   onSave,
+  onOpenMedal,
   isSaving,
   bottomSafePadding = 16,
   blockedUsers = [],
@@ -279,6 +280,26 @@ export default function RoomSettingsModal({
                 activeOpacity={0.7}
               >
                 <Text style={styles.menuItemLabel}>Room Title</Text>
+                <Icon name="chevron-forward" size={19} color="#CBD5E1" />
+              </TouchableOpacity>
+
+              <View style={styles.innerDivider} />
+
+              {/* Medal Center Option */}
+              <TouchableOpacity
+                style={styles.menuItemRow}
+                onPress={() => {
+                  onClose();
+                  onOpenMedal && onOpenMedal();
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.menuItemLabel}>Medal Center</Text>
+                  <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 8 }}>
+                    <Text style={{ fontSize: 11, color: '#D97706', fontWeight: '700' }}>Medals</Text>
+                  </View>
+                </View>
                 <Icon name="chevron-forward" size={19} color="#CBD5E1" />
               </TouchableOpacity>
 

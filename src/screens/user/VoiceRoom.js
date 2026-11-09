@@ -2515,6 +2515,7 @@ export default function VoiceRoomScreen() {
         }}
         onBanRoom={handleOfficialBanRoom}
         onOpenRoomTasks={() => setRoomTasksVisible(true)}
+        onOpenMedal={() => navigation.navigate('Medal')}
         hasRoomHosting={hasRoomHosting}
         onOpenRoomSupport={() => {
           if (hasRoomHosting) {
@@ -2992,6 +2993,7 @@ export default function VoiceRoomScreen() {
       <RoomSettingsModal
         visible={roomSettingsModalVisible}
         onClose={() => setRoomSettingsModalVisible(false)}
+        onOpenMedal={() => navigation.navigate('Medal')}
         room={{
           id: displayRoomId,
           uniqueId: room.uniqueId || room.customDisplayId || (isRoomOwner ? user?.customDisplayId : null) || seats[0]?.user?.customDisplayId,

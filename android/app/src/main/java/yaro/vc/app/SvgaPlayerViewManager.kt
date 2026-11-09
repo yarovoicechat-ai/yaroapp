@@ -199,10 +199,14 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
         }
       } else {
         var assetPath = cleanSource
-        if (assetPath.startsWith("asset://", ignoreCase = true)) {
-          assetPath = assetPath.substring("asset://".length)
-        } else if (assetPath.startsWith("assets/", ignoreCase = true)) {
+        while (assetPath.startsWith("asset:/", ignoreCase = true)) {
+          assetPath = assetPath.substring("asset:/".length)
+        }
+        while (assetPath.startsWith("assets/", ignoreCase = true)) {
           assetPath = assetPath.substring("assets/".length)
+        }
+        while (assetPath.startsWith("/")) {
+          assetPath = assetPath.substring(1)
         }
         SVGAParser.shareParser().decodeFromAssets(assetPath, callback)
       }

@@ -5,6 +5,10 @@ import GiftMedia, { NativeSvgaPlayer as NativeSvga } from './GiftMedia';
 
 const normalizeUrl = (url) => {
   if (!url) return '';
+  if (typeof url === 'number') {
+    const resolved = Image.resolveAssetSource(url);
+    return resolved?.uri || '';
+  }
   if (typeof url !== 'string') {
     if (typeof url === 'object' && url.uri) {
       return normalizeUrl(url.uri);
@@ -15,6 +19,9 @@ const normalizeUrl = (url) => {
   if (!trimmed) return '';
   if (/^(?:https?:\/\/|file:\/\/|content:\/\/|data:|asset:\/\/)/i.test(trimmed)) {
     return trimmed;
+  }
+  if (trimmed.toLowerCase().endsWith('.svga') && !trimmed.includes('://')) {
+    return `asset://${trimmed.replace(/^\/+/, '')}`;
   }
   const clean = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
   return `https://api.yaroapp.in${clean}`;

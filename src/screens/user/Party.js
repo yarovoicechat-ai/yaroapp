@@ -324,7 +324,7 @@ export default function PartyScreen() {
             onPress={() => navigation.navigate('Ranking')}
           >
             <SvgaView
-              source="asset:///animations/game_ranking_enter.svga"
+              source="animations/game_ranking_enter.svga"
               fallbackImage={require('../../assets/icons/trophy_hd.png')}
               style={styles.trophyIconImg}
               resizeMode="contain"
@@ -699,15 +699,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   trophyIconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
   trophyIconImg: {
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
   },
   crownBadgeBtn: {
     alignItems: 'center',

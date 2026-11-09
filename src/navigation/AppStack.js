@@ -62,6 +62,8 @@ import Medal from "../screens/user/Medal";
 import UserProfile from "../screens/user/UserProfile";
 import Profile from "../screens/user/Profile";
 import Me from "../screens/user/Me";
+import FamilyScreen from "../screens/user/FamilyScreen";
+import CpSpaceScreen from "../screens/user/CpSpaceScreen";
 
 // Newly created and verified production screens
 import UPIVerify from "../screens/user/UPIVerify";
@@ -146,6 +148,11 @@ export default function AppStack() {
       <Stack.Screen name="UserProfile" component={UserProfile} />
       <Stack.Screen name="Profile" component={Profile} />
       <Stack.Screen name="Me" component={Me} />
+      <Stack.Screen name="Family" component={FamilyScreen} />
+      <Stack.Screen name="FamilyScreen" component={FamilyScreen} />
+      <Stack.Screen name="CpSpace" component={CpSpaceScreen} />
+      <Stack.Screen name="CpSpaceScreen" component={CpSpaceScreen} />
+      <Stack.Screen name="CPSpace" component={CpSpaceScreen} />
       <Stack.Screen name="Earning" component={Earning} />
       <Stack.Screen name="ExchangeCoins" component={ExchangeCoins} />
       <Stack.Screen name="InviteEarn" component={InviteEarn} />

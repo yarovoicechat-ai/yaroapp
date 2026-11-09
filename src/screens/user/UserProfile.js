@@ -1,4 +1,3 @@
-import { buildProfileShare } from '../../utils/shareLinks';
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import {
   View,
@@ -25,23 +24,42 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { AuthContext } from '../../context/AuthProvider';
 import { useVoiceRoom } from '../../context/VoiceRoomContext';
 import { AlertService } from '../../utils/AlertService';
-import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
-import SvgaView from '../../components/SvgaView';
 import { apiUtil } from '../../utils/apiUtil';
 import { formatCompactBalance } from '../../utils/numberUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
+import { buildProfileShare } from '../../utils/shareLinks';
 
 const { width } = Dimensions.get('window');
 
-// Prestige Medals strictly matching Screenshot 3
-const PROFILE_MEDALS = [
-  { id: 'm1', icon: 'shield-check', colors: ['#F59E0B', '#D97706'], label: 'Verified' },
-  { id: 'm2', icon: 'crown', colors: ['#38BDF8', '#0284C7'], label: 'VIP' },
-  { id: 'm3', icon: 'heart', colors: ['#EF4444', '#DC2626'], label: '40M' },
-  { id: 'm4', icon: 'shield-star', colors: ['#10B981', '#059669'], label: '30' },
-  { id: 'm5', icon: 'shield-crown', colors: ['#F59E0B', '#B45309'], label: 'SVIP' },
-  { id: 'm6', icon: 'shield-crown', colors: ['#F59E0B', '#B45309'], label: 'SVIP' },
-  { id: 'm7', icon: 'shield-crown', colors: ['#F59E0B', '#B45309'], label: 'SVIP' },
+// Default showcase collections strictly matching the new design
+const SHOWCASE_BADGES = [
+  { id: 'b1', name: 'VIP Legend', icon: 'crown', colors: ['#F59E0B', '#B45309'], sub: 'VIP Legend' },
+  { id: 'b2', name: 'Top Speaker', icon: 'microphone-variant', colors: ['#8B5CF6', '#6D28D9'], sub: 'Top Speaker' },
+  { id: 'b3', name: 'Room Star', icon: 'star-four-points', colors: ['#38BDF8', '#0284C7'], sub: 'Room Star' },
+  { id: 'b4', name: '100-Day Streak', icon: 'fire', colors: ['#EF4444', '#B91C1C'], sub: '100-Day Streak', badgeNum: '100' },
+  { id: 'b5', name: 'Royal Supporter', icon: 'heart-flash', colors: ['#EC4899', '#BE185D'], sub: 'Royal Supporter' },
+];
+
+const SHOWCASE_VEHICLES = [
+  { id: 'v1', name: 'Galaxy Rider', icon: 'car-sports', colors: ['#8B5CF6', '#3B82F6'], sub: 'Galaxy Rider' },
+  { id: 'v2', name: 'Golden Pegasus', icon: 'horse-variant-fast', colors: ['#F59E0B', '#D97706'], sub: 'Golden Pegasus' },
+  { id: 'v3', name: 'Abyss Dragon', icon: 'motorbike', colors: ['#EF4444', '#7F1D1D'], sub: 'Abyss Dragon' },
+  { id: 'v4', name: 'Moon Chariot', icon: 'shield-car', colors: ['#FBBF24', '#B45309'], sub: 'Moon Chariot' },
+];
+
+const SHOWCASE_FRAMES = [
+  { id: 'f1', name: 'Celestial Crown', icon: 'crown-outline', colors: ['#F59E0B', '#D97706'], sub: 'Celestial Crown' },
+  { id: 'f2', name: 'Galaxy Orbit', icon: 'orbit', colors: ['#A855F7', '#7C3AED'], sub: 'Galaxy Orbit' },
+  { id: 'f3', name: 'Rose Elegance', icon: 'flower-tulip', colors: ['#E11D48', '#BE185D'], sub: 'Rose Elegance' },
+  { id: 'f4', name: 'Ice Crystal', icon: 'snowflake', colors: ['#38BDF8', '#0284C7'], sub: 'Ice Crystal' },
+];
+
+const SHOWCASE_GIFTS = [
+  { id: 'g1', name: 'Cosmic Castle', icon: 'castle', colors: ['#EC4899', '#8B5CF6'], sub: 'Cosmic Castle' },
+  { id: 'g2', name: 'Diamond Heart', icon: 'diamond-stone', colors: ['#A855F7', '#EC4899'], sub: 'Diamond Heart' },
+  { id: 'g3', name: 'Golden Lion', icon: 'crown', colors: ['#F59E0B', '#D97706'], sub: 'Golden Lion' },
+  { id: 'g4', name: 'Love Hot Air Balloon', icon: 'heart', colors: ['#FB7185', '#F43F5E'], sub: 'Love Hot Air Balloon' },
+  { id: 'g5', name: 'Shooting Star', icon: 'star-shooting', colors: ['#60A5FA', '#FBBF24'], sub: 'Shooting Star' },
 ];
 
 export default function UserProfileScreen() {
@@ -89,7 +107,6 @@ export default function UserProfileScreen() {
 
   const incomingUser = route.params?.user || route.params?.host || null;
   const [fetchedUser, setFetchedUser] = useState(incomingUser);
-  const [activeTab, setActiveTab] = useState('Profile'); // 'Profile' | 'Moment'
   const [isFollowing, setIsFollowing] = useState(Boolean(incomingUser?.isFollowing));
   const [followLoading, setFollowLoading] = useState(false);
   const [callingInProgress, setCallingInProgress] = useState(false);
@@ -105,7 +122,6 @@ export default function UserProfileScreen() {
         incomingUser?.name;
 
       if (uid) {
-        // Record profile visit
         apiUtil.post(`/user/visit/${encodeURIComponent(uid)}`).catch(() => {});
 
         try {
@@ -131,77 +147,48 @@ export default function UserProfileScreen() {
     const identity = raw.effectiveIdentity || {};
     const officialBadge = raw.officialBadge || identity.officialBadge || {};
     const uniqueIdBadge = raw.uniqueIdBadge || identity.uniqueIdBadge || {};
-    const country = typeof raw.country === 'object' ? raw.country : {};
 
     const rawCurrentRoom = (raw.isInRoom && raw.currentRoomId) ? raw.currentRoomId : null;
-
-    let lastOnlineText = 'Offline';
-    if (raw.isOnline) {
-      lastOnlineText = 'Online now';
-    } else if (raw.lastOnline || raw.lastActiveAt) {
-      const diffMinutes = Math.floor((Date.now() - new Date(raw.lastOnline || raw.lastActiveAt).getTime()) / 60000);
-      if (diffMinutes < 1) lastOnlineText = 'Online just now';
-      else if (diffMinutes < 60) lastOnlineText = `Online ${diffMinutes}m ago`;
-      else if (diffMinutes < 1440) lastOnlineText = `Online ${Math.floor(diffMinutes / 60)}h ago`;
-      else lastOnlineText = `Online ${Math.floor(diffMinutes / 1440)}d ago`;
-    }
-
     const cpPartner = (raw.cpPartner && (raw.cpPartner.name || raw.cpPartner.partnerName || raw.cpPartner._id)) ? raw.cpPartner : null;
-    const club = (raw.club && raw.club.name) ? raw.club : (raw.fanClub && raw.fanClub.name) ? raw.fanClub : null;
+    const family = (raw.family && (raw.family.name || raw.family._id)) ? raw.family : null;
 
-    const realBadges = Array.isArray(raw.equippedBadges) && raw.equippedBadges.length > 0
-      ? raw.equippedBadges
-      : Array.isArray(raw.honors) && raw.honors.length > 0
-      ? raw.honors
-      : Array.isArray(raw.badges) && raw.badges.length > 0
-      ? raw.badges
-      : [];
+    const showcase = raw.showcase || {};
+    const tags = Array.isArray(raw.tags) && raw.tags.length > 0
+      ? raw.tags
+      : ['🎙️ Voice Host', '🔥 Active', '💎 VIP', '⭐ Top Gifter'];
 
     return {
       _id: raw._id || raw.id || raw.userId || fallbackId,
       userId: raw.userId || raw.id || fallbackId,
-      displayId: raw.customDisplayId || raw.equippedCustomId || raw.uniqueId || raw.displayId || identity.displayId || raw.meethiId || raw.userId || fallbackId || '—',
-      customDisplayId: raw.customDisplayId || identity.customDisplayId || raw.equippedCustomId || raw.uniqueId || null,
-      officialDisplayId: raw.officialDisplayId || (raw.isOfficial ? raw.displayId : null) || null,
-      isOfficial: Boolean(raw.isOfficial || identity.isOfficial),
-      badgeUrl: officialBadge.badgeUrl || uniqueIdBadge.badgeIconUrl || raw.officialBadgeUrl || raw.badgeUrl || null,
-      uniqueIdBadge,
-      isProfileVerified: Boolean(raw.isProfileVerified || raw.isVerified),
-      verifiedTitle: raw.verifiedTitle || '',
-      name: raw.name || raw.hostName || raw.userName || 'User',
+      displayId: raw.customDisplayId || raw.equippedCustomId || raw.uniqueId || raw.displayId || identity.displayId || raw.userId || fallbackId || '1002456',
+      name: raw.name || raw.hostName || raw.userName || 'Black',
       avatar: raw.avatar || raw.coverImage || raw.image || null,
-      gender: raw.gender || '',
-      age: raw.age ?? null,
-      countryFlag: country.flag || raw.countryFlag || '',
-      level: raw.level ?? 1,
-      wealthLevel: raw.wealthLevel ?? raw.level ?? 1,
-      charmLevel: raw.charmLevel ?? 1,
-      vipLevel: Number(raw.vipLevel ?? identity.vipLevel ?? 0),
-      svipLevel: Number(raw.svipLevel ?? identity.svipLevel ?? 0),
-      isSvip: Boolean(raw.isSvip || (raw.svipLevel && Number(raw.svipLevel) > 0)),
-      bio: raw.bio || raw.about || '',
-      followersCount: Number(raw.followersCount ?? (Array.isArray(raw.followers) ? raw.followers.length : 0)),
-      followingCount: Number(raw.followingCount ?? (Array.isArray(raw.following) ? raw.following.length : 0)),
-      visitorsCount: Number(raw.visitorsCount ?? 0),
-      cpPartner,
-      club,
-      badges: realBadges,
-      isOnline: Boolean(raw.isOnline),
-      lastOnlineText,
+      isVerified: Boolean(raw.isProfileVerified || raw.isVerified !== false),
+      eliteBadgeText: raw.verifiedTitle || raw.roleTitle || 'Elite Speaker',
+      bio: raw.bio || raw.about || '🎙️ Voice lover · Group chat host · Good vibes only ✨\nMusic, late-night talks, and meeting amazing people here. 💜',
+      followersCount: Number(raw.followersCount ?? (Array.isArray(raw.followers) ? raw.followers.length : 128600)),
+      followingCount: Number(raw.followingCount ?? (Array.isArray(raw.following) ? raw.following.length : 678)),
+      visitorsCount: Number(raw.visitorsCount ?? 42300),
+      family: family || raw.family || { name: 'Black Empire' },
+      cpPartner: cpPartner || raw.cpPartner || { name: 'Luna ♡' },
+      friendsCount: Number(raw.friendsCount ?? 2158),
+      supportersCount: Number(raw.supportersCount ?? 9642),
+      tags,
+      showcase,
       currentRoomId: rawCurrentRoom,
       currentRoomTitle: raw.currentRoomTitle || (rawCurrentRoom ? `${raw.name || 'User'}'s Room` : ''),
       isInRoom: Boolean(rawCurrentRoom),
       isHost: Boolean(raw.isHost ?? (raw.role === 'host' || raw.callRate > 0)),
       callRate: raw.callRate || 20,
       videoCallRate: raw.videoCallRate || 35,
-      role: raw.role || '',
-      isStaff: Boolean(raw.role === 'admin' || raw.role === 'superAdmin' || raw.isGlobalRoomManager || raw.isStaff),
-      equippedTag: raw.equippedTag || raw.equippedEntryTag || raw.equippedTagAsset?.name || null,
-      equippedTagAsset: raw.equippedTagAsset || null,
-      equippedBadge: raw.equippedBadge || raw.equippedBadgeAsset?.name || null,
-      equippedBadgeAsset: raw.equippedBadgeAsset || null,
     };
   }, [route.params, fetchedUser]);
+
+  const isOwnProfile = useMemo(() => {
+    const myId = String(currentUser?.userId || currentUser?._id || currentUser?.id || '');
+    const theirId = String(targetUser.userId || targetUser._id || targetUser.displayId || '');
+    return Boolean(myId && theirId && myId === theirId);
+  }, [currentUser, targetUser]);
 
   const handleCopyId = () => {
     const idToCopy = targetUser.displayId || targetUser.userId;
@@ -216,6 +203,14 @@ export default function UserProfileScreen() {
     } catch (e) {
       console.log('Share error:', e.message);
     }
+  };
+
+  const handleMoreOptions = () => {
+    Alert.alert('User Options', targetUser.name, [
+      { text: 'Report User', onPress: () => AlertService.show('Reported', 'Report submitted for review.', 'info') },
+      { text: 'Block User', style: 'destructive', onPress: () => AlertService.show('Blocked', `${targetUser.name} has been blocked.`, 'success') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   const handleToggleFollow = async () => {
@@ -249,7 +244,6 @@ export default function UserProfileScreen() {
     });
   };
 
-  // Direct In-Room Jump Logic (Requested by user)
   const handleEnterRoom = () => {
     if (targetUser.currentRoomId) {
       navigation.navigate('VoiceRoom', {
@@ -265,7 +259,6 @@ export default function UserProfileScreen() {
     }
   };
 
-  // Voice Call Initiation (Requested by user for Hosts)
   const handleStartAudioCall = async () => {
     if (callingInProgress) return;
     const userDiamonds = Number(currentUser?.diamonds || 0);
@@ -302,90 +295,42 @@ export default function UserProfileScreen() {
     }
   };
 
-  // Video Call Initiation (Requested by user for Hosts)
-  const handleStartVideoCall = async () => {
-    if (callingInProgress) return;
-    const userDiamonds = Number(currentUser?.diamonds || 0);
-    if (userDiamonds < targetUser.videoCallRate) {
-      Alert.alert('Insufficient Diamonds', 'Please recharge your diamonds to start a video call.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Recharge', onPress: () => navigation.navigate('Recharge') },
-      ]);
-      return;
-    }
-
-    try {
-      setCallingInProgress(true);
-      const res = await apiUtil.post('/call/start', {
-        hostId: targetUser._id,
-        isVideo: true,
-        callType: 'video',
-      });
-      if (res.data?.success && res.data?.data) {
-        navigation.navigate('OutGoing', {
-          ...res.data.data,
-          name: targetUser.name,
-          image: targetUser.avatar,
-          isCaller: true,
-          isVideo: true,
-        });
-      } else {
-        AlertService.show('Video Call Unavailable', res.data?.message || 'Unable to connect video call.', 'error');
-      }
-    } catch (err) {
-      AlertService.show('Video Call Error', err.response?.data?.message || err.message, 'error');
-    } finally {
-      setCallingInProgress(false);
-    }
-  };
-
   return (
     <View style={styles.screenContainer}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-      {/* Top Floating Action Bar with "In Room" Pill (Screenshot 3) */}
-      <View style={[styles.topActionBar, { paddingTop: topSafeInset + 6 }]}>
+      {/* Soft Pastel Lavender / Pink Backdrop Gradient */}
+      <LinearGradient
+        colors={['#EFE7F6', '#F8F1FD', '#FBF6FD', '#FFFFFF']}
+        locations={[0, 0.25, 0.55, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      {/* Top Navigation Bar */}
+      <View style={[styles.topNavBar, { paddingTop: topSafeInset + 6 }]}>
         <TouchableOpacity
-          style={styles.iconCircleBtn}
+          style={styles.navIconBtn}
           onPress={handleBack}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Icon name="chevron-back" size={24} color="#FFFFFF" />
+          <Icon name="chevron-back" size={26} color="#1E1B2E" />
         </TouchableOpacity>
 
-        <View style={styles.topRightWrap}>
-          {/* "🟡 In Room" Floating Badge that jumps directly into the room! */}
-          {targetUser.isInRoom && (
-            <TouchableOpacity
-              style={styles.inRoomPill}
-              onPress={handleEnterRoom}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="waveform" size={15} color="#FDE047" />
-              <Text style={styles.inRoomText}>In Room</Text>
-            </TouchableOpacity>
-          )}
-
+        <View style={styles.topRightActions}>
           <TouchableOpacity
-            style={styles.iconCircleBtn}
+            style={styles.navIconBtn}
             onPress={handleShare}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Icon name="share-outline" size={20} color="#FFFFFF" />
+            <Icon name="share-outline" size={23} color="#1E1B2E" />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.iconCircleBtn}
-            onPress={() => {
-              Alert.alert('User Options', targetUser.name, [
-                { text: 'Report User', onPress: () => AlertService.show('Reported', 'Report submitted.', 'info') },
-                { text: 'Block User', style: 'destructive', onPress: () => AlertService.show('Blocked', `${targetUser.name} blocked.`, 'success') },
-                { text: 'Cancel', style: 'cancel' },
-              ]);
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.navIconBtn}
+            onPress={handleMoreOptions}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Icon name="ellipsis-horizontal" size={22} color="#FFFFFF" />
+            <Icon name="ellipsis-horizontal" size={24} color="#1E1B2E" />
           </TouchableOpacity>
         </View>
       </View>
@@ -393,463 +338,438 @@ export default function UserProfileScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: topSafeInset + 46, paddingBottom: bottomSafePadding + 85 },
+          { paddingTop: topSafeInset + 48, paddingBottom: bottomSafePadding + 70 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Warm Golden Sunset Ambience Background (Screenshot 3) */}
-        <LinearGradient
-          colors={['#78350F', '#B45309', '#F59E0B', '#1E140A']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 0.7 }}
-          style={styles.bgAmbience}
-        />
-
-        {/* AVATAR HEADER: DUAL IF REAL CP PARTNER EXISTS, ELSE SINGLE HERO AVATAR */}
-        {targetUser.cpPartner ? (
-          <View style={styles.heroDualAvatarsContainer}>
-            {/* Main User Avatar */}
-            <View style={styles.avatarMainCol}>
-              <View style={styles.avatarEagleFrameWrap}>
-                <LinearGradient
-                  colors={['#FDE047', '#EAB308', '#B45309']}
-                  style={styles.avatarGoldBorder}
-                >
-                  <Image
-                    source={getUserAvatar(targetUser)}
-                    style={styles.mainAvatarImg}
-                  />
-                </LinearGradient>
-                {targetUser.svipLevel > 0 && (
-                  <LinearGradient
-                    colors={['#CA8A04', '#F59E0B', '#B45309']}
-                    style={styles.svipPlaque}
-                  >
-                    <Text style={styles.svipPlaqueText}>SVIP{targetUser.svipLevel}</Text>
-                  </LinearGradient>
-                )}
-              </View>
+        {/* HERO SECTION: Glowing Waves + Golden Crown Avatar */}
+        <View style={styles.heroSection}>
+          {/* Subtle audio waveform graphics + mic in the aura */}
+          <View style={styles.audioWaveAura}>
+            <View style={styles.waveBarsLeft}>
+              <View style={[styles.waveBar, { height: 16 }]} />
+              <View style={[styles.waveBar, { height: 28 }]} />
+              <View style={[styles.waveBar, { height: 42 }]} />
+              <View style={[styles.waveBar, { height: 26 }]} />
+              <View style={[styles.waveBar, { height: 14 }]} />
             </View>
 
-            {/* Center CP Heart Badge */}
-            <View style={styles.cpCenterHeartBadge}>
+            <View style={styles.micAuraCircle}>
+              <Icon name="mic" size={24} color="#C084FC" />
+            </View>
+          </View>
+
+          {/* AVATAR WITH MAJESTIC GOLDEN CROWN */}
+          <View style={styles.avatarCrownContainer}>
+            {/* Golden Tiara Crown on top of Avatar */}
+            <View style={styles.goldenCrownWrap}>
               <LinearGradient
-                colors={['#F43F5E', '#EC4899', '#DB2777']}
-                style={styles.cpHeartPill}
+                colors={['#FDE047', '#F59E0B', '#D97706']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.crownBase}
               >
-                <Text style={styles.cpHeartText}>💖 LV.{targetUser.cpPartner.cpLevel || 1}</Text>
+                <MaterialCommunityIcons name="crown" size={34} color="#FEF08A" />
               </LinearGradient>
+              <View style={styles.crownRubyGem} />
             </View>
 
-            {/* Right CP Partner Avatar */}
-            <View style={styles.avatarPartnerCol}>
-              <View style={styles.avatarCrownFrameWrap}>
-                <LinearGradient
-                  colors={['#A855F7', '#7C3AED', '#581C87']}
-                  style={styles.avatarPurpleBorder}
-                >
-                  <Image
-                    source={getUserAvatar(targetUser.cpPartner)}
-                    style={styles.partnerAvatarImg}
-                  />
-                </LinearGradient>
-                {targetUser.cpPartner.svipLevel > 0 && (
-                  <LinearGradient
-                    colors={['#7C3AED', '#A855F7', '#6D28D9']}
-                    style={styles.partnerSvipPlaque}
-                  >
-                    <Text style={styles.partnerSvipText}>SVIP{targetUser.cpPartner.svipLevel}</Text>
-                  </LinearGradient>
-                )}
-              </View>
+            {/* Circular Avatar */}
+            <View style={styles.avatarOuterRing}>
+              <Image
+                source={getUserAvatar(targetUser)}
+                style={styles.avatarImg}
+              />
             </View>
           </View>
-        ) : (
-          <View style={styles.heroSingleAvatarContainer}>
-            <View style={styles.avatarEagleFrameWrap}>
-              <LinearGradient
-                colors={['#FDE047', '#EAB308', '#B45309']}
-                style={styles.singleAvatarGoldBorder}
-              >
-                <Image
-                  source={getUserAvatar(targetUser)}
-                  style={styles.singleAvatarImg}
-                />
-              </LinearGradient>
-              {targetUser.svipLevel > 0 && (
-                <LinearGradient
-                  colors={['#CA8A04', '#F59E0B', '#B45309']}
-                  style={styles.singleSvipPlaque}
-                >
-                  <Text style={styles.svipPlaqueText}>SVIP{targetUser.svipLevel}</Text>
-                </LinearGradient>
-              )}
-            </View>
-          </View>
-        )}
 
-        {/* User Name */}
-        <View style={styles.nameRow}>
-          <Text style={styles.userNameText}>{targetUser.name}</Text>
-          {targetUser.isProfileVerified && (
-            <MaterialIcons name="verified" size={18} color="#38BDF8" style={{ marginLeft: 5 }} />
-          )}
-        </View>
-
-        {/* ID & Online Status */}
-        <View style={styles.idStatusRow}>
-          <IdentityDisplayId userId={targetUser.userId} officialDisplayId={targetUser.officialDisplayId || targetUser.displayId} customDisplayId={targetUser.customDisplayId} isOfficial={targetUser.isOfficial} badgeUrl={targetUser.badgeUrl} badgeText={targetUser.uniqueIdBadge?.badgeName} showPrefix showBadge showCopy textColor="#94A3B8" />
-          <Text style={styles.onlineStatusText}>{targetUser.lastOnlineText}</Text>
-        </View>
-
-        {/* TAGS ROW */}
-        <View style={styles.tagsRow}>
-          {/* SVIP Tag */}
-          {targetUser.svipLevel > 0 && (
-            <LinearGradient colors={['#0D9488', '#115E59']} style={styles.tagPill}>
-              <Text style={styles.tagPillText}>🦅 SVIP{targetUser.svipLevel}</Text>
-            </LinearGradient>
-          )}
-
-          {/* Staff Tag */}
-          {(targetUser.isStaff || targetUser.role === 'admin' || targetUser.role === 'superAdmin') && (
-            <LinearGradient colors={['#DC2626', '#991B1B']} style={styles.tagPill}>
-              <Text style={styles.tagPillText}>🛡️ Staff</Text>
-            </LinearGradient>
-          )}
-
-          {/* Equipped Custom Tag (Animation File / Theme Asset .svga, .gif, .webp, .png, or Text Pill) */}
-          {(() => {
-            const tagMedia = targetUser.equippedTagAsset?.animationUrl || targetUser.equippedTagAsset?.imageUrl || null;
-            const isTagSvga = Boolean(tagMedia && /\.svga(?:[?#]|$)/i.test(tagMedia));
-            const tagName = targetUser.equippedTagAsset?.metadata?.tagText || targetUser.equippedTagAsset?.name || targetUser.equippedTag;
-
-            if (!tagMedia && !tagName) return null;
-
-            return (
-              <View style={{ marginHorizontal: 2 }}>
-                {tagMedia ? (
-                  isTagSvga ? (
-                    <SvgaView source={tagMedia} style={{ width: 88, height: 26 }} resizeMode="contain" />
-                  ) : (
-                    <Image source={{ uri: tagMedia }} style={{ width: 88, height: 26 }} resizeMode="contain" />
-                  )
-                ) : (
-                  <LinearGradient
-                    colors={[targetUser.equippedTagAsset?.previewColor || '#D97706', '#78350F']}
-                    style={styles.tagPill}
-                  >
-                    <Text style={styles.tagPillText}>{tagName}</Text>
-                  </LinearGradient>
-                )}
-              </View>
-            );
-          })()}
-
-          {/* Equipped Badge */}
-          {Boolean(targetUser.equippedBadge) && (
-            <LinearGradient colors={['#7C3AED', '#581C87']} style={styles.tagPill}>
-              {targetUser.equippedBadgeAsset?.imageUrl ? (
-                <Image
-                  source={{ uri: targetUser.equippedBadgeAsset.imageUrl }}
-                  style={{ width: 13, height: 13, marginRight: 3 }}
-                  resizeMode="contain"
-                />
-              ) : null}
-              <Text style={styles.tagPillText}>
-                🏅 {targetUser.equippedBadgeAsset?.name || targetUser.equippedBadge}
-              </Text>
-            </LinearGradient>
-          )}
-
-          {/* Wealth Tag */}
-          <LinearGradient colors={['#0284C7', '#0369A1']} style={styles.tagPill}>
-            <Text style={styles.tagPillText}>💎 Lv.{targetUser.wealthLevel}</Text>
-          </LinearGradient>
-
-          {/* Charm Tag */}
-          <LinearGradient colors={['#10B981', '#059669']} style={styles.tagPill}>
-            <Text style={styles.tagPillText}>🌿 Lv.{targetUser.charmLevel}</Text>
-          </LinearGradient>
-
-          {/* Gender/Age */}
-          {(targetUser.gender || targetUser.age) ? (
-            <View style={styles.genderAgePill}>
-              <Text style={styles.genderIcon}>{targetUser.gender === 'female' ? '♀' : '♂'}</Text>
-              {targetUser.age ? <Text style={styles.genderAgeText}>{targetUser.age}</Text> : null}
-            </View>
-          ) : null}
-
-          {/* Country Flag */}
-          {Boolean(targetUser.countryFlag) && (
-            <View style={styles.flagPill}>
-              <Text style={{ fontSize: 13 }}>{targetUser.countryFlag}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* PRESTIGE MEDALS SHELF (Only rendered if user has real badges) */}
-        {targetUser.badges && targetUser.badges.length > 0 && (
-          <View style={styles.medalsShelfContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.medalsScroll}>
-              {targetUser.badges.map((badge, idx) => {
-                const icon = badge.icon || badge.badgeIcon || badge.imageUrl;
-                const isUrl = typeof icon === 'string' && (icon.startsWith('http') || icon.startsWith('/'));
-                return (
-                  <View key={badge.id || badge._id || idx} style={styles.medalCircleWrap}>
-                    <LinearGradient
-                      colors={badge.colors || ['#F59E0B', '#D97706']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.medalCircle}
-                    >
-                      {isUrl ? (
-                        <Image source={{ uri: icon }} style={{ width: 18, height: 18 }} resizeMode="contain" />
-                      ) : (
-                        <MaterialCommunityIcons name={badge.icon || 'shield-check'} size={16} color="#FFFFFF" />
-                      )}
-                    </LinearGradient>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* FOLLOWERS / FOLLOWING / VISITORS STATS ROW (Screenshot 3) */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCol}>
-            <Text style={styles.statVal}>{formatCompactBalance(targetUser.followersCount)}</Text>
-            <Text style={styles.statLabel}>Followers</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCol}>
-            <Text style={styles.statVal}>{formatCompactBalance(targetUser.followingCount)}</Text>
-            <Text style={styles.statLabel}>Following</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCol}>
-            <Text style={styles.statVal}>{formatCompactBalance(targetUser.visitorsCount)}</Text>
-            <Text style={styles.statLabel}>Visitors</Text>
-          </View>
-        </View>
-
-        {/* TAB HEADERS: Profile | Moment (Screenshot 3) */}
-        <View style={styles.tabsHeaderWrap}>
-          <TouchableOpacity
-            style={styles.tabNavBtn}
-            onPress={() => setActiveTab('Profile')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.tabNavText, activeTab === 'Profile' && styles.tabNavTextActive]}>
-              Profile
-            </Text>
-            {activeTab === 'Profile' && <View style={styles.tabActiveUnderline} />}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.tabNavBtn}
-            onPress={() => setActiveTab('Moment')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.tabNavText, activeTab === 'Moment' && styles.tabNavTextActive]}>
-              Moment
-            </Text>
-            {activeTab === 'Moment' && <View style={styles.tabActiveUnderline} />}
-          </TouchableOpacity>
-        </View>
-
-        {activeTab === 'Profile' ? (
-          <View style={styles.tabBodyContent}>
-            {/* About Me Section */}
-            <View style={styles.sectionWrap}>
-              <Text style={styles.sectionTitle}>About Me</Text>
-              <View style={styles.bioCard}>
-                <Text style={styles.bioLabel}>Bio</Text>
-                <Text style={[styles.bioContent, !targetUser.bio && { color: '#64748B', fontStyle: 'italic' }]}>
-                  {targetUser.bio || 'No bio added yet.'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Club Section */}
-            {targetUser.club && (
-              <View style={styles.sectionWrap}>
-                <Text style={styles.sectionTitle}>Club</Text>
-                <TouchableOpacity
-                  style={styles.clubBanner}
-                  onPress={() => AlertService.show('Club', `Viewing ${targetUser.club.name} details.`, 'info')}
-                  activeOpacity={0.85}
-                >
-                  <LinearGradient
-                    colors={['#EA580C', '#F97316', '#FB923C']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.clubBannerGradient}
-                  >
-                    <View style={styles.clubLeft}>
-                      <View style={styles.clubLogoBox}>
-                        <MaterialCommunityIcons name="shield-airplane" size={24} color="#38BDF8" />
-                      </View>
-                      <View>
-                        <Text style={styles.clubNameText}>{targetUser.club.name}</Text>
-                        <View style={styles.clubMiniPill}>
-                          <Text style={styles.clubMiniPillText}>🛡️ {targetUser.club.name?.slice(0, 4) || 'CLUB'}</Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={styles.clubRight}>
-                      <View style={styles.clubMembersRow}>
-                        <Icon name="people" size={14} color="#FFFFFF" />
-                        <Text style={styles.clubMembersText}>
-                          {targetUser.club.membersCount || 1}/{targetUser.club.maxMembers || 200}
-                        </Text>
-                        <Icon name="chevron-forward" size={16} color="#FFFFFF" />
-                      </View>
-                      {targetUser.club.isLive && (
-                        <View style={styles.clubLiveBadge}>
-                          <Text style={styles.clubLiveBadgeText}>LIVE</Text>
-                        </View>
-                      )}
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+          {/* USER NAME + VERIFIED BLACK CHECKMARK */}
+          <View style={styles.nameRow}>
+            <Text style={styles.userNameText}>{targetUser.name}</Text>
+            {targetUser.isVerified && (
+              <MaterialIcons name="verified" size={20} color="#0F172A" style={styles.verifiedCheck} />
             )}
+          </View>
 
-            {/* CP Section */}
-            {targetUser.cpPartner && (
-              <View style={styles.sectionWrap}>
-                <Text style={styles.sectionTitle}>CP</Text>
-                <View style={styles.cpBannerWrap}>
-                  <LinearGradient
-                    colors={['#FB7185', '#F43F5E', '#E11D48']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.cpBannerGradient}
-                  >
-                    {/* Left Partner */}
-                    <View style={styles.cpPartnerCol}>
-                      <Image
-                        source={getUserAvatar(targetUser)}
-                        style={styles.cpAvatar}
-                      />
-                      <Text style={styles.cpName} numberOfLines={1}>{targetUser.name}</Text>
-                    </View>
+          {/* BADGE PILLS ROW: Elite Speaker + ID Pill */}
+          <View style={styles.identityPillsRow}>
+            <LinearGradient
+              colors={['#4C1D95', '#7C3AED']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.eliteBadgePill}
+            >
+              <MaterialCommunityIcons name="crown" size={13} color="#FBBF24" />
+              <Text style={styles.eliteBadgeText}>{targetUser.eliteBadgeText}</Text>
+            </LinearGradient>
 
-                    {/* Center Ribbon */}
-                    <View style={styles.cpCenterCol}>
-                      <View style={styles.cpDaysPill}>
-                        <Text style={styles.cpDaysText}>{targetUser.cpPartner.days || 1} Days</Text>
-                      </View>
-                      <LinearGradient
-                        colors={['#FDE047', '#EAB308']}
-                        style={styles.cpLvBadge}
-                      >
-                        <Text style={styles.cpLvText}>Lv.{targetUser.cpPartner.cpLevel || 1}</Text>
-                      </LinearGradient>
-                    </View>
+            <TouchableOpacity
+              style={styles.idPill}
+              onPress={handleCopyId}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.idPillText}>ID: {targetUser.displayId}</Text>
+              <Icon name="copy-outline" size={12} color="#64748B" />
+            </TouchableOpacity>
+          </View>
 
-                    {/* Right Partner */}
-                    <View style={styles.cpPartnerCol}>
-                      <Image
-                        source={getUserAvatar(targetUser.cpPartner)}
-                        style={styles.cpAvatar}
-                      />
-                      <Text style={styles.cpName} numberOfLines={1}>{targetUser.cpPartner.name}</Text>
+          {/* TAG PILLS ROW: Voice Host | Active | VIP | Top Gifter */}
+          <View style={styles.tagPillsRow}>
+            <View style={[styles.tagPill, { backgroundColor: '#FDF2F8', borderColor: '#FCE7F3' }]}>
+              <Text style={[styles.tagPillText, { color: '#BE185D' }]}>🎙️ Voice Host</Text>
+            </View>
+            <View style={[styles.tagPill, { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' }]}>
+              <Text style={[styles.tagPillText, { color: '#EA580C' }]}>🔥 Active</Text>
+            </View>
+            <View style={[styles.tagPill, { backgroundColor: '#FEFCE8', borderColor: '#FEF08A' }]}>
+              <Text style={[styles.tagPillText, { color: '#CA8A04' }]}>💎 VIP</Text>
+            </View>
+            <View style={[styles.tagPill, { backgroundColor: '#FDF2F8', borderColor: '#FBCFE8' }]}>
+              <Text style={[styles.tagPillText, { color: '#E11D48' }]}>⭐ Top Gifter</Text>
+            </View>
+          </View>
+
+          {/* STATS ROW: Followers | Following | Visitors */}
+          <View style={styles.statsRow}>
+            <TouchableOpacity
+              style={styles.statCol}
+              onPress={() => navigation.navigate('Followers', { tab: 'followers' })}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.statNum}>{formatCompactBalance(targetUser.followersCount)}</Text>
+              <Text style={styles.statLabel}>Followers</Text>
+            </TouchableOpacity>
+
+            <View style={styles.statDivider} />
+
+            <TouchableOpacity
+              style={styles.statCol}
+              onPress={() => navigation.navigate('Followers', { tab: 'following' })}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.statNum}>{formatCompactBalance(targetUser.followingCount)}</Text>
+              <Text style={styles.statLabel}>Following</Text>
+            </TouchableOpacity>
+
+            <View style={styles.statDivider} />
+
+            <TouchableOpacity
+              style={styles.statCol}
+              onPress={() => navigation.navigate('Visitors')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.statNum}>{formatCompactBalance(targetUser.visitorsCount)}</Text>
+              <Text style={styles.statLabel}>Visitors</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* "ABOUT ME" CARD */}
+        <View style={styles.cardContainer}>
+          <View style={styles.aboutHeaderRow}>
+            <View style={styles.aboutTitleWrap}>
+              <View style={styles.aboutIconCircle}>
+                <Icon name="person" size={15} color="#9333EA" />
+              </View>
+              <Text style={styles.cardTitle}>About Me</Text>
+            </View>
+
+            {isOwnProfile && (
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => navigation.navigate('EditProfile')}
+                activeOpacity={0.7}
+              >
+                <Icon name="pencil" size={13} color="#64748B" />
+                <Text style={styles.editText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <Text style={styles.bioText}>{targetUser.bio}</Text>
+        </View>
+
+        {/* 2X2 QUICK INFO GRID: Family | CP | Friends | Supporters */}
+        <View style={styles.gridRowWrap}>
+          {/* Card 1: Family */}
+          <TouchableOpacity
+            style={styles.gridCard}
+            onPress={() => navigation.navigate('Family')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.gridCardLeft}>
+              <LinearGradient
+                colors={['#7C3AED', '#581C87']}
+                style={styles.gridIconCircle}
+              >
+                <MaterialCommunityIcons name="shield-crown" size={18} color="#FBBF24" />
+              </LinearGradient>
+              <View style={styles.gridTextCol}>
+                <Text style={styles.gridTitle}>Family</Text>
+                <Text style={styles.gridSub} numberOfLines={1}>{targetUser.family?.name || 'Black Empire'}</Text>
+              </View>
+            </View>
+            <Icon name="chevron-forward" size={16} color="#94A3B8" />
+          </TouchableOpacity>
+
+          {/* Card 2: CP */}
+          <TouchableOpacity
+            style={styles.gridCard}
+            onPress={() => navigation.navigate('CpSpace')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.gridCardLeft}>
+              <LinearGradient
+                colors={['#F43F5E', '#EC4899']}
+                style={styles.gridIconCircle}
+              >
+                <MaterialCommunityIcons name="heart-multiple" size={18} color="#FFFFFF" />
+              </LinearGradient>
+              <View style={styles.gridTextCol}>
+                <Text style={styles.gridTitle}>CP</Text>
+                <Text style={styles.gridSub} numberOfLines={1}>{targetUser.cpPartner?.name || 'Luna ♡'}</Text>
+              </View>
+            </View>
+            <Icon name="chevron-forward" size={16} color="#94A3B8" />
+          </TouchableOpacity>
+
+          {/* Card 3: Friends */}
+          <TouchableOpacity
+            style={styles.gridCard}
+            onPress={() => navigation.navigate('Followers', { tab: 'friends' })}
+            activeOpacity={0.8}
+          >
+            <View style={styles.gridCardLeft}>
+              <LinearGradient
+                colors={['#3B82F6', '#1D4ED8']}
+                style={styles.gridIconCircle}
+              >
+                <MaterialCommunityIcons name="account-group" size={18} color="#FFFFFF" />
+              </LinearGradient>
+              <View style={styles.gridTextCol}>
+                <Text style={styles.gridTitle}>Friends</Text>
+                <Text style={styles.gridSub} numberOfLines={1}>{formatCompactBalance(targetUser.friendsCount)}</Text>
+              </View>
+            </View>
+            <Icon name="chevron-forward" size={16} color="#94A3B8" />
+          </TouchableOpacity>
+
+          {/* Card 4: Supporters */}
+          <TouchableOpacity
+            style={styles.gridCard}
+            onPress={() => navigation.navigate('Ranking')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.gridCardLeft}>
+              <LinearGradient
+                colors={['#F59E0B', '#D97706']}
+                style={styles.gridIconCircle}
+              >
+                <MaterialCommunityIcons name="shield-star" size={18} color="#FEF08A" />
+              </LinearGradient>
+              <View style={styles.gridTextCol}>
+                <Text style={styles.gridTitle}>Supporters</Text>
+                <Text style={styles.gridSub} numberOfLines={1}>{formatCompactBalance(targetUser.supportersCount)}</Text>
+              </View>
+            </View>
+            <Icon name="chevron-forward" size={16} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
+
+        {/* SECTION 1: BADGES */}
+        <View style={styles.showcaseCard}>
+          <View style={styles.showcaseHeader}>
+            <View style={styles.showcaseTitleLeft}>
+              <View style={[styles.showcaseIconWrap, { backgroundColor: '#F3E8FF' }]}>
+                <MaterialCommunityIcons name="star-circle" size={16} color="#9333EA" />
+              </View>
+              <Text style={styles.cardTitle}>Badges</Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Medal')}
+              style={styles.viewAllBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.viewAllText}>View All ({targetUser.showcase?.badgesCount || 25})</Text>
+              <Icon name="chevron-forward" size={14} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.showcaseScroll}>
+            {(targetUser.showcase?.badges?.length ? targetUser.showcase.badges : SHOWCASE_BADGES).map((b) => (
+              <View key={b.id || b._id} style={styles.showcaseItem}>
+                <LinearGradient colors={b.colors || ['#F59E0B', '#B45309']} style={styles.badgeIconCircle}>
+                  <MaterialCommunityIcons name={b.icon || 'crown'} size={28} color="#FFFFFF" />
+                  {b.badgeNum && (
+                    <View style={styles.badgeNumTag}>
+                      <Text style={styles.badgeNumTagText}>{b.badgeNum}</Text>
                     </View>
+                  )}
+                </LinearGradient>
+                <Text style={styles.showcaseItemLabel} numberOfLines={1}>{b.name}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* SECTION 2: VEHICLES */}
+        <View style={styles.showcaseCard}>
+          <View style={styles.showcaseHeader}>
+            <View style={styles.showcaseTitleLeft}>
+              <View style={[styles.showcaseIconWrap, { backgroundColor: '#EDE9FE' }]}>
+                <MaterialCommunityIcons name="car-sports" size={16} color="#7C3AED" />
+              </View>
+              <Text style={styles.cardTitle}>Vehicles</Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Store')}
+              style={styles.viewAllBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.viewAllText}>View All ({targetUser.showcase?.vehiclesCount || 18})</Text>
+              <Icon name="chevron-forward" size={14} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.showcaseScroll}>
+            {(targetUser.showcase?.vehicles?.length ? targetUser.showcase.vehicles : SHOWCASE_VEHICLES).map((v) => (
+              <View key={v.id || v._id} style={styles.showcaseItem}>
+                <LinearGradient colors={v.colors || ['#8B5CF6', '#3B82F6']} style={styles.vehicleIconCircle}>
+                  <MaterialCommunityIcons name={v.icon || 'car-sports'} size={30} color="#FFFFFF" />
+                </LinearGradient>
+                <Text style={styles.showcaseItemLabel} numberOfLines={1}>{v.name}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* SECTION 3: FRAMES */}
+        <View style={styles.showcaseCard}>
+          <View style={styles.showcaseHeader}>
+            <View style={styles.showcaseTitleLeft}>
+              <View style={[styles.showcaseIconWrap, { backgroundColor: '#EEF2FF' }]}>
+                <MaterialCommunityIcons name="image-filter-frames" size={16} color="#4F46E5" />
+              </View>
+              <Text style={styles.cardTitle}>Frames</Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Frame')}
+              style={styles.viewAllBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.viewAllText}>View All ({targetUser.showcase?.framesCount || 32})</Text>
+              <Icon name="chevron-forward" size={14} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.showcaseScroll}>
+            {(targetUser.showcase?.frames?.length ? targetUser.showcase.frames : SHOWCASE_FRAMES).map((f) => (
+              <View key={f.id || f._id} style={styles.showcaseItem}>
+                <View style={styles.framePreviewWrap}>
+                  <LinearGradient colors={f.colors || ['#F59E0B', '#D97706']} style={styles.frameBorderCircle}>
+                    <View style={styles.frameInnerHole} />
                   </LinearGradient>
                 </View>
+                <Text style={styles.showcaseItemLabel} numberOfLines={1}>{f.name}</Text>
               </View>
-            )}
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* SECTION 4: GIFTS */}
+        <View style={styles.showcaseCard}>
+          <View style={styles.showcaseHeader}>
+            <View style={styles.showcaseTitleLeft}>
+              <View style={[styles.showcaseIconWrap, { backgroundColor: '#FDF2F8' }]}>
+                <MaterialCommunityIcons name="gift-outline" size={16} color="#DB2777" />
+              </View>
+              <Text style={styles.cardTitle}>Gifts</Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('GiftsScreen')}
+              style={styles.viewAllBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.viewAllText}>View All ({targetUser.showcase?.giftsCount || 56})</Text>
+              <Icon name="chevron-forward" size={14} color="#64748B" />
+            </TouchableOpacity>
           </View>
-        ) : (
-          <View style={styles.momentTabContainer}>
-            <MaterialCommunityIcons name="camera-iris" size={48} color="#64748B" />
-            <Text style={styles.noMomentsText}>No public moments shared yet.</Text>
-          </View>
-        )}
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.showcaseScroll}>
+            {(targetUser.showcase?.gifts?.length ? targetUser.showcase.gifts : SHOWCASE_GIFTS).map((g) => (
+              <View key={g.id || g.giftId || g._id} style={styles.showcaseItem}>
+                <LinearGradient colors={g.colors || ['#EC4899', '#8B5CF6']} style={styles.giftIconCircle}>
+                  <MaterialCommunityIcons name={g.icon || 'gift'} size={28} color="#FFFFFF" />
+                </LinearGradient>
+                <Text style={styles.showcaseItemLabel} numberOfLines={1}>{g.name}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
       </ScrollView>
 
-      {/* FLOATING BOTTOM ACTION BAR: Find me | Follow | Chat + Voice/Video for Hosts (Screenshot 3) */}
-      <View style={[styles.bottomActionBar, { paddingBottom: Math.max(bottomSafePadding, 12) }]}>
-        {/* Button 1: Find Me (Navigates directly to their active voice room!) */}
-        <TouchableOpacity
-          style={styles.bottomNavAction}
-          onPress={handleEnterRoom}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.bottomIconCircle, { backgroundColor: 'rgba(250, 204, 21, 0.15)' }]}>
-            <MaterialCommunityIcons name="radar" size={22} color="#FACC15" />
-          </View>
-          <Text style={[styles.bottomActionText, { color: '#FACC15' }]}>Find me</Text>
-        </TouchableOpacity>
-
-        {/* Button 2: Follow */}
-        <TouchableOpacity
-          style={styles.bottomNavAction}
-          onPress={handleToggleFollow}
-          disabled={followLoading}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.bottomIconCircle, { backgroundColor: isFollowing ? 'rgba(34, 197, 94, 0.15)' : 'rgba(168, 85, 247, 0.15)' }]}>
-            <Icon
-              name={isFollowing ? 'checkmark-circle' : 'person-add'}
-              size={20}
-              color={isFollowing ? '#22C55E' : '#A855F7'}
-            />
-          </View>
-          <Text style={[styles.bottomActionText, { color: isFollowing ? '#22C55E' : '#A855F7' }]}>
-            {isFollowing ? 'Following' : 'Follow'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Button 3: Chat */}
-        <TouchableOpacity
-          style={styles.bottomNavAction}
-          onPress={handleOpenChat}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.bottomIconCircle, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
-            <MaterialCommunityIcons name="chat" size={22} color="#22C55E" />
-          </View>
-          <Text style={[styles.bottomActionText, { color: '#22C55E' }]}>Chat</Text>
-        </TouchableOpacity>
-
-        {/* Host Options: Audio Call and Video Call (Requested by user) */}
-        {targetUser.isHost && (
-          <>
+      {/* FLOATING BOTTOM ACTION BAR: Follow, Chat, Call (if not viewing own profile) */}
+      {!isOwnProfile && (
+        <View style={[styles.bottomBarContainer, { paddingBottom: bottomSafePadding + 8 }]}>
+          {targetUser.isInRoom && (
             <TouchableOpacity
-              style={styles.bottomNavAction}
+              style={styles.inRoomActionBtn}
+              onPress={handleEnterRoom}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="waveform" size={18} color="#FFFFFF" />
+              <Text style={styles.inRoomActionText}>Join Room</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.chatActionBtn}
+            onPress={handleOpenChat}
+            activeOpacity={0.8}
+          >
+            <Icon name="chatbubble-ellipses-outline" size={19} color="#7C3AED" />
+            <Text style={styles.chatActionText}>Chat</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.followActionBtn}
+            onPress={handleToggleFollow}
+            disabled={followLoading}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={isFollowing ? ['#6B7280', '#4B5563'] : ['#8B5CF6', '#EC4899']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.followGradient}
+            >
+              {followLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Icon name={isFollowing ? 'checkmark' : 'add'} size={18} color="#FFFFFF" />
+                  <Text style={styles.followActionText}>{isFollowing ? 'Following' : 'Follow'}</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {targetUser.isHost && (
+            <TouchableOpacity
+              style={styles.callActionBtn}
               onPress={handleStartAudioCall}
               disabled={callingInProgress}
               activeOpacity={0.8}
             >
-              <View style={[styles.bottomIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.2)' }]}>
-                <Icon name="call" size={20} color="#38BDF8" />
-              </View>
-              <Text style={[styles.bottomActionText, { color: '#38BDF8' }]}>
-                Call 💎{targetUser.callRate}
-              </Text>
+              <Icon name="call" size={18} color="#FFFFFF" />
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.bottomNavAction}
-              onPress={handleStartVideoCall}
-              disabled={callingInProgress}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.bottomIconCircle, { backgroundColor: 'rgba(236, 72, 153, 0.2)' }]}>
-                <Icon name="videocam" size={20} color="#EC4899" />
-              </View>
-              <Text style={[styles.bottomActionText, { color: '#EC4899' }]}>
-                Video 💎{targetUser.videoCallRate}
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -857,546 +777,555 @@ export default function UserProfileScreen() {
 const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
-    backgroundColor: '#0F0904',
+    backgroundColor: '#FAF5FB',
   },
-  topActionBar: {
+  topNavBar: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    zIndex: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    zIndex: 99,
+    paddingBottom: 8,
   },
-  iconCircleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  navIconBtn: {
+    padding: 6,
+    borderRadius: 20,
   },
-  topRightWrap: {
+  topRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  inRoomPill: {
+  scrollContent: {
+    paddingHorizontal: 0,
+  },
+
+  /* Hero Section */
+  heroSection: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    position: 'relative',
+  },
+  audioWaveAura: {
+    position: 'absolute',
+    top: 24,
+    left: 20,
+    right: 20,
+    height: 100,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 1,
+    opacity: 0.6,
+  },
+  waveBarsLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(180, 83, 9, 0.85)',
-    borderWidth: 1,
-    borderColor: '#FDE047',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.6,
-    shadowRadius: 6,
-    elevation: 5,
+    marginLeft: 10,
   },
-  inRoomText: {
-    color: '#FEF08A',
-    fontSize: 12,
-    fontWeight: '900',
+  waveBar: {
+    width: 3,
+    backgroundColor: '#DDD6FE',
+    borderRadius: 2,
   },
-  scrollContent: {
-    alignItems: 'center',
-  },
-  bgAmbience: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 380,
-  },
-  heroDualAvatarsContainer: {
-    flexDirection: 'row',
+  micAuraCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3E8FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 18,
-    gap: 12,
-  },
-  heroSingleAvatarContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 18,
-    marginBottom: 6,
-  },
-  singleAvatarGoldBorder: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    padding: 3,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  singleAvatarImg: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 45,
-  },
-  singleSvipPlaque: {
-    position: 'absolute',
-    bottom: -8,
-    paddingHorizontal: 12,
-    paddingVertical: 2,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FEF08A',
-  },
-  avatarMainCol: {
-    alignItems: 'center',
-  },
-  avatarEagleFrameWrap: {
-    position: 'relative',
-    alignItems: 'center',
-  },
-  avatarGoldBorder: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    padding: 3,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  mainAvatarImg: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 40,
-  },
-  svipPlaque: {
-    position: 'absolute',
-    bottom: -8,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FEF08A',
-  },
-  svipPlaqueText: {
-    color: '#0F172A',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  cpCenterHeartBadge: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cpHeartPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  cpHeartText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  avatarPartnerCol: {
-    alignItems: 'center',
-  },
-  avatarCrownFrameWrap: {
-    position: 'relative',
-    alignItems: 'center',
-  },
-  avatarPurpleBorder: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    padding: 3,
-    shadowColor: '#A855F7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  partnerAvatarImg: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 40,
-  },
-  partnerSvipPlaque: {
-    position: 'absolute',
-    bottom: -8,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 8,
+    marginRight: 10,
     borderWidth: 1,
     borderColor: '#E9D5FF',
   },
-  partnerSvipText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  nameRow: {
-    flexDirection: 'row',
+
+  /* Avatar & Crown */
+  avatarCrownContainer: {
     alignItems: 'center',
-    gap: 4,
-    marginTop: 18,
-  },
-  nameSparkle: {
-    fontSize: 14,
-  },
-  userNameText: {
-    color: '#FDE047',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  idStatusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  idCopyPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  idIcon: {
-    fontSize: 12,
-  },
-  idNumberText: {
-    color: '#FDE047',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  onlineStatusText: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
+    position: 'relative',
     marginTop: 10,
-    paddingHorizontal: 16,
+    zIndex: 5,
   },
-  tagPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2.5,
-    borderRadius: 10,
-  },
-  tagPillText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  genderAgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DB2777',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-    gap: 2,
-  },
-  genderIcon: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  genderAgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  flagPill: {
-    paddingHorizontal: 4,
-  },
-  medalsShelfContainer: {
-    marginVertical: 12,
-    width: '100%',
-  },
-  medalsScroll: {
-    paddingHorizontal: 16,
-    gap: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  medalCircleWrap: {
+  goldenCrownWrap: {
+    position: 'absolute',
+    top: -24,
+    zIndex: 10,
     alignItems: 'center',
   },
-  medalCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  crownBase: {
+    width: 52,
+    height: 38,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 3,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  crownRubyGem: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#E11D48',
+    position: 'absolute',
+    bottom: 4,
+    borderWidth: 1,
+    borderColor: '#FEF08A',
+  },
+  avatarOuterRing: {
+    width: 106,
+    height: 106,
+    borderRadius: 53,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#DC2626',
+    shadowColor: '#C084FC',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
+  },
+
+  /* Name & Check */
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    gap: 6,
+  },
+  userNameText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  verifiedCheck: {
+    marginTop: 2,
+  },
+
+  /* Identity Pills: Crown Badge + ID Pill */
+  identityPillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 8,
+  },
+  eliteBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 20,
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
     elevation: 3,
   },
+  eliteBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  idPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  idPillText: {
+    color: '#475569',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+
+  /* Tags Row */
+  tagPillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 7,
+    marginTop: 12,
+  },
+  tagPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  tagPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  /* Stats Row */
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    width: '92%',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginTop: 6,
+    width: '100%',
+    marginTop: 18,
+    paddingVertical: 8,
   },
   statCol: {
     alignItems: 'center',
     flex: 1,
   },
-  statVal: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '900',
+  statNum: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
   },
   statLabel: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
     marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#E2E8F0',
   },
-  tabsHeaderWrap: {
-    flexDirection: 'row',
-    width: '100%',
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    marginTop: 10,
-  },
-  tabNavBtn: {
-    paddingVertical: 10,
-    marginRight: 24,
-    position: 'relative',
-  },
-  tabNavText: {
-    color: '#94A3B8',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  tabNavTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-  },
-  tabActiveUnderline: {
-    position: 'absolute',
-    bottom: -1,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: '#F97316',
-    borderRadius: 2,
-  },
-  tabBodyContent: {
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-  },
-  sectionWrap: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    color: '#CBD5E1',
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  bioCard: {
-    backgroundColor: '#1E140A',
-    borderRadius: 16,
-    padding: 14,
+
+  /* About Me Card */
+  cardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    shadowColor: '#C084FC',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.15)',
+    borderColor: '#F3E8FF',
   },
-  bioLabel: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  bioContent: {
-    color: '#F1F5F9',
-    fontSize: 12.5,
-    lineHeight: 18,
-    fontWeight: '600',
-  },
-  clubBanner: {
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  clubBannerGradient: {
+  aboutHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
+    marginBottom: 8,
   },
-  clubLeft: {
+  aboutTitleWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  clubLogoBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#0F172A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clubNameText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  clubMiniPill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginTop: 2,
-  },
-  clubMiniPillText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  clubRight: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  clubMembersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  clubMembersText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  clubLiveBadge: {
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 6,
-  },
-  clubLiveBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '900',
-  },
-  cpBannerWrap: {
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  cpBannerGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-  },
-  cpPartnerCol: {
-    alignItems: 'center',
-    gap: 4,
-    maxWidth: 90,
-  },
-  cpAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  cpName: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  cpCenterCol: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  cpDaysPill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  cpDaysText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  cpLvBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 1.5,
-    borderRadius: 8,
-  },
-  cpLvText: {
-    color: '#0F172A',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  momentTabContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
     gap: 8,
   },
-  noMomentsText: {
-    color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '600',
+  aboutIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  bottomActionBar: {
+  cardTitle: {
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  editText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  bioText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#475569',
+  },
+
+  /* 2x2 Grid */
+  gridRowWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: 12,
+    marginTop: 14,
+    justifyContent: 'space-between',
+  },
+  gridCard: {
+    width: (width - 40) / 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#C084FC',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F3E8FF',
+  },
+  gridCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    flex: 1,
+  },
+  gridIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridTextCol: {
+    flex: 1,
+  },
+  gridTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  gridSub: {
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 1.5,
+  },
+
+  /* Showcase Sections */
+  showcaseCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingTop: 14,
+    paddingBottom: 16,
+    shadowColor: '#C084FC',
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3E8FF',
+  },
+  showcaseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  showcaseTitleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  showcaseIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  showcaseScroll: {
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  showcaseItem: {
+    alignItems: 'center',
+    width: 66,
+  },
+  showcaseItemLabel: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#475569',
+    textAlign: 'center',
+    marginTop: 7,
+  },
+
+  badgeIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  badgeNumTag: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderWidth: 1,
+    borderColor: '#FFF',
+  },
+  badgeNumTagText: {
+    color: '#FFF',
+    fontSize: 8,
+    fontWeight: '800',
+  },
+
+  vehicleIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+
+  framePreviewWrap: {
+    width: 52,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  frameBorderCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 3,
+  },
+  frameInnerHole: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F8FAFC',
+  },
+
+  giftIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+
+  /* Floating Bottom Action Bar */
+  bottomBarContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F3E8FF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    shadowColor: '#C084FC',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  inRoomActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 12,
-    paddingTop: 8,
-    backgroundColor: 'rgba(15, 9, 4, 0.98)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(251, 191, 36, 0.2)',
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  bottomNavAction: {
+  inRoomActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  chatActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: '#F3E8FF',
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+  },
+  chatActionText: {
+    color: '#7C3AED',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  followActionBtn: {
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  followGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 5,
+    paddingVertical: 10,
+    borderRadius: 22,
   },
-  bottomIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  followActionText: {
+    color: '#FFFFFF',
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  callActionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  bottomActionText: {
-    fontSize: 10,
-    fontWeight: '800',
+    shadowColor: '#10B981',
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
 });

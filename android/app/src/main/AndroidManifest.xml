@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -29,6 +31,7 @@
     <!-- System Overlay & Call Service Permissions -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" tools:node="remove" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" tools:node="remove" />
 
@@ -44,7 +47,8 @@
       android:allowBackup="false"
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="false"
-      android:supportsRtl="true">
+      android:supportsRtl="true"
+      android:extractNativeLibs="true">
       
       <!-- Meta / Facebook SDK Configuration -->
       <meta-data
@@ -134,6 +138,19 @@
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="yaro" />
             <data android:scheme="voiceclub" />
+            <data android:scheme="yaro" android:host="room" />
+            <data android:scheme="yaro" android:host="user" />
+            <data android:scheme="yaro" android:host="profile" />
+            <data android:scheme="yaro" android:host="host" />
+            <data android:scheme="yaro" android:host="refer" />
+            <data android:scheme="yaro" android:host="invite" />
+            <data android:scheme="yaro" android:host="yaroapp.in" />
+            <data android:scheme="voiceclub" android:host="room" />
+            <data android:scheme="voiceclub" android:host="user" />
+            <data android:scheme="voiceclub" android:host="profile" />
+            <data android:scheme="voiceclub" android:host="host" />
+            <data android:scheme="voiceclub" android:host="refer" />
+            <data android:scheme="voiceclub" android:host="invite" />
         </intent-filter>
       </activity>
 

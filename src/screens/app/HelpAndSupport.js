@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,8 @@ import { useTranslation } from 'react-i18next';
 import AnimatedTitleLine from '../../components/AnimatedTitleLine';
 import TicketDetailModal from '../../components/support/TicketDetailModal';
 import { AlertService } from '../../utils/AlertService';
+import { AuthContext } from '../../context/AuthProvider';
+import { useVoiceRoom } from '../../context/VoiceRoomContext';
 
 const { width } = Dimensions.get('window');
 
@@ -38,6 +40,48 @@ const HelpAndSupport = () => {
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 36);
   const { t } = useTranslation();
   const chatScrollRef = useRef(null);
+  const { user } = useContext(AuthContext);
+  const { enterRoom } = useVoiceRoom ? useVoiceRoom() : { enterRoom: () => {} };
+
+  // Direct entry into Official Customer Support Voice Room
+  const handleEnterSupportRoom = async () => {
+    try {
+      const res = await apiUtil.get('/family/support-room', { suppressGlobalError: true });
+      const supportRoom = res?.data?.data?.room || {
+        id: 'support_official',
+        roomId: 'support_official',
+        channelName: 'support_official',
+        title: '🎧 24/7 Official Customer Support',
+        hostName: 'Customer Support',
+        category: 'Support',
+        mode: 'Public',
+        seatCount: 8,
+        onlineCount: '1',
+        isSelfHost: false,
+      };
+      if (enterRoom) {
+        enterRoom(supportRoom, false, supportRoom.seatCount || 8, user);
+      }
+      navigation.navigate('VoiceRoom', { room: supportRoom });
+    } catch (_) {
+      const fallbackRoom = {
+        id: 'support_official',
+        roomId: 'support_official',
+        channelName: 'support_official',
+        title: '🎧 24/7 Official Customer Support',
+        hostName: 'Customer Support',
+        category: 'Support',
+        mode: 'Public',
+        seatCount: 8,
+        onlineCount: '1',
+        isSelfHost: false,
+      };
+      if (enterRoom) {
+        enterRoom(fallbackRoom, false, 8, user);
+      }
+      navigation.navigate('VoiceRoom', { room: fallbackRoom });
+    }
+  };
 
   // Toggle views
   const [showTicketForm, setShowTicketForm] = useState(false);
@@ -325,6 +369,40 @@ const HelpAndSupport = () => {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Direct Entry into Official Customer Support Live Voice Room */}
+        <TouchableOpacity
+          onPress={handleEnterSupportRoom}
+          activeOpacity={0.88}
+          style={styles.supportRoomLiveBanner}
+        >
+          <LinearGradient
+            colors={['#1E1B4B', '#312E81', '#4F46E5']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.supportRoomLiveCard}
+          >
+            <View style={styles.supportRoomLiveLeft}>
+              <View style={styles.supportLiveIconWrap}>
+                <IonIcon name="headset" size={24} color="#FBBF24" />
+              </View>
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.supportRoomLiveHeading}>Official Support Voice Room</Text>
+                  <View style={styles.livePulsePill}>
+                    <Text style={styles.livePulseText}>LIVE</Text>
+                  </View>
+                </View>
+                <Text style={styles.supportRoomLiveSub}>
+                  Talk directly with live support hosts • Tap to join room now
+                </Text>
+              </View>
+            </View>
+            <View style={styles.joinSupportPill}>
+              <Text style={styles.joinSupportPillText}>Join Room 🎙️</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* Hero Card */}
         <LinearGradient
           colors={['#7C3AED', '#4F46E5']}
@@ -1478,6 +1556,69 @@ const styles = StyleSheet.create({
     backgroundColor: '#7C3AED',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  supportRoomLiveBanner: {
+    marginBottom: 16,
+    borderRadius: 18,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  supportRoomLiveCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  supportRoomLiveLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  supportLiveIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  supportRoomLiveHeading: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  supportRoomLiveSub: {
+    fontSize: 11,
+    color: '#C7D2FE',
+    marginTop: 2,
+  },
+  livePulsePill: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  livePulseText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  joinSupportPill: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+  },
+  joinSupportPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1E1B2E',
   },
 });
 

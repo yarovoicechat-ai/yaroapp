@@ -77,23 +77,31 @@
 -keep class com.android.billingclient.** { *; }
 -dontwarn com.android.billingclient.**
 
-# Agora SDK
+# Agora RTC SDK & Iris Native JNI Bindings
 -keep class io.agora.** { *; }
+-keep class io.agora.rtc2.** { *; }
+-keep class io.agora.base.** { *; }
+-keep class io.agora.iris.** { *; }
+-keep class io.agora.common.** { *; }
+-keep class nativetracing.** { *; }
 -dontwarn io.agora.**
 
-# SVGAPlayer & Wire
--keep class com.squareup.wire.** { *; }
--keep class com.opensource.svgaplayer.** { *; }
--keep class com.opensource.svgaplayer.proto.** { *; }
+# Keep all native methods across the app and native libraries so C++ JNI calls succeed
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
 
-# Vector Icons
--keep class com.oblador.vectoricons.** { *; }
+# Keep Android audio system classes and callbacks accessed via JNI
+-keepclassmembers class * extends android.media.AudioRecord { *; }
+-keepclassmembers class * extends android.media.AudioTrack { *; }
+-keepclassmembers class * extends android.media.AudioManager { *; }
 
 # Audio / Sound / Incall Manager / Background Timer
 -keep class com.zmxv.RNSound.** { *; }
 -keep class com.goodatlas.audiorecord.** { *; }
 -keep class com.asterinet.react.bgtimer.** { *; }
 -keep class com.ineating.reactnative.incallmanager.** { *; }
+-keepclassmembers class com.ineating.reactnative.incallmanager.** { *; }
 
 # OkHttp & Socket.io
 -keep class okhttp3.** { *; }

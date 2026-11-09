@@ -174,6 +174,26 @@ export default function MeScreen() {
       onPress: () => navigation.navigate('TeamDashboard'),
     }] : []),
     {
+      id: 'family',
+      label: 'Family Guild',
+      icon: (
+        <View style={[styles.serviceIconCircle, { backgroundColor: '#F3E8FF' }]}>
+          <MaterialCommunityIcons name="shield-crown" size={26} color="#7C3AED" />
+        </View>
+      ),
+      onPress: () => navigation.navigate('Family'),
+    },
+    {
+      id: 'cpSpace',
+      label: 'CP Space',
+      icon: (
+        <View style={[styles.serviceIconCircle, { backgroundColor: '#FFE4E6' }]}>
+          <MaterialCommunityIcons name="heart-pulse" size={26} color="#E11D48" />
+        </View>
+      ),
+      onPress: () => navigation.navigate('CpSpace'),
+    },
+    {
       id: 'tasks',
       label: 'Tasks',
       icon: (

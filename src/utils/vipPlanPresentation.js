@@ -18,11 +18,21 @@ export const presentVipTier = plan => {
       }
     : null;
 
-  const badge = plan.profileBadgeConfig?.enabled !== false && (plan.profileBadgeConfig?.previewUrl || plan.profileBadgeConfig?.iconUrl || plan.profileBadgeConfig?.animationUrl)
+  const defaultBadgeAnim = Number.isInteger(level) && level >= 0 && level <= 5
+    ? `/api/vip-assets/badge/vip_badge_${level}.svga`
+    : '';
+  const defaultBadgeImg = Number.isInteger(level) && level >= 0 && level <= 5
+    ? `/api/vip-assets/badge/vip_badge_${level}.png`
+    : '';
+
+  const rawBadgeAnim = plan.profileBadgeConfig?.animationUrl || plan.heroAnimationUrl || defaultBadgeAnim;
+  const rawBadgeImg = plan.profileBadgeConfig?.previewUrl || plan.profileBadgeConfig?.iconUrl || plan.heroBadgePreviewUrl || plan.heroBadgeUrl || defaultBadgeImg;
+
+  const badge = plan.features?.enableSpecialBadge !== false && (rawBadgeAnim || rawBadgeImg)
     ? {
-        name: plan.profileBadgeConfig?.badgeName,
-        imageUrl: resolveAssetUrl(plan.profileBadgeConfig?.previewUrl || plan.profileBadgeConfig?.iconUrl),
-        animationUrl: resolveAssetUrl(plan.profileBadgeConfig?.animationUrl),
+        name: plan.profileBadgeConfig?.badgeName || plan.name || (level === 0 ? 'VIP+ Badge' : `VIP ${level} Badge`),
+        imageUrl: resolveAssetUrl(rawBadgeImg),
+        animationUrl: resolveAssetUrl(rawBadgeAnim),
       }
     : null;
 

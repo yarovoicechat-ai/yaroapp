@@ -210,7 +210,24 @@ export default function SVIPScreen() {
       >
         {planError ? <Text style={{ color: '#FCA5A5', textAlign: 'center', padding: 10 }}>{planError}</Text> : null}
         <View style={styles.mascotEmblemContainer}>
-          <AvatarWithFrame user={user} frame={currentTier.frame || { id: 'none' }} size={130} frameScale={1.85} showOnlineDot={false} />
+          <View style={styles.heroBadgeBox}>
+            {currentTier.badge?.animationUrl ? (
+              <SvgaView
+                source={currentTier.badge.animationUrl}
+                fallbackImage={currentTier.badge.imageUrl}
+                style={styles.heroBadgeSvga}
+                loops={0}
+              />
+            ) : currentTier.badge?.imageUrl ? (
+              <Image
+                source={{ uri: currentTier.badge.imageUrl }}
+                style={styles.heroBadgeImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Icon name="ribbon-outline" size={120} color="#FBBF24" />
+            )}
+          </View>
           <Text style={styles.ribbonText}>{currentTier.ribbonLabel}</Text>
         </View>
 
@@ -676,7 +693,7 @@ const styles = StyleSheet.create({
   },
   heroBadgeBox: {
     width: 170,
-    height: 145,
+    height: 160,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#F59E0B',
@@ -684,6 +701,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 16,
     elevation: 10,
+  },
+  heroBadgeSvga: {
+    width: 170,
+    height: 160,
   },
   heroBadgeImage: {
     width: 165,

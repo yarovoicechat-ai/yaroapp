@@ -8,7 +8,11 @@ import { BUNDLED_EMOJIS } from '../constants/roomEmojis';
 jest.mock('react-native-vector-icons/Ionicons', () => 'Icon');
 jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');
 jest.mock('../components/AvatarWithFrame', () => 'Avatar');
-jest.mock('../utils/cosmeticResolver', () => ({ DEFAULT_SEAT_IMAGE: 1, LOCK_SEAT_IMAGE: 2 }));
+jest.mock('../utils/cosmeticResolver', () => ({
+  DEFAULT_SEAT_IMAGE: 1,
+  LOCK_SEAT_IMAGE: 2,
+  resolveAssetUrl: url => url,
+}));
 jest.mock('../components/room/VipMicWave', () => {
   const React = require('react'), { View } = require('react-native');
   return props => React.createElement(View, null, props.children);

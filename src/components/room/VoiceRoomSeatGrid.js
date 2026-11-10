@@ -5,7 +5,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import VipMicWave from './VipMicWave';
 import IdentityDisplayName from '../identity/IdentityDisplayName';
 import AvatarWithFrame from '../AvatarWithFrame';
-import { DEFAULT_SEAT_IMAGE, LOCK_SEAT_IMAGE } from '../../utils/cosmeticResolver';
+import { DEFAULT_SEAT_IMAGE, LOCK_SEAT_IMAGE, resolveAssetUrl } from '../../utils/cosmeticResolver';
 
 const { width } = Dimensions.get('window');
 const seatNameEffect = user => user?.nameEffect || user?.effectiveIdentity?.nameEffect ||
@@ -17,25 +17,26 @@ const AnimatedSeatReaction = React.memo(function SeatReaction({ emoji, gifUrl, s
   const isLocalImage = typeof emoji === 'number';
   const effectiveGif = gifUrl || (isImageEmoji && emoji.endsWith('.gif') ? emoji : null);
 
+  const gifSource = typeof effectiveGif === 'number'
+    ? effectiveGif
+    : (typeof effectiveGif === 'string' && effectiveGif.trim() ? { uri: resolveAssetUrl(effectiveGif.trim()) } : null);
+  const imgSource = typeof emoji === 'number'
+    ? emoji
+    : (isImageEmoji ? { uri: resolveAssetUrl(emoji.trim()) } : null);
+
   return (
     <View pointerEvents="none" style={{ position: 'absolute', top: -Math.round(size * 0.16),
       width: size * 1.25, height: size * 1.25, alignItems: 'center', justifyContent: 'center',
       alignSelf: 'center', zIndex: 99999, elevation: 99999 }}>
-      {effectiveGif ? (
+      {gifSource ? (
         <Image
-          source={typeof effectiveGif === 'number' ? effectiveGif : { uri: effectiveGif }}
+          source={gifSource}
           style={{ width: size * 1.25, height: size * 1.25 }}
           resizeMode="contain"
         />
-      ) : isImageEmoji ? (
+      ) : imgSource ? (
         <Image
-          source={{ uri: emoji }}
-          style={{ width: size * 1.2, height: size * 1.2 }}
-          resizeMode="contain"
-        />
-      ) : isLocalImage ? (
-        <Image
-          source={emoji}
+          source={imgSource}
           style={{ width: size * 1.2, height: size * 1.2 }}
           resizeMode="contain"
         />

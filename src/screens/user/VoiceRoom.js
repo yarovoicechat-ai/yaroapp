@@ -428,13 +428,22 @@ export default function VoiceRoomScreen() {
           ...prev,
           [reactionSeatIndex]: {
             emoji: lastReaction.emoji,
+            gifUrl: lastReaction.gifUrl || lastReaction.emojiData?.gifUrl || (typeof lastReaction.emoji === 'string' && lastReaction.emoji.endsWith('.gif') ? lastReaction.emoji : null),
+            name: lastReaction.name || lastReaction.emojiData?.name,
+            emojiData: lastReaction.emojiData,
             id,
             timestamp: Date.now(),
           },
         }));
       }
 
-      setReactions((prev) => [...prev, { id, emoji: lastReaction.emoji, seatIndex: reactionSeatIndex }]);
+      setReactions((prev) => [...prev, {
+        id,
+        emoji: lastReaction.emoji,
+        gifUrl: lastReaction.gifUrl || lastReaction.emojiData?.gifUrl,
+        name: lastReaction.name || lastReaction.emojiData?.name,
+        seatIndex: reactionSeatIndex,
+      }]);
       setTimeout(() => {
         setReactions((prev) => prev.filter((r) => r.id !== id));
         if (reactionSeatIndex !== undefined && reactionSeatIndex !== null) {
@@ -1647,7 +1656,7 @@ export default function VoiceRoomScreen() {
   };
 
   // Handle reactions
-  const handleSendReaction = (emoji) => {
+  const handleSendReaction = (emojiOrItem) => {
     const currentUid = String(user?.userId || user?._id || user?.id || '');
     const mySeat = seats.find(
       (s) => s.user && (
@@ -1659,18 +1668,32 @@ export default function VoiceRoomScreen() {
       ? currentSeatIndex
       : (mySeat ? mySeat.seatIndex : ((isRoomOwner || contextIsOwner) && (seats?.[0]?.user || !seats?.[0]?.isLocked) ? 0 : undefined));
 
+    const isObj = typeof emojiOrItem === 'object' && emojiOrItem !== null;
+    const emojiCode = isObj ? (emojiOrItem.pngUrl || emojiOrItem.icon || emojiOrItem.code || emojiOrItem.emoji) : emojiOrItem;
+    const gifUrl = isObj ? (emojiOrItem.gifUrl || emojiOrItem.localGif) : null;
+    const emojiName = isObj ? emojiOrItem.name : null;
+
     const id = 'react-' + Date.now() + Math.random();
     if (resolvedSeatIndex !== undefined && resolvedSeatIndex !== null) {
       setSeatReactions((prev) => ({
         ...prev,
-        [resolvedSeatIndex]: { emoji, id, timestamp: Date.now() },
+        [resolvedSeatIndex]: {
+          emoji: emojiCode,
+          gifUrl,
+          name: emojiName,
+          emojiData: isObj ? emojiOrItem : null,
+          id,
+          timestamp: Date.now(),
+        },
       }));
     }
-    setReactions(prev => [...prev, { id, emoji, seatIndex: resolvedSeatIndex }]);
-    broadcastReaction(emoji, {
+    setReactions(prev => [...prev, { id, emoji: emojiCode, gifUrl, name: emojiName, seatIndex: resolvedSeatIndex }]);
+    broadcastReaction(emojiOrItem, {
       userId: currentUid,
       seatIndex: resolvedSeatIndex,
       userName: user?.name || 'Guest',
+      gifUrl,
+      name: emojiName,
     });
     setTimeout(() => {
       setReactions(prev => prev.filter(r => r.id !== id));
@@ -2092,11 +2115,26 @@ export default function VoiceRoomScreen() {
 
       {/* Floating Reaction Emojis Overlay (Audience only, seated users show on avatar) */}
       <View style={styles.floatingReactionsContainer} pointerEvents="none">
-        {reactions.filter((r) => r.seatIndex === undefined || r.seatIndex === null).map((r) => (
-          <Text key={r.id} allowFontScaling={false} style={styles.floatingEmoji}>
-            {r.emoji}
-          </Text>
-        ))}
+        {reactions.filter((r) => r.seatIndex === undefined || r.seatIndex === null).map((r) => {
+          const isImg = typeof r.emoji === 'string' && (r.emoji.startsWith('http') || r.emoji.startsWith('/'));
+          const isLocal = typeof r.emoji === 'number';
+          if (r.gifUrl || isImg || isLocal) {
+            const imgSource = r.gifUrl ? (typeof r.gifUrl === 'number' ? r.gifUrl : { uri: r.gifUrl }) : (isLocal ? r.emoji : { uri: r.emoji });
+            return (
+              <Image
+                key={r.id}
+                source={imgSource}
+                style={{ width: 44, height: 44, margin: 4 }}
+                resizeMode="contain"
+              />
+            );
+          }
+          return (
+            <Text key={r.id} allowFontScaling={false} style={styles.floatingEmoji}>
+              {r.emoji}
+            </Text>
+          );
+        })}
       </View>
 
       {/* Live Chat Stream with Floating Right Widgets (Image 1 & 2 Model) */}

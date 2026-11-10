@@ -1180,6 +1180,9 @@ export const VoiceRoomProvider = ({ children }) => {
             setLastReaction({
               id: data.id || ('react-' + Date.now() + Math.random()),
               emoji: data.emoji,
+              gifUrl: data.gifUrl || data.emojiData?.gifUrl || null,
+              name: data.name || data.emojiData?.name || null,
+              emojiData: data.emojiData || null,
               user: parsedName || 'Guest',
               userId: parsedUserId,
               seatIndex: parsedSeatIndex,
@@ -2187,7 +2190,7 @@ export const VoiceRoomProvider = ({ children }) => {
   };
 
   // Send real-time reaction via socket
-  const broadcastReaction = (emoji, optionsOrName, explicitSeatIndex = null) => {
+  const broadcastReaction = (emojiOrItem, optionsOrName, explicitSeatIndex = null) => {
     const roomId = activeRoomIdRef.current || activeRoom?.id || activeRoom?.roomId;
     const sock = socketRef.current || getSocket();
     const isObj = optionsOrName && typeof optionsOrName === 'object';
@@ -2199,10 +2202,18 @@ export const VoiceRoomProvider = ({ children }) => {
       ? optionsOrName.seatIndex
       : (explicitSeatIndex !== null ? explicitSeatIndex : currentSeatIndexRef.current);
 
-    if (sock && roomId && emoji) {
+    const isEmojiObj = typeof emojiOrItem === 'object' && emojiOrItem !== null;
+    const emojiVal = isEmojiObj ? (emojiOrItem.pngUrl || emojiOrItem.icon || emojiOrItem.code || emojiOrItem.emoji) : emojiOrItem;
+    const gifUrl = isEmojiObj ? (emojiOrItem.gifUrl || emojiOrItem.localGif) : (isObj ? optionsOrName.gifUrl : null);
+    const emojiName = isEmojiObj ? emojiOrItem.name : (isObj ? optionsOrName.name : null);
+
+    if (sock && roomId && emojiVal) {
       sock.emit('voice_room:reaction', {
         roomId,
-        emoji,
+        emoji: emojiVal,
+        gifUrl,
+        name: emojiName,
+        emojiData: isEmojiObj ? emojiOrItem : null,
         user: userName,
         userId: resolvedUserId,
         seatIndex: seatIdx,

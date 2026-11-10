@@ -540,6 +540,7 @@ export default function SVIPScreen() {
         <SvipPrivilegeModal
           visible={!!selectedPrivilege}
           privilege={selectedPrivilege}
+          styles={styles}
           onClose={() => setSelectedPrivilege(null)}
         />
       )}
@@ -548,6 +549,7 @@ export default function SVIPScreen() {
       {showHelpModal && (
         <SvipHelpModal
           visible={showHelpModal}
+          styles={styles}
           onClose={() => setShowHelpModal(false)}
         />
       )}

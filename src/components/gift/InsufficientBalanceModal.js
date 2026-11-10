@@ -37,7 +37,7 @@ export default function InsufficientBalanceModal({
             style={styles.cardGradient}
           >
             <View style={styles.iconCircle}>
-              <Text style={{ fontSize: 32 }}>💎</Text>
+              <Text style={{ fontSize: 32 }}>🪙</Text>
             </View>
 
             <Text style={styles.title}>Not Enough Diamonds</Text>
@@ -48,12 +48,12 @@ export default function InsufficientBalanceModal({
             <View style={styles.statsCard}>
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Required:</Text>
-                <Text style={styles.statRequired}>{formatCompactBalance(req)} 💎</Text>
+                <Text style={styles.statRequired}>{formatCompactBalance(req)} Coins</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Available:</Text>
-                <Text style={styles.statAvailable}>{formatCompactBalance(avail)} 💎</Text>
+                <Text style={styles.statAvailable}>{formatCompactBalance(avail)} Coins</Text>
               </View>
             </View>
 

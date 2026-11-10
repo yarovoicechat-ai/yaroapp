@@ -285,7 +285,7 @@ export default function RoomGroupPrivilegeModal({
               </LinearGradient>
 
               {/* BOTTOM ACTION BUTTON:
-                  - If not joined: Full-width Golden Yellow Join Button (99 💎 / month)
+                  - If not joined: Full-width Golden Yellow Join Button (99 Coins / month)
                   - If already joined: "Joined ✓" Status Pill (never shows Join button again) */}
               {!isRoomOwner && !isJoined ? (
                 <TouchableOpacity
@@ -303,7 +303,7 @@ export default function RoomGroupPrivilegeModal({
                     {joining ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.joinBtnText}>Join (99 💎)</Text>
+                      <Text style={styles.joinBtnText}>Join (99 Coins)</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>

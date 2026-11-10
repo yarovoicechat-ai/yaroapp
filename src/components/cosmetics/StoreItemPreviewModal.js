@@ -120,14 +120,14 @@ export default function StoreItemPreviewModal({ visible, onClose, onRecharge, it
                 <View style={styles.previewPriceValueWrap}>
                   <Icon name="diamond" size={14} color="#06B6D4" style={{ marginRight: 4 }} />
                   <Text style={styles.previewPriceValueText}>
-                    {price === 0 ? 'FREE' : `${formatCompactBalance(price)} Diamonds`}
+                    {price === 0 ? 'FREE' : `${formatCompactBalance(price)} Coins`}
                   </Text>
                 </View>
               </View>
               <View style={styles.previewBalanceCol}>
                 <Text style={styles.previewBalanceLabel}>My Balance:</Text>
                 <Text style={styles.previewBalanceValueText}>
-                  {formatCompactBalance(diamonds)} 💎
+                  {formatCompactBalance(diamonds)} Coins
                 </Text>
               </View>
             </View>
@@ -148,7 +148,7 @@ export default function StoreItemPreviewModal({ visible, onClose, onRecharge, it
                 >
                   <Icon name="bag-check" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
                   <Text style={styles.previewActionBtnText}>
-                    {purchasing ? 'Unlocking Item...' : price === 0 ? 'Unlock Free' : `Unlock for ${formatCompactBalance(price)} Diamonds`}
+                    {purchasing ? 'Unlocking Item...' : price === 0 ? 'Unlock Free' : `Unlock for ${formatCompactBalance(price)} Coins`}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -162,7 +162,7 @@ export default function StoreItemPreviewModal({ visible, onClose, onRecharge, it
                 >
                   <Icon name="wallet" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
                   <Text style={styles.previewActionBtnText}>
-                    Recharge Diamonds (Need {(price - diamonds).toLocaleString()} more)
+                    Recharge Coins (Need {(price - diamonds).toLocaleString()} more)
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>

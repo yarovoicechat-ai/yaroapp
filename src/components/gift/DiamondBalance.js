@@ -46,7 +46,7 @@ export default function DiamondBalance({
         <View style={styles.balanceRow}>
           <Text style={styles.diamondIcon}>💎</Text>
           <Text style={styles.balanceValue}>{formatCompactBalance(balance)}</Text>
-          <Text style={styles.balanceLabel}>Diamonds</Text>
+          <Text style={styles.balanceLabel}>Coins</Text>
 
           {/* Floating -X Diamonds indicator */}
           {lastDeduction > 0 && (

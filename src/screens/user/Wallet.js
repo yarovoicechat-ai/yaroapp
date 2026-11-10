@@ -174,7 +174,7 @@ const Wallet = () => {
     setPurchasingPackId(null);
     AlertService.show(
       'Payment Pending ⏳',
-      'Payment is pending. Your Diamonds will be added automatically after Google confirms the payment.',
+      'Payment is pending. Your Coins will be added automatically after Google confirms the payment.',
       'info'
     );
   }, []);
@@ -651,7 +651,7 @@ const Wallet = () => {
                     <View style={styles.packBottom}>
                       <Image source={diamondIcon} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
                       <Text style={styles.packDiamondsText}>{pack.diamonds.toLocaleString()}</Text>
-                      <Text style={styles.packDiamondsSub}>Diamonds</Text>
+                      <Text style={styles.packDiamondsSub}>Coins</Text>
                     </View>
 
                     {btnColors ? (
@@ -686,7 +686,7 @@ const Wallet = () => {
                 </View>
                 <View style={styles.infoCardTexts}>
                   <Text style={styles.infoCardTitle}>Instant Credit</Text>
-                  <Text style={styles.infoCardDesc}>Diamonds will be added instantly</Text>
+                  <Text style={styles.infoCardDesc}>Coins will be added instantly</Text>
                 </View>
               </View>
 

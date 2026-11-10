@@ -184,7 +184,7 @@ const OnboardingModal = ({ visible }) => {
       const res = await apiUtil.post('/user/complete-profile', payload);
 
       if (res.data?.success) {
-        AlertService.show('Congratulations! 🎉', 'Profile completed! You earned +100 Welcome Diamonds 💎', 'success');
+        AlertService.show('Congratulations! 🎉', 'Profile completed! You earned +100 Welcome Coins 🪙', 'success');
         await fetchUserProfile();
       } else {
         AlertService.show('Error', res.data?.message || 'Failed to complete profile', 'error');
@@ -236,7 +236,7 @@ const OnboardingModal = ({ visible }) => {
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
               <Text style={styles.headerSub}>Set up your profile now & claim </Text>
               <Image source={diamondIcon} style={{ width: 16, height: 16, marginHorizontal: 2 }} resizeMode="contain" />
-              <Text style={styles.highlightText}>+100 FREE Diamonds!</Text>
+              <Text style={styles.highlightText}>+100 FREE Coins!</Text>
             </View>
           </View>
 
@@ -380,7 +380,7 @@ const OnboardingModal = ({ visible }) => {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Text style={styles.submitBtnText}>Save & Claim +100 💎</Text>
+                  <Text style={styles.submitBtnText}>Save & Claim +100 Coins</Text>
                   <Icon name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 8 }} />
                 </>
               )}

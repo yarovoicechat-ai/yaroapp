@@ -304,7 +304,7 @@ const VIPScreen = () => {
           >
             <MaterialCommunityIcons name="crown" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
             <Text style={styles.activateText}>
-              Activate {currentTierData.badge} ({pkgData.diamonds} 💎)
+              Activate {currentTierData.badge} ({pkgData.diamonds} Coins)
             </Text>
           </LinearGradient>
         </TouchableOpacity>

@@ -495,7 +495,7 @@ export default function MeScreen() {
                   style={[styles.levelBadgeMini, { backgroundColor: '#F59E0B' }]}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.levelBadgeMiniText}>💎 Lv.{user?.wealthLevel ?? user?.level ?? '—'}</Text>
+                  <Text style={styles.levelBadgeMiniText}>Lv.{user?.wealthLevel ?? user?.level ?? '—'}</Text>
                 </TouchableOpacity>
                 {/* Charm Level */}
                 <TouchableOpacity

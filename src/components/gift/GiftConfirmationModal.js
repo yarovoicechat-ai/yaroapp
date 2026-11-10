@@ -68,7 +68,7 @@ export default function GiftConfirmationModal({
               <View style={styles.giftDetails}>
                 <Text style={styles.giftName}>{gift.name}</Text>
                 <Text style={styles.giftPrice}>
-                  💎 {formatCompactBalance(singlePrice)} Diamonds each
+                  {formatCompactBalance(singlePrice)} Coins each
                 </Text>
               </View>
             </View>
@@ -88,7 +88,7 @@ export default function GiftConfirmationModal({
               <View style={[styles.row, styles.highlightRow]}>
                 <Text style={styles.highlightLabel}>Total Cost:</Text>
                 <Text style={styles.highlightValue}>
-                  💎 {formatCompactBalance(cost)} Diamonds
+                  {formatCompactBalance(cost)} Coins
                 </Text>
               </View>
 
@@ -96,13 +96,13 @@ export default function GiftConfirmationModal({
 
               <View style={styles.row}>
                 <Text style={styles.subLabel}>Current Balance:</Text>
-                <Text style={styles.subValue}>💎 {formatCompactBalance(currentBalance)} Diamonds</Text>
+                <Text style={styles.subValue}>{formatCompactBalance(currentBalance)} Coins</Text>
               </View>
 
               <View style={styles.row}>
                 <Text style={styles.subLabel}>Remaining Balance:</Text>
                 <Text style={[styles.subValue, { color: '#10B981' }]}>
-                  💎 {formatCompactBalance(remaining)} Diamonds
+                  {formatCompactBalance(remaining)} Coins
                 </Text>
               </View>
             </View>

@@ -195,7 +195,7 @@ const FanClubScreen = () => {
                 style={styles.joinCtaGradient}
               >
                 <Ionicons name="heart" size={16} color="#78350F" style={{ marginRight: 6 }} />
-                <Text style={styles.joinCtaText}>Join Fan Club (99 💎/mo)</Text>
+                <Text style={styles.joinCtaText}>Join Fan Club (99 Coins/mo)</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}

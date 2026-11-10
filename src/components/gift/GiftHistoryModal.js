@@ -110,7 +110,7 @@ export default function GiftHistoryModal({ visible, onClose }) {
             {isSent ? '-' : '+'}
             {formatCompactBalance(item.totalDiamonds ?? item.totalPrice ?? 0)}
           </Text>
-          <Text style={styles.diamondsUnit}>💎 Diamonds</Text>
+          <Text style={styles.diamondsUnit}>Coins</Text>
         </View>
       </View>
     );

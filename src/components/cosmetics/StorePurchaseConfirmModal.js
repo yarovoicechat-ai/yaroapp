@@ -41,7 +41,7 @@ export default function StorePurchaseConfirmModal({
             <Text style={styles.modalPriceLabel}>Cost:</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Icon name="diamond" size={16} color="#06B6D4" style={{ marginRight: 4 }} />
-              <Text style={styles.modalPriceValue}>{price === 0 ? 'FREE' : `${price.toLocaleString()} Diamonds`}</Text>
+              <Text style={styles.modalPriceValue}>{price === 0 ? 'FREE' : `${price.toLocaleString()} Coins`}</Text>
             </View>
           </View>
 

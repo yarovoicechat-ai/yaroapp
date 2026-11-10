@@ -193,7 +193,7 @@ export default function ProfileScreen() {
                 style={[styles.levelBadge, { backgroundColor: '#F59E0B' }]}
                 activeOpacity={0.8}
               >
-                <Text style={styles.levelBadgeText}>💎 Lv.{user?.wealthLevel ?? user?.level ?? '—'}</Text>
+                <Text style={styles.levelBadgeText}>Lv.{user?.wealthLevel ?? user?.level ?? '—'}</Text>
               </TouchableOpacity>
               {/* Charm Level */}
               <TouchableOpacity
@@ -252,7 +252,7 @@ export default function ProfileScreen() {
                 style={[styles.svipTag, { backgroundColor: '#0284C7' }]}
                 activeOpacity={0.8}
               >
-                <Text style={styles.svipTagText}>💎 Lv.{user?.wealthLevel ?? user?.level ?? 1}</Text>
+                <Text style={styles.svipTagText}>Lv.{user?.wealthLevel ?? user?.level ?? 1}</Text>
               </TouchableOpacity>
 
               {/* Charm Level */}
@@ -447,7 +447,7 @@ export default function ProfileScreen() {
                 style={styles.levelCardHalf}
               >
                 <View style={styles.levelCardTop}>
-                  <Text style={{ fontSize: 24 }}>💎</Text>
+                  <Text style={{ fontSize: 24 }}>🪙</Text>
                   <View style={[styles.miniBadge, { backgroundColor: '#F59E0B' }]}>
                     <Text style={styles.miniBadgeText}>Lv.{user?.wealthLevel ?? user?.level ?? '—'}</Text>
                   </View>

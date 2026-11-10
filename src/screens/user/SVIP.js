@@ -73,11 +73,12 @@ export default function SVIPScreen() {
 
   const refreshPlans = () => { setRefreshing(true); setReloadKey(previous => previous + 1); };
   const [selectedPrivilege, setSelectedPrivilege] = useState(null);
+  const [selectedAssetPreview, setSelectedAssetPreview] = useState(null);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
 
   const currentTier = tiers.find(tier => tier.id === activeTierId) || tiers[0];
-  const userDiamonds = Number(user?.diamonds || 0);
+  const userCoins = Number(user?.coins ?? user?.diamonds ?? 0);
   const tierPrivileges = currentTier?.privileges || [];
 
   if (!currentTier) return (
@@ -92,10 +93,10 @@ export default function SVIPScreen() {
   );
 
   const handlePurchase = async () => {
-    if (userDiamonds < currentTier.price) {
+    if (userCoins < currentTier.price) {
       AlertService.show(
-        'Insufficient Diamonds',
-        `You need ${formatCompactBalance(currentTier.price)} 💎 to activate ${currentTier.name}.`,
+        'Insufficient Coins',
+        `You need ${formatCompactBalance(currentTier.price)} Coins to activate ${currentTier.name}.`,
         'error'
       );
       navigation.navigate('Wallet');
@@ -220,18 +221,250 @@ export default function SVIPScreen() {
             contentContainerStyle={styles.previewCardsScrollContent}
             style={styles.previewCardsScrollView}
           >
-            {currentTier.entry && <View style={styles.previewCard}>
-              <View style={styles.previewCardInner}>
-                <SvgaView source={currentTier.entry.animationUrl} fallbackImage={currentTier.entry.imageUrl} style={{ width: 125, height: 110 }} loops={0} />
-                <Text style={styles.previewCardLabel}>VIP Entry</Text>
-              </View>
-            </View>}
-            {currentTier.frame && <View style={styles.previewCard}>
-              <View style={styles.previewCardInner}>
-                <AvatarWithFrame user={user} frame={currentTier.frame} size={90} showOnlineDot={false} />
-                <Text style={styles.previewCardLabel}>VIP Frame</Text>
-              </View>
-            </View>}
+            {currentTier.entry && (
+              <TouchableOpacity
+                style={styles.previewCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedAssetPreview({
+                  title: `${currentTier.name} VIP Entry`,
+                  animationUrl: currentTier.entry.animationUrl,
+                  imageUrl: currentTier.entry.imageUrl || currentTier.entry.previewUrl,
+                })}
+              >
+                <View style={styles.previewCardInner}>
+                  {currentTier.entry.imageUrl || currentTier.entry.previewUrl ? (
+                    <Image
+                      source={{ uri: currentTier.entry.imageUrl || currentTier.entry.previewUrl }}
+                      style={{ width: 110, height: 95 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Icon name="car-sport" size={48} color="#FBBF24" />
+                  )}
+                  <View style={styles.previewPlayPill}>
+                    <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.previewPlayText}>Preview</Text>
+                  </View>
+                  <Text style={styles.previewCardLabel}>VIP Entry</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            {currentTier.frame && (
+              <TouchableOpacity
+                style={styles.previewCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedAssetPreview({
+                  title: `${currentTier.name} VIP Frame`,
+                  animationUrl: currentTier.frame.animationUrl,
+                  imageUrl: currentTier.frame.imageUrl || currentTier.frame.previewUrl,
+                })}
+              >
+                <View style={styles.previewCardInner}>
+                  <AvatarWithFrame user={user} frame={currentTier.frame} size={82} showOnlineDot={false} />
+                  <View style={styles.previewPlayPill}>
+                    <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.previewPlayText}>Preview</Text>
+                  </View>
+                  <Text style={styles.previewCardLabel}>VIP Frame</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            {currentTier.badge && (
+              <TouchableOpacity
+                style={styles.previewCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedAssetPreview({
+                  title: `${currentTier.name} Badge`,
+                  animationUrl: currentTier.badge.animationUrl,
+                  imageUrl: currentTier.badge.imageUrl,
+                })}
+              >
+                <View style={styles.previewCardInner}>
+                  {currentTier.badge.imageUrl ? (
+                    <Image
+                      source={{ uri: currentTier.badge.imageUrl }}
+                      style={{ width: 80, height: 80 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Icon name="ribbon-outline" size={44} color="#FBBF24" />
+                  )}
+                  <View style={styles.previewPlayPill}>
+                    <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.previewPlayText}>Preview</Text>
+                  </View>
+                  <Text style={styles.previewCardLabel}>VIP Badge</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            {currentTier.chatBubble && (
+              <TouchableOpacity
+                style={styles.previewCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedAssetPreview({
+                  title: `${currentTier.name} Bubble`,
+                  animationUrl: currentTier.chatBubble.animationUrl,
+                  imageUrl: currentTier.chatBubble.imageUrl,
+                })}
+              >
+                <View style={styles.previewCardInner}>
+                  {currentTier.chatBubble.imageUrl ? (
+                    <Image
+                      source={{ uri: currentTier.chatBubble.imageUrl }}
+                      style={{ width: 95, height: 75 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Icon name="chatbubble-ellipses" size={44} color="#FBBF24" />
+                  )}
+                  <View style={styles.previewPlayPill}>
+                    <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.previewPlayText}>Preview</Text>
+                  </View>
+                  <Text style={styles.previewCardLabel}>Chat Bubble</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            {currentTier.tag && (
+              <TouchableOpacity
+                style={styles.previewCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedAssetPreview({
+                  title: `${currentTier.name} Tag`,
+                  animationUrl: currentTier.tag.animationUrl,
+                  imageUrl: currentTier.tag.imageUrl,
+                })}
+              >
+                <View style={styles.previewCardInner}>
+                  {currentTier.tag.imageUrl ? (
+                    <Image
+                      source={{ uri: currentTier.tag.imageUrl }}
+                      style={{ width: 85, height: 60 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Icon name="pricetag" size={44} color="#FBBF24" />
+                  )}
+                  <View style={styles.previewPlayPill}>
+                    <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.previewPlayText}>Preview</Text>
+                  </View>
+                  <Text style={styles.previewCardLabel}>VIP Tag</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            {currentTier.micWave && (
+              <TouchableOpacity
+                style={styles.previewCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedAssetPreview({
+                  title: `${currentTier.name} Mic Wave`,
+                  animationUrl: currentTier.micWave.animationUrl,
+                  imageUrl: currentTier.micWave.imageUrl,
+                })}
+              >
+                <View style={styles.previewCardInner}>
+                  {currentTier.micWave.imageUrl ? (
+                    <Image
+                      source={{ uri: currentTier.micWave.imageUrl }}
+                      style={{ width: 85, height: 85 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Icon name="mic" size={44} color="#FBBF24" />
+                  )}
+                  <View style={styles.previewPlayPill}>
+                    <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.previewPlayText}>Preview</Text>
+                  </View>
+                  <Text style={styles.previewCardLabel}>Mic Wave</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            {currentTier.profileCard && (
+              <TouchableOpacity
+                style={styles.previewCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedAssetPreview({
+                  title: `${currentTier.name} Profile Card`,
+                  animationUrl: currentTier.profileCard.animationUrl,
+                  imageUrl: currentTier.profileCard.imageUrl,
+                })}
+              >
+                <View style={styles.previewCardInner}>
+                  {currentTier.profileCard.imageUrl ? (
+                    <Image
+                      source={{ uri: currentTier.profileCard.imageUrl }}
+                      style={{ width: 95, height: 85 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Icon name="person" size={44} color="#FBBF24" />
+                  )}
+                  <View style={styles.previewPlayPill}>
+                    <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.previewPlayText}>Preview</Text>
+                  </View>
+                  <Text style={styles.previewCardLabel}>Profile Card</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            {currentTier.giftBroadcast && (
+              <TouchableOpacity
+                style={styles.previewCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedAssetPreview({
+                  title: `${currentTier.name} Broadcast`,
+                  animationUrl: currentTier.giftBroadcast.animationUrl,
+                  imageUrl: currentTier.giftBroadcast.imageUrl,
+                })}
+              >
+                <View style={styles.previewCardInner}>
+                  {currentTier.giftBroadcast.imageUrl ? (
+                    <Image
+                      source={{ uri: currentTier.giftBroadcast.imageUrl }}
+                      style={{ width: 95, height: 80 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Icon name="gift" size={44} color="#FBBF24" />
+                  )}
+                  <View style={styles.previewPlayPill}>
+                    <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.previewPlayText}>Preview</Text>
+                  </View>
+                  <Text style={styles.previewCardLabel}>Gift Broadcast</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            {currentTier.vipId && (
+              <TouchableOpacity
+                style={styles.previewCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedAssetPreview({
+                  title: `${currentTier.name} VIP ID`,
+                  animationUrl: currentTier.vipId.animationUrl,
+                  imageUrl: currentTier.vipId.imageUrl,
+                })}
+              >
+                <View style={styles.previewCardInner}>
+                  {currentTier.vipId.imageUrl ? (
+                    <Image
+                      source={{ uri: currentTier.vipId.imageUrl }}
+                      style={{ width: 85, height: 70 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Icon name="finger-print" size={44} color="#FBBF24" />
+                  )}
+                  <View style={styles.previewPlayPill}>
+                    <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.previewPlayText}>Preview</Text>
+                  </View>
+                  <Text style={styles.previewCardLabel}>VIP ID</Text>
+                </View>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
 
@@ -274,7 +507,7 @@ export default function SVIPScreen() {
         <View style={styles.priceCol}>
           <Text style={styles.priceSub}>Price</Text>
           <Text style={styles.priceMain}>
-            {formatCompactBalance(currentTier.price)} 💎
+            {formatCompactBalance(currentTier.price)} Coins
             <Text style={styles.priceDuration}> / {currentTier.durationDays || 30}d</Text>
           </Text>
         </View>
@@ -315,6 +548,38 @@ export default function SVIPScreen() {
           visible={showHelpModal}
           onClose={() => setShowHelpModal(false)}
         />
+      )}
+
+      {/* SVGA Full Preview Modal */}
+      {selectedAssetPreview && (
+        <Modal
+          visible={!!selectedAssetPreview}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSelectedAssetPreview(null)}
+        >
+          <View style={styles.assetPreviewOverlay}>
+            <View style={styles.assetPreviewCard}>
+              <View style={styles.assetPreviewHeader}>
+                <Text style={styles.assetPreviewTitle}>{selectedAssetPreview.title}</Text>
+                <TouchableOpacity onPress={() => setSelectedAssetPreview(null)} style={styles.assetPreviewCloseBtn}>
+                  <Icon name="close" size={20} color="#E2E8F0" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.assetPreviewContent}>
+                <SvgaView
+                  source={selectedAssetPreview.animationUrl}
+                  fallbackImage={selectedAssetPreview.imageUrl}
+                  style={{ width: 260, height: 240 }}
+                  loops={0}
+                />
+              </View>
+              <TouchableOpacity style={styles.assetPreviewDoneBtn} onPress={() => setSelectedAssetPreview(null)}>
+                <Text style={styles.assetPreviewDoneText}>Close Preview</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -774,5 +1039,85 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  previewPlayPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.85)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  previewPlayText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  assetPreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.82)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  assetPreviewCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#181109',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
+    padding: 18,
+    alignItems: 'center',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  assetPreviewHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  assetPreviewTitle: {
+    color: '#FDE047',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  assetPreviewCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  assetPreviewContent: {
+    width: '100%',
+    height: 240,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 16,
+  },
+  assetPreviewDoneBtn: {
+    width: '100%',
+    backgroundColor: '#F59E0B',
+    paddingVertical: 10,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  assetPreviewDoneText: {
+    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

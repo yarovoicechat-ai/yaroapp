@@ -109,7 +109,7 @@ export default function GiftQuickSend({
           )}
           <View style={styles.infoCol}>
             <Text style={styles.giftName} numberOfLines={1}>{gift.name}</Text>
-            <Text style={styles.costText}>💎 {totalDiamonds.toLocaleString()}</Text>
+            <Text style={styles.costText}>{totalDiamonds.toLocaleString()} Coins</Text>
           </View>
         </View>
 

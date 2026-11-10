@@ -288,8 +288,10 @@ const Wallet = () => {
       setPurchasingPackId(null);
 
       const errStr = typeof err === 'string' ? err : JSON.stringify(err || {});
-      const isUserCancel = err?.code === 'E_USER_CANCELLED' || errStr.toLowerCase().includes('cancel');
-      const isDeveloperSigningError = err?.code === 'developer-error' || errStr.toLowerCase().includes('signed correctly');
+      const errMsg = err?.message || String(err || '');
+      const isUserCancel = err?.code === 'E_USER_CANCELLED' || errMsg.toLowerCase().includes('cancel') || errStr.toLowerCase().includes('cancel');
+      const isDeveloperSigningError = err?.code === 'developer-error' || err?.code === 'E_DEVELOPER_ERROR' || errMsg.toLowerCase().includes('signed correctly') || errMsg.toLowerCase().includes('developer');
+      const isItemUnavailable = err?.code === 'E_ITEM_UNAVAILABLE' || errMsg.toLowerCase().includes('item_unavailable') || errMsg.toLowerCase().includes('unavailable on google play');
       const isAlreadyOwned = err?.code === 'E_ALREADY_OWNED' || 
                              errStr.toLowerCase().includes('already own') ||
                              errStr.toLowerCase().includes('already_owned');
@@ -301,10 +303,10 @@ const Wallet = () => {
           'info'
         );
         await BillingService.restorePurchases(verifyPurchaseWithBackend);
-      } else if (isDeveloperSigningError) {
+      } else if (isDeveloperSigningError || isItemUnavailable) {
         AlertService.show(
-          'Play Console Upload Required 📲',
-          'Google Play requires this build to be uploaded to Google Play Console under Internal Testing track.\n\nAfter uploading app-release.apk to Internal Testing, install the app via the Play Store test link to enable test purchases.',
+          'Play Console Setup Required 📲',
+          'Google Play has not activated this product for this test device yet.\n\nTo enable test purchases:\n1. Upload this app-release.apk to Play Console (Internal Testing track).\n2. Add your Google account under License Testing.\n3. Make sure the In-app product status is "Active".',
           'error'
         );
       } else if (!isUserCancel) {

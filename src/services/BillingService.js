@@ -144,13 +144,9 @@ class BillingService {
       let cachedDetails = this.cachedProducts[productId];
       if (!cachedDetails || !(cachedDetails.displayPrice || cachedDetails.localizedPrice)) {
         try {
-          await this.getProducts();
+          await this.queryProducts();
           cachedDetails = this.cachedProducts[productId];
         } catch (_) {}
-      }
-
-      if (!cachedDetails || !(cachedDetails.displayPrice || cachedDetails.localizedPrice)) {
-        throw new Error('This package is unavailable on Google Play. Please try again later.');
       }
 
       const offerToken = cachedDetails?.oneTimePurchaseOfferDetailsAndroid?.[0]?.offerToken || 
@@ -171,6 +167,7 @@ class BillingService {
         type: 'in-app',
       };
 
+      console.log(`[GP-BILLING] Invoking requestPurchase with params:`, JSON.stringify(purchaseParams));
       const result = await requestPurchase(purchaseParams);
       console.log(`[GP-BILLING] requestPurchase RESULT:`, result ? 'SUCCESS' : 'PENDING_OR_SUBMITTED');
       return result;

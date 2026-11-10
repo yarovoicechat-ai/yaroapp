@@ -28,6 +28,7 @@ function AvatarWithFrame({
   frame,
   rank,
   size = 80,
+  frameScale: propFrameScale,
   showOnlineDot = true,
   isOnline = true,
   style,
@@ -230,9 +231,10 @@ function AvatarWithFrame({
   };
 
   // Keep the user's avatar at exactly `size`; only the frame artwork grows
-  // around it. Asset scale may be supplied as a ratio (1.4) or a percentage
-  // (140) by the panel/API. The resulting overlay always tracks avatar size.
+  // around it. Asset scale may be supplied as a ratio (1.75) or a percentage
+  // (175%) by the panel/API or via the frameScale prop. The resulting overlay always tracks avatar size.
   const configuredFrameScale =
+    propFrameScale ??
     uploadedFrame?.frameScale ??
     uploadedFrame?.metadata?.frameScale ??
     resolvedFrame?.frameScale ??
@@ -245,8 +247,8 @@ function AvatarWithFrame({
       ? parsedFrameScale / 100
       : parsedFrameScale;
   const frameScale = Number.isFinite(normalizedFrameScale) && normalizedFrameScale > 0
-    ? Math.min(2.5, Math.max(0.6, normalizedFrameScale))
-    : 1.42;
+    ? Math.min(3.2, Math.max(0.6, normalizedFrameScale))
+    : 1.75;
   const frameSize = Math.max(1, Math.round(size * frameScale));
 
   return (

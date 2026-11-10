@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   AppState,
+  Image,
+  Modal,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -208,7 +210,7 @@ export default function SVIPScreen() {
       >
         {planError ? <Text style={{ color: '#FCA5A5', textAlign: 'center', padding: 10 }}>{planError}</Text> : null}
         <View style={styles.mascotEmblemContainer}>
-          <AvatarWithFrame user={user} frame={currentTier.frame || { id: 'none' }} size={110} showOnlineDot={false} />
+          <AvatarWithFrame user={user} frame={currentTier.frame || { id: 'none' }} size={130} frameScale={1.85} showOnlineDot={false} />
           <Text style={styles.ribbonText}>{currentTier.ribbonLabel}</Text>
         </View>
 
@@ -260,7 +262,7 @@ export default function SVIPScreen() {
                 })}
               >
                 <View style={styles.previewCardInner}>
-                  <AvatarWithFrame user={user} frame={currentTier.frame} size={82} showOnlineDot={false} />
+                  <AvatarWithFrame user={user} frame={currentTier.frame} size={80} frameScale={1.85} showOnlineDot={false} />
                   <View style={styles.previewPlayPill}>
                     <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
                     <Text style={styles.previewPlayText}>Preview</Text>

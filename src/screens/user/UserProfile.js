@@ -45,49 +45,50 @@ const HONOR_MEDALS = [
   { id: 'm8', name: 'Red Seal', icon: 'verified', type: 'mat', color: '#EF4444' },
 ];
 
-// 2. Default Top Gifting Mutual Friends (Matching Mockup)
-const DEFAULT_FRIENDS = [
+// 2. Built-in Assets & Tiers for Medal Stage Modal
+const MEDAL_ASSETS = {
+  tier10m: require('../../assets/medals/medal_tier_10m.png'),
+  tier40m: require('../../assets/medals/medal_tier_40m.png'),
+  tier200m: require('../../assets/medals/medal_tier_200m.png'),
+  podium: require('../../assets/medals/medal_podium.png'),
+  tierIcon10m: require('../../assets/medals/tier_icon_10m.png'),
+  tierIcon40m: require('../../assets/medals/tier_icon_40m.png'),
+  tierIcon200m: require('../../assets/medals/tier_icon_200m.png'),
+};
+
+const MEDAL_STAGE_TIERS = [
   {
-    id: 'f1',
-    name: '♡ Pooja ♡',
-    avatar: 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-    days: 22,
-    diamonds: '24.1k',
-    target: '50k',
-    progress: 0.48,
-    status: 'In Voice Room',
-    color1: '#C084FC',
-    color2: '#9333EA',
-    cardBg: '#FAF5FF',
-    borderColor: '#E9D5FF',
+    tierId: '10m',
+    title: 'Received Gifts',
+    badgeLabel: '10M Received',
+    subTitle: '10000000 diamonds of gifts received',
+    current: 0,
+    target: 10000000,
+    need: 'Need: 10000000',
+    bigImage: MEDAL_ASSETS.tier10m,
+    milestoneIcon: MEDAL_ASSETS.tierIcon10m,
   },
   {
-    id: 'f2',
-    name: 'JANU',
-    avatar: 'https://api.yaroapp.in/uploads/avatars/male_default.webp',
-    days: 41,
-    diamonds: '38.5k',
-    target: '50k',
-    progress: 0.77,
-    status: 'In Voice Room',
-    color1: '#38BDF8',
-    color2: '#0284C7',
-    cardBg: '#F0F9FF',
-    borderColor: '#BAE6FD',
+    tierId: '40m',
+    title: '40M Received',
+    badgeLabel: '40M Received',
+    subTitle: '40000000 diamonds of gifts received',
+    current: 0,
+    target: 40000000,
+    need: 'Need: 40000000',
+    bigImage: MEDAL_ASSETS.tier40m,
+    milestoneIcon: MEDAL_ASSETS.tierIcon40m,
   },
   {
-    id: 'f3',
-    name: 'Laddu ♡',
-    avatar: 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-    days: 46,
-    diamonds: '46.8k',
-    target: '50k',
-    progress: 0.94,
-    status: 'In Voice Room',
-    color1: '#F472B6',
-    color2: '#E11D48',
-    cardBg: '#FFF1F2',
-    borderColor: '#FECDD3',
+    tierId: '200m',
+    title: '200M Received',
+    badgeLabel: '200M Received',
+    subTitle: '200000000 diamonds of gifts received (Sabse Bada Target)',
+    current: 0,
+    target: 200000000,
+    need: 'Need: 200000000',
+    bigImage: MEDAL_ASSETS.tier200m,
+    milestoneIcon: MEDAL_ASSETS.tierIcon200m,
   },
 ];
 
@@ -230,6 +231,15 @@ export default function UserProfileScreen() {
   const [followLoading, setFollowLoading] = useState(false);
   const [callingInProgress, setCallingInProgress] = useState(false);
 
+  // Medal Target & Milestone Modal State
+  const [showMedalModal, setShowMedalModal] = useState(false);
+  const [activeMedalTierIndex, setActiveMedalTierIndex] = useState(0);
+
+  const handleOpenMedalModal = (tierIdx = 0) => {
+    setActiveMedalTierIndex(tierIdx);
+    setShowMedalModal(true);
+  };
+
   useEffect(() => {
     const fetchUserById = async () => {
       const uid =
@@ -283,35 +293,39 @@ export default function UserProfileScreen() {
         identity.displayId ||
         raw.userId ||
         fallbackId ||
-        '1000000002',
-      name: raw.name || raw.hostName || raw.userName || 'Black',
+        '',
+      name: raw.name || raw.hostName || raw.userName || 'User',
       avatar: raw.avatar || raw.coverImage || raw.image || null,
-      country: raw.country || { flag: '🇬🇧', name: 'United Kingdom' },
-      isVerified: Boolean(raw.isProfileVerified || raw.isVerified !== false),
-      roleBadgeText: raw.roleBadgeText || raw.verifiedTitle || 'Country Manager',
-      bio: raw.bio || raw.about || 'Owner of ✔ D A B H A I M A R T I C L U B 🔥',
+      country: raw.country || null,
+      isVerified: Boolean(raw.isProfileVerified || raw.isVerified || raw.isOfficial),
+      roleBadgeText: raw.roleBadgeText || (raw.isOfficial ? 'Official' : ''),
+      bio: raw.bio || raw.about || '',
       followersCount: Number(
-        raw.followersCount ?? (Array.isArray(raw.followers) ? raw.followers.length : 816)
+        raw.followersCount ?? (Array.isArray(raw.followers) ? raw.followers.length : 0)
       ),
       followingCount: Number(
-        raw.followingCount ?? (Array.isArray(raw.following) ? raw.following.length : 251)
+        raw.followingCount ?? (Array.isArray(raw.following) ? raw.following.length : 0)
       ),
-      visitorsCount: Number(raw.visitorsCount ?? 1300),
-      svipLevel: Number(raw.svipLevel || 1),
-      wealthLevel: Number(raw.wealthLevel || 15),
-      charmLevel: Number(raw.charmLevel || 15),
-      family: family || { name: 'BASTI AGENCY', level: 25, memberCount: 156000 },
-      cpPartner: cpPartner || { name: 'Pooja', partnerName: 'Anurag', level: 3 },
-      featuredFriends: Array.isArray(raw.featuredFriends) && raw.featuredFriends.length > 0
-        ? raw.featuredFriends
-        : DEFAULT_FRIENDS,
-      topSupporters: Array.isArray(raw.topSupporters) && raw.topSupporters.length > 0
-        ? raw.topSupporters
-        : [
-            { id: 's1', name: 'VIP Supporter 1', rank: 1, avatar: null },
-            { id: 's2', name: 'VIP Supporter 2', rank: 2, avatar: null },
-            { id: 's3', name: 'VIP Supporter 3', rank: 3, avatar: null },
-          ],
+      visitorsCount: Number(raw.visitorsCount ?? 0),
+      svipLevel: Number(raw.svipLevel || 0),
+      wealthLevel: Number(raw.wealthLevel || 1),
+      charmLevel: Number(raw.charmLevel || 1),
+      showFamily: Boolean(raw.showFamily && family),
+      family: family,
+      showCp: Boolean(raw.showCp && cpPartner),
+      cpPartner: cpPartner,
+      featuredFriends: Array.isArray(raw.featuredFriends) ? raw.featuredFriends : [],
+      topSupporters: Array.isArray(raw.topSupporters) ? raw.topSupporters : [],
+      showcase: raw.showcase || {
+        badges: [],
+        badgesCount: 0,
+        vehicles: [],
+        vehiclesCount: 0,
+        frames: [],
+        framesCount: 0,
+        gifts: [],
+        giftsCount: 0,
+      },
       currentRoomId: rawCurrentRoom,
       currentRoomTitle: raw.currentRoomTitle || (rawCurrentRoom ? `${raw.name || 'User'}'s Room` : ''),
       isInRoom: Boolean(rawCurrentRoom),
@@ -533,13 +547,17 @@ export default function UserProfileScreen() {
 
           {/* User Name + Flag + Gold Verified Badge */}
           <View style={styles.nameRow}>
-            <Text style={styles.countryFlagText}>
-              {typeof targetUser.country === 'object' ? targetUser.country?.flag || '🇬🇧' : targetUser.country || '🇬🇧'}
-            </Text>
+            {Boolean(targetUser.country) && (
+              <Text style={styles.countryFlagText}>
+                {typeof targetUser.country === 'object' ? targetUser.country?.flag || '🌍' : targetUser.country}
+              </Text>
+            )}
             <Text style={styles.userNameText} numberOfLines={1}>
-              {targetUser.name || 'Black'}
+              {targetUser.name || 'User'}
             </Text>
-            <MaterialIcons name="verified" size={19} color="#F59E0B" style={styles.verifiedCheck} />
+            {Boolean(targetUser.isVerified) && (
+              <MaterialIcons name="verified" size={19} color="#F59E0B" style={styles.verifiedCheck} />
+            )}
           </View>
 
           {/* YARO ID Row */}
@@ -554,59 +572,67 @@ export default function UserProfileScreen() {
             <Icon name="copy-outline" size={13} color="#D1D5DB" style={{ marginLeft: 5 }} />
           </TouchableOpacity>
 
-          {/* Role Badge: ✔ Country Manager */}
-          <View style={styles.roleBadgeRow}>
-            <MaterialCommunityIcons
-              name="shield-check"
-              size={14}
-              color="#F59E0B"
-              style={{ marginRight: 4 }}
-            />
-            <Text style={styles.roleBadgeText}>
-              {targetUser.roleBadgeText || 'Country Manager'}
-            </Text>
-          </View>
+          {/* Role Badge */}
+          {Boolean(targetUser.roleBadgeText) && (
+            <View style={styles.roleBadgeRow}>
+              <MaterialCommunityIcons
+                name="shield-check"
+                size={14}
+                color="#F59E0B"
+                style={{ marginRight: 4 }}
+              />
+              <Text style={styles.roleBadgeText}>
+                {targetUser.roleBadgeText}
+              </Text>
+            </View>
+          )}
 
-          {/* 5 Status Pill Badges Row */}
+          {/* Status Pill Badges Row */}
           <View style={styles.pillBadgesRow}>
-            <LinearGradient
-              colors={['#FDE68A', '#F59E0B', '#D97706']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.svipPill}
-            >
-              <Text style={styles.svipPillText}>SVIP {targetUser.svipLevel || 1}</Text>
-            </LinearGradient>
+            {targetUser.svipLevel > 0 && (
+              <LinearGradient
+                colors={['#FDE68A', '#F59E0B', '#D97706']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.svipPill}
+              >
+                <Text style={styles.svipPillText}>SVIP {targetUser.svipLevel}</Text>
+              </LinearGradient>
+            )}
 
-            <View style={styles.nicknamePill}>
-              <Text style={styles.nicknamePillText}>{targetUser.name || 'Black'}</Text>
-            </View>
+            {Boolean(targetUser.name) && (
+              <View style={styles.nicknamePill}>
+                <Text style={styles.nicknamePillText}>{targetUser.name}</Text>
+              </View>
+            )}
 
-            <View style={styles.officialPill}>
-              <Text style={styles.officialPillText}>OFFICIAL</Text>
-            </View>
+            {Boolean(targetUser.isVerified) && (
+              <View style={styles.officialPill}>
+                <Text style={styles.officialPillText}>OFFICIAL</Text>
+              </View>
+            )}
 
             <View style={styles.wealthLevelPill}>
               <Text style={styles.wealthLevelPillText}>
-                Lev. {targetUser.wealthLevel || 15}
+                Lev. {targetUser.wealthLevel || 1}
               </Text>
             </View>
 
             <View style={styles.charmLevelPill}>
               <Text style={styles.charmLevelPillText}>
-                Lev. {targetUser.charmLevel || 15}
+                Lev. {targetUser.charmLevel || 1}
               </Text>
             </View>
           </View>
 
-          {/* 8 Honor Medals (Rendered as individual interactive badges) */}
+          {/* 8 Honor Medals (Tapping opens the Target & Milestone preview modal) */}
           <View style={styles.honorMedalsRow}>
             {HONOR_MEDALS.map((medal, mIdx) => (
               <React.Fragment key={medal.id}>
                 {mIdx === 3 && <View style={styles.medalDividerLine} />}
                 <TouchableOpacity
                   style={styles.honorMedalItem}
-                  onPress={() => navigation.navigate('Medal')}
+                  onPress={() => handleOpenMedalModal(mIdx % 3)}
                   activeOpacity={0.8}
                 >
                   <LinearGradient
@@ -636,7 +662,7 @@ export default function UserProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.statNum}>
-                {formatCompactBalance(targetUser.followersCount || 816)}
+                {formatCompactBalance(targetUser.followersCount || 0)}
               </Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
@@ -649,7 +675,7 @@ export default function UserProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.statNum}>
-                {formatCompactBalance(targetUser.followingCount || 251)}
+                {formatCompactBalance(targetUser.followingCount || 0)}
               </Text>
               <Text style={styles.statLabel}>Following</Text>
             </TouchableOpacity>
@@ -662,7 +688,7 @@ export default function UserProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.statNum}>
-                {formatCompactBalance(targetUser.visitorsCount || 1300)}
+                {formatCompactBalance(targetUser.visitorsCount || 0)}
               </Text>
               <Text style={styles.statLabel}>Visitors</Text>
             </TouchableOpacity>
@@ -688,275 +714,284 @@ export default function UserProfileScreen() {
             </View>
             <View style={styles.bioContentRow}>
               <Text style={styles.bioLabelText}>Bio</Text>
-              <Text style={styles.bioContentText} numberOfLines={2}>
-                {targetUser.bio || 'Owner of ✔ D A B H A I M A R T I C L U B 🔥'}
+              <Text
+                style={[
+                  styles.bioContentText,
+                  !targetUser.bio && { fontStyle: 'italic', color: '#94A3B8' },
+                ]}
+                numberOfLines={2}
+              >
+                {targetUser.bio || 'No bio yet.'}
               </Text>
             </View>
           </TouchableOpacity>
 
-          {/* Card 2: Club (Golden Agency Banner in pure code) */}
-          <View style={styles.luxuryContentCard}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardHeaderText}>Club</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Family', { familyId: targetUser.family?._id })}
-              activeOpacity={0.85}
-              style={styles.clubBannerBtn}
-            >
-              <LinearGradient
-                colors={['#F59E0B', '#D97706', '#92400E']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.clubBannerGradient}
-              >
-                {/* Left Club Shield */}
-                <View style={styles.clubShieldBox}>
-                  <LinearGradient
-                    colors={['#FDE68A', '#F59E0B']}
-                    style={styles.clubShieldInner}
-                  >
-                    <MaterialCommunityIcons name="shield-crown" size={26} color="#78350F" />
-                  </LinearGradient>
-                </View>
-
-                {/* Center Club Info */}
-                <View style={styles.clubCenterInfo}>
-                  <Text style={styles.clubTitleText} numberOfLines={1}>
-                    {targetUser.family?.name || 'BASTI AGENCY'}
-                  </Text>
-                  <View style={styles.clubLevelPill}>
-                    <Text style={styles.clubLevelPillText}>
-                      Lv.{targetUser.family?.level || 25}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Right Members Count & Chevron */}
-                <View style={styles.clubRightInfo}>
-                  <MaterialCommunityIcons
-                    name="account-group"
-                    size={16}
-                    color="#FFFFFF"
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={styles.clubMembersCountText}>
-                    {Number(targetUser.family?.memberCount || 156000).toLocaleString()}
-                  </Text>
-                  <Icon name="chevron-forward" size={17} color="#FFFFFF" style={{ marginLeft: 6 }} />
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          {/* Card 3: CP (Romantic Pink Banner in pure code) */}
-          <View style={styles.luxuryContentCard}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardHeaderText}>CP</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('CpSpace')}
-                style={styles.cardHeaderRightLink}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cardHeaderRightLinkText}>CP Center</Text>
-                <Icon name="chevron-forward" size={15} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate('CpSpace')}
-              activeOpacity={0.85}
-              style={styles.cpBannerBtn}
-            >
-              <LinearGradient
-                colors={['#F472B6', '#FB7185', '#E11D48']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.cpBannerGradient}
-              >
-                {/* Partner 1 (Boy) */}
-                <View style={styles.cpPartnerCol}>
-                  <View style={styles.cpAvatarRing}>
-                    <Image
-                      source={getUserAvatar({ name: targetUser.cpPartner?.partnerName || 'Anurag' })}
-                      style={styles.cpAvatarImg}
-                    />
-                    <View style={styles.cpCheckCircle}>
-                      <Icon name="checkmark" size={9} color="#FFFFFF" />
-                    </View>
-                  </View>
-                  <Text style={styles.cpPartnerNameText} numberOfLines={1}>
-                    ✔ {targetUser.cpPartner?.partnerName || 'Anurag'} ♡
-                  </Text>
-                </View>
-
-                {/* Center Crowned Winged Heart Badge */}
-                <View style={styles.cpCenterBadgeBox}>
-                  <View style={styles.cpWingLeft}>
-                    <MaterialCommunityIcons name="feather" size={18} color="#FFFFFFDD" />
-                  </View>
-                  <LinearGradient
-                    colors={['#FF6B8B', '#BE123C']}
-                    style={styles.cpHeartBadgePill}
-                  >
-                    <MaterialCommunityIcons name="crown" size={13} color="#FDE047" style={{ marginBottom: -2 }} />
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <MaterialCommunityIcons name="heart" size={14} color="#FFFFFF" style={{ marginRight: 2 }} />
-                      <Text style={styles.cpHeartLevelText}>
-                        Lv.{targetUser.cpPartner?.level || 3}
-                      </Text>
-                    </View>
-                  </LinearGradient>
-                  <View style={styles.cpWingRight}>
-                    <MaterialCommunityIcons
-                      name="feather"
-                      size={18}
-                      color="#FFFFFFDD"
-                      style={{ transform: [{ scaleX: -1 }] }}
-                    />
-                  </View>
-                </View>
-
-                {/* Partner 2 (Girl) */}
-                <View style={styles.cpPartnerCol}>
-                  <View style={styles.cpAvatarRing}>
-                    <Image
-                      source={getUserAvatar({ name: targetUser.cpPartner?.name || 'Pooja' })}
-                      style={styles.cpAvatarImg}
-                    />
-                    <View style={[styles.cpCheckCircle, { backgroundColor: '#EC4899' }]}>
-                      <Icon name="heart" size={9} color="#FFFFFF" />
-                    </View>
-                  </View>
-                  <Text style={styles.cpPartnerNameText} numberOfLines={1}>
-                    ♡ {targetUser.cpPartner?.name || 'Pooja'} ♡
-                  </Text>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          {/* Card 4: Friend (Top Gifting Mutual Friends with exact design in code) */}
-          <View style={styles.luxuryContentCard}>
-            <TouchableOpacity
-              style={styles.cardHeaderRow}
-              onPress={() => navigation.navigate('Followers', { tab: 'friends' })}
-              activeOpacity={0.7}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.cardHeaderText}>
-                  Friend ({targetUser.featuredFriends?.length || 3})
-                </Text>
-                <Icon
-                  name="help-circle-outline"
-                  size={15}
-                  color="#94A3B8"
-                  style={{ marginLeft: 5 }}
-                />
+          {/* Card 2: Club (Hidden if user has no family or if Family is disabled) */}
+          {Boolean(targetUser.showFamily && targetUser.family) && (
+            <View style={styles.luxuryContentCard}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardHeaderText}>Club</Text>
               </View>
-              <Icon name="chevron-forward" size={17} color="#94A3B8" />
-            </TouchableOpacity>
-
-            {/* 3 Friend Cards in Horizontal Row */}
-            <View style={styles.friendsCardsRow}>
-              {targetUser.featuredFriends.slice(0, 3).map((friend, fIdx) => (
-                <TouchableOpacity
-                  key={friend.id || friend._id || fIdx}
-                  style={[
-                    styles.friendCardItem,
-                    {
-                      backgroundColor: friend.cardBg || (fIdx === 0 ? '#FAF5FF' : fIdx === 1 ? '#F0F9FF' : '#FFF1F2'),
-                      borderColor: friend.borderColor || (fIdx === 0 ? '#E9D5FF' : fIdx === 1 ? '#BAE6FD' : '#FECDD3'),
-                    },
-                  ]}
-                  onPress={() =>
-                    navigation.navigate('UserProfile', {
-                      userId: friend.userId || friend._id || friend.id,
-                      user: friend,
-                    })
-                  }
-                  activeOpacity={0.8}
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Family', { familyId: targetUser.family?._id })}
+                activeOpacity={0.85}
+                style={styles.clubBannerBtn}
+              >
+                <LinearGradient
+                  colors={['#F59E0B', '#D97706', '#92400E']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.clubBannerGradient}
                 >
-                  {/* Winged Avatar */}
-                  <View style={styles.friendWingedAvatarWrap}>
+                  <View style={styles.clubShieldBox}>
                     <LinearGradient
-                      colors={
-                        friend.color1
-                          ? [friend.color1, friend.color2 || friend.color1]
-                          : fIdx === 0
-                          ? ['#C084FC', '#9333EA']
-                          : fIdx === 1
-                          ? ['#38BDF8', '#0284C7']
-                          : ['#F472B6', '#E11D48']
-                      }
-                      style={styles.friendAvatarHalo}
+                      colors={['#FDE68A', '#F59E0B']}
+                      style={styles.clubShieldInner}
                     >
-                      <Image
-                        source={getUserAvatar(friend)}
-                        style={styles.friendAvatarThumb}
-                      />
+                      <MaterialCommunityIcons name="shield-crown" size={26} color="#78350F" />
                     </LinearGradient>
                   </View>
 
-                  {/* Friend Name */}
-                  <Text style={styles.friendCardName} numberOfLines={1}>
-                    {friend.name || 'Friend'}
-                  </Text>
+                  <View style={styles.clubCenterInfo}>
+                    <Text style={styles.clubTitleText} numberOfLines={1}>
+                      {targetUser.family?.name || 'Club'}
+                    </Text>
+                    <View style={styles.clubLevelPill}>
+                      <Text style={styles.clubLevelPillText}>
+                        Lv.{targetUser.family?.level || 1}
+                      </Text>
+                    </View>
+                  </View>
 
-                  {/* Friendship Days Badge */}
-                  <View style={styles.friendDaysBadge}>
-                    <Text style={styles.friendDaysBadgeText}>
-                      {friend.days || (fIdx === 0 ? 22 : fIdx === 1 ? 41 : 46)} Days
+                  <View style={styles.clubRightInfo}>
+                    <MaterialCommunityIcons
+                      name="account-group"
+                      size={16}
+                      color="#FFFFFF"
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={styles.clubMembersCountText}>
+                      {Number(targetUser.family?.memberCount || 1).toLocaleString()}
+                    </Text>
+                    <Icon name="chevron-forward" size={17} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Card 3: CP (Hidden if user has no CP or if CP is disabled) */}
+          {Boolean(targetUser.showCp && targetUser.cpPartner) && (
+            <View style={styles.luxuryContentCard}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardHeaderText}>CP</Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('CpSpace')}
+                  style={styles.cardHeaderRightLink}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.cardHeaderRightLinkText}>CP Center</Text>
+                  <Icon name="chevron-forward" size={15} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('CpSpace')}
+                activeOpacity={0.85}
+                style={styles.cpBannerBtn}
+              >
+                <LinearGradient
+                  colors={['#F472B6', '#FB7185', '#E11D48']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.cpBannerGradient}
+                >
+                  {/* Partner 1 */}
+                  <View style={styles.cpPartnerCol}>
+                    <View style={styles.cpAvatarRing}>
+                      <Image
+                        source={getUserAvatar({ name: targetUser.cpPartner?.partnerName || targetUser.name })}
+                        style={styles.cpAvatarImg}
+                      />
+                      <View style={styles.cpCheckCircle}>
+                        <Icon name="checkmark" size={9} color="#FFFFFF" />
+                      </View>
+                    </View>
+                    <Text style={styles.cpPartnerNameText} numberOfLines={1}>
+                      ✔ {targetUser.cpPartner?.partnerName || targetUser.name}
                     </Text>
                   </View>
 
-                  {/* Dual-ended Progress Bar */}
-                  <View style={styles.friendProgressWrap}>
-                    <View style={styles.friendProgressTextRow}>
-                      <Text style={styles.friendProgressLeftText}>
-                        {friend.diamonds || (fIdx === 0 ? '24.1k' : fIdx === 1 ? '38.5k' : '46.8k')}
-                      </Text>
-                      <Text style={styles.friendProgressRightText}>
-                        {friend.target || '50k'}
-                      </Text>
+                  {/* Center Crowned Winged Heart Badge */}
+                  <View style={styles.cpCenterBadgeBox}>
+                    <View style={styles.cpWingLeft}>
+                      <MaterialCommunityIcons name="feather" size={18} color="#FFFFFFDD" />
                     </View>
-                    <View style={styles.friendProgressBarTrack}>
+                    <LinearGradient
+                      colors={['#FF6B8B', '#BE123C']}
+                      style={styles.cpHeartBadgePill}
+                    >
+                      <MaterialCommunityIcons name="crown" size={13} color="#FDE047" style={{ marginBottom: -2 }} />
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <MaterialCommunityIcons name="heart" size={14} color="#FFFFFF" style={{ marginRight: 2 }} />
+                        <Text style={styles.cpHeartLevelText}>
+                          Lv.{targetUser.cpPartner?.cpLevel || targetUser.cpPartner?.level || 1}
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                    <View style={styles.cpWingRight}>
+                      <MaterialCommunityIcons
+                        name="feather"
+                        size={18}
+                        color="#FFFFFFDD"
+                        style={{ transform: [{ scaleX: -1 }] }}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Partner 2 */}
+                  <View style={styles.cpPartnerCol}>
+                    <View style={styles.cpAvatarRing}>
+                      <Image
+                        source={getUserAvatar({ name: targetUser.cpPartner?.name || 'Partner', avatar: targetUser.cpPartner?.avatar })}
+                        style={styles.cpAvatarImg}
+                      />
+                      <View style={[styles.cpCheckCircle, { backgroundColor: '#EC4899' }]}>
+                        <Icon name="heart" size={9} color="#FFFFFF" />
+                      </View>
+                    </View>
+                    <Text style={styles.cpPartnerNameText} numberOfLines={1}>
+                      ♡ {targetUser.cpPartner?.name || 'Partner'} ♡
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Card 4: Friend (Top Gifting Mutual Friends) */}
+          {Boolean(targetUser.featuredFriends && targetUser.featuredFriends.length > 0) && (
+            <View style={styles.luxuryContentCard}>
+              <TouchableOpacity
+                style={styles.cardHeaderRow}
+                onPress={() => navigation.navigate('Followers', { tab: 'friends' })}
+                activeOpacity={0.7}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.cardHeaderText}>
+                    Friend ({targetUser.featuredFriends.length})
+                  </Text>
+                  <Icon
+                    name="help-circle-outline"
+                    size={15}
+                    color="#94A3B8"
+                    style={{ marginLeft: 5 }}
+                  />
+                </View>
+                <Icon name="chevron-forward" size={17} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Real Mutual Friends in Horizontal Row */}
+              <View style={styles.friendsCardsRow}>
+                {targetUser.featuredFriends.slice(0, 3).map((friend, fIdx) => (
+                  <TouchableOpacity
+                    key={friend.id || friend._id || fIdx}
+                    style={[
+                      styles.friendCardItem,
+                      {
+                        backgroundColor: friend.cardBg || (fIdx === 0 ? '#FAF5FF' : fIdx === 1 ? '#F0F9FF' : '#FFF1F2'),
+                        borderColor: friend.borderColor || (fIdx === 0 ? '#E9D5FF' : fIdx === 1 ? '#BAE6FD' : '#FECDD3'),
+                      },
+                    ]}
+                    onPress={() =>
+                      navigation.navigate('UserProfile', {
+                        userId: friend.userId || friend._id || friend.id,
+                        user: friend,
+                      })
+                    }
+                    activeOpacity={0.8}
+                  >
+                    {/* Winged Avatar */}
+                    <View style={styles.friendWingedAvatarWrap}>
                       <LinearGradient
                         colors={
                           friend.color1
                             ? [friend.color1, friend.color2 || friend.color1]
-                            : ['#9333EA', '#C084FC']
+                            : fIdx === 0
+                            ? ['#C084FC', '#9333EA']
+                            : fIdx === 1
+                            ? ['#38BDF8', '#0284C7']
+                            : ['#F472B6', '#E11D48']
                         }
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[
-                          styles.friendProgressBarFill,
-                          {
-                            width: `${Math.round(
-                              (friend.progress || (fIdx === 0 ? 0.48 : fIdx === 1 ? 0.77 : 0.94)) * 100
-                            )}%`,
-                          },
-                        ]}
-                      />
+                        style={styles.friendAvatarHalo}
+                      >
+                        <Image
+                          source={getUserAvatar(friend)}
+                          style={styles.friendAvatarThumb}
+                        />
+                      </LinearGradient>
                     </View>
-                  </View>
 
-                  {/* Status Pill */}
-                  <View style={styles.friendStatusPill}>
-                    <MaterialCommunityIcons
-                      name="microphone"
-                      size={10}
-                      color="#6366F1"
-                      style={{ marginRight: 2 }}
-                    />
-                    <Text style={styles.friendStatusPillText} numberOfLines={1}>
-                      {friend.status || 'In Voice Room'}
+                    {/* Friend Name */}
+                    <Text style={styles.friendCardName} numberOfLines={1}>
+                      {friend.name || 'Friend'}
                     </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+
+                    {/* Friendship Days Badge */}
+                    <View style={styles.friendDaysBadge}>
+                      <Text style={styles.friendDaysBadgeText}>
+                        {friend.days || 1} Days
+                      </Text>
+                    </View>
+
+                    {/* Dual-ended Progress Bar */}
+                    <View style={styles.friendProgressWrap}>
+                      <View style={styles.friendProgressTextRow}>
+                        <Text style={styles.friendProgressLeftText}>
+                          {friend.diamonds || '0'}
+                        </Text>
+                        <Text style={styles.friendProgressRightText}>
+                          {friend.target || '50k'}
+                        </Text>
+                      </View>
+                      <View style={styles.friendProgressBarTrack}>
+                        <LinearGradient
+                          colors={
+                            friend.color1
+                              ? [friend.color1, friend.color2 || friend.color1]
+                              : ['#9333EA', '#C084FC']
+                          }
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={[
+                            styles.friendProgressBarFill,
+                            {
+                              width: `${Math.min(100, Math.round(
+                                (friend.progress || (Number(String(friend.diamonds || '').replace(/[^0-9.]/g, '')) / 50)) * 100
+                              ))}%`,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Status Pill */}
+                    <View style={styles.friendStatusPill}>
+                      <MaterialCommunityIcons
+                        name={friend.inRoom ? "microphone" : "account"}
+                        size={10}
+                        color={friend.inRoom ? "#6366F1" : "#94A3B8"}
+                        style={{ marginRight: 2 }}
+                      />
+                      <Text style={styles.friendStatusPillText} numberOfLines={1}>
+                        {friend.inRoom ? 'In Voice Room' : 'Active'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Card 5: Supporter */}
           <TouchableOpacity
@@ -967,87 +1002,91 @@ export default function UserProfileScreen() {
             <View style={styles.cardHeaderRow}>
               <Text style={styles.cardHeaderText}>Supporter</Text>
               <View style={styles.supporterHeaderRight}>
-                {targetUser.topSupporters.slice(0, 3).map((supporter, sIdx) => (
-                  <View
-                    key={supporter.id || sIdx}
-                    style={[
-                      styles.supporterMiniRing,
-                      sIdx > 0 && { marginLeft: -8 },
-                    ]}
-                  >
-                    <Image
-                      source={getUserAvatar(supporter)}
-                      style={styles.supporterMiniThumb}
-                    />
+                {targetUser.topSupporters && targetUser.topSupporters.length > 0 ? (
+                  targetUser.topSupporters.slice(0, 3).map((supporter, sIdx) => (
                     <View
+                      key={supporter.id || supporter._id || sIdx}
                       style={[
-                        styles.supporterMiniRankBadge,
-                        sIdx === 0 && { backgroundColor: '#F59E0B' },
-                        sIdx === 1 && { backgroundColor: '#94A3B8' },
-                        sIdx === 2 && { backgroundColor: '#B45309' },
+                        styles.supporterMiniRing,
+                        sIdx > 0 && { marginLeft: -8 },
                       ]}
                     >
-                      <Text style={styles.supporterMiniRankText}>{sIdx + 1}</Text>
+                      <Image
+                        source={getUserAvatar(supporter)}
+                        style={styles.supporterMiniThumb}
+                      />
+                      <View
+                        style={[
+                          styles.supporterMiniRankBadge,
+                          sIdx === 0 && { backgroundColor: '#F59E0B' },
+                          sIdx === 1 && { backgroundColor: '#94A3B8' },
+                          sIdx === 2 && { backgroundColor: '#B45309' },
+                        ]}
+                      >
+                        <Text style={styles.supporterMiniRankText}>{sIdx + 1}</Text>
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  ))
+                ) : (
+                  <Text style={{ fontSize: 12, color: '#94A3B8' }}>No supporters yet</Text>
+                )}
                 <Icon name="chevron-forward" size={17} color="#94A3B8" style={{ marginLeft: 8 }} />
               </View>
             </View>
           </TouchableOpacity>
 
-          {/* Card 6: Room */}
-          <TouchableOpacity
-            style={styles.luxuryContentCard}
-            onPress={handleEnterRoom}
-            activeOpacity={0.8}
-          >
-            <View style={styles.cardHeaderRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.cardHeaderText}>Room</Text>
-                {targetUser.isInRoom && (
+          {/* Card 6: Room (Only if currently in room) */}
+          {Boolean(targetUser.isInRoom && targetUser.currentRoomId) && (
+            <TouchableOpacity
+              style={styles.luxuryContentCard}
+              onPress={handleEnterRoom}
+              activeOpacity={0.8}
+            >
+              <View style={styles.cardHeaderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.cardHeaderText}>Room</Text>
                   <View style={styles.liveRoomTag}>
                     <Text style={styles.liveRoomTagText}>LIVE</Text>
                   </View>
-                )}
+                </View>
+                <Icon name="chevron-forward" size={17} color="#94A3B8" />
               </View>
-              <Icon name="chevron-forward" size={17} color="#94A3B8" />
-            </View>
-            {targetUser.isInRoom && (
               <Text style={styles.activeRoomDesc} numberOfLines={1}>
                 {targetUser.currentRoomTitle || `${targetUser.name}'s Live Club`}
               </Text>
-            )}
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
 
-          {/* Card 7: Badge (16) (Rendered in 5-column pure code grid) */}
+          {/* Card 7: Badge (Clicking opens Medal Target modal) */}
           <View style={styles.luxuryContentCard}>
             <TouchableOpacity
               style={styles.cardHeaderRow}
               onPress={() => navigation.navigate('Medal')}
               activeOpacity={0.7}
             >
-              <Text style={styles.cardHeaderText}>Badge (16)</Text>
+              <Text style={styles.cardHeaderText}>
+                Badge ({targetUser.showcase?.badgesCount ?? targetUser.showcase?.badges?.length ?? 16})
+              </Text>
               <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </TouchableOpacity>
 
             <View style={styles.badgesGridWrap}>
-              {BADGES_GRID.map((badge) => (
+              {(targetUser.showcase?.badges?.length > 0 ? targetUser.showcase.badges : BADGES_GRID).map((badge, bIdx) => (
                 <TouchableOpacity
-                  key={badge.id}
+                  key={badge.id || badge._id || bIdx}
                   style={styles.badgeGridItem}
-                  onPress={() => navigation.navigate('Medal')}
+                  onPress={() => handleOpenMedalModal(bIdx % 3)}
                   activeOpacity={0.75}
                 >
                   <LinearGradient
-                    colors={[badge.color1, badge.color2]}
+                    colors={[badge.color1 || '#F59E0B', badge.color2 || '#B45309']}
                     style={styles.badgeCircleShape}
                   >
-                    <MaterialCommunityIcons name={badge.icon} size={22} color="#FFFFFF" />
+                    <MaterialCommunityIcons name={badge.icon || 'shield-star'} size={22} color="#FFFFFF" />
                   </LinearGradient>
                   <View style={styles.badgeLabelPill}>
                     <Text style={styles.badgeLabelText} numberOfLines={1}>
-                      {badge.label}
+                      {badge.label || badge.name || 'MEDAL'}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1055,29 +1094,31 @@ export default function UserProfileScreen() {
             </View>
           </View>
 
-          {/* Card 8: Vehicle (14) (Rendered in 4-column pure code grid) */}
+          {/* Card 8: Vehicle */}
           <View style={styles.luxuryContentCard}>
             <TouchableOpacity
               style={styles.cardHeaderRow}
               onPress={() => navigation.navigate('Store', { category: 'Vehicle' })}
               activeOpacity={0.7}
             >
-              <Text style={styles.cardHeaderText}>Vehicle (14)</Text>
+              <Text style={styles.cardHeaderText}>
+                Vehicle ({targetUser.showcase?.vehiclesCount ?? targetUser.showcase?.vehicles?.length ?? 14})
+              </Text>
               <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </TouchableOpacity>
 
             <View style={styles.vehiclesGridWrap}>
-              {VEHICLES_GRID.map((veh) => (
+              {(targetUser.showcase?.vehicles?.length > 0 ? targetUser.showcase.vehicles : VEHICLES_GRID).map((veh, vIdx) => (
                 <TouchableOpacity
-                  key={veh.id}
+                  key={veh.id || veh._id || vIdx}
                   style={styles.vehicleGridItem}
                   onPress={() => navigation.navigate('Store', { category: 'Vehicle' })}
                   activeOpacity={0.75}
                 >
-                  <View style={[styles.vehicleThumbBox, { backgroundColor: veh.bg }]}>
-                    <MaterialCommunityIcons name={veh.icon} size={28} color={veh.color} />
+                  <View style={[styles.vehicleThumbBox, { backgroundColor: veh.bg || '#FEF3C7' }]}>
+                    <MaterialCommunityIcons name={veh.icon || 'car-sports'} size={28} color={veh.color || '#F59E0B'} />
                     <View style={styles.vehicleTagPill}>
-                      <Text style={styles.vehicleTagText}>{veh.tag}</Text>
+                      <Text style={styles.vehicleTagText}>{veh.tag || 'Speed'}</Text>
                     </View>
                   </View>
                   <Text style={styles.vehicleTitleText} numberOfLines={1}>
@@ -1088,31 +1129,33 @@ export default function UserProfileScreen() {
             </View>
           </View>
 
-          {/* Card 9: Frame (12) (Rendered in 4-column pure code grid) */}
+          {/* Card 9: Frame */}
           <View style={styles.luxuryContentCard}>
             <TouchableOpacity
               style={styles.cardHeaderRow}
               onPress={() => navigation.navigate('Store', { category: 'Frames' })}
               activeOpacity={0.7}
             >
-              <Text style={styles.cardHeaderText}>Frame (12)</Text>
+              <Text style={styles.cardHeaderText}>
+                Frame ({targetUser.showcase?.framesCount ?? targetUser.showcase?.frames?.length ?? 12})
+              </Text>
               <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </TouchableOpacity>
 
             <View style={styles.framesGridWrap}>
-              {FRAMES_GRID.map((fr) => (
+              {(targetUser.showcase?.frames?.length > 0 ? targetUser.showcase.frames : FRAMES_GRID).map((fr, fIdx) => (
                 <TouchableOpacity
-                  key={fr.id}
+                  key={fr.id || fr._id || fIdx}
                   style={styles.frameGridItem}
                   onPress={() => navigation.navigate('Store', { category: 'Frames' })}
                   activeOpacity={0.75}
                 >
-                  <View style={[styles.frameCircleOuter, { borderColor: fr.border }]}>
+                  <View style={[styles.frameCircleOuter, { borderColor: fr.border || '#F59E0B' }]}>
                     <LinearGradient
-                      colors={[fr.color1, fr.color2]}
+                      colors={[fr.color1 || '#FEF08A', fr.color2 || '#CA8A04']}
                       style={styles.frameCircleInner}
                     >
-                      <Text style={{ fontSize: 20 }}>{fr.jewel}</Text>
+                      <Text style={{ fontSize: 20 }}>{fr.jewel || '👑'}</Text>
                     </LinearGradient>
                   </View>
                   <Text style={styles.frameTitleText} numberOfLines={1}>
@@ -1123,30 +1166,36 @@ export default function UserProfileScreen() {
             </View>
           </View>
 
-          {/* Card 10: Gift (203) (Rendered in 4-column pure code grid with counts) */}
+          {/* Card 10: Gift */}
           <View style={styles.luxuryContentCard}>
             <TouchableOpacity
               style={styles.cardHeaderRow}
               onPress={() => navigation.navigate('GiftsScreen')}
               activeOpacity={0.7}
             >
-              <Text style={styles.cardHeaderText}>Gift (203)</Text>
+              <Text style={styles.cardHeaderText}>
+                Gift ({targetUser.showcase?.giftsCount ?? targetUser.showcase?.gifts?.length ?? 32})
+              </Text>
               <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </TouchableOpacity>
 
             <View style={styles.giftsGridWrap}>
-              {GIFTS_GRID.map((gift) => (
+              {(targetUser.showcase?.gifts?.length > 0 ? targetUser.showcase.gifts : GIFTS_GRID).map((gift, gIdx) => (
                 <TouchableOpacity
-                  key={gift.id}
+                  key={gift.id || gift._id || gIdx}
                   style={styles.giftGridItem}
                   onPress={() => navigation.navigate('GiftsScreen')}
                   activeOpacity={0.75}
                 >
-                  <View style={[styles.giftThumbBox, { backgroundColor: gift.bg }]}>
-                    <Text style={{ fontSize: 28 }}>{gift.emoji}</Text>
+                  <View style={[styles.giftThumbBox, { backgroundColor: gift.bg || '#FDF2F8' }]}>
+                    {gift.imageUrl || gift.image ? (
+                      <Image source={{ uri: gift.imageUrl || gift.image }} style={{ width: 36, height: 36 }} resizeMode="contain" />
+                    ) : (
+                      <Text style={{ fontSize: 28 }}>{gift.emoji || '🎁'}</Text>
+                    )}
                   </View>
                   <View style={styles.giftCountPill}>
-                    <Text style={styles.giftCountText}>{gift.count}</Text>
+                    <Text style={styles.giftCountText}>{gift.count ? (typeof gift.count === 'number' ? `x${gift.count}` : gift.count) : 'x1'}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -1222,7 +1271,159 @@ export default function UserProfileScreen() {
           </TouchableOpacity>
         </View>
       ) : null}
-    </View>
+    
+      {/* ======================================================== */}
+      {/* MEDAL STAGE MODAL (Target Preview & Highest Target Tier)  */}
+      {/* ======================================================== */}
+      <Modal
+        visible={showMedalModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMedalModal(false)}
+      >
+        <View style={styles.medalModalOverlay}>
+          <LinearGradient
+            colors={['#10061E', '#160B24', '#0D0418']}
+            style={StyleSheet.absoluteFillObject}
+          />
+
+          {/* Top Bar with Back Button */}
+          <View style={[styles.medalModalTopBar, { paddingTop: topSafeInset + 8 }]}>
+            <TouchableOpacity
+              style={styles.medalModalBackBtn}
+              onPress={() => setShowMedalModal(false)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Icon name="chevron-back" size={26} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.medalModalTopTitle}>Medal Target & Prestige</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <ScrollView
+            contentContainerStyle={{ alignItems: 'center', paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Podium Stage with Light Beam */}
+            <View style={styles.medalPodiumContainer}>
+              <Image
+                source={MEDAL_ASSETS.podium}
+                style={styles.medalPodiumImage}
+                resizeMode="contain"
+              />
+              {/* Big Glowing Medal on Top of Podium */}
+              <View style={styles.medalBigImageWrap}>
+                <Image
+                  source={MEDAL_STAGE_TIERS[activeMedalTierIndex].bigImage}
+                  style={styles.medalBigImage}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
+
+            {/* Medal Title & Description */}
+            <Text style={styles.medalStageTitle}>
+              {MEDAL_STAGE_TIERS[activeMedalTierIndex].title}
+            </Text>
+            <Text style={styles.medalStageSubtitle}>
+              {MEDAL_STAGE_TIERS[activeMedalTierIndex].subTitle}
+            </Text>
+
+            {/* Target Progress Bar */}
+            <View style={styles.medalProgressBox}>
+              <View style={styles.medalProgressLabels}>
+                <Text style={styles.medalProgressLeft}>0</Text>
+                <Text style={styles.medalProgressRight}>
+                  {MEDAL_STAGE_TIERS[activeMedalTierIndex].target.toLocaleString()}
+                </Text>
+              </View>
+              <View style={styles.medalProgressTrack}>
+                <LinearGradient
+                  colors={['#F59E0B', '#FBBF24']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[
+                    styles.medalProgressFill,
+                    {
+                      width: `${Math.min(100, Math.round(((targetUser.showcase?.giftsCount || 0) / MEDAL_STAGE_TIERS[activeMedalTierIndex].target) * 100))}%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.medalNeedText}>
+                {MEDAL_STAGE_TIERS[activeMedalTierIndex].need}
+              </Text>
+            </View>
+
+            {/* Ornamental Divider Line */}
+            <View style={styles.medalOrnamentalDivider}>
+              <View style={styles.medalDividerSideLine} />
+              <MaterialCommunityIcons name="rhombus" size={10} color="#F59E0B88" />
+              <View style={styles.medalDividerSideLine} />
+            </View>
+
+            {/* 3 Tier Milestones Chain */}
+            <View style={styles.medalMilestonesChain}>
+              {MEDAL_STAGE_TIERS.map((tier, tIdx) => {
+                const isSelected = tIdx === activeMedalTierIndex;
+                return (
+                  <React.Fragment key={tier.tierId}>
+                    {tIdx > 0 && (
+                      <View style={styles.medalChainArrowWrap}>
+                        <Text style={styles.medalChainArrow}>»</Text>
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      style={[
+                        styles.medalMilestoneItem,
+                        isSelected && styles.medalMilestoneItemActive,
+                      ]}
+                      onPress={() => setActiveMedalTierIndex(tIdx)}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={tier.milestoneIcon}
+                        style={styles.medalMilestoneIcon}
+                        resizeMode="contain"
+                      />
+                      <Text
+                        style={[
+                          styles.medalMilestoneLabel,
+                          isSelected && styles.medalMilestoneLabelActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {tier.badgeLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  </React.Fragment>
+                );
+              })}
+            </View>
+
+            {/* Open Full Medal Center Button */}
+            <TouchableOpacity
+              style={styles.medalGoCenterBtn}
+              onPress={() => {
+                setShowMedalModal(false);
+                navigation.navigate('Medal');
+              }}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['#F59E0B', '#D97706']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.medalGoCenterBtnGrad}
+              >
+                <MaterialCommunityIcons name="medal-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.medalGoCenterBtnText}>View All in Medal Center</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </Modal>
+</View>
   );
 }
 
@@ -2068,5 +2269,180 @@ const styles = StyleSheet.create({
   },
   followingActionText: {
     color: '#374151',
+  },
+  // MEDAL STAGE MODAL STYLES
+  medalModalOverlay: {
+    flex: 1,
+    backgroundColor: '#10061E',
+  },
+  medalModalTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  medalModalBackBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medalModalTopTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FDE047',
+    letterSpacing: 0.5,
+  },
+  medalPodiumContainer: {
+    width: SCREEN_WIDTH,
+    height: 310,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginTop: 10,
+  },
+  medalPodiumImage: {
+    position: 'absolute',
+    bottom: 0,
+    width: SCREEN_WIDTH * 0.85,
+    height: 140,
+  },
+  medalBigImageWrap: {
+    position: 'absolute',
+    top: 10,
+    width: 200,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medalBigImage: {
+    width: 190,
+    height: 190,
+  },
+  medalStageTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FDE047',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  medalStageSubtitle: {
+    fontSize: 13,
+    color: '#CBD5E1',
+    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  medalProgressBox: {
+    width: SCREEN_WIDTH - 60,
+    marginTop: 22,
+  },
+  medalProgressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  medalProgressLeft: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#CBD5E1',
+  },
+  medalProgressRight: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#CBD5E1',
+  },
+  medalProgressTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#334155',
+    overflow: 'hidden',
+  },
+  medalProgressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  medalNeedText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  medalOrnamentalDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: SCREEN_WIDTH - 80,
+    marginVertical: 22,
+  },
+  medalDividerSideLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#33415555',
+  },
+  medalMilestonesChain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  medalChainArrowWrap: {
+    paddingHorizontal: 2,
+  },
+  medalChainArrow: {
+    fontSize: 18,
+    color: '#F59E0B',
+    fontWeight: '900',
+  },
+  medalMilestoneItem: {
+    alignItems: 'center',
+    padding: 6,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    minWidth: 80,
+  },
+  medalMilestoneItemActive: {
+    borderColor: '#F59E0B',
+    backgroundColor: '#F59E0B15',
+  },
+  medalMilestoneIcon: {
+    width: 60,
+    height: 60,
+    marginBottom: 4,
+  },
+  medalMilestoneLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
+  medalMilestoneLabelActive: {
+    color: '#FDE047',
+  },
+  medalGoCenterBtn: {
+    width: SCREEN_WIDTH - 60,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginTop: 26,
+    shadowColor: '#F59E0B',
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  medalGoCenterBtnGrad: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medalGoCenterBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

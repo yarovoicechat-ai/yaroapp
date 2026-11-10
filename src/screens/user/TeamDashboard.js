@@ -78,6 +78,49 @@ export default function TeamDashboard() {
   const [cachedTsv, setCachedTsv] = useState('');
   const [cachedXlsxUrl, setCachedXlsxUrl] = useState('');
 
+  // System Feature Visibility Controls (CP & Family)
+  const [sysConfig, setSysConfig] = useState({ isFamilyEnabled: false, isCpEnabled: false });
+  const [togglingFeature, setTogglingFeature] = useState('');
+
+  const loadSysConfig = useCallback(async () => {
+    try {
+      const res = await apiUtil.get('/system-config/public');
+      if (res.data?.data) {
+        setSysConfig({
+          isFamilyEnabled: Boolean(res.data.data.isFamilyEnabled),
+          isCpEnabled: Boolean(res.data.data.isCpEnabled),
+        });
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleToggleFeature = async (feature) => {
+    const currentVal = feature === 'family' ? sysConfig.isFamilyEnabled : sysConfig.isCpEnabled;
+    const nextVal = !currentVal;
+    setTogglingFeature(feature);
+    try {
+      const res = await apiUtil.post('/system-config/toggle', {
+        feature,
+        enabled: nextVal,
+      });
+      if (res.data?.success) {
+        setSysConfig(prev => ({
+          ...prev,
+          [feature === 'family' ? 'isFamilyEnabled' : 'isCpEnabled']: nextVal,
+        }));
+        AlertService.show(
+          'Feature Updated',
+          `${feature === 'family' ? 'Family Guild' : 'CP Space'} is now ${nextVal ? 'LIVE in app' : 'HIDDEN from app'}.`,
+          'success'
+        );
+      }
+    } catch (err) {
+      AlertService.show('Error', err.response?.data?.message || 'Failed to toggle feature', 'error');
+    } finally {
+      setTogglingFeature('');
+    }
+  };
+
   const actorRole = user?.role && user.role !== 'user'
     ? user.role
     : (user?.hasAppOption && user?.hasAppAccess !== false && user?.appRole) ||
@@ -112,7 +155,8 @@ export default function TeamDashboard() {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+      loadSysConfig();
+    }, [load, loadSysConfig])
   );
 
   const handleExport = async (format = 'sheets') => {
@@ -416,6 +460,102 @@ export default function TeamDashboard() {
             )}
           </View>
         </LinearGradient>
+
+        {/* Feature Visibility & Management Controls (CP & Family & Medal) */}
+        <View style={styles.managementControlsCard}>
+          <View style={styles.managementControlsHeader}>
+            <MaterialCommunityIcons name="tune" size={18} color="#A78BFA" style={{ marginRight: 6 }} />
+            <Text style={styles.managementControlsTitle}>App Feature Controls & Visibility</Text>
+          </View>
+          <Text style={styles.managementControlsSubtitle}>
+            Manage CP Space & Family Guild visibility in the mobile app. You can switch them between LIVE and HIDDEN.
+          </Text>
+
+          <View style={styles.managementTogglesRow}>
+            {/* CP Space Toggle */}
+            <View style={styles.managementToggleItem}>
+              <View style={styles.managementToggleLeft}>
+                <View style={[styles.featureIconBadge, { backgroundColor: '#FCE7F3' }]}>
+                  <MaterialCommunityIcons name="heart-pulse" size={20} color="#E11D48" />
+                </View>
+                <View>
+                  <Text style={styles.featureItemTitle}>CP Space</Text>
+                  <Text style={[styles.featureItemStatus, { color: sysConfig.isCpEnabled ? '#34D399' : '#F87171' }]}>
+                    {sysConfig.isCpEnabled ? '● LIVE in App' : '○ HIDDEN from App'}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.featureToggleBtn,
+                  sysConfig.isCpEnabled ? styles.featureToggleBtnActive : styles.featureToggleBtnHidden,
+                ]}
+                onPress={() => handleToggleFeature('cp')}
+                disabled={Boolean(togglingFeature)}
+              >
+                {togglingFeature === 'cp' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.featureToggleBtnText}>
+                    {sysConfig.isCpEnabled ? 'Hide' : 'Make Live'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Family Guild Toggle */}
+            <View style={styles.managementToggleItem}>
+              <View style={styles.managementToggleLeft}>
+                <View style={[styles.featureIconBadge, { backgroundColor: '#EDE9FE' }]}>
+                  <MaterialCommunityIcons name="shield-crown" size={20} color="#7C3AED" />
+                </View>
+                <View>
+                  <Text style={styles.featureItemTitle}>Family Guild</Text>
+                  <Text style={[styles.featureItemStatus, { color: sysConfig.isFamilyEnabled ? '#34D399' : '#F87171' }]}>
+                    {sysConfig.isFamilyEnabled ? '● LIVE in App' : '○ HIDDEN from App'}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.featureToggleBtn,
+                  sysConfig.isFamilyEnabled ? styles.featureToggleBtnActive : styles.featureToggleBtnHidden,
+                ]}
+                onPress={() => handleToggleFeature('family')}
+                disabled={Boolean(togglingFeature)}
+              >
+                {togglingFeature === 'family' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.featureToggleBtnText}>
+                    {sysConfig.isFamilyEnabled ? 'Hide' : 'Make Live'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Medal Center Management Option */}
+            <View style={styles.managementToggleItem}>
+              <View style={styles.managementToggleLeft}>
+                <View style={[styles.featureIconBadge, { backgroundColor: '#FEF3C7' }]}>
+                  <MaterialCommunityIcons name="medal" size={20} color="#D97706" />
+                </View>
+                <View>
+                  <Text style={styles.featureItemTitle}>Medals & Badges</Text>
+                  <Text style={[styles.featureItemStatus, { color: '#FBBF24' }]}>
+                    Prestige Badges & Targets
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.featureToggleBtn, { backgroundColor: '#D97706' }]}
+                onPress={() => navigation.navigate('Medal')}
+              >
+                <Text style={styles.featureToggleBtnText}>Manage</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
 
         {/* Hierarchy Breadcrumbs Trail */}
         {report?.breadcrumbs && report.breadcrumbs.length > 0 && (
@@ -1498,5 +1638,84 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
     lineHeight: 15,
+  },
+  managementControlsCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  managementControlsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  managementControlsTitle: {
+    color: '#E2E8F0',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  managementControlsSubtitle: {
+    color: '#94A3B8',
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  managementTogglesRow: {
+    gap: 10,
+  },
+  managementToggleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#33415555',
+  },
+  managementToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  featureIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureItemTitle: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  featureItemStatus: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  featureToggleBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureToggleBtnActive: {
+    backgroundColor: '#DC2626',
+  },
+  featureToggleBtnHidden: {
+    backgroundColor: '#059669',
+  },
+  featureToggleBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
   },
 });

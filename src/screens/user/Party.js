@@ -325,7 +325,6 @@ export default function PartyScreen() {
           >
             <SvgaView
               source="animations/game_ranking_enter.svga"
-              fallbackImage={require('../../assets/icons/trophy_hd.png')}
               style={styles.trophyIconImg}
               resizeMode="contain"
             />
@@ -704,10 +703,12 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   trophyIconImg: {
     width: 44,
     height: 44,
+    backgroundColor: 'transparent',
   },
   crownBadgeBtn: {
     alignItems: 'center',

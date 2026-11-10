@@ -167,13 +167,32 @@ export default function MeScreen() {
     (user?.hasAppOption && (user?.appRole === 'bd' || user?.appRole === 'bdLeader' || user?.appRole === 'bd-leader' || user?.appFeatures?.bdCenter))
   );
 
+  const [appConfig, setAppConfig] = useState({ isFamilyEnabled: false, isCpEnabled: false });
+
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      apiUtil.get('/system-config/public')
+        .then(res => {
+          if (isMounted && res.data?.data) {
+            setAppConfig({
+              isFamilyEnabled: Boolean(res.data.data.isFamilyEnabled),
+              isCpEnabled: Boolean(res.data.data.isCpEnabled),
+            });
+          }
+        })
+        .catch(() => {});
+      return () => { isMounted = false; };
+    }, [])
+  );
+
   // 4 items in every line (Row 1: Tasks, Fan Club, Level, Apply Hosting)
   const serviceItems = [
     ...((hasBdPrivilege || hasAgencyPrivilege || isApprovedHost || ['owner', 'operator', 'superAdmin', 'admin'].includes(user?.role)) ? [{
       id: 'teamTargets', label: 'Team & Targets', icon: <View style={[styles.serviceIconCircle, { backgroundColor: '#EEF2FF' }]}><MaterialCommunityIcons name="account-group-outline" size={26} color="#4F46E5" /></View>,
       onPress: () => navigation.navigate('TeamDashboard'),
     }] : []),
-    {
+    ...(appConfig.isFamilyEnabled ? [{
       id: 'family',
       label: 'Family Guild',
       icon: (
@@ -182,8 +201,8 @@ export default function MeScreen() {
         </View>
       ),
       onPress: () => navigation.navigate('Family'),
-    },
-    {
+    }] : []),
+    ...(appConfig.isCpEnabled ? [{
       id: 'cpSpace',
       label: 'CP Space',
       icon: (
@@ -192,7 +211,7 @@ export default function MeScreen() {
         </View>
       ),
       onPress: () => navigation.navigate('CpSpace'),
-    },
+    }] : []),
     {
       id: 'tasks',
       label: 'Tasks',

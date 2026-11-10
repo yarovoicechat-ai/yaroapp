@@ -86,6 +86,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
 
   override fun createViewInstance(reactContext: ThemedReactContext): SVGAImageView =
     ResumableSVGAImageView(reactContext).apply {
+      setBackgroundColor(android.graphics.Color.TRANSPARENT)
       callback = object : SVGACallback {
         override fun onFinished() {
           emit(this@apply, "topPlaybackFinished")

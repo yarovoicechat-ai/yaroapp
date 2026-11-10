@@ -73,8 +73,8 @@ export default function SvgaView({
 
   if (isSvga && NativeSvga) {
     return (
-      <View style={style}>
-        {normalizedFallback ? (
+      <View style={[{ backgroundColor: 'transparent' }, style]}>
+        {failed && normalizedFallback ? (
           <Image
             source={{ uri: normalizedFallback }}
             style={StyleSheet.absoluteFillObject}
@@ -94,7 +94,7 @@ export default function SvgaView({
               if (normalizedFallback) setFailed(true);
               onError?.(error);
             }}
-            style={StyleSheet.absoluteFillObject}
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'transparent' }]}
           />
 
       </View>

@@ -51,3 +51,27 @@ test('failed backend verification preserves purchase for retry', async () => {
   await BillingService.restorePurchases(async () => false);
   expect(iap.finishTransaction).not.toHaveBeenCalled();
 });
+
+test('modern pending purchases with tokens never reach verification or consumption', async () => {
+  iap.getAvailablePurchases.mockResolvedValue([{ productId: 'coins_7200', purchaseState: 'pending', purchaseToken: 'pending-token' }]);
+  const verify = jest.fn();
+  await BillingService.restorePurchases(verify);
+  expect(verify).not.toHaveBeenCalled();
+  expect(iap.finishTransaction).not.toHaveBeenCalled();
+});
+
+test('modern purchased items are verified before consumption', async () => {
+  iap.getAvailablePurchases.mockResolvedValue([{ productId: 'coins_7200', purchaseState: 'purchased', purchaseToken: 'paid-token' }]);
+  const verify = jest.fn(async () => true);
+  await BillingService.restorePurchases(verify);
+  expect(verify).toHaveBeenCalledTimes(1);
+  expect(iap.finishTransaction).toHaveBeenCalledTimes(1);
+});
+
+test('available one-time product uses the provider SKU and offer token', async () => {
+  iap.fetchProducts.mockResolvedValue([{ id: 'coins_7200', displayPrice: '₹100', oneTimePurchaseOfferDetailsAndroid: [{ offerToken: 'offer' }] }]);
+  await BillingService.buyProduct('coins_7200', 123);
+  expect(iap.requestPurchase).toHaveBeenCalledWith({ type: 'in-app', request: { google: {
+    skus: ['coins_7200'], obfuscatedAccountId: '123', offerToken: 'offer',
+  } } });
+});

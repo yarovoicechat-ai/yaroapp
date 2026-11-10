@@ -189,15 +189,14 @@ const Wallet = () => {
     
     const errStr = typeof error === 'string' ? error : JSON.stringify(error || {});
     const errMsg = error?.debugMessage || error?.message || '';
-    const isUserCancel = error?.code === 'E_USER_CANCELLED' || 
-                         errStr.toLowerCase().includes('cancel') ||
-                         errStr.toLowerCase().includes('user');
+    const isUserCancel = error?.code === 'E_USER_CANCELLED' || error?.code === 'user-cancelled' ||
+                         errMsg.toLowerCase().includes('cancel');
 
     const isDeveloperSigningError = error?.code === 'developer-error' || 
                                     errStr.toLowerCase().includes('signed correctly') ||
                                     errStr.toLowerCase().includes('not configured for billing');
 
-    const isItemUnavailable = error?.code === 'E_ITEM_UNAVAILABLE' || 
+    const isItemUnavailable = error?.code === 'E_ITEM_UNAVAILABLE' || error?.code === 'item-unavailable' ||
                               errMsg.toLowerCase().includes('item_unavailable') || 
                               errMsg.toLowerCase().includes('failed to query product') ||
                               errMsg.toLowerCase().includes('unavailable on google play');
@@ -217,8 +216,8 @@ const Wallet = () => {
       console.log('[Wallet] User canceled purchase flow');
     } else if (isDeveloperSigningError || isItemUnavailable) {
       AlertService.show(
-        'Play Console Setup Required 📲',
-        'Google Play could not verify this product.\n\nRequired setup:\n1. Add your Google email in Play Console > License Testing.\n2. Open the Internal Testing web link and accept the invite.\n3. Verify that In-app products status is "Active".',
+        'Purchase Unavailable',
+        `Google Play could not start this purchase. Check your Play Store account and try again.\n\nDetails: ${errMsg || error?.code || 'Product unavailable'}`,
         'error'
       );
     } else {
@@ -298,7 +297,7 @@ const Wallet = () => {
       const errMsg = err?.message || String(err || '');
       const isUserCancel = err?.code === 'E_USER_CANCELLED' || errMsg.toLowerCase().includes('cancel') || errStr.toLowerCase().includes('cancel');
       const isDeveloperSigningError = err?.code === 'developer-error' || err?.code === 'E_DEVELOPER_ERROR' || errMsg.toLowerCase().includes('signed correctly') || errMsg.toLowerCase().includes('developer');
-      const isItemUnavailable = err?.code === 'E_ITEM_UNAVAILABLE' || errMsg.toLowerCase().includes('item_unavailable') || errMsg.toLowerCase().includes('unavailable on google play');
+      const isItemUnavailable = err?.code === 'E_ITEM_UNAVAILABLE' || err?.code === 'item-unavailable' || errMsg.toLowerCase().includes('item_unavailable') || errMsg.toLowerCase().includes('unavailable on google play');
       const isAlreadyOwned = err?.code === 'E_ALREADY_OWNED' || 
                              errStr.toLowerCase().includes('already own') ||
                              errStr.toLowerCase().includes('already_owned');
@@ -312,8 +311,8 @@ const Wallet = () => {
         await BillingService.restorePurchases(verifyPurchaseWithBackend);
       } else if (isDeveloperSigningError || isItemUnavailable) {
         AlertService.show(
-          'Play Console Setup Required 📲',
-          'Google Play has not activated this product for this test device yet.\n\nTo enable test purchases:\n1. Upload this app-release.apk to Play Console (Internal Testing track).\n2. Add your Google account under License Testing.\n3. Make sure the In-app product status is "Active".',
+          'Purchase Unavailable',
+          `Google Play could not start this purchase. Check your Play Store account and try again.\n\nDetails: ${errMsg || err?.code || 'Product unavailable'}`,
           'error'
         );
       } else if (!isUserCancel) {

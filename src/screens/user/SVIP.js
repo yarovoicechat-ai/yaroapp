@@ -51,7 +51,7 @@ export default function SVIPScreen() {
       if (fetching || !active || AppState.currentState === 'background') return;
       fetching = true;
       try {
-        const response = await apiUtil.get('/svip-plans', { suppressGlobalError: true });
+        const response = await apiUtil.get('/svip-plans', { suppressGlobalError: true, params: { refresh: reloadKey } });
         const plans = response?.data?.data?.plans;
         if (!Array.isArray(plans)) throw new Error('VIP plans could not be loaded.');
         if (active) {

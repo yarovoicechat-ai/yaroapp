@@ -13,6 +13,12 @@ import {
 import { Platform } from 'react-native';
 import { GOOGLE_PLAY_PRODUCTS, GOOGLE_PLAY_PRODUCT_IDS, SKU_LEGACY_ALIASES } from '../constants/googlePlayProducts';
 
+export const getPurchaseStatus = purchase => {
+  if (purchase?.purchaseState) return purchase.purchaseState;
+  const legacy = purchase?.purchaseStateAndroid ?? purchase?.transactionStateAndroid;
+  return legacy === 0 ? 'purchased' : legacy === 2 ? 'pending' : legacy === 1 ? 'canceled' : 'unknown';
+};
+
 /**
  * Production-safe logger helper to mask sensitive purchase tokens in logs
  */
@@ -40,6 +46,7 @@ class BillingService {
 
     try {
       const result = await initConnection();
+      if (result === false) return false;
       this.connected = true;
       console.log('[GooglePlay] Billing initialized successfully:', result);
 
@@ -65,6 +72,7 @@ class BillingService {
    */
   async queryProducts() {
     if (Platform.OS !== 'android') return GOOGLE_PLAY_PRODUCTS;
+    this.cachedProducts = {};
 
     const isConnected = await this.init();
     if (!isConnected) {
@@ -149,9 +157,14 @@ class BillingService {
         } catch (_) {}
       }
 
+      if (!cachedDetails || !(cachedDetails.displayPrice || cachedDetails.localizedPrice)) {
+        const error = new Error(`Product ${productId} is unavailable on Google Play for this account. Please refresh the store and try again.`);
+        error.code = 'item-unavailable';
+        throw error;
+      }
+
       const offerToken = cachedDetails?.oneTimePurchaseOfferDetailsAndroid?.[0]?.offerToken || 
-                         cachedDetails?.oneTimePurchaseOfferDetails?.[0]?.offerToken || 
-                         cachedDetails?.subscriptionOfferDetails?.[0]?.offerToken;
+                         cachedDetails?.oneTimePurchaseOfferDetails?.[0]?.offerToken;
 
       const skuToSend = cachedDetails?.id || cachedDetails?.productId || productId;
       const googlePayload = {
@@ -191,7 +204,7 @@ class BillingService {
 
       const sku = purchase.productId || purchase.skus?.[0] || 'unknown';
       const maskedToken = maskToken(purchase.purchaseToken);
-      const state = purchase.purchaseStateAndroid !== undefined ? purchase.purchaseStateAndroid : purchase.transactionStateAndroid;
+      const state = getPurchaseStatus(purchase);
 
       console.log(`[GP-BILLING] purchaseUpdatedListener FIRED`);
       console.log(`[GP-BILLING] productId: ${sku}`);
@@ -200,23 +213,17 @@ class BillingService {
       console.log(`[GP-BILLING] hasReceipt: ${Boolean(purchase.transactionReceipt)}`);
       console.log(`[GP-BILLING] maskedPurchaseToken: ${maskedToken}`);
 
-      // Strict purchase state handling: 0 = PURCHASED, 1 = CANCELED, 2 = PENDING
-      if (state === 0) {
+      if (state === 'purchased') {
         if (onPurchaseSuccess) {
           await onPurchaseSuccess(purchase);
         }
-      } else if (state === 2) {
+      } else if (state === 'pending') {
         if (onPurchasePending) {
           onPurchasePending(purchase);
         }
-      } else if (state === 1) {
+      } else if (state === 'canceled') {
         if (onPurchaseError) {
           onPurchaseError(new Error('Purchase was canceled by the user.'));
-        }
-      } else if (purchase.transactionReceipt || purchase.purchaseToken) {
-        // Fallback for legacy receipts where purchaseStateAndroid may be undefined
-        if (onPurchaseSuccess) {
-          await onPurchaseSuccess(purchase);
         }
       }
     });
@@ -263,18 +270,18 @@ class BillingService {
         for (const purchase of availablePurchases) {
           const sku = purchase.productId || purchase.skus?.[0] || 'unknown';
           const masked = maskToken(purchase.purchaseToken);
-          const state = purchase.purchaseStateAndroid !== undefined ? purchase.purchaseStateAndroid : purchase.transactionStateAndroid;
+          const state = getPurchaseStatus(purchase);
 
           console.log(`[GP-BILLING] Inspecting purchase SKU: ${sku}, Token: ${masked}, State: ${state}`);
 
           // 1. MUST NOT credit or consume PENDING purchases (state === 2)
-          if (state === 2) {
+          if (state === 'pending') {
             console.log(`[GP-BILLING] Skipping unconsumed purchase SKU: ${sku} because purchaseState is PENDING`);
             continue;
           }
 
           // 2. MUST NOT credit or consume CANCELED purchases (state === 1)
-          if (state === 1) {
+          if (state !== 'purchased') {
             console.log(`[GP-BILLING] Skipping unconsumed purchase SKU: ${sku} because purchaseState is CANCELED`);
             continue;
           }

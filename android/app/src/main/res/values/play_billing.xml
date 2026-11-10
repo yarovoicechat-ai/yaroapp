@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Play Console licensing public key. Purchase tokens are verified by our backend. -->
+    <string name="google_play_license_public_key" translatable="false">MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnf+lBby+Hs3PPYMTxrNeZDwM2v+YfVMGR5OPk1vdoTJ7cRKxahQ67qR9hpRe5VK3/mtHMCrnAriYMu2OXTuQUAlo1fuJSqffWLarRkRYralz0l9TexJUPjne2Y8GsGavSzUXXxsL3Wq1QJ9wdr6rOCV89aCNGMJ0Op29aduyGlD6WJhRNuizXTC9X7p01NZdjPNoRzxSDTHs+fUZ+OxB1GVAnBAHEFnOPJpc3+vPujmmYNy+niWayOIFfrXbFQGh1R9Ef65KqdbjR3mc8lTjKtvZj98MnXt1VN2n/XeWwfV5BUd8FQHkmFM1CRmUjkB5ZVPCKHmNoJMGVi5m3NX7kwIDAQAB</string>
+</resources>

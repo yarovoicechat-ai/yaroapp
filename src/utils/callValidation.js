@@ -1,4 +1,6 @@
-export const CALL_DIAMONDS_PER_MINUTE = 100;
+export const CALL_COINS_PER_MINUTE_VOICE = 600;
+export const CALL_COINS_PER_MINUTE_VIDEO = 1200;
+export const CALL_DIAMONDS_PER_MINUTE = 600; // Alias for backward compatibility
 
 export const hasCallStartIdentity = data =>
   Boolean(

@@ -247,14 +247,14 @@ export default function VideoCallScreen() {
       AlertService.show('Select a gift', 'Please tap on a gift to select it.', 'info');
       return;
     }
-    const costPerUnit = Number(selectedGift.price ?? selectedGift.cost ?? selectedGift.priceDiamonds ?? 0);
+    const costPerUnit = Number(selectedGift.price ?? selectedGift.cost ?? selectedGift.priceCoins ?? selectedGift.priceDiamonds ?? 0);
     const totalCost = costPerUnit * selectedQuantity;
-    const balance = Number(user?.diamonds || 0);
+    const balance = Number(user?.coins ?? user?.diamonds ?? 0);
 
     if (balance < totalCost) {
       Alert.alert(
-        'Insufficient Diamonds',
-        `You need ${totalCost.toLocaleString()} Diamonds to send this gift. Your balance is ${balance.toLocaleString()} Diamonds.`,
+        'Insufficient Coins',
+        `You need ${totalCost.toLocaleString()} Coins to send this gift. Your balance is ${balance.toLocaleString()} Coins.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {

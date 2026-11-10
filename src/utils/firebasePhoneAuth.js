@@ -264,36 +264,12 @@ export const sendFirebasePhoneOtp = async (phoneNumber, forceResend = false) => 
       await auth.signOut();
     }
 
-    try {
-      const confirmation = await auth.signInWithPhoneNumber(normalizedPhone, forceResend);
-      await saveOtpSendTimestamp(normalizedPhone);
-      return confirmation.verificationId;
-    } catch (firstErr) {
-      console.error('[sendFirebasePhoneOtp] Attempt failed:', firstErr?.code, firstErr?.message);
-      const errCode = String(firstErr?.code || '').toLowerCase();
-      const errMsg = String(firstErr?.message || '').toLowerCase();
-      if (
-        errCode.includes('app-not-authorized') ||
-        errCode.includes('invalid-app-credential') ||
-        errCode.includes('missing-client-identifier') ||
-        errMsg.includes('missing-client-identifier') ||
-        errMsg.includes('play integrity') ||
-        errMsg.includes('app identifier')
-      ) {
-        try {
-          if (auth.settings) {
-            auth.settings.forceRecaptchaFlowForTesting = true;
-          }
-          const retryConfirmation = await auth.signInWithPhoneNumber(normalizedPhone, forceResend);
-          await saveOtpSendTimestamp(normalizedPhone);
-          return retryConfirmation.verificationId;
-        } catch (retryErr) {
-          console.error('[sendFirebasePhoneOtp] ReCAPTCHA retry failed:', retryErr?.code, retryErr?.message);
-          throw retryErr;
-        }
-      }
-      throw firstErr;
-    }
+    const confirmation = await auth.signInWithPhoneNumber(normalizedPhone, forceResend);
+    await saveOtpSendTimestamp(normalizedPhone);
+    return confirmation.verificationId;
+  } catch (err) {
+    console.error('[sendFirebasePhoneOtp] Failed:', err?.code, err?.message);
+    throw err;
   } finally {
     isSendingOtpLock = false;
   }

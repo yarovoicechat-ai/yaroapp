@@ -708,10 +708,10 @@ export default function MeScreen() {
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.diamondCardValue} numberOfLines={1}>
-                    {formatCompactBalance(user?.diamondBalance ?? user?.diamonds ?? 0)}
+                    {formatCompactBalance(user?.coinBalance ?? user?.coins ?? user?.diamonds ?? 0)}
                   </Text>
                   <Text style={styles.diamondCardLabel} numberOfLines={1}>
-                    Diamonds
+                    Coins
                   </Text>
                 </View>
                 <View style={styles.addCurrencyPill}>
@@ -773,9 +773,9 @@ export default function MeScreen() {
                   <MaterialCommunityIcons name="gift" size={13} color="#D97706" style={{ marginRight: 3 }} />
                   <Text style={styles.inviteBannerBadgeText}>INVITE & EARN</Text>
                 </View>
-                <Text style={styles.inviteBannerTitle}>Invite Friends & Earn Diamonds</Text>
+                <Text style={styles.inviteBannerTitle}>Invite Friends & Earn Coins</Text>
                 <Text style={styles.inviteBannerSubtitle} numberOfLines={2}>
-                  Friends get 5 Diamonds! You get 3 on signup + 2 on recharge.
+                  Friends get 5 Coins! You get 3 on signup + 2 on recharge.
                 </Text>
               </View>
               <View style={styles.inviteBannerRight}>

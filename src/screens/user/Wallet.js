@@ -54,7 +54,7 @@ const Wallet = () => {
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 42);
   const { user, fetchUserProfile } = useContext(AuthContext);
 
-  const [activeTab, setActiveTab] = useState('Diamonds'); // 'Diamonds' or 'Beans'
+  const [activeTab, setActiveTab] = useState('Coins'); // 'Diamonds' or 'Beans'
   const [loading, setLoading] = useState(false);
   const [purchasingPackId, setPurchasingPackId] = useState(null);
   const [productsCatalog, setProductsCatalog] = useState(GOOGLE_PLAY_PRODUCTS);
@@ -97,14 +97,14 @@ const Wallet = () => {
         const completeSuccess = await BillingService.completePurchase(purchase);
         console.log(`[GP-BILLING] COMPLETE PURCHASE ${completeSuccess ? 'SUCCESS' : 'FAILED'} for SKU: ${productId}`);
 
-        const diamondsAdded = res.data.diamondsAdded ?? GOOGLE_PLAY_PRODUCTS[productId]?.diamonds ?? 0;
+        const coinsAdded = res.data.coinsAdded ?? res.data.diamondsAdded ?? GOOGLE_PLAY_PRODUCTS[productId]?.coins ?? GOOGLE_PLAY_PRODUCTS[productId]?.diamonds ?? 0;
         
         if (res.data.status === 'ALREADY_PROCESSED') {
           console.log('[GP-BILLING] Purchase was already processed previously');
         } else {
           AlertService.show(
             'Purchase Successful 🎉',
-            `${diamondsAdded.toLocaleString()} Diamonds have been added to your wallet.`,
+            `${coinsAdded.toLocaleString()} Coins have been added to your wallet.`,
             'success'
           );
         }
@@ -119,7 +119,7 @@ const Wallet = () => {
         console.log('[GP-BILLING] Purchase is PENDING on backend');
         AlertService.show(
           'Payment Pending ⏳',
-          'Payment is pending. Your Diamonds will be added automatically after Google confirms the payment.',
+          'Payment is pending. Your Coins will be added automatically after Google confirms the payment.',
           'info'
         );
         return false;
@@ -150,7 +150,7 @@ const Wallet = () => {
         // True network or server connectivity failure
         AlertService.show(
           'Verification Delay',
-          'Payment received. We are verifying your purchase. Your Diamonds will be added shortly.',
+          'Payment received. We are verifying your purchase. Your Coins will be added shortly.',
           'info'
         );
       }
@@ -200,7 +200,7 @@ const Wallet = () => {
     if (isAlreadyOwned) {
       AlertService.show(
         'Completing Previous Purchase 🔄',
-        'You have an unconsumed purchase for this item. Syncing and adding your Diamonds now...',
+        'You have an unconsumed purchase for this item. Syncing and adding your Coins now...',
         'info'
       );
       BillingService.restorePurchases(verifyPurchaseWithBackend);
@@ -213,7 +213,7 @@ const Wallet = () => {
         'error'
       );
     } else {
-      AlertService.show('Purchase Interrupted', 'Payment could not be completed. No Diamonds were deducted.', 'error');
+      AlertService.show('Purchase Interrupted', 'Payment could not be completed. No Coins were deducted.', 'error');
     }
   }, [verifyPurchaseWithBackend]);
 
@@ -257,7 +257,7 @@ const Wallet = () => {
 
   const handleBuyDiamond = async (pack) => {
     if (!user) {
-      AlertService.show('Authentication Required', 'Please log in to purchase diamonds.', 'error');
+      AlertService.show('Authentication Required', 'Please log in to purchase coins.', 'error');
       return;
     }
 
@@ -268,7 +268,7 @@ const Wallet = () => {
     if (!pack.available && !pack.playDetails) {
       AlertService.show(
         'Google Play Store',
-        `To purchase the ₹${pack.priceInr || pack.price} pack (${pack.diamonds.toLocaleString()} Diamonds), please make sure you are signed into Google Play or install via the Internal Testing track link.`,
+        `To purchase the ₹${pack.priceInr || pack.price} pack (${(pack.coins || pack.diamonds).toLocaleString()} Coins), please make sure you are signed into Google Play or install via the Internal Testing track link.`,
         'info'
       );
       return;
@@ -294,7 +294,7 @@ const Wallet = () => {
       if (isAlreadyOwned) {
         AlertService.show(
           'Completing Previous Purchase 🔄',
-          'You already own this item from a previous transaction. Syncing and crediting your Diamonds now...',
+          'You already own this item from a previous transaction. Syncing and crediting your Coins now...',
           'info'
         );
         await BillingService.restorePurchases(verifyPurchaseWithBackend);
@@ -318,7 +318,7 @@ const Wallet = () => {
 
     AlertService.show(
       'Confirm Conversion',
-      `Are you sure you want to convert ${pack.coins.toLocaleString()} Beans into ${pack.diamonds.toLocaleString()} Diamonds?`,
+      `Are you sure you want to convert ${pack.coins.toLocaleString()} Beans into ${pack.diamonds.toLocaleString()} Coins?`,
       'info',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -332,7 +332,7 @@ const Wallet = () => {
               if (res.data.success) {
                 AlertService.show(
                   'Conversion Successful 🎉',
-                  `Converted ${pack.coins.toLocaleString()} Beans to ${pack.diamonds.toLocaleString()} Diamonds!`,
+                  `Converted ${pack.coins.toLocaleString()} Beans to ${pack.diamonds.toLocaleString()} Coins!`,
                   'success'
                 );
                 fetchUserProfile();
@@ -369,7 +369,7 @@ const Wallet = () => {
             style={styles.tabButtonGradient}
           >
             <View style={styles.tabContentRow}>
-              {tabKey === 'Diamonds' ? (
+              {(tabKey === 'Coins' || tabKey === 'Diamonds') ? (
                 <Image source={diamondIcon} style={{ width: 16, height: 16, marginRight: 4 }} resizeMode="contain" />
               ) : (
                 <Icon name={icon} size={16} color={activeColor} style={{ marginRight: 4 }} />
@@ -423,7 +423,7 @@ const Wallet = () => {
 
       {/* Custom Tabs */}
       <View style={styles.tabBar}>
-        {renderTabButton('Diamonds', 'Diamonds', 'diamond', '#03dcfe')}
+        {renderTabButton('Coins', 'Coins', 'monetization-on', '#F59E0B')}
         {renderTabButton('Beans', 'Beans', 'grain', '#10B981')}
       </View>
 
@@ -434,7 +434,7 @@ const Wallet = () => {
       )}
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]} showsVerticalScrollIndicator={false}>
-        {activeTab === 'Diamonds' ? (
+        {(activeTab === 'Coins' || activeTab === 'Diamonds') ? (
           <View style={styles.tabBody}>
             {/* Diamonds Balance Card */}
             <View style={styles.balanceCardContainer}>
@@ -446,16 +446,16 @@ const Wallet = () => {
               >
                 <View style={styles.balanceHeaderRow}>
                   <View style={styles.balanceLabelCol}>
-                    <Text style={[styles.balanceLabel, { color: '#FEF3C7', textShadowColor: 'rgba(0,0,0,0.65)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>My Diamonds</Text>
+                    <Text style={[styles.balanceLabel, { color: '#FEF3C7', textShadowColor: 'rgba(0,0,0,0.65)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>My Coins</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={[styles.balanceCount, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }]}>{formatCompactBalance(user?.diamonds || 0)}</Text>
+                      <Text style={[styles.balanceCount, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }]}>{formatCompactBalance(user?.coins ?? user?.diamonds ?? 0)}</Text>
                       <Image source={diamondIcon} style={{ width: 24, height: 24, marginLeft: 6 }} resizeMode="contain" />
                     </View>
                   </View>
                 </View>
 
                 <Text style={[styles.balanceSubtext, { color: 'rgba(255, 255, 255, 0.95)', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>
-                  Use diamonds to unlock premium features and enjoy exclusive benefits.
+                  Use coins to unlock premium features and enjoy exclusive benefits.
                 </Text>
 
                 <TouchableOpacity
@@ -473,7 +473,7 @@ const Wallet = () => {
             {/* Choose diamond pack section */}
             <View style={styles.gridTitleContainer}>
               <Image source={diamondIcon} style={{ width: 18, height: 18, marginRight: 6 }} resizeMode="contain" />
-              <Text style={styles.gridTitle}>Choose a Diamond Pack</Text>
+              <Text style={styles.gridTitle}>Choose a Coin Pack</Text>
               <View style={styles.titleLine} />
             </View>
 
@@ -502,8 +502,8 @@ const Wallet = () => {
 
                     <View style={styles.packTop}>
                       <Image source={diamondIcon} style={{ width: 28, height: 28, marginBottom: 4 }} resizeMode="contain" />
-                      <Text style={styles.packDiamondsText}>{pack.diamonds.toLocaleString()}</Text>
-                      <Text style={styles.packDiamondsSub}>Diamonds</Text>
+                      <Text style={styles.packDiamondsText}>{(pack.coins || pack.diamonds).toLocaleString()}</Text>
+                      <Text style={styles.packDiamondsSub}>Coins</Text>
                     </View>
 
                     <LinearGradient
@@ -576,7 +576,7 @@ const Wallet = () => {
                 </View>
 
                 <Text style={[styles.balanceSubtext, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3, fontWeight: '500' }]}>
-                  Beans are earned through host calls, gifts received, and creator rewards. Convert Beans into Diamonds or withdraw to UPI/Bank.
+                  Beans are earned through host calls, gifts received, and creator rewards. Convert Beans into Coins or withdraw to UPI/Bank.
                 </Text>
 
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
@@ -606,7 +606,7 @@ const Wallet = () => {
             {/* Choose bean conversion pack section */}
             <View style={styles.gridTitleContainer}>
               <Icon name="swap-horizontal-circle" size={18} color="#10B981" style={styles.gridTitleIcon} />
-              <Text style={styles.gridTitle}>Convert Beans to Diamonds</Text>
+              <Text style={styles.gridTitle}>Convert Beans to Coins</Text>
               <View style={styles.titleLine} />
             </View>
 

@@ -35,7 +35,7 @@ const OutGoing = () => {
     transactionId,
     channelName,
     maxMinutes,
-    callRatePerMinute = 100,
+    callRatePerMinute: rawCallRate,
     name,
     agora,
     callerImage,
@@ -50,6 +50,7 @@ const OutGoing = () => {
   } = route.params || {};
 
   const isVideoCall = isVideo === true || callType === 'video';
+  const callRatePerMinute = rawCallRate || (isVideoCall ? 1200 : 600);
   const noAnswerTimerRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -57,10 +58,11 @@ const OutGoing = () => {
   const [micOn, setMicOn] = useState(true);
   const [speakerOn, setSpeakerOn] = useState(false);
   const [balance, setBalance] = useState(() => {
+    if (route.params?.coins !== undefined) return route.params.coins;
     if (route.params?.diamonds !== undefined) return route.params.diamonds;
     if (route.params?.balance !== undefined) return route.params.balance;
-    if (user?.diamonds !== undefined) return user.diamonds;
     if (user?.coins !== undefined) return user.coins;
+    if (user?.diamonds !== undefined) return user.diamonds;
     return 0;
   });
 
@@ -91,13 +93,13 @@ const OutGoing = () => {
         if (isMounted && res.data?.success) {
           const uData = res.data.data?.user || res.data.data;
           if (uData) {
-            const liveDiamonds =
-              uData.diamonds !== undefined
-                ? uData.diamonds
-                : uData.coins !== undefined
+            const liveBalance =
+              uData.coins !== undefined
                 ? uData.coins
+                : uData.diamonds !== undefined
+                ? uData.diamonds
                 : 0;
-            setBalance(liveDiamonds);
+            setBalance(liveBalance);
           }
         }
       } catch (err) {
@@ -430,12 +432,7 @@ const OutGoing = () => {
             <Text style={styles.costCardLabel}>Call Rate</Text>
             <View style={styles.costValRow}>
               <Text style={styles.costValNumber}>{callRatePerMinute}</Text>
-              <Image
-                source={require('../../assets/icons/diamond.png')}
-                style={styles.diamondIcon}
-                resizeMode="contain"
-              />
-              <Text style={styles.costValUnit}>/ min</Text>
+              <Text style={styles.costValUnit}>Coins / min</Text>
             </View>
           </View>
 
@@ -449,11 +446,7 @@ const OutGoing = () => {
                   ? balance.toLocaleString()
                   : balance || 0}
               </Text>
-              <Image
-                source={require('../../assets/icons/diamond.png')}
-                style={styles.diamondIcon}
-                resizeMode="contain"
-              />
+              <Text style={styles.costValUnit}>Coins</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('Recharge')}
                 style={styles.rechargeChip}

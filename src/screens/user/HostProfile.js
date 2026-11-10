@@ -23,7 +23,7 @@ import { apiUtil, API_BASE_URL } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
 import { AuthContext } from '../../context/AuthProvider';
 import Sound from 'react-native-sound';
-import { CALL_DIAMONDS_PER_MINUTE, hasCallStartIdentity } from '../../utils/callValidation';
+import { CALL_COINS_PER_MINUTE_VOICE, hasCallStartIdentity } from '../../utils/callValidation';
 import { isValidAudioPath, normalizeLanguages, resolveAudioUrl } from '../../utils/hostPresentation';
 
 // Enable playing audio in silent mode (iOS)
@@ -151,10 +151,10 @@ const HostProfile = () => {
 
   const languageList = normalizeLanguages(host.languages, host.language);
 
-  const showInsufficientDiamondsAlert = () => {
+  const showInsufficientCoinsAlert = () => {
     AlertService.show(
-      'Insufficient Diamonds',
-      'Your Diamond balance is too low to start this call. Please recharge your Diamonds to continue.',
+      'Insufficient Coins',
+      'Your Coin balance is too low to start this call. Please recharge your Coins to continue.',
       'error',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -171,12 +171,12 @@ const HostProfile = () => {
       return;
     }
 
-    const userDiamonds = Number(user?.diamonds || 0);
-    console.log('[CALL] START REQUEST | BALANCE:', userDiamonds);
+    const userCoins = Number(user?.coins ?? user?.diamonds ?? 0);
+    console.log('[CALL] START REQUEST | BALANCE:', userCoins);
 
-    if (userDiamonds < CALL_DIAMONDS_PER_MINUTE) {
+    if (userCoins < CALL_COINS_PER_MINUTE_VOICE) {
       console.log('[CALL] INSUFFICIENT BALANCE | REJECTED ON FRONTEND');
-      showInsufficientDiamondsAlert();
+      showInsufficientCoinsAlert();
       return;
     }
 
@@ -188,8 +188,15 @@ const HostProfile = () => {
       if (!response.data?.success || !hasCallStartIdentity(response.data?.data)) {
         const msg = response.data?.message || 'Failed to start call.';
         const errCode = response.data?.data?.code || response.data?.data?.errorCode;
-        if (errCode === 'INSUFFICIENT_DIAMONDS' || msg.includes('INSUFFICIENT_DIAMONDS') || msg.toLowerCase().includes('diamond')) {
-          showInsufficientDiamondsAlert();
+        if (
+          errCode === 'INSUFFICIENT_COINS' ||
+          errCode === 'INSUFFICIENT_DIAMONDS' ||
+          msg.includes('INSUFFICIENT_COINS') ||
+          msg.includes('INSUFFICIENT_DIAMONDS') ||
+          msg.toLowerCase().includes('coin') ||
+          msg.toLowerCase().includes('diamond')
+        ) {
+          showInsufficientCoinsAlert();
         } else {
           AlertService.show('Call unavailable', msg, 'error');
         }
@@ -205,8 +212,15 @@ const HostProfile = () => {
     } catch (error) {
       const msg = error.response?.data?.message || error.message || 'Please try again.';
       const errCode = error.response?.data?.data?.code || error.response?.data?.data?.errorCode;
-      if (errCode === 'INSUFFICIENT_DIAMONDS' || msg.includes('INSUFFICIENT_DIAMONDS') || msg.toLowerCase().includes('diamond')) {
-        showInsufficientDiamondsAlert();
+      if (
+        errCode === 'INSUFFICIENT_COINS' ||
+        errCode === 'INSUFFICIENT_DIAMONDS' ||
+        msg.includes('INSUFFICIENT_COINS') ||
+        msg.includes('INSUFFICIENT_DIAMONDS') ||
+        msg.toLowerCase().includes('coin') ||
+        msg.toLowerCase().includes('diamond')
+      ) {
+        showInsufficientCoinsAlert();
       } else {
         AlertService.show('Call unavailable', msg, 'error');
       }

@@ -11,7 +11,7 @@ import {
   flushFailedPurchasesCachedAsPendingAndroid,
 } from 'react-native-iap';
 import { Platform } from 'react-native';
-import { GOOGLE_PLAY_PRODUCTS, GOOGLE_PLAY_PRODUCT_IDS } from '../constants/googlePlayProducts';
+import { GOOGLE_PLAY_PRODUCTS, GOOGLE_PLAY_PRODUCT_IDS, SKU_LEGACY_ALIASES } from '../constants/googlePlayProducts';
 
 /**
  * Production-safe logger helper to mask sensitive purchase tokens in logs
@@ -97,14 +97,17 @@ class BillingService {
       if (Array.isArray(playProducts)) {
         playProducts.forEach((item) => {
           const sku = item.id || item.productId || item.sku;
-          if (sku && catalogMap[sku]) {
-            catalogMap[sku] = {
-              ...catalogMap[sku],
+          const targetKey = SKU_LEGACY_ALIASES?.[sku] || sku;
+          if (targetKey && catalogMap[targetKey]) {
+            catalogMap[targetKey] = {
+              ...catalogMap[targetKey],
+              skuToBuy: sku,
               localizedPrice: item.displayPrice || item.localizedPrice,
               currency: item.currency || 'INR',
               playDetails: item,
               available: Boolean(item.displayPrice || item.localizedPrice),
             };
+            this.cachedProducts[targetKey] = item;
             this.cachedProducts[sku] = item;
           }
         });
@@ -154,8 +157,9 @@ class BillingService {
                          cachedDetails?.oneTimePurchaseOfferDetails?.[0]?.offerToken || 
                          cachedDetails?.subscriptionOfferDetails?.[0]?.offerToken;
 
+      const skuToSend = cachedDetails?.id || cachedDetails?.productId || productId;
       const googlePayload = {
-        skus: [productId],
+        skus: [skuToSend],
         ...(userId ? { obfuscatedAccountId: String(userId) } : {}),
         ...(offerToken ? { offerToken } : {}),
       };

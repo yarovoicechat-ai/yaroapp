@@ -15,7 +15,7 @@ import { apiUtil } from '../../utils/apiUtil';
 import { getSocket } from '../../sockets';
 import { AuthContext } from '../../context/AuthProvider';
 import { AlertService } from '../../utils/AlertService';
-import { CALL_DIAMONDS_PER_MINUTE, hasCallStartIdentity } from '../../utils/callValidation';
+import { CALL_COINS_PER_MINUTE_VOICE, hasCallStartIdentity } from '../../utils/callValidation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -107,13 +107,13 @@ const Notifications = () => {
 
     const callBack = async item => {
         if (callbackInFlightRef.current) return;
-        const userDiamonds = Number(user?.diamonds || 0);
-        console.log('[CALL] START REQUEST | DIAMONDS:', userDiamonds);
+        const userCoins = Number(user?.coins ?? user?.diamonds ?? 0);
+        console.log('[CALL] START REQUEST | COINS:', userCoins);
 
-        const showInsufficientDiamondsAlert = () => {
+        const showInsufficientCoinsAlert = () => {
             AlertService.show(
-                'Insufficient Diamonds',
-                'Your Diamond balance is too low to start this call. Please recharge your Diamonds to continue.',
+                'Insufficient Coins',
+                'Your Coin balance is too low to start this call. Please recharge your Coins to continue.',
                 'error',
                 [
                     { text: 'Cancel', style: 'cancel' },
@@ -122,9 +122,9 @@ const Notifications = () => {
             );
         };
 
-        if (userDiamonds < CALL_DIAMONDS_PER_MINUTE) {
-            console.log('[CALL] INSUFFICIENT DIAMONDS | REJECTED ON FRONTEND');
-            showInsufficientDiamondsAlert();
+        if (userCoins < CALL_COINS_PER_MINUTE_VOICE) {
+            console.log('[CALL] INSUFFICIENT COINS | REJECTED ON FRONTEND');
+            showInsufficientCoinsAlert();
             return;
         }
 
@@ -135,8 +135,15 @@ const Notifications = () => {
             if (!response.data?.success || !hasCallStartIdentity(response.data?.data)) {
                 const msg = response.data?.message || 'Failed to start call.';
                 const errCode = response.data?.data?.code || response.data?.data?.errorCode;
-                if (errCode === 'INSUFFICIENT_DIAMONDS' || msg.includes('INSUFFICIENT_DIAMONDS') || msg.toLowerCase().includes('diamond')) {
-                    showInsufficientDiamondsAlert();
+                if (
+                    errCode === 'INSUFFICIENT_COINS' ||
+                    errCode === 'INSUFFICIENT_DIAMONDS' ||
+                    msg.includes('INSUFFICIENT_COINS') ||
+                    msg.includes('INSUFFICIENT_DIAMONDS') ||
+                    msg.toLowerCase().includes('coin') ||
+                    msg.toLowerCase().includes('diamond')
+                ) {
+                    showInsufficientCoinsAlert();
                 } else {
                     AlertService.show('Call unavailable', msg, 'error');
                 }
@@ -152,8 +159,15 @@ const Notifications = () => {
         } catch (error) {
             const msg = error.response?.data?.message || error.message || 'Callback unavailable';
             const errCode = error.response?.data?.data?.code || error.response?.data?.data?.errorCode;
-            if (errCode === 'INSUFFICIENT_DIAMONDS' || msg.includes('INSUFFICIENT_DIAMONDS') || msg.toLowerCase().includes('diamond')) {
-                showInsufficientDiamondsAlert();
+            if (
+                errCode === 'INSUFFICIENT_COINS' ||
+                errCode === 'INSUFFICIENT_DIAMONDS' ||
+                msg.includes('INSUFFICIENT_COINS') ||
+                msg.includes('INSUFFICIENT_DIAMONDS') ||
+                msg.toLowerCase().includes('coin') ||
+                msg.toLowerCase().includes('diamond')
+            ) {
+                showInsufficientCoinsAlert();
             } else {
                 AlertService.show('Call unavailable', msg, 'error');
             }

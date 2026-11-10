@@ -218,7 +218,7 @@ const OnGoing = ({ route, navigation }) => {
       hasShownLowBalanceWarningRef.current = true;
       AlertService.show(
         'Low Balance Warning',
-        'Warning: Your balance is running low! Only 500 diamonds remaining. Please recharge soon.',
+        'Warning: Your balance is running low! Only 500 coins remaining. Please recharge soon.',
         'info'
       );
     }
@@ -471,10 +471,10 @@ const OnGoing = ({ route, navigation }) => {
     setCallEnded(true);
     setEndReason(reason);
 
-    if (reason === 'INSUFFICIENT_DIAMONDS' || String(reason).toLowerCase().includes('insufficient')) {
+    if (reason === 'INSUFFICIENT_COINS' || reason === 'INSUFFICIENT_DIAMONDS' || String(reason).toLowerCase().includes('insufficient')) {
       AlertService.show(
-        'Diamonds Exhausted',
-        'Aapka diamond balance khatam ho gaya hai. Call terminate kar di gayi hai.',
+        'Coins Exhausted',
+        'Aapka coin balance khatam ho gaya hai. Call terminate kar di gayi hai.',
         'warning'
       );
     }
@@ -963,7 +963,7 @@ const OnGoing = ({ route, navigation }) => {
       return;
     }
     const cost = Number(gift.price ?? gift.cost ?? gift.priceDiamonds ?? 0) * quantity;
-    const userBalance = Number(user?.diamonds || 0);
+    const userBalance = Number(user?.coins ?? user?.diamonds ?? 0);
     if (userBalance < cost) {
       AlertService.show('Insufficient Balance', 'Please recharge your wallet to send this gift.', 'error');
       return;
@@ -1189,7 +1189,7 @@ const OnGoing = ({ route, navigation }) => {
             onPress={openGiftModal}
           >
             <Image source={require('../../assets/icons/diamond.png')} style={{ width: 16, height: 16, marginRight: 4 }} resizeMode="contain" />
-              <Text style={styles.quickGiftBalanceText}>{Number(user?.diamonds || 0).toLocaleString()}</Text>
+              <Text style={styles.quickGiftBalanceText}>{Number(user?.coins ?? user?.diamonds ?? 0).toLocaleString()}</Text>
           </TouchableOpacity>
         </View>
 

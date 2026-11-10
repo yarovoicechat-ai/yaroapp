@@ -9,20 +9,31 @@ import * as iap from 'react-native-iap';
 import BillingService from '../services/BillingService';
 import { GOOGLE_PLAY_PRODUCTS } from '../constants/googlePlayProducts';
 beforeEach(() => { Platform.OS = 'android'; BillingService.connected = false; BillingService.isProcessing = false; BillingService.cachedProducts = {}; jest.clearAllMocks(); });
-test('requested nine entitlements including small packages', () => {
-  expect(Object.values(GOOGLE_PLAY_PRODUCTS).map(p => [p.priceInr, p.diamonds])).toEqual([[10,7],[50,36],[100,72],[200,144],[500,360],[1000,720],[2000,1440],[5000,3600],[10000,7200]]);
+test('requested ten coin recharge entitlements', () => {
+  expect(Object.values(GOOGLE_PLAY_PRODUCTS).map(p => [p.priceInr, p.coins])).toEqual([
+    [10, 720],
+    [50, 3600],
+    [100, 7200],
+    [200, 14400],
+    [500, 36000],
+    [1000, 72000],
+    [2000, 144000],
+    [5000, 360000],
+    [10000, 720000],
+    [20000, 1440000],
+  ]);
 });
 test('uses modern Play ID and localized provider price', async () => {
-  iap.fetchProducts.mockResolvedValue([{id:'diamonds_72',displayPrice:'?100.00',currency:'INR'}]);
+  iap.fetchProducts.mockResolvedValue([{id:'coins_7200',displayPrice:'₹100.00',currency:'INR'}]);
   const catalog = await BillingService.queryProducts();
-  expect(catalog.diamonds_72.available).toBe(true);
-  expect(catalog.diamonds_72.localizedPrice).toBe('?100.00');
-  expect(catalog.diamonds_144.available).toBe(false);
+  expect(catalog.coins_7200.available).toBe(true);
+  expect(catalog.coins_7200.localizedPrice).toBe('₹100.00');
+  expect(catalog.coins_14400.available).toBe(false);
 });
 test('provider missing price cannot enable purchase', async () => {
-  iap.fetchProducts.mockResolvedValue([{id:'diamonds_72'}]);
-  expect((await BillingService.queryProducts()).diamonds_72.available).toBe(false);
-  await expect(BillingService.buyProduct('diamonds_72', 123)).rejects.toThrow('unavailable');
+  iap.fetchProducts.mockResolvedValue([{id:'coins_7200'}]);
+  expect((await BillingService.queryProducts()).coins_7200.available).toBe(false);
+  await expect(BillingService.buyProduct('coins_7200', 123)).rejects.toThrow('unavailable');
   expect(iap.requestPurchase).not.toHaveBeenCalled();
 });
 test('billing failure leaves all packages unavailable', async () => {
@@ -31,12 +42,12 @@ test('billing failure leaves all packages unavailable', async () => {
   expect(Object.values(catalog).every(p => !p.available)).toBe(true);
 });
 test('pending and canceled purchases are never consumed during recovery', async () => {
-  iap.getAvailablePurchases.mockResolvedValue([{productId:'diamonds_72',purchaseStateAndroid:2},{productId:'diamonds_72',purchaseStateAndroid:1}]);
+  iap.getAvailablePurchases.mockResolvedValue([{productId:'coins_7200',purchaseStateAndroid:2},{productId:'coins_7200',purchaseStateAndroid:1}]);
   const verify=jest.fn(); await BillingService.restorePurchases(verify);
   expect(verify).not.toHaveBeenCalled(); expect(iap.finishTransaction).not.toHaveBeenCalled();
 });
 test('failed backend verification preserves purchase for retry', async () => {
-  iap.getAvailablePurchases.mockResolvedValue([{productId:'diamonds_72',purchaseStateAndroid:0}]);
+  iap.getAvailablePurchases.mockResolvedValue([{productId:'coins_7200',purchaseStateAndroid:0}]);
   await BillingService.restorePurchases(async () => false);
   expect(iap.finishTransaction).not.toHaveBeenCalled();
 });

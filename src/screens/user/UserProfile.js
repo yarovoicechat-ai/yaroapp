@@ -331,8 +331,8 @@ export default function UserProfileScreen() {
       currentRoomTitle: raw.currentRoomTitle || (rawCurrentRoom ? `${raw.name || 'User'}'s Room` : ''),
       isInRoom: Boolean(rawCurrentRoom),
       isHost: Boolean(raw.isHost ?? (raw.role === 'host' || raw.callRate > 0)),
-      callRate: raw.callRate || 20,
-      videoCallRate: raw.videoCallRate || 35,
+      callRate: raw.callRate || 600,
+      videoCallRate: raw.videoCallRate || 1200,
     };
   }, [route.params, fetchedUser]);
 
@@ -422,11 +422,11 @@ export default function UserProfileScreen() {
 
   const handleStartAudioCall = async () => {
     if (callingInProgress) return;
-    const userDiamonds = Number(currentUser?.diamonds || 0);
-    if (userDiamonds < targetUser.callRate) {
-      Alert.alert('Insufficient Diamonds', 'Please recharge your diamonds to call this host.', [
+    const userCoins = Math.max(Number(currentUser?.coins || 0), Number(currentUser?.diamonds || 0));
+    if (userCoins < targetUser.callRate) {
+      Alert.alert('Insufficient Coins', 'Please recharge your coins to call this host.', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Recharge', onPress: () => navigation.navigate('Recharge') },
+        { text: 'Recharge', onPress: () => navigation.navigate('Wallet') },
       ]);
       return;
     }
@@ -1239,7 +1239,7 @@ export default function UserProfileScreen() {
             ) : (
               <>
                 <Icon name="call" size={18} color="#FFFFFF" />
-                <Text style={styles.callActionText}>Call ({targetUser.callRate}💎)</Text>
+                <Text style={styles.callActionText}>Call ({targetUser.callRate} Coins)</Text>
               </>
             )}
           </TouchableOpacity>

@@ -12,6 +12,7 @@ import {
   ImageBackground,
   StatusBar,
   Platform,
+  TextInput,
 } from 'react-native';
 
 const diamondCardBg = require('../../assets/card/diamond_gold_card_bg.jpg');
@@ -35,16 +36,17 @@ const RF = (size) => Math.sqrt(width * width + height * height) * (size / 1000);
 const WP = (percent) => (width * percent) / 100;
 const HP = (percent) => (height * percent) / 100;
 
+// 1. Beans to Coins Conversion — 9 Plans (200 Beans = 100 Coins, 200 Beans = ₹1)
 const CoinPacks = [
-  { id: 'ex_100', coins: 100, diamonds: 95, price: 50, badge: 'STARTER' },
-  { id: 'ex_200', coins: 200, diamonds: 190, price: 100, badge: 'POPULAR' },
-  { id: 'ex_500', coins: 500, diamonds: 475, price: 250, badge: 'HOT' },
-  { id: 'ex_1k', coins: 1000, diamonds: 950, price: 500, badge: 'VALUE' },
-  { id: 'ex_2k', coins: 2000, diamonds: 1900, price: 1000, badge: 'BEST VALUE' },
-  { id: 'ex_5k', coins: 5000, diamonds: 4750, price: 2500, badge: 'VIP PRO' },
-  { id: 'ex_10k', coins: 10000, diamonds: 9500, price: 5000, badge: 'ROYAL' },
-  { id: 'ex_20k', coins: 20000, diamonds: 19000, price: 10000, badge: 'SUPREME' },
-  { id: 'ex_50k', coins: 50000, diamonds: 47500, price: 25000, badge: 'WHALE' },
+  { id: 'b2c_1', coins: 2000, diamonds: 1000, price: 10, badge: 'STARTER' },
+  { id: 'b2c_2', coins: 4000, diamonds: 2000, price: 20, badge: 'POPULAR' },
+  { id: 'b2c_3', coins: 10000, diamonds: 5000, price: 50, badge: 'HOT' },
+  { id: 'b2c_4', coins: 20000, diamonds: 10000, price: 100, badge: 'VALUE' },
+  { id: 'b2c_5', coins: 40000, diamonds: 20000, price: 200, badge: 'BEST VALUE' },
+  { id: 'b2c_6', coins: 100000, diamonds: 50000, price: 500, badge: 'VIP PRO' },
+  { id: 'b2c_7', coins: 200000, diamonds: 100000, price: 1000, badge: 'ROYAL' },
+  { id: 'b2c_8', coins: 400000, diamonds: 200000, price: 2000, badge: 'SUPREME' },
+  { id: 'b2c_9', coins: 1000000, diamonds: 500000, price: 5000, badge: 'WHALE' },
 ];
 
 const Wallet = () => {
@@ -58,6 +60,7 @@ const Wallet = () => {
   const [loading, setLoading] = useState(false);
   const [purchasingPackId, setPurchasingPackId] = useState(null);
   const [productsCatalog, setProductsCatalog] = useState(GOOGLE_PLAY_PRODUCTS);
+  const [calcBeans, setCalcBeans] = useState('20000');
 
   /**
    * Verify purchase token with backend and consume Google Play purchase
@@ -569,14 +572,14 @@ const Wallet = () => {
                       />
                     </View>
                     <Text style={[styles.balanceValue, { color: '#FEF08A', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3, fontWeight: '800' }]}>
-                      ≈ ₹{formatCompactBalance((user?.coins || 0) / 2)}
+                      ≈ ₹{formatCompactBalance((user?.coins || 0) / 200)}
                       {Number(user?.coins || 0) >= 1000000 ? ` (${(user?.coins || 0).toLocaleString()} 🌟)` : ''}
                     </Text>
                   </View>
                 </View>
 
                 <Text style={[styles.balanceSubtext, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3, fontWeight: '500' }]}>
-                  Beans are earned through host calls, gifts received, and creator rewards. Convert Beans into Coins or withdraw to UPI/Bank.
+                  Beans are earned through host calls, gifts received, and creator rewards. Convert Beans into Coins or withdraw to UPI/Bank (200 Beans = ₹1).
                 </Text>
 
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
@@ -601,6 +604,88 @@ const Wallet = () => {
                   </TouchableOpacity>
                 </View>
               </ImageBackground>
+            </View>
+
+            {/* 4. Beans Calculator */}
+            <View style={styles.calcCardContainer}>
+              <LinearGradient
+                colors={['#0F172A', '#1E293B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.calcCard}
+              >
+                <View style={styles.calcHeaderRow}>
+                  <View style={styles.calcHeaderTitleGroup}>
+                    <Icon name="calculate" size={20} color="#10B981" style={{ marginRight: 6 }} />
+                    <Text style={styles.calcHeaderTitle}>Beans Calculator</Text>
+                  </View>
+                  <View style={styles.calcRateBadge}>
+                    <Text style={styles.calcRateBadgeText}>200 Beans = ₹1</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.calcInputLabel}>Beans Quantity</Text>
+                <View style={styles.calcInputWrapper}>
+                  <Image
+                    source={require('../../assets/icons/beans.png')}
+                    style={{ width: 22, height: 22, marginRight: 8 }}
+                    resizeMode="contain"
+                  />
+                  <TextInput
+                    style={styles.calcTextInput}
+                    keyboardType="numeric"
+                    value={calcBeans}
+                    onChangeText={(val) => setCalcBeans(val.replace(/[^0-9]/g, ''))}
+                    placeholder="Enter Beans Quantity"
+                    placeholderTextColor="#64748B"
+                  />
+                  {calcBeans ? (
+                    <TouchableOpacity onPress={() => setCalcBeans('')} style={styles.calcClearBtn}>
+                      <Icon name="close" size={16} color="#94A3B8" />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                {/* Quick Presets */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.calcPresetsScroll} contentContainerStyle={styles.calcPresetsContainer}>
+                  {['2000', '4000', '10000', '20000', '40000', '100000', '200000', '400000', '1000000'].map((preset) => (
+                    <TouchableOpacity
+                      key={preset}
+                      onPress={() => setCalcBeans(preset)}
+                      style={[styles.calcPresetPill, calcBeans === preset && styles.calcPresetPillActive]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.calcPresetText, calcBeans === preset && styles.calcPresetTextActive]}>
+                        {Number(preset).toLocaleString()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* 2 Output Cards */}
+                <View style={styles.calcResultsGrid}>
+                  <View style={styles.calcResultBox}>
+                    <Text style={styles.calcResultLabel}>Coins Receive</Text>
+                    <View style={styles.calcResultRow}>
+                      <Image source={diamondIcon} style={{ width: 16, height: 16, marginRight: 4 }} resizeMode="contain" />
+                      <Text style={styles.calcResultCoinsText}>
+                        {Math.floor((Number(calcBeans) || 0) / 2).toLocaleString()}
+                      </Text>
+                    </View>
+                    <Text style={styles.calcResultSub}>200 Beans = 100 Coins</Text>
+                  </View>
+
+                  <View style={[styles.calcResultBox, { borderColor: '#10B981' }]}>
+                    <Text style={styles.calcResultLabel}>Withdrawal Value</Text>
+                    <View style={styles.calcResultRow}>
+                      <Text style={styles.calcResultInrText}>
+                        ₹{((Number(calcBeans) || 0) / 200).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+                    <Text style={styles.calcResultSub}>₹1 = 200 Beans</Text>
+                  </View>
+                </View>
+              </LinearGradient>
             </View>
 
             {/* Choose bean conversion pack section */}
@@ -1168,5 +1253,142 @@ const styles = StyleSheet.create({
   bottomLockText: {
     color: '#94A3B8',
     fontSize: RF(10),
+  },
+  calcCardContainer: {
+    marginTop: 16,
+    marginHorizontal: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#334155',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  calcCard: {
+    padding: 16,
+    borderRadius: 20,
+  },
+  calcHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  calcHeaderTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  calcHeaderTitle: {
+    color: '#F8FAFC',
+    fontSize: RF(14),
+    fontWeight: '800',
+  },
+  calcRateBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  calcRateBadgeText: {
+    color: '#34D399',
+    fontSize: RF(10),
+    fontWeight: '700',
+  },
+  calcInputLabel: {
+    color: '#94A3B8',
+    fontSize: RF(11),
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  calcInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#090D16',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 46,
+  },
+  calcTextInput: {
+    flex: 1,
+    color: '#F8FAFC',
+    fontSize: RF(14),
+    fontWeight: '700',
+    paddingVertical: 0,
+  },
+  calcClearBtn: {
+    padding: 4,
+  },
+  calcPresetsScroll: {
+    marginTop: 10,
+  },
+  calcPresetsContainer: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  calcPresetPill: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  calcPresetPillActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#059669',
+  },
+  calcPresetText: {
+    color: '#CBD5E1',
+    fontSize: RF(10),
+    fontWeight: '600',
+  },
+  calcPresetTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  calcResultsGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  calcResultBox: {
+    flex: 1,
+    backgroundColor: '#090D16',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 14,
+    padding: 12,
+  },
+  calcResultLabel: {
+    color: '#94A3B8',
+    fontSize: RF(10),
+    fontWeight: '600',
+  },
+  calcResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  calcResultCoinsText: {
+    color: '#38BDF8',
+    fontSize: RF(16),
+    fontWeight: '900',
+  },
+  calcResultInrText: {
+    color: '#34D399',
+    fontSize: RF(16),
+    fontWeight: '900',
+  },
+  calcResultSub: {
+    color: '#64748B',
+    fontSize: RF(9),
+    fontWeight: '500',
   },
 });

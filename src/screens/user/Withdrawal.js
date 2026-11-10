@@ -27,10 +27,23 @@ import { AlertService } from '../../utils/AlertService';
 import { formatCompactBalance } from '../../utils/numberUtil';
 
 const { width } = Dimensions.get('window');
-const COIN_TO_INR_RATIO = 2;
-const MIN_WITHDRAWAL_INR = 200;
+const COIN_TO_INR_RATIO = 200; // 200 Beans = ₹1
+const MIN_WITHDRAWAL_INR = 10;  // Minimum withdrawal is ₹10 (2,000 Beans)
 const DEFAULT_PLATFORM_FEE_PERCENT = 5;
 const money = value => (Math.round(Number(value) * 100) / 100).toFixed(2);
+
+// 2. Beans Withdrawal — 9 Plans (200 Beans = ₹1)
+const WITHDRAWAL_PLANS = [
+  { plan: 1, beans: 2000, inr: 10 },
+  { plan: 2, beans: 4000, inr: 20 },
+  { plan: 3, beans: 10000, inr: 50 },
+  { plan: 4, beans: 20000, inr: 100 },
+  { plan: 5, beans: 40000, inr: 200 },
+  { plan: 6, beans: 100000, inr: 500 },
+  { plan: 7, beans: 200000, inr: 1000 },
+  { plan: 8, beans: 400000, inr: 2000 },
+  { plan: 9, beans: 1000000, inr: 5000 },
+];
 
 const Withdrawal = () => {
   const navigation = useNavigation();
@@ -357,6 +370,39 @@ const Withdrawal = () => {
           <View style={styles.conversionBox}>
             <Text style={styles.conversionBoxLabel}>{t('withdrawal.equivalent_amount') || 'Equivalent Payout:'}</Text>
             <Text style={styles.conversionBoxValue}>₹ {calculatedINR}</Text>
+          </View>
+        </View>
+
+        {/* 2. Beans Withdrawal — 9 Plans Quick Select */}
+        <View style={styles.plansSection}>
+          <Text style={styles.cardSectionLabel}>Quick Select Withdrawal Plan (200 Beans = ₹1)</Text>
+          <View style={styles.plansGrid}>
+            {WITHDRAWAL_PLANS.map((item) => {
+              const isSelected = String(withdrawalAmount) === String(item.beans);
+              return (
+                <TouchableOpacity
+                  key={item.plan}
+                  style={[styles.planCard, isSelected && styles.planCardSelected]}
+                  onPress={() => setWithdrawalAmount(String(item.beans))}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.planBadgeText, isSelected && styles.planBadgeTextSelected]}>
+                    Plan {item.plan}
+                  </Text>
+                  <View style={styles.planBeansRow}>
+                    <Image source={require('../../assets/icons/beans.png')} style={{ width: 13, height: 13, marginRight: 2 }} resizeMode="contain" />
+                    <Text style={[styles.planBeansVal, isSelected && styles.planBeansValSelected]}>
+                      {item.beans.toLocaleString()}
+                    </Text>
+                  </View>
+                  <View style={[styles.planInrPill, isSelected && styles.planInrPillSelected]}>
+                    <Text style={[styles.planInrVal, isSelected && styles.planInrValSelected]}>
+                      ₹{item.inr.toLocaleString()}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -743,6 +789,73 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  plansSection: {
+    marginBottom: 20,
+  },
+  plansGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  planCard: {
+    width: (width - 40 - 16) / 3,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 10,
+    alignItems: 'center',
+    elevation: 1,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  planCardSelected: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  planBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  planBadgeTextSelected: {
+    color: '#059669',
+  },
+  planBeansRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  planBeansVal: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  planBeansValSelected: {
+    color: '#047857',
+  },
+  planInrPill: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginTop: 2,
+  },
+  planInrPillSelected: {
+    backgroundColor: '#10B981',
+  },
+  planInrVal: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#334155',
+  },
+  planInrValSelected: {
+    color: '#FFFFFF',
   },
 });
 

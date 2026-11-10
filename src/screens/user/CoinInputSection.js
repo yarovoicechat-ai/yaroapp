@@ -40,7 +40,7 @@ const CoinInputSection = ({
       return;
     }
 
-    const inr = coins / 20;
+    const inr = coins / 200; // 200 Beans = ₹1
     setCalculatedINR(inr.toFixed(2));
 
     // 👇 Re-focus the input so keyboard stays open

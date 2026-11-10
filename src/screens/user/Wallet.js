@@ -188,6 +188,7 @@ const Wallet = () => {
     console.log('[Wallet] Purchase error callback:', error);
     
     const errStr = typeof error === 'string' ? error : JSON.stringify(error || {});
+    const errMsg = error?.debugMessage || error?.message || '';
     const isUserCancel = error?.code === 'E_USER_CANCELLED' || 
                          errStr.toLowerCase().includes('cancel') ||
                          errStr.toLowerCase().includes('user');
@@ -195,6 +196,11 @@ const Wallet = () => {
     const isDeveloperSigningError = error?.code === 'developer-error' || 
                                     errStr.toLowerCase().includes('signed correctly') ||
                                     errStr.toLowerCase().includes('not configured for billing');
+
+    const isItemUnavailable = error?.code === 'E_ITEM_UNAVAILABLE' || 
+                              errMsg.toLowerCase().includes('item_unavailable') || 
+                              errMsg.toLowerCase().includes('failed to query product') ||
+                              errMsg.toLowerCase().includes('unavailable on google play');
 
     const isAlreadyOwned = error?.code === 'E_ALREADY_OWNED' || 
                            errStr.toLowerCase().includes('already own') ||
@@ -209,14 +215,15 @@ const Wallet = () => {
       BillingService.restorePurchases(verifyPurchaseWithBackend);
     } else if (isUserCancel) {
       console.log('[Wallet] User canceled purchase flow');
-    } else if (isDeveloperSigningError) {
+    } else if (isDeveloperSigningError || isItemUnavailable) {
       AlertService.show(
-        'Play Console Upload Required 📲',
-        'Google Play requires this build to be uploaded to Google Play Console under Internal Testing track.\n\nAfter uploading app-release.apk to Internal Testing, install the app via the Play Store test link to enable test purchases.',
+        'Play Console Setup Required 📲',
+        'Google Play could not verify this product.\n\nRequired setup:\n1. Add your Google email in Play Console > License Testing.\n2. Open the Internal Testing web link and accept the invite.\n3. Verify that In-app products status is "Active".',
         'error'
       );
     } else {
-      AlertService.show('Purchase Interrupted', 'Payment could not be completed. No Coins were deducted.', 'error');
+      const detail = errMsg ? `\n\n(${errMsg})` : '';
+      AlertService.show('Purchase Interrupted', `Payment could not be completed. No Coins were deducted.${detail}`, 'error');
     }
   }, [verifyPurchaseWithBackend]);
 

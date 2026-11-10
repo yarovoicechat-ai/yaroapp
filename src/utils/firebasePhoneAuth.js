@@ -52,9 +52,7 @@ export const getPhoneAuthError = error => {
   const normalizedCode = String(rawCode || '').toLowerCase().trim();
   const lowerMsg = rawMsg.toLowerCase();
 
-  console.log('[FirebasePhoneAuth Error Raw Code]:', error?.code);
-  console.log('[FirebasePhoneAuth Error Raw Message]:', rawMsg);
-  console.log('[FirebasePhoneAuth Extracted Code]:', normalizedCode);
+  console.error('[FirebasePhoneAuth Error Code]:', error?.code, 'RawMsg:', rawMsg, 'Extracted:', normalizedCode);
 
   // App validation / Play Integrity / unauthorized APK
   if (
@@ -62,16 +60,45 @@ export const getPhoneAuthError = error => {
     normalizedCode === 'auth/play-integrity-token-failed' ||
     normalizedCode === 'auth/invalid-app-credential' ||
     normalizedCode === 'auth/captcha-check-failed' ||
+    normalizedCode === 'auth/missing-client-identifier' ||
     lowerMsg.includes('app-not-authorized') ||
     lowerMsg.includes('app validation failed') ||
     lowerMsg.includes('play integrity') ||
     lowerMsg.includes('playintegrity') ||
+    lowerMsg.includes('missing-client-identifier') ||
+    lowerMsg.includes('missing a valid app identifier') ||
     lowerMsg.includes('recaptcha')
   ) {
     return {
       title: 'Verification Failed',
-      message: 'Device verification could not be completed. You can sign in using Google instead.',
+      message: 'Device verification could not be completed on this build. You can sign in using Google instead.',
       code: normalizedCode || 'auth/app-not-authorized',
+    };
+  }
+
+  // Provider disabled in Firebase Console
+  if (
+    normalizedCode === 'auth/operation-not-allowed' ||
+    lowerMsg.includes('operation-not-allowed') ||
+    lowerMsg.includes('provider is disabled')
+  ) {
+    return {
+      title: 'Phone Sign-In Disabled',
+      message: 'Phone authentication is currently disabled in Firebase Console. Please continue with Google Sign-In.',
+      code: 'auth/operation-not-allowed',
+    };
+  }
+
+  // Billing / Quota in Firebase / Google Cloud
+  if (
+    normalizedCode === 'auth/billing-not-enabled' ||
+    lowerMsg.includes('billing') ||
+    lowerMsg.includes('daily sms quota')
+  ) {
+    return {
+      title: 'SMS Limit Reached',
+      message: 'Daily SMS verification limit reached for this project. Please sign in using Google.',
+      code: 'auth/billing-not-enabled',
     };
   }
 
@@ -164,10 +191,11 @@ export const getPhoneAuthError = error => {
           code: 'auth/code-expired',
         };
       }
+      const cleanMsg = rawMsg.replace(/^\[auth\/[a-z0-9-]+\]\s*/i, '').trim();
       return {
         title: 'Verification Error',
-        message: rawMsg && rawMsg.length < 100 && !rawMsg.includes('[')
-          ? rawMsg
+        message: cleanMsg && cleanMsg.length < 120
+          ? cleanMsg
           : "We couldn't process your request right now. Please try again or use Google Sign-In.",
         code: normalizedCode,
       };
@@ -236,14 +264,36 @@ export const sendFirebasePhoneOtp = async (phoneNumber, forceResend = false) => 
       await auth.signOut();
     }
 
-    if (__DEV__) {
-      console.log('[sendFirebasePhoneOtp] Requesting OTP for:', normalizedPhone);
+    try {
+      const confirmation = await auth.signInWithPhoneNumber(normalizedPhone, forceResend);
+      await saveOtpSendTimestamp(normalizedPhone);
+      return confirmation.verificationId;
+    } catch (firstErr) {
+      console.error('[sendFirebasePhoneOtp] Attempt failed:', firstErr?.code, firstErr?.message);
+      const errCode = String(firstErr?.code || '').toLowerCase();
+      const errMsg = String(firstErr?.message || '').toLowerCase();
+      if (
+        errCode.includes('app-not-authorized') ||
+        errCode.includes('invalid-app-credential') ||
+        errCode.includes('missing-client-identifier') ||
+        errMsg.includes('missing-client-identifier') ||
+        errMsg.includes('play integrity') ||
+        errMsg.includes('app identifier')
+      ) {
+        try {
+          if (auth.settings) {
+            auth.settings.forceRecaptchaFlowForTesting = true;
+          }
+          const retryConfirmation = await auth.signInWithPhoneNumber(normalizedPhone, forceResend);
+          await saveOtpSendTimestamp(normalizedPhone);
+          return retryConfirmation.verificationId;
+        } catch (retryErr) {
+          console.error('[sendFirebasePhoneOtp] ReCAPTCHA retry failed:', retryErr?.code, retryErr?.message);
+          throw retryErr;
+        }
+      }
+      throw firstErr;
     }
-
-    const confirmation = await auth.signInWithPhoneNumber(normalizedPhone, forceResend);
-    await saveOtpSendTimestamp(normalizedPhone);
-
-    return confirmation.verificationId;
   } finally {
     isSendingOtpLock = false;
   }

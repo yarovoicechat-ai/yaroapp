@@ -78,8 +78,8 @@ export default function TeamDashboard() {
   const [cachedTsv, setCachedTsv] = useState('');
   const [cachedXlsxUrl, setCachedXlsxUrl] = useState('');
 
-  // System Feature Visibility Controls (CP & Family)
-  const [sysConfig, setSysConfig] = useState({ isFamilyEnabled: false, isCpEnabled: false });
+  // System Feature Visibility Controls (CP, Family & Invite & Earn)
+  const [sysConfig, setSysConfig] = useState({ isFamilyEnabled: false, isCpEnabled: false, isInviteEarnEnabled: false });
   const [togglingFeature, setTogglingFeature] = useState('');
 
   const loadSysConfig = useCallback(async () => {
@@ -89,13 +89,31 @@ export default function TeamDashboard() {
         setSysConfig({
           isFamilyEnabled: Boolean(res.data.data.isFamilyEnabled),
           isCpEnabled: Boolean(res.data.data.isCpEnabled),
+          isInviteEarnEnabled: Boolean(res.data.data.isInviteEarnEnabled),
         });
       }
     } catch (_) {}
   }, []);
 
   const handleToggleFeature = async (feature) => {
-    const currentVal = feature === 'family' ? sysConfig.isFamilyEnabled : sysConfig.isCpEnabled;
+    let currentVal = false;
+    let label = '';
+    let stateKey = '';
+
+    if (feature === 'family') {
+      currentVal = sysConfig.isFamilyEnabled;
+      label = 'Family Guild';
+      stateKey = 'isFamilyEnabled';
+    } else if (feature === 'cp') {
+      currentVal = sysConfig.isCpEnabled;
+      label = 'CP Space';
+      stateKey = 'isCpEnabled';
+    } else if (feature === 'inviteEarn' || feature === 'invite') {
+      currentVal = sysConfig.isInviteEarnEnabled;
+      label = 'Invite & Earn';
+      stateKey = 'isInviteEarnEnabled';
+    }
+
     const nextVal = !currentVal;
     setTogglingFeature(feature);
     try {
@@ -106,11 +124,11 @@ export default function TeamDashboard() {
       if (res.data?.success) {
         setSysConfig(prev => ({
           ...prev,
-          [feature === 'family' ? 'isFamilyEnabled' : 'isCpEnabled']: nextVal,
+          [stateKey]: nextVal,
         }));
         AlertService.show(
           'Feature Updated',
-          `${feature === 'family' ? 'Family Guild' : 'CP Space'} is now ${nextVal ? 'LIVE in app' : 'HIDDEN from app'}.`,
+          `${label} is now ${nextVal ? 'LIVE in app' : 'HIDDEN from app'}.`,
           'success'
         );
       }
@@ -529,6 +547,37 @@ export default function TeamDashboard() {
                 ) : (
                   <Text style={styles.featureToggleBtnText}>
                     {sysConfig.isFamilyEnabled ? 'Hide' : 'Make Live'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Invite & Earn Toggle */}
+            <View style={styles.managementToggleItem}>
+              <View style={styles.managementToggleLeft}>
+                <View style={[styles.featureIconBadge, { backgroundColor: '#FEE2E2' }]}>
+                  <MaterialCommunityIcons name="gift-outline" size={20} color="#DC2626" />
+                </View>
+                <View>
+                  <Text style={styles.featureItemTitle}>Invite & Earn</Text>
+                  <Text style={[styles.featureItemStatus, { color: sysConfig.isInviteEarnEnabled ? '#34D399' : '#F87171' }]}>
+                    {sysConfig.isInviteEarnEnabled ? '● LIVE in App' : '○ HIDDEN from App'}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.featureToggleBtn,
+                  sysConfig.isInviteEarnEnabled ? styles.featureToggleBtnActive : styles.featureToggleBtnHidden,
+                ]}
+                onPress={() => handleToggleFeature('inviteEarn')}
+                disabled={Boolean(togglingFeature)}
+              >
+                {togglingFeature === 'inviteEarn' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.featureToggleBtnText}>
+                    {sysConfig.isInviteEarnEnabled ? 'Hide' : 'Make Live'}
                   </Text>
                 )}
               </TouchableOpacity>

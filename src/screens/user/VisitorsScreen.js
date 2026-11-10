@@ -164,7 +164,7 @@ export default function VisitorsScreen() {
               Can only view 5 visitors
             </Text>
             <Text style={styles.gateUpgradePrompt}>
-              You can view more when you get SVIP
+              You can view more when you get VIP
             </Text>
 
             <TouchableOpacity
@@ -178,7 +178,7 @@ export default function VisitorsScreen() {
                 end={{ x: 1, y: 0 }}
                 style={styles.getSvipGrad}
               >
-                <Text style={styles.getSvipBtnText}>Get SVIP</Text>
+                <Text style={styles.getSvipBtnText}>Get VIP</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>

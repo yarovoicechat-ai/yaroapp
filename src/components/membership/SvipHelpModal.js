@@ -3,10 +3,10 @@ import { Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const RULES = [
-  'SVIP tiers are purchased using diamonds and remain active for the configured validity period.',
-  'Your permanent account numeric ID is never overwritten or affected by temporary SVIP display tags.',
-  'When your SVIP expires, benefits automatically stop and your profile safely reverts to default styling.',
-  'SVIP grants immunity from public room kicks, high-priority entry notifications, and exclusive privileges.',
+  'VIP tiers are purchased using diamonds and remain active for the configured validity period.',
+  'Your permanent account numeric ID is never overwritten or affected by temporary VIP display tags.',
+  'When your VIP expires, benefits automatically stop and your profile safely reverts to default styling.',
+  'VIP grants immunity from public room kicks, high-priority entry notifications, and exclusive privileges.',
 ];
 
 export default function SvipHelpModal({ visible, onClose, styles }) {
@@ -15,7 +15,7 @@ export default function SvipHelpModal({ visible, onClose, styles }) {
       <View style={styles.modalOverlay}>
         <View style={styles.modalCard}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>SVIP Nobility Rules</Text>
+            <Text style={styles.modalTitle}>VIP Nobility Rules</Text>
             <TouchableOpacity onPress={onClose}>
               <Icon name="close" size={22} color="#94A3B8" />
             </TouchableOpacity>

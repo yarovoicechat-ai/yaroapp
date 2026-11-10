@@ -67,7 +67,7 @@ export default function IdentityBadge({
       }
     }
     const title = (isSvip || type === 'svip')
-      ? (numericLevel === 0 ? 'SVIP+' : `SVIP ${vipLevel || ''}`.trim())
+      ? (numericLevel === 0 ? 'VIP+' : `VIP ${vipLevel || ''}`.trim())
       : `VIP ${vipLevel || ''}`.trim();
 
     return (

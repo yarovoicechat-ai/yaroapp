@@ -266,7 +266,7 @@ export default function ProfileScreen() {
 
               {(user?.isSvip || Number(user?.svipLevel) > 0) && (
                 <View style={styles.svipTag}>
-                  <Text style={styles.svipTagText}>👑 SVIP{user?.svipLevel || ''}</Text>
+                  <Text style={styles.svipTagText}>👑 VIP{user?.svipLevel || ''}</Text>
                 </View>
               )}
 

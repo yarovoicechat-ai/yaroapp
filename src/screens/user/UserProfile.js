@@ -597,7 +597,7 @@ export default function UserProfileScreen() {
                 end={{ x: 1, y: 1 }}
                 style={styles.svipPill}
               >
-                <Text style={styles.svipPillText}>SVIP {targetUser.svipLevel}</Text>
+                <Text style={styles.svipPillText}>VIP {targetUser.svipLevel}</Text>
               </LinearGradient>
             )}
 

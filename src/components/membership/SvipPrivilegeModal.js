@@ -19,7 +19,7 @@ export default function SvipPrivilegeModal({ visible, onClose, privilege, styles
               <Icon name={privilege?.icon || 'star'} size={32} color="#FFFFFF" />
             </LinearGradient>
           </View>
-          <Text style={styles.modalDesc}>{privilege?.description || 'Exclusive nobility privilege for SVIP members.'}</Text>
+          <Text style={styles.modalDesc}>{privilege?.description || 'Exclusive nobility privilege for VIP members.'}</Text>
           {privilege?.value ? (
             <View style={styles.modalValueRow}>
               <Text style={styles.modalValueLabel}>Tier Benefit:</Text>

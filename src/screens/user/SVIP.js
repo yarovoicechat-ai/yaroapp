@@ -1,252 +1,32 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useContext, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
   Dimensions,
   StatusBar,
   ActivityIndicator,
+  RefreshControl,
+  AppState,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import SvipPrivilegeModal from '../../components/membership/SvipPrivilegeModal';
 import SvipHelpModal from '../../components/membership/SvipHelpModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { presentVipTier } from '../../utils/vipPlanPresentation';
+import SvgaView from '../../components/SvgaView';
+import AvatarWithFrame from '../../components/AvatarWithFrame';
 import { AuthContext } from '../../context/AuthProvider';
 import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
 import { formatCompactBalance } from '../../utils/numberUtil';
-import { getUserAvatar } from '../../utils/avatarUtil';
 
 const { width } = Dimensions.get('window');
-
-// 28 Official Nobility Privileges strictly matching Screenshot 1
-const ALL_NOBILITY_PRIVILEGES = [
-  { key: 'rank_the_top', title: 'Rank the Top', icon: 'arrow-up-circle-outline', desc: 'Pin your profile to the top of room visitors and ranking boards.' },
-  { key: 'colorful_nickname', title: 'Colorful Nickname', icon: 'color-palette-outline', desc: 'Unlock shimmering colorful gradient nickname across all rooms.' },
-  { key: 'view_more_visitors', title: 'View More visitors', icon: 'search-outline', desc: 'View up to 1,000 visitors who visited your profile.' },
-  { key: 'special_room_entry', title: 'Special Room Entry', icon: 'car-sport-outline', desc: 'Animated sports car and dragon room entrance banner.' },
-  { key: 'unlimited_message', title: 'Unlimited message', icon: 'chatbubbles-outline', desc: 'Send unlimited chat messages with zero room cooldown.' },
-  { key: 'unlock_more_room_mic', title: 'Unlock More Room Mic', icon: 'mic-circle-outline', desc: 'Unlock 25+ microphone seats in your personal rooms.' },
-  { key: 'send_pictures_private_chat', title: 'Send pictures in private chat', icon: 'image-outline', desc: 'Send HD pictures and media in private messages.' },
-  { key: 'modify_profile_gender', title: 'Modify Profile Gender', icon: 'swap-horizontal-outline', desc: 'Freedom to change profile gender identity anytime.' },
-  { key: 'hide_last_online', title: 'Hide Last Online', icon: 'time-outline', desc: 'Hide your last seen and active online status.' },
-  { key: 'profile_vehicle', title: 'Profile Vehicle', icon: 'car-outline', desc: 'Equip exclusive 3D luxury sports car on profile card.' },
-  { key: 'anti_tracking', title: 'Anti-Tracking', icon: 'shield-outline', desc: 'Prevent others from tracking which voice room you are in.' },
-  { key: 'send_pictures_chat_room', title: 'Send Pictures in Chat Room', icon: 'images-outline', desc: 'Post photos and memes directly into room public chat.' },
-  { key: 'customized_profile_bg', title: 'Customized Profile Background', icon: 'card-outline', desc: 'Upload custom animated themes and covers for your profile.' },
-  { key: 'gif_avatar', title: 'Gif Avatar', icon: 'play-circle-outline', desc: 'Set animated GIF / MP4 profile picture.' },
-  { key: 'level_exp_speedup', title: 'Level experience speed up', icon: 'trending-up-outline', desc: 'Earn 1.5x to 3x level experience points on all activities.' },
-  { key: 'svip_customized_gift', title: 'SVIP Customized Gift', icon: 'gift-outline', desc: 'Design your own custom luxury animated gift.' },
-  { key: 'id_freeze_protection', title: '15-day Special ID freeze', icon: 'lock-closed-outline', desc: 'Freeze vanity display ID for 15 days upon expiration.' },
-  { key: 'hide_online_status', title: 'Hide Online Status', icon: 'eye-off-outline', desc: 'Browse the entire application completely invisible.' },
-  { key: 'anti_kick', title: 'Anti-Kick', icon: 'exit-outline', desc: 'Immunity against room kicks from ordinary moderators.' },
-  { key: 'upgrade_app_notification', title: 'Upgrade App-wide Notification', icon: 'megaphone-outline', desc: 'App-wide golden broadcast marquee when entering or gifting.' },
-  { key: 'unique_3_digit_sid', title: 'Unique 3-digit SID', icon: 'keypad-outline', desc: 'Claim prestigious 3-digit vanity display ID.' },
-  { key: 'unban_account', title: 'Unban Account', icon: 'refresh-circle-outline', desc: 'One-time priority appeal and unban privilege.' },
-  { key: 'anti_ban_chatting', title: 'Anti-ban from Chatting', icon: 'chatbox-ellipses-outline', desc: 'Protection against automated chat flood restrictions.' },
-  { key: 'badge_svip_achievement', title: 'Badge of SVIP Achievement', icon: 'ribbon-outline', desc: 'Permanent shiny metal SVIP medal in profile showcase.' },
-  { key: 'anonymous_ranking', title: 'Anonymous Ranking', icon: 'glasses-outline', desc: 'Hide username on daily, weekly, and monthly contributor boards.' },
-  { key: 'customized_start_page', title: 'Customized Start-up Page', icon: 'phone-portrait-outline', desc: 'Noble startup splash screen greeting.' },
-  { key: 'ban_account_power', title: 'Ban Account', icon: 'hammer-outline', desc: 'Report with 5x priority moderation review.' },
-  { key: 'unique_2_digit_sid', title: 'Unique 2-digit SID', icon: 'finger-print-outline', desc: 'Super rare 2-digit vanity ID reserve.' },
-  { key: 'room_secret_lord', title: 'Room Secret Lord', icon: 'eye-outline', desc: 'Stealth room entrance without alerting regular guests.' },
-];
-
-// Dedicated SVIP Assets
-const SVIP4_BADGE = require('../../assets/svip/svip4_badge.png');
-const SVIP5_BADGE = require('../../assets/svip/svip5_badge.png');
-const VIP4_CHAT_BUBBLE = require('../../assets/svip/chat_bubble_vip4.png');
-const SVIP3_TAG = require('../../assets/svip/svip3_tag.png');
-
-// Dedicated SVIP Tiers (SVIP+ to SVIP 5)
-const SVIP_TIERS = [
-  {
-    id: 'vip-plus',
-    slug: 'vip-plus',
-    level: 0,
-    tabLabel: 'SVIP+',
-    ribbonLabel: 'SVIP+',
-    name: 'VIP+ Lynx',
-    price: 49000,
-    originalPrice: 75000,
-    discount: '35% OFF',
-    tagText: 'VIP+',
-    tagColors: ['#3B82F6', '#1D4ED8'],
-    bubbleColors: ['#1E3A8A', '#1E40AF'],
-    previewOptions: ['tag', 'bubble'],
-    privilegeKeys: [
-      'rank_the_top', 'colorful_nickname', 'view_more_visitors',
-      'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
-      'send_pictures_private_chat', 'modify_profile_gender', 'hide_last_online',
-      'profile_vehicle', 'anti_tracking', 'send_pictures_chat_room',
-      'customized_profile_bg', 'gif_avatar', 'level_exp_speedup',
-      'svip_customized_gift', 'id_freeze_protection', 'hide_online_status',
-      'anti_kick', 'upgrade_app_notification', 'unique_3_digit_sid',
-      'unban_account', 'anti_ban_chatting', 'badge_svip_achievement',
-      'anonymous_ranking', 'customized_start_page', 'ban_account_power',
-      'unique_2_digit_sid', 'room_secret_lord'
-    ],
-  },
-  {
-    id: 'svip-1',
-    slug: 'svip-1',
-    level: 1,
-    tabLabel: 'SVIP1',
-    ribbonLabel: 'SVIP 1',
-    name: 'SVIP 1 Knight',
-    price: 99000,
-    originalPrice: 150000,
-    discount: '34% OFF',
-    tagText: 'SVIP 1',
-    tagColors: ['#F59E0B', '#D97706'],
-    bubbleColors: ['#451A03', '#78350F'],
-    frameColors: ['#F59E0B', '#FBBF24'],
-    previewOptions: ['tag', 'bubble', 'frame'], // "SVIP 1 Me ek Option Frame Ka Add HO Jayega"
-    privilegeKeys: [
-      'rank_the_top', 'colorful_nickname', 'view_more_visitors',
-      'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
-      'send_pictures_private_chat', 'modify_profile_gender', 'hide_last_online',
-      'profile_vehicle', 'anti_tracking', 'send_pictures_chat_room',
-      'customized_profile_bg', 'gif_avatar', 'level_exp_speedup',
-      'svip_customized_gift', 'id_freeze_protection', 'hide_online_status',
-      'anti_kick', 'upgrade_app_notification', 'unique_3_digit_sid',
-      'unban_account', 'anti_ban_chatting', 'badge_svip_achievement',
-      'anonymous_ranking', 'customized_start_page', 'ban_account_power',
-      'unique_2_digit_sid', 'room_secret_lord'
-    ],
-  },
-  {
-    id: 'svip-2',
-    slug: 'svip-2',
-    level: 2,
-    tabLabel: 'SVIP2',
-    ribbonLabel: 'SVIP 2',
-    name: 'SVIP 2 Count',
-    price: 180000,
-    originalPrice: 270000,
-    discount: '33% OFF',
-    tagText: 'SVIP 2',
-    tagColors: ['#A855F7', '#7C3AED'],
-    bubbleColors: ['#3B0764', '#581C87'],
-    frameColors: ['#C084FC', '#A855F7'],
-    previewOptions: ['tag', 'bubble', 'frame'], // "SVIP2 me 1 Jaisa Hi Rahega"
-    privilegeKeys: [
-      'rank_the_top', 'colorful_nickname', 'view_more_visitors',
-      'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
-      'send_pictures_private_chat', 'modify_profile_gender', 'hide_last_online',
-      'profile_vehicle', 'anti_tracking', 'send_pictures_chat_room',
-      'customized_profile_bg', 'gif_avatar', 'level_exp_speedup',
-      'svip_customized_gift', 'id_freeze_protection', 'hide_online_status',
-      'anti_kick', 'upgrade_app_notification', 'unique_3_digit_sid',
-      'unban_account', 'anti_ban_chatting', 'badge_svip_achievement',
-      'anonymous_ranking', 'customized_start_page', 'ban_account_power',
-      'unique_2_digit_sid', 'room_secret_lord'
-    ],
-  },
-  {
-    id: 'svip-3',
-    slug: 'svip-3',
-    level: 3,
-    tabLabel: 'SVIP3',
-    ribbonLabel: 'SVIP 3',
-    name: 'SVIP 3 Duke',
-    price: 350000,
-    originalPrice: 500000,
-    discount: '30% OFF',
-    tagText: 'SVIP 3',
-    tagImage: SVIP3_TAG, // "svip 3 wala tag hai"
-    tagColors: ['#06B6D4', '#0284C7'],
-    bubbleColors: ['#082F49', '#0369A1'],
-    frameColors: ['#38BDF8', '#0284C7'],
-    roomCardColors: ['#1E1B4B', '#4338CA'],
-    previewOptions: ['tag', 'bubble', 'frame', 'room_card'], // "SVIP 3 Me Room Personal Card Add Hoga"
-    privilegeKeys: [
-      'rank_the_top', 'colorful_nickname', 'view_more_visitors',
-      'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
-      'send_pictures_private_chat', 'modify_profile_gender', 'hide_last_online',
-      'profile_vehicle', 'anti_tracking', 'send_pictures_chat_room',
-      'customized_profile_bg', 'gif_avatar', 'level_exp_speedup',
-      'svip_customized_gift', 'id_freeze_protection', 'hide_online_status',
-      'anti_kick', 'upgrade_app_notification', 'unique_3_digit_sid',
-      'unban_account', 'anti_ban_chatting', 'badge_svip_achievement',
-      'anonymous_ranking', 'customized_start_page', 'ban_account_power',
-      'unique_2_digit_sid', 'room_secret_lord'
-    ],
-  },
-  {
-    id: 'svip-4',
-    slug: 'svip-4',
-    level: 4,
-    tabLabel: 'SVIP4',
-    ribbonLabel: 'SVIP 4',
-    name: 'SVIP 4 Monarch',
-    price: 700000,
-    originalPrice: 1000000,
-    discount: '30% OFF',
-    heroBadge: SVIP4_BADGE, // "SVIP Me ye Badge Rakho"
-    tagText: 'SVIP 4',
-    tagColors: ['#EF4444', '#DC2626'],
-    bubbleImage: VIP4_CHAT_BUBBLE, // "vip 4 wala chat Bubble hai"
-    bubbleColors: ['#450A0A', '#7F1D1D'],
-    frameColors: ['#F43F5E', '#E11D48'],
-    roomCardColors: ['#4C0519', '#881337'],
-    micColors: ['#EF4444', '#F59E0B', '#DC2626'],
-    previewOptions: ['tag', 'bubble', 'frame', 'room_card', 'mic_theme'], // "SVIP 4 Me Luxury Mic Theme Ye option Add Hoga"
-    privilegeKeys: [
-      'rank_the_top', 'colorful_nickname', 'view_more_visitors',
-      'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
-      'send_pictures_private_chat', 'modify_profile_gender', 'hide_last_online',
-      'profile_vehicle', 'anti_tracking', 'send_pictures_chat_room',
-      'customized_profile_bg', 'gif_avatar', 'level_exp_speedup',
-      'svip_customized_gift', 'id_freeze_protection', 'hide_online_status',
-      'anti_kick', 'upgrade_app_notification', 'unique_3_digit_sid',
-      'unban_account', 'anti_ban_chatting', 'badge_svip_achievement',
-      'anonymous_ranking', 'customized_start_page', 'ban_account_power',
-      'unique_2_digit_sid', 'room_secret_lord'
-    ],
-  },
-  {
-    id: 'svip-5',
-    slug: 'svip-5',
-    level: 5,
-    tabLabel: 'SVIP5',
-    ribbonLabel: 'SVIP 5',
-    name: 'SVIP 5 Sovereign Supreme',
-    price: 1500000,
-    originalPrice: 2250000,
-    discount: '33% OFF',
-    heroBadge: SVIP5_BADGE, // Sovereign Lion Crest Badge
-    badgeImage: SVIP5_BADGE, // "SVIP 5 Me Niche Bhi Badge Option Add Hoga"
-    tagText: 'SVIP 5',
-    tagColors: ['#F59E0B', '#D97706'],
-    bubbleColors: ['#4C1D95', '#7C3AED'],
-    frameColors: ['#FDE047', '#EAB308'],
-    roomCardColors: ['#3B0764', '#1E1B4B'],
-    micColors: ['#FDE047', '#EAB308', '#CA8A04', '#A855F7'],
-    badgeColors: ['#FBBF24', '#D97706', '#78350F'],
-    previewOptions: ['tag', 'bubble', 'frame', 'room_card', 'mic_theme', 'badge'], // "SVIP 5 Me Niche Bhi Badge Option Add Hoga"
-    privilegeKeys: [
-      'rank_the_top', 'colorful_nickname', 'view_more_visitors',
-      'special_room_entry', 'unlimited_message', 'unlock_more_room_mic',
-      'send_pictures_private_chat', 'modify_profile_gender', 'hide_last_online',
-      'profile_vehicle', 'anti_tracking', 'send_pictures_chat_room',
-      'customized_profile_bg', 'gif_avatar', 'level_exp_speedup',
-      'svip_customized_gift', 'id_freeze_protection', 'hide_online_status',
-      'anti_kick', 'upgrade_app_notification', 'unique_3_digit_sid',
-      'unban_account', 'anti_ban_chatting', 'badge_svip_achievement',
-      'anonymous_ranking', 'customized_start_page', 'ban_account_power',
-      'unique_2_digit_sid', 'room_secret_lord'
-    ],
-  },
-];
 
 export default function SVIPScreen() {
   const insets = useSafeAreaInsets();
@@ -255,17 +35,60 @@ export default function SVIPScreen() {
   const navigation = useNavigation();
   const { user, fetchUserProfile } = useContext(AuthContext);
 
-  const [activeTierId, setActiveTierId] = useState('vip-plus');
+  const [activeTierId, setActiveTierId] = useState(null);
+  const [tiers, setTiers] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [planError, setPlanError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    let fetching = false;
+    const fetchPlans = async () => {
+      if (fetching || !active || AppState.currentState === 'background') return;
+      fetching = true;
+      try {
+        const response = await apiUtil.get('/svip-plans', { suppressGlobalError: true });
+        const plans = response?.data?.data?.plans;
+        if (!Array.isArray(plans)) throw new Error('VIP plans could not be loaded.');
+        if (active) {
+          const next = plans.map(presentVipTier);
+          setTiers(next);
+          setActiveTierId(previous => next.some(tier => tier.id === previous) ? previous : next[0]?.id || null);
+          setPlanError('');
+        }
+      } catch (error) {
+        if (active) setPlanError('Could not refresh VIP plans. Pull down to retry.');
+      } finally {
+        fetching = false;
+        if (active) { setLoadingPlans(false); setRefreshing(false); }
+      }
+    };
+    void fetchPlans();
+    const timer = setInterval(fetchPlans, 30000);
+    const subscription = AppState.addEventListener('change', state => { if (state === 'active') void fetchPlans(); });
+    return () => { active = false; clearInterval(timer); subscription.remove(); };
+  }, [reloadKey]));
+
+  const refreshPlans = () => { setRefreshing(true); setReloadKey(previous => previous + 1); };
   const [selectedPrivilege, setSelectedPrivilege] = useState(null);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
 
-  const currentTier = SVIP_TIERS.find((t) => t.id === activeTierId) || SVIP_TIERS[0];
+  const currentTier = tiers.find(tier => tier.id === activeTierId) || tiers[0];
   const userDiamonds = Number(user?.diamonds || 0);
+  const tierPrivileges = currentTier?.privileges || [];
 
-  // Filter privileges active for current tier
-  const tierPrivileges = ALL_NOBILITY_PRIVILEGES.filter((p) =>
-    currentTier.privilegeKeys.includes(p.key)
+  if (!currentTier) return (
+    <View style={[styles.screen, { paddingTop: topSafeInset + 24, alignItems: 'center' }]}>
+      <TouchableOpacity onPress={() => navigation.goBack()}><Text style={{ color: '#D4AF37', padding: 16 }}>Back</Text></TouchableOpacity>
+      <Text style={styles.headerTitle}>VIP</Text>
+      {loadingPlans ? <ActivityIndicator color="#D4AF37" /> : <>
+        <Text style={{ color: '#CBD5E1', padding: 20 }}>{planError || 'No VIP plans are available yet.'}</Text>
+        <TouchableOpacity onPress={refreshPlans}><Text style={{ color: '#D4AF37', padding: 16 }}>Retry</Text></TouchableOpacity>
+      </>}
+    </View>
   );
 
   const handlePurchase = async () => {
@@ -335,7 +158,7 @@ export default function SVIPScreen() {
           <Icon name="chevron-back" size={26} color="#E2E8F0" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>SVIP</Text>
+        <Text style={styles.headerTitle}>VIP</Text>
 
         <View style={styles.headerRight}>
           <TouchableOpacity
@@ -357,7 +180,7 @@ export default function SVIPScreen() {
 
       {/* Horizontal Tabs: SVIP+ | SVIP1 | SVIP2 | SVIP3 | SVIP4 | SVIP5 */}
       <View style={styles.tierTabsContainer}>
-        {SVIP_TIERS.map((tier) => {
+        {tiers.map((tier) => {
           const isActive = tier.id === activeTierId;
           return (
             <TouchableOpacity
@@ -380,48 +203,12 @@ export default function SVIPScreen() {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 90 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshPlans} tintColor="#D4AF37" />}
       >
-        {/* Noble Mascot Emblem Ring / Hero Badge ("SVIP Me ye Badge Rakho") */}
+        {planError ? <Text style={{ color: '#FCA5A5', textAlign: 'center', padding: 10 }}>{planError}</Text> : null}
         <View style={styles.mascotEmblemContainer}>
-          {currentTier.heroBadge ? (
-            <View style={styles.heroBadgeBox}>
-              <Image
-                source={currentTier.heroBadge}
-                style={styles.heroBadgeImage}
-                resizeMode="contain"
-              />
-            </View>
-          ) : (
-            <>
-              {/* Metallic Silver/Gold Medallion Ring */}
-              <LinearGradient
-                colors={['#E2E8F0', '#94A3B8', '#CBD5E1', '#64748B']}
-                style={styles.mascotRingBorder}
-              >
-                <LinearGradient
-                  colors={['#1E3A8A', '#172554', '#0F172A']}
-                  style={styles.mascotRingInner}
-                >
-                  {/* Lynx / Noble Mascot Portrait */}
-                  <Image
-                    source={getUserAvatar(user)}
-                    style={styles.mascotImage}
-                    resizeMode="cover"
-                  />
-                </LinearGradient>
-              </LinearGradient>
-
-              {/* Curved 3D Metallic Blue/Gold Ribbon */}
-              <LinearGradient
-                colors={['#1E40AF', '#2563EB', '#3B82F6', '#1E3A8A']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.ribbonBadge}
-              >
-                <Text style={styles.ribbonText}>{currentTier.ribbonLabel}</Text>
-              </LinearGradient>
-            </>
-          )}
+          <AvatarWithFrame user={user} frame={currentTier.frame || { id: 'none' }} size={110} showOnlineDot={false} />
+          <Text style={styles.ribbonText}>{currentTier.ribbonLabel}</Text>
         </View>
 
         {/* Dynamic Preview Cards Row for current tier */}
@@ -433,132 +220,18 @@ export default function SVIPScreen() {
             contentContainerStyle={styles.previewCardsScrollContent}
             style={styles.previewCardsScrollView}
           >
-            {/* 1. SVIP Tag */}
-            {currentTier.previewOptions?.includes('tag') && (
-              <View style={styles.previewCard}>
-                <View style={styles.previewCardInner}>
-                  {currentTier.tagImage ? (
-                    <View style={styles.tagImageWrap}>
-                      <Image source={currentTier.tagImage} style={styles.tagCustomImage} resizeMode="contain" />
-                    </View>
-                  ) : (
-                    <LinearGradient
-                      colors={currentTier.tagColors || ['#3B82F6', '#1D4ED8']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.tagPillPreview}
-                    >
-                      <Text style={styles.tagPillText}>🐱 {currentTier.tagText}</Text>
-                    </LinearGradient>
-                  )}
-                  <Text style={styles.previewCardLabel}>SVIP Tag</Text>
-                </View>
+            {currentTier.entry && <View style={styles.previewCard}>
+              <View style={styles.previewCardInner}>
+                <SvgaView source={currentTier.entry.animationUrl} fallbackImage={currentTier.entry.imageUrl} style={{ width: 125, height: 110 }} loops={0} />
+                <Text style={styles.previewCardLabel}>VIP Entry</Text>
               </View>
-            )}
-
-            {/* 2. SVIP Bubble */}
-            {currentTier.previewOptions?.includes('bubble') && (
-              <View style={styles.previewCard}>
-                <View style={styles.previewCardInner}>
-                  {currentTier.bubbleImage ? (
-                    <View style={styles.bubbleImageWrap}>
-                      <Image source={currentTier.bubbleImage} style={styles.bubbleCustomImage} resizeMode="contain" />
-                    </View>
-                  ) : (
-                    <LinearGradient
-                      colors={currentTier.bubbleColors || ['#1E3A8A', '#1E40AF']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.bubblePreview}
-                    >
-                      <View style={styles.bubbleCornerGold} />
-                      <Text style={styles.bubblePreviewText}>Chat ✨</Text>
-                    </LinearGradient>
-                  )}
-                  <Text style={styles.previewCardLabel}>SVIP Bubble</Text>
-                </View>
+            </View>}
+            {currentTier.frame && <View style={styles.previewCard}>
+              <View style={styles.previewCardInner}>
+                <AvatarWithFrame user={user} frame={currentTier.frame} size={90} showOnlineDot={false} />
+                <Text style={styles.previewCardLabel}>VIP Frame</Text>
               </View>
-            )}
-
-            {/* 3. Frame ("SVIP 1 Me ek Option Frame Ka Add HO Jayega", "SVIP2 me 1 Jaisa Hi Rahega") */}
-            {currentTier.previewOptions?.includes('frame') && (
-              <View style={styles.previewCard}>
-                <View style={styles.previewCardInner}>
-                  <View style={styles.framePreviewWrap}>
-                    <LinearGradient
-                      colors={currentTier.frameColors || ['#F59E0B', '#FBBF24']}
-                      style={styles.frameOuterRing}
-                    >
-                      <View style={styles.frameInnerHole}>
-                        <Image source={getUserAvatar(user)} style={styles.frameAvatarImg} resizeMode="cover" />
-                      </View>
-                    </LinearGradient>
-                    <MaterialCommunityIcons name="crown" size={13} color="#FDE047" style={styles.frameCrownIcon} />
-                  </View>
-                  <Text style={styles.previewCardLabel}>Frame</Text>
-                </View>
-              </View>
-            )}
-
-            {/* 4. Room Personal Card ("SVIP 3 Me Room Personal Card Add Hoga") */}
-            {currentTier.previewOptions?.includes('room_card') && (
-              <View style={styles.previewCard}>
-                <View style={styles.previewCardInner}>
-                  <LinearGradient
-                    colors={currentTier.roomCardColors || ['#1E1B4B', '#4338CA']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.roomCardPreview}
-                  >
-                    <View style={styles.roomCardTopRow}>
-                      <MaterialCommunityIcons name="home-sound-in-out" size={14} color="#FDE047" />
-                      <Text style={styles.roomCardIdText}>ID: 8888</Text>
-                    </View>
-                    <View style={styles.roomCardWaveRow}>
-                      <View style={[styles.roomCardWaveBar, { height: 6 }]} />
-                      <View style={[styles.roomCardWaveBar, { height: 11 }]} />
-                      <View style={[styles.roomCardWaveBar, { height: 8 }]} />
-                      <View style={[styles.roomCardWaveBar, { height: 12 }]} />
-                    </View>
-                  </LinearGradient>
-                  <Text style={styles.previewCardLabel}>Room Card</Text>
-                </View>
-              </View>
-            )}
-
-            {/* 5. Luxury Mic Theme ("SVIP 4 Me Luxury Mic Theme Ye option Add Hoga") */}
-            {currentTier.previewOptions?.includes('mic_theme') && (
-              <View style={styles.previewCard}>
-                <View style={styles.previewCardInner}>
-                  <View style={styles.micThemeWrap}>
-                    <LinearGradient
-                      colors={currentTier.micColors || ['#EF4444', '#F59E0B']}
-                      style={styles.micCircleGlow}
-                    >
-                      <MaterialCommunityIcons name="microphone-variant" size={16} color="#FFF" />
-                    </LinearGradient>
-                    <View style={styles.micWaveRingOuter} />
-                  </View>
-                  <Text style={styles.previewCardLabel}>Luxury Mic</Text>
-                </View>
-              </View>
-            )}
-
-            {/* 6. Badge ("SVIP 5 Me Niche Bhi Badge Option Add Hoga") */}
-            {currentTier.previewOptions?.includes('badge') && (
-              <View style={styles.previewCard}>
-                <View style={styles.previewCardInner}>
-                  <View style={styles.badgeOptionWrap}>
-                    <Image
-                      source={currentTier.badgeImage || SVIP5_BADGE}
-                      style={styles.badgeOptionImage}
-                      resizeMode="contain"
-                    />
-                  </View>
-                  <Text style={styles.previewCardLabel}>Badge</Text>
-                </View>
-              </View>
-            )}
+            </View>}
           </ScrollView>
         </View>
 
@@ -602,7 +275,7 @@ export default function SVIPScreen() {
           <Text style={styles.priceSub}>Price</Text>
           <Text style={styles.priceMain}>
             {formatCompactBalance(currentTier.price)} 💎
-            <Text style={styles.priceDuration}> / 30d</Text>
+            <Text style={styles.priceDuration}> / {currentTier.durationDays || 30}d</Text>
           </Text>
         </View>
 

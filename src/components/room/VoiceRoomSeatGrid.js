@@ -1,3 +1,4 @@
+import AnimatedSeatReaction from './SeatReaction';
 import React from 'react';
 import { Dimensions, Image, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -5,48 +6,12 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import VipMicWave from './VipMicWave';
 import IdentityDisplayName from '../identity/IdentityDisplayName';
 import AvatarWithFrame from '../AvatarWithFrame';
-import { DEFAULT_SEAT_IMAGE, LOCK_SEAT_IMAGE, resolveAssetUrl } from '../../utils/cosmeticResolver';
+import { DEFAULT_SEAT_IMAGE, LOCK_SEAT_IMAGE } from '../../utils/cosmeticResolver';
 
 const { width } = Dimensions.get('window');
 const seatNameEffect = user => user?.nameEffect || user?.effectiveIdentity?.nameEffect ||
   ((user?.equippedVipId || user?.equippedSvipId)
     ? { colors: ['#FFE890', '#FFF8D6', '#E9B74D'], animationType: 'shimmer' } : undefined);
-
-const AnimatedSeatReaction = React.memo(function SeatReaction({ emoji, gifUrl, size = 54 }) {
-  const isImageEmoji = typeof emoji === 'string' && (emoji.startsWith('http://') || emoji.startsWith('https://') || emoji.startsWith('/'));
-  const isLocalImage = typeof emoji === 'number';
-  const effectiveGif = gifUrl || (isImageEmoji && emoji.endsWith('.gif') ? emoji : null);
-
-  const gifSource = typeof effectiveGif === 'number'
-    ? effectiveGif
-    : (typeof effectiveGif === 'string' && effectiveGif.trim() ? { uri: resolveAssetUrl(effectiveGif.trim()) } : null);
-  const imgSource = typeof emoji === 'number'
-    ? emoji
-    : (isImageEmoji ? { uri: resolveAssetUrl(emoji.trim()) } : null);
-
-  return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: -Math.round(size * 0.16),
-      width: size * 1.25, height: size * 1.25, alignItems: 'center', justifyContent: 'center',
-      alignSelf: 'center', zIndex: 99999, elevation: 99999 }}>
-      {gifSource ? (
-        <Image
-          source={gifSource}
-          style={{ width: size * 1.25, height: size * 1.25 }}
-          resizeMode="contain"
-        />
-      ) : imgSource ? (
-        <Image
-          source={imgSource}
-          style={{ width: size * 1.2, height: size * 1.2 }}
-          resizeMode="contain"
-        />
-      ) : (
-        <Text allowFontScaling={false} style={{ color: '#FFFFFF', fontSize: Math.round(size * 0.95),
-          lineHeight: Math.ceil(size * 1.15), includeFontPadding: false, textAlign: 'center' }}>{emoji}</Text>
-      )}
-    </View>
-  );
-});
 
 export default function VoiceRoomSeatGrid({
   topTwoSeats,
@@ -111,6 +76,7 @@ export default function VoiceRoomSeatGrid({
                               key={activeSeatReactions[seat.seatIndex].id}
                               emoji={activeSeatReactions[seat.seatIndex].emoji}
                               gifUrl={activeSeatReactions[seat.seatIndex].gifUrl}
+                              emojiData={activeSeatReactions[seat.seatIndex].emojiData}
                               id={activeSeatReactions[seat.seatIndex].id}
                               size={54}
                             />
@@ -220,6 +186,7 @@ export default function VoiceRoomSeatGrid({
                               key={activeSeatReactions[seat.seatIndex].id}
                               emoji={activeSeatReactions[seat.seatIndex].emoji}
                               gifUrl={activeSeatReactions[seat.seatIndex].gifUrl}
+                              emojiData={activeSeatReactions[seat.seatIndex].emojiData}
                               id={activeSeatReactions[seat.seatIndex].id}
                               size={avatarSize}
                             />

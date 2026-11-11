@@ -127,6 +127,9 @@ export const resolveFrameAsset = (user, explicitFrame = null) =>
       user?.profileFrame ||
       user?.frame ||
       user?.frameId ||
+      user?.avatarFrameAsset ||
+      user?.avatarFrame ||
+      user?.effectiveIdentity?.avatarFrame ||
       null,
   );
 

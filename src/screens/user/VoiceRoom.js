@@ -1,3 +1,4 @@
+import { reactionSeatIndex } from '../../utils/seatReactions';
 import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
 import { buildRoomShare } from '../../utils/shareLinks';
 import { getRoomSeatConfig } from '../../utils/roomSeats';
@@ -397,8 +398,6 @@ export default function VoiceRoomScreen() {
   const lastDisplayedReactionIdRef = useRef('');
   const seatsRef = useRef(seats);
   seatsRef.current = seats;
-  const roomRef = useRef(room);
-  roomRef.current = room;
 
   // Broadcast Reaction Listener (All users in room see floating reactions & seat moving reactions)
   useEffect(() => {
@@ -407,26 +406,11 @@ export default function VoiceRoomScreen() {
       if (rxId && lastDisplayedReactionIdRef.current === rxId) return;
       lastDisplayedReactionIdRef.current = rxId;
       const id = rxId || ('react-' + Date.now() + Math.random());
-      let reactionSeatIndex = (typeof lastReaction.seatIndex === 'number') ? lastReaction.seatIndex : undefined;
-      const currentSeats = seatsRef.current || [];
-      const currentRoom = roomRef.current || {};
-      if (reactionSeatIndex === undefined && lastReaction.userId) {
-        const targetUid = String(lastReaction.userId);
-        const seatWithUser = currentSeats.find(
-          (s) => s.user && (
-            String(s.user.userId || s.user._id || s.user.id) === targetUid ||
-            (s.seatIndex === 0 && (String(currentRoom?.hostId) === targetUid || String(currentRoom?.ownerId) === targetUid))
-          )
-        );
-        if (seatWithUser) {
-          reactionSeatIndex = seatWithUser.seatIndex;
-        }
-      }
-
-      if (reactionSeatIndex !== undefined && reactionSeatIndex !== null) {
+      const resolvedReactionSeatIndex = reactionSeatIndex(seatsRef.current || [], lastReaction.userId, lastReaction.seatIndex);
+      if (resolvedReactionSeatIndex !== undefined && resolvedReactionSeatIndex !== null) {
         setSeatReactions((prev) => ({
           ...prev,
-          [reactionSeatIndex]: {
+          [resolvedReactionSeatIndex]: {
             emoji: lastReaction.emoji,
             gifUrl: lastReaction.gifUrl || lastReaction.emojiData?.gifUrl || (typeof lastReaction.emoji === 'string' && lastReaction.emoji.endsWith('.gif') ? lastReaction.emoji : null),
             name: lastReaction.name || lastReaction.emojiData?.name,
@@ -442,15 +426,15 @@ export default function VoiceRoomScreen() {
         emoji: lastReaction.emoji,
         gifUrl: lastReaction.gifUrl || lastReaction.emojiData?.gifUrl,
         name: lastReaction.name || lastReaction.emojiData?.name,
-        seatIndex: reactionSeatIndex,
+        seatIndex: resolvedReactionSeatIndex,
       }]);
       setTimeout(() => {
         setReactions((prev) => prev.filter((r) => r.id !== id));
-        if (reactionSeatIndex !== undefined && reactionSeatIndex !== null) {
+        if (resolvedReactionSeatIndex !== undefined && resolvedReactionSeatIndex !== null) {
           setSeatReactions((prev) => {
             const next = { ...prev };
-            if (next[reactionSeatIndex]?.id === id) {
-              delete next[reactionSeatIndex];
+            if (next[resolvedReactionSeatIndex]?.id === id) {
+              delete next[resolvedReactionSeatIndex];
             }
             return next;
           });
@@ -1658,15 +1642,8 @@ export default function VoiceRoomScreen() {
   // Handle reactions
   const handleSendReaction = (emojiOrItem) => {
     const currentUid = String(user?.userId || user?._id || user?.id || '');
-    const mySeat = seats.find(
-      (s) => s.user && (
-        s.user.isCurrentUser ||
-        (currentUid && String(s.user.userId || s.user._id || s.user.id) === currentUid)
-      )
-    );
-    const resolvedSeatIndex = currentSeatIndex !== null && currentSeatIndex !== undefined
-      ? currentSeatIndex
-      : (mySeat ? mySeat.seatIndex : ((isRoomOwner || contextIsOwner) && (seats?.[0]?.user || !seats?.[0]?.isLocked) ? 0 : undefined));
+    const resolvedSeatIndex = reactionSeatIndex(seats, user, currentSeatIndex ??
+      ((isRoomOwner || contextIsOwner) && seats?.[0]?.user ? 0 : undefined));
 
     const isObj = typeof emojiOrItem === 'object' && emojiOrItem !== null;
     const emojiCode = isObj ? (emojiOrItem.pngUrl || emojiOrItem.icon || emojiOrItem.code || emojiOrItem.emoji) : emojiOrItem;

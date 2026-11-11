@@ -25,8 +25,8 @@ android {
         applicationId "yaro.vc.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 15
-        versionName "0.1.5"
+        versionCode 16
+        versionName "0.1.6"
         missingDimensionStrategy "store", "play"
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a"
@@ -129,10 +129,16 @@ dependencies {
     // Play Integrity API for Firebase Phone Authentication
     implementation('com.google.android.play:integrity:1.4.0')
 
+    // Official Google Play In-App Review API
+    implementation('com.google.android.play:review:2.0.2')
+    implementation('com.google.android.play:review-ktx:2.0.2')
+
     // Animated gift formats rendered by React Native Image/Fresco.
     implementation('com.facebook.fresco:animated-gif:3.6.0')
     implementation('com.facebook.fresco:animated-webp:3.6.0')
     implementation('com.facebook.fresco:webpsupport:3.6.0')
+    implementation('com.facebook.fresco:animated-base:3.6.0')
+    implementation('com.facebook.fresco:animated-drawable:3.6.0')
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

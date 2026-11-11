@@ -18,7 +18,9 @@ export const getDecoratedBubbleInsets = (textHeight, maxWidth) => ({
 
 export const getEquippedBubbleWidth = (available, text, name, { tag = false, owner = false, badges = 0, vip = false, club = '' } = {}) => {
   const header = 84 + Math.min(16, Array.from(String(name || '')).length) * 6 + (tag ? 54 : 0) + (owner ? 36 : 0);
-  const levels = 156 + (vip ? 40 : 0) + Math.min(60, String(club).length * 5);
+  // Include the avatar and padding so membership/level pills do not wrap merely
+  // because a short message made the frame narrower.
+  const levels = 156 + (vip ? 72 : 0) + Math.min(60, String(club).length * 5);
   const medals = Math.min(8, badges) * 19 + 70;
   const message = Math.max(...String(text || '').split('\n').map(line => Array.from(line).length * 6)) + 82;
   return Math.min(available, Math.max(180, header, levels, medals, message));

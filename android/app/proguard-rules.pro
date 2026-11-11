@@ -108,3 +108,34 @@
 -keep class io.socket.** { *; }
 -dontwarn okhttp3.**
 -dontwarn io.socket.**
+
+# Fresco & Animated GIF / WebP Playback
+-keep class com.facebook.fresco.** { *; }
+-keep class com.facebook.drawee.** { *; }
+-keep class com.facebook.imagepipeline.** { *; }
+-keep class com.facebook.animated.** { *; }
+-keep class com.facebook.animated.gif.** { *; }
+-keep class com.facebook.animated.webp.** { *; }
+-keep class com.facebook.imagepipeline.animated.** { *; }
+-keep class com.facebook.imagepipeline.gif.** { *; }
+-keep class com.facebook.imagepipeline.webp.** { *; }
+-keep class com.facebook.fresco.animation.** { *; }
+-keep class com.facebook.fresco.animation.factory.** { *; }
+-keep class com.facebook.animated.gif.GifImageDecoder {
+    public <init>(...);
+}
+-keep class com.facebook.animated.webp.WebPImageDecoder {
+    public <init>(...);
+}
+-keep class com.facebook.fresco.animation.factory.AnimatedFactoryV2Impl {
+    public <init>(...);
+}
+-keep class com.facebook.imagepipeline.animated.factory.AnimatedFactoryImpl {
+    public <init>(...);
+}
+-keep class com.facebook.imagepipeline.animated.factory.AnimatedFactoryImplV2 {
+    public <init>(...);
+}
+-dontwarn com.facebook.imagepipeline.animated.**
+-dontwarn com.facebook.animated.**
+-dontwarn com.facebook.fresco.**

@@ -16,7 +16,7 @@ export function useGiftBalance() {
       const res = await apiUtil.get('/user/profile');
       const profile = res.data?.data || res.data;
       if (profile) {
-        const diamonds = Number(profile.diamonds !== undefined ? profile.diamonds : (profile.coins ?? 0));
+        const diamonds = Number(profile.diamonds ?? 0);
         setDiamondBalance(diamonds);
       }
     } catch (err) {

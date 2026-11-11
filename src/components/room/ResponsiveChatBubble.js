@@ -90,6 +90,11 @@ export default function ResponsiveChatBubble({
   const equippedBadges = badgeSource.filter(badge => badge && typeof badge === 'object' && badge.isActive !== false &&
     (!badge.expiresAt || new Date(badge.expiresAt).getTime() > Date.now()));
 
+  const contentBubbleWidth = getEquippedBubbleWidth(responsiveWidth, text, senderName, {
+    tag: Boolean(tagMedia || equippedTag), owner: isOwner || isStaff,
+    badges: equippedBadges.length, vip: isVipUser || isSvipUser, club: clubName,
+  });
+
   const equippedFrame =
     message?.equippedFrameAsset ||
     message?.equippedFrame ||
@@ -277,7 +282,7 @@ export default function ResponsiveChatBubble({
   // 2. VIP / SVIP / Owner / Regent Royal Ornate Bubble (Matches Image in User Reference!)
   if (!customBubble && svipLevel < 2 && vipLevel !== 4 && (svipLevel || isSvipUser || isVipUser || isOwner || wealthLevel >= 10)) {
     return (
-      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: responsiveWidth }]}>
+      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: contentBubbleWidth }]}>
         {/* Double Gold Ornate Frame */}
         <LinearGradient
           colors={['#4C0519', '#881337', '#3B0712']}
@@ -419,7 +424,7 @@ export default function ResponsiveChatBubble({
     (svipLevel === 4 || vipLevel === 4)
   ) {
     return (
-      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: responsiveWidth }]}>
+      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: contentBubbleWidth }]}>
         <View style={styles.vip4BubbleWrapper}>
           {/* Top-Left Ruby Gem Wing Emblem */}
           <View style={styles.vip4RubyWingEmblem}>
@@ -534,7 +539,7 @@ export default function ResponsiveChatBubble({
   // 3.2 SVIP 3 Wolf Sovereign Amethyst & Cyan Bubble
   if (!customBubble && svipLevel === 3) {
     return (
-      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: responsiveWidth }]}>
+      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: contentBubbleWidth }]}>
         <LinearGradient
           colors={['#0F172A', '#082F49', '#0369A1']}
           start={{ x: 0, y: 0 }}
@@ -611,7 +616,7 @@ export default function ResponsiveChatBubble({
   // 3.3 SVIP 2 Emerald Green & Gold Luxury Bubble
   if (!customBubble && svipLevel && svipLevel >= 2) {
     return (
-      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: responsiveWidth }]}>
+      <View style={[styles.luxuryBubbleContainer, { maxWidth: responsiveWidth, width: contentBubbleWidth }]}>
         <LinearGradient
           colors={['#064E3B', '#047857', '#022C22']}
           start={{ x: 0, y: 0 }}
@@ -698,10 +703,7 @@ export default function ResponsiveChatBubble({
 
   // The entire identity and message panel sits within the equipped frame.
   if (customBubble) {
-    const bubbleWidth = getEquippedBubbleWidth(responsiveWidth, text, senderName, {
-      tag: Boolean(tagMedia || equippedTag), owner: isOwner || isStaff, badges: equippedBadges.length,
-      vip: isVipUser || isSvipUser, club: clubName,
-    });
+    const bubbleWidth = contentBubbleWidth;
     return (
       <View style={[styles.luxuryBubbleContainer, { width: bubbleWidth, maxWidth: responsiveWidth }]}>
         <LinearGradient testID="equipped-message-body"
@@ -826,7 +828,7 @@ export default function ResponsiveChatBubble({
 
   // 4. Regular User Chat Bubble
   return (
-    <View style={[styles.normalBubbleRow, { maxWidth: responsiveWidth, width: responsiveWidth }]}>
+    <View style={[styles.normalBubbleRow, { maxWidth: responsiveWidth, width: contentBubbleWidth }]}>
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={handlePressUser}

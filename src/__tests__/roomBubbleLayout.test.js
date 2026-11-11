@@ -88,6 +88,30 @@ test('resizing the list updates an existing bubble without losing its text', asy
   await act(async () => tree.unmount());
 });
 
+test.each([
+  ...Array.from({ length: 10 }, (_, index) => ({ vipLevel: index + 1 })),
+  ...Array.from({ length: 10 }, (_, index) => ({ svipLevel: index + 1 })),
+  { isVip: true }, { isSvip: true }, { isOwner: true },
+  { wealthLevel: 1 }, { wealthLevel: 110 },
+  { chatBubble: { name: 'Noble', imageUrl: 'noble.png' } },
+  { chatBubble: { name: 'Custom animated bubble', animationUrl: 'custom.svga' } },
+  { chatBubble: { name: 'Custom gradient bubble', bgColors: ['#101010', '#202020'] } },
+])('short messages stay compact and expand only for longer text: %j', async flags => {
+  let tree;
+  const render = messageText => <ResponsiveChatBubble availableWidth={320}
+    sender={{ name: 'Black' }} message={{ text: messageText, wealthLevel: 110, charmLevel: 84, ...flags }} />;
+  const getWidth = () => StyleSheet.flatten(tree.root.findAllByType(View)[0].props.style).width;
+  await act(async () => { tree = renderer.create(render('Hi')); });
+  const shortWidth = getWidth();
+  expect(shortWidth).toBeLessThan(270);
+  expect(tree.root.findAllByType(Text).some(node => node.props.children === 'Hi')).toBe(true);
+  await act(async () => { tree.update(render(text)); });
+  expect(getWidth()).toBe(320);
+  await act(async () => { tree.update(render('Hi')); });
+  expect(getWidth()).toBe(shortWidth);
+  await act(async () => tree.unmount());
+});
+
 test('reference layout keeps avatar, owner, levels, club, medals and message in one frame', async () => {
   let tree;
   await act(async () => { tree = renderer.create(<ResponsiveChatBubble availableWidth={290}

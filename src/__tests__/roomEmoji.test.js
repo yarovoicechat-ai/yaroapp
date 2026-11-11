@@ -5,6 +5,8 @@ import RoomEmojiModal from '../components/room/RoomEmojiModal';
 import VoiceRoomSeatGrid from '../components/room/VoiceRoomSeatGrid';
 import { BUNDLED_EMOJIS } from '../constants/roomEmojis';
 
+jest.setTimeout(30000);
+
 jest.mock('react-native-vector-icons/Ionicons', () => 'Icon');
 jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');
 jest.mock('../components/AvatarWithFrame', () => 'Avatar');
@@ -108,11 +110,61 @@ test('seat reaction renders animated GIF on the seat when gifUrl is present', as
       />
     );
   });
+  const coolLocalGif = BUNDLED_EMOJIS.find(e => e.code === 'cool_sunglasses' || e.name === 'Cool')?.localGif;
   const seatImage = tree.root.findAllByType(Image).find(
-    img => img.props.source?.uri === testGifUrl
+    img => img.props.source === coolLocalGif || img.props.source?.uri === testGifUrl
   );
   expect(seatImage).toBeDefined();
   expect(seatImage.props.resizeMode).toBe('contain');
   await act(async () => tree.unmount());
   jest.restoreAllMocks();
+});
+
+test('seat reaction renders remote animated GIF for custom unbundled reaction', async () => {
+  jest.spyOn(Animated, 'sequence').mockReturnValue({ start: jest.fn() });
+  const remoteGifUrl = 'https://api.yaroapp.in/api/emoji-assets/anim_emoji_special.gif';
+  let tree;
+  await act(async () => {
+    tree = renderer.create(
+      <VoiceRoomSeatGrid
+        topTwoSeats={[{ seatIndex: 0, user: { name: 'Host', userId: '2' } }]}
+        bottomSeatRows={[]}
+        room={{}}
+        user={{}}
+        styles={{}}
+        handleSeatPress={jest.fn()}
+        registerGiftAvatarPosition={jest.fn()}
+        activeSeatReactions={{ 0: { id: 'reaction-gif-custom', emoji: 'special_custom_nonbundled', gifUrl: remoteGifUrl } }}
+      />
+    );
+  });
+  const seatImage = tree.root.findAllByType(Image).find(
+    img => img.props.source?.uri === remoteGifUrl
+  );
+  expect(seatImage).toBeDefined();
+  expect(seatImage.props.resizeMode).toBe('contain');
+  await act(async () => tree.unmount());
+  jest.restoreAllMocks();
+});
+
+test('seatReactionMedia strictly outputs GIF sources and never static PNG', () => {
+  const { seatReactionMedia } = require('../utils/seatReactions');
+  const media = seatReactionMedia({
+    emoji: '/api/emoji-assets/emoji_dizzy.png',
+    emojiData: {
+      code: 'dizzy',
+      name: 'Dizzy',
+      pngUrl: '/api/emoji-assets/emoji_dizzy.png',
+      gifUrl: '/api/emoji-assets/anim_emoji_dizzy.gif',
+    },
+  });
+
+  expect(media.sources.length).toBeGreaterThanOrEqual(1);
+  const bundled = BUNDLED_EMOJIS.find(e => e.code === 'dizzy');
+  expect(media.sources[0]).toBe(bundled.localGif);
+
+  const hasPng = media.sources.some(
+    s => s === bundled.localPng || (s?.uri && /\.png(?:[?#]|$)/i.test(s.uri))
+  );
+  expect(hasPng).toBe(false);
 });

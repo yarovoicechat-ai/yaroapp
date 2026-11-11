@@ -20,6 +20,7 @@ import { apiUtil } from '../../utils/apiUtil';
 import { useTranslation } from 'react-i18next';
 import { AlertService } from '../../utils/AlertService';
 import { OverlayPermissionManager } from '../../utils/OverlayPermissionManager';
+import InAppReviewService from '../../services/InAppReviewService';
 
 export default function Setting() {
   const navigation = useNavigation();
@@ -191,6 +192,15 @@ export default function Setting() {
   ];
 
   const supportSection = [
+    {
+      id: 'rate',
+      title: 'Rate Yaro',
+      desc: 'Rate us on Google Play Store',
+      icon: 'star-outline',
+      iconBg: '#FEF3C7',
+      iconColor: '#D97706',
+      onPress: () => InAppReviewService.openPlayStoreListing(),
+    },
     {
       id: 'help',
       title: 'Help & Support',

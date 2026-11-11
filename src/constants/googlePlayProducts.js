@@ -1,5 +1,7 @@
-// Entitlements only; display prices must come from Google Play.
+// Centralized Google Play Product Catalog for Yaro Mobile App
 // Rate: ₹100 = 7,200 Coins (₹1 = 72 Coins)
+// 10 Official Products matching Google Play Console exactly.
+
 export const GOOGLE_PLAY_PRODUCTS = {
   coins_720: { productId: "coins_720", coins: 720, diamonds: 720, priceInr: 10, isPopular: false, available: false },
   coins_3600: { productId: "coins_3600", coins: 3600, diamonds: 3600, priceInr: 50, isPopular: false, available: false },
@@ -13,6 +15,21 @@ export const GOOGLE_PLAY_PRODUCTS = {
   coins_1440000: { productId: "coins_1440000", coins: 1440000, diamonds: 1440000, priceInr: 20000, isPopular: false, available: false },
 };
 
+// 10 Official Public Online Products queried directly from Google Play
+export const GOOGLE_PLAY_PRODUCT_IDS = [
+  "coins_720",
+  "coins_3600",
+  "coins_7200",
+  "coins_14400",
+  "coins_36000",
+  "coins_72000",
+  "coins_144000",
+  "coins_360000",
+  "coins_720000",
+  "coins_1440000",
+];
+
+// Historical aliases for unconsumed legacy purchase tokens during restoration ONLY
 export const SKU_LEGACY_ALIASES = {
   diamonds_7: "coins_720",
   diamonds_36: "coins_3600",
@@ -26,7 +43,7 @@ export const SKU_LEGACY_ALIASES = {
   diamonds_14400: "coins_1440000",
 };
 
-export const GOOGLE_PLAY_PRODUCT_IDS = [
-  ...Object.keys(GOOGLE_PLAY_PRODUCTS),
-  ...Object.keys(SKU_LEGACY_ALIASES),
-];
+export const getClientProductConfig = (productId) => {
+  if (!productId || typeof productId !== 'string') return null;
+  return GOOGLE_PLAY_PRODUCTS[productId] || null;
+};

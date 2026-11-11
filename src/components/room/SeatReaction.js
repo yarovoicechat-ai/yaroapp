@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Text, View } from 'react-native';
 import { seatReactionMedia } from '../../utils/seatReactions';
 
 export default React.memo(function SeatReaction({ emoji, gifUrl, emojiData, size = 54 }) {
   const media = useMemo(() => seatReactionMedia({ emoji, gifUrl, emojiData }), [emoji, gifUrl, emojiData]);
   const [failedSource, setFailedSource] = useState(0);
+  useEffect(() => {
+    setFailedSource(0);
+  }, [media]);
   const source = media.sources[failedSource];
   return (
     <View pointerEvents="none" style={{ position: 'absolute', top: -Math.round(size * 0.16),

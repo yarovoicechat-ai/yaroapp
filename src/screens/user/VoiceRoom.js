@@ -1,4 +1,4 @@
-import { reactionSeatIndex } from '../../utils/seatReactions';
+import { reactionSeatIndex, seatReactionMedia } from '../../utils/seatReactions';
 import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
 import { buildRoomShare } from '../../utils/shareLinks';
 import { getRoomSeatConfig } from '../../utils/roomSeats';
@@ -48,6 +48,7 @@ import RoomGroupPrivilegeModal from '../../components/room/RoomGroupPrivilegeMod
 import RoomEntryEffectEngine from '../../components/room/RoomEntryEffectEngine';
 import ResponsiveChatBubble from '../../components/room/ResponsiveChatBubble';
 import VoiceRoomSeatGrid from '../../components/room/VoiceRoomSeatGrid';
+import RoomPKPanel from '../../components/room/RoomPKPanel';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
 import SvgaView from '../../components/SvgaView';
 import {
@@ -1646,8 +1647,8 @@ export default function VoiceRoomScreen() {
       ((isRoomOwner || contextIsOwner) && seats?.[0]?.user ? 0 : undefined));
 
     const isObj = typeof emojiOrItem === 'object' && emojiOrItem !== null;
-    const emojiCode = isObj ? (emojiOrItem.pngUrl || emojiOrItem.icon || emojiOrItem.code || emojiOrItem.emoji) : emojiOrItem;
-    const gifUrl = isObj ? (emojiOrItem.gifUrl || emojiOrItem.localGif) : null;
+    const emojiCode = isObj ? (emojiOrItem.code || emojiOrItem.name || emojiOrItem.gifUrl || emojiOrItem.emoji) : emojiOrItem;
+    const gifUrl = isObj ? (emojiOrItem.localGif || emojiOrItem.gifUrl) : null;
     const emojiName = isObj ? emojiOrItem.name : null;
 
     const id = 'react-' + Date.now() + Math.random();
@@ -2020,21 +2021,8 @@ export default function VoiceRoomScreen() {
         styles={styles}
       />
 
-      {/* PK Button (Image 1 & 2) */}
-      <View style={styles.pkButtonContainer}>
-        <TouchableOpacity
-          style={styles.pkButton}
-          activeOpacity={0.85}
-          onPress={() => AlertService.show('PK Battle', 'Room PK Battle starting soon!', 'info')}
-        >
-          <LinearGradient
-            colors={['#1E293B', '#0F172A']}
-            style={styles.pkGradient}
-          >
-            <Text style={styles.pkText}>PK</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+      <RoomPKPanel roomId={currentRoomId || room?.id || room?.roomId}
+        isOwner={isRoomOwner} bottomSafePadding={bottomSafePadding} />
 
       {/* Notice & Announcement & Event Row (Image 2 Model) */}
       <View style={styles.noticeAnnouncementRow}>
@@ -2093,14 +2081,13 @@ export default function VoiceRoomScreen() {
       {/* Floating Reaction Emojis Overlay (Audience only, seated users show on avatar) */}
       <View style={styles.floatingReactionsContainer} pointerEvents="none">
         {reactions.filter((r) => r.seatIndex === undefined || r.seatIndex === null).map((r) => {
-          const isImg = typeof r.emoji === 'string' && (r.emoji.startsWith('http') || r.emoji.startsWith('/'));
-          const isLocal = typeof r.emoji === 'number';
-          if (r.gifUrl || isImg || isLocal) {
-            const imgSource = r.gifUrl ? (typeof r.gifUrl === 'number' ? r.gifUrl : { uri: r.gifUrl }) : (isLocal ? r.emoji : { uri: r.emoji });
+          const media = seatReactionMedia({ emoji: r.emoji, gifUrl: r.gifUrl, emojiData: r.emojiData });
+          const source = media.sources[0];
+          if (source) {
             return (
               <Image
                 key={r.id}
-                source={imgSource}
+                source={source}
                 style={{ width: 44, height: 44, margin: 4 }}
                 resizeMode="contain"
               />
@@ -2108,7 +2095,7 @@ export default function VoiceRoomScreen() {
           }
           return (
             <Text key={r.id} allowFontScaling={false} style={styles.floatingEmoji}>
-              {r.emoji}
+              {media.text}
             </Text>
           );
         })}

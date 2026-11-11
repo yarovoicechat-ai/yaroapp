@@ -27,7 +27,7 @@ import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil, exchangeCoins } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
 import { formatCompactBalance } from '../../utils/numberUtil';
-import BillingService from '../../services/BillingService';
+import BillingService, { parseBillingError, GoogleBillingResponseCode } from '../../services/BillingService';
 import { GOOGLE_PLAY_PRODUCTS } from '../../constants/googlePlayProducts';
 import DeviceInfo from 'react-native-device-info';
 
@@ -148,7 +148,7 @@ const Wallet = () => {
           return true;
         }
 
-        AlertService.show('Verification Error', backendMessage, 'error');
+        AlertService.show(status === 503 ? 'Verification Pending' : 'Verification Error', backendMessage, status === 503 ? 'info' : 'error');
       } else {
         // True network or server connectivity failure
         AlertService.show(
@@ -187,42 +187,56 @@ const Wallet = () => {
     setPurchasingPackId(null);
     console.log('[Wallet] Purchase error callback:', error);
     
-    const errStr = typeof error === 'string' ? error : JSON.stringify(error || {});
-    const errMsg = error?.debugMessage || error?.message || '';
-    const isUserCancel = error?.code === 'E_USER_CANCELLED' || error?.code === 'user-cancelled' ||
-                         errMsg.toLowerCase().includes('cancel');
+    const parsed = parseBillingError(error);
+    console.log(`[GP-BILLING] handlePurchaseError: code=${parsed.code}, responseCode=${parsed.responseCode}`);
 
-    const isDeveloperSigningError = error?.code === 'developer-error' || 
-                                    errStr.toLowerCase().includes('signed correctly') ||
-                                    errStr.toLowerCase().includes('not configured for billing');
+    if (parsed.isUserCancel) {
+      console.log('[Wallet] User canceled purchase flow');
+      return;
+    }
 
-    const isItemUnavailable = error?.code === 'E_ITEM_UNAVAILABLE' || error?.code === 'item-unavailable' ||
-                              errMsg.toLowerCase().includes('item_unavailable') || 
-                              errMsg.toLowerCase().includes('failed to query product') ||
-                              errMsg.toLowerCase().includes('unavailable on google play');
-
-    const isAlreadyOwned = error?.code === 'E_ALREADY_OWNED' || 
-                           errStr.toLowerCase().includes('already own') ||
-                           errStr.toLowerCase().includes('already_owned');
-
-    if (isAlreadyOwned) {
+    if (parsed.isAlreadyOwned) {
       AlertService.show(
         'Completing Previous Purchase 🔄',
         'You have an unconsumed purchase for this item. Syncing and adding your Coins now...',
         'info'
       );
       BillingService.restorePurchases(verifyPurchaseWithBackend);
-    } else if (isUserCancel) {
-      console.log('[Wallet] User canceled purchase flow');
-    } else if (isDeveloperSigningError || isItemUnavailable) {
+      return;
+    }
+
+    if (parsed.isItemUnavailable) {
       AlertService.show(
-        'Purchase Unavailable',
-        `Google Play could not start this purchase. Check your Play Store account and try again.\n\nDetails: ${errMsg || error?.code || 'Product unavailable'}`,
+        'Product Unavailable',
+        parsed.userMessage || 'This pack is currently unavailable on Google Play (no active purchase option).',
+        'error'
+      );
+    } else if (parsed.isBillingUnavailable) {
+      AlertService.show(
+        'Billing Unavailable',
+        parsed.userMessage || 'Google Play Billing is unavailable on this device.',
+        'error'
+      );
+    } else if (parsed.isServiceDisconnected || parsed.isServiceUnavailable) {
+      AlertService.show(
+        'Service Unavailable',
+        parsed.userMessage || 'Google Play services are currently unavailable. Please try again.',
+        'error'
+      );
+    } else if (parsed.isDeveloperError) {
+      AlertService.show(
+        'Configuration Error',
+        parsed.userMessage || 'Google Play configuration error for this product.',
+        'error'
+      );
+    } else if (parsed.isNetworkError) {
+      AlertService.show(
+        'Network Error',
+        parsed.userMessage || 'Network connection failed while reaching Google Play.',
         'error'
       );
     } else {
-      const detail = errMsg ? `\n\n(${errMsg})` : '';
-      AlertService.show('Purchase Interrupted', `Payment could not be completed. No Coins were deducted.${detail}`, 'error');
+      AlertService.show('Purchase Interrupted', parsed.userMessage || 'Payment could not be completed. No Coins were deducted.', 'error');
     }
   }, [verifyPurchaseWithBackend]);
 
@@ -274,10 +288,13 @@ const Wallet = () => {
       return; // Prevent duplicate taps
     }
 
-    if (!pack.available && !pack.playDetails) {
+    // Verify product is available and has active Google Play price
+    const isAvailable = Boolean(pack.available && pack.localizedPrice);
+    if (!isAvailable) {
+      console.log(`[GP-BILLING] Tap blocked for unavailable product: ${pack.productId} (available=${pack.available}, localizedPrice=${pack.localizedPrice})`);
       AlertService.show(
-        'Google Play Store',
-        `To purchase the ₹${pack.priceInr || pack.price} pack (${(pack.coins || pack.diamonds).toLocaleString()} Coins), please make sure you are signed into Google Play or install via the Internal Testing track link.`,
+        'Product Unavailable',
+        `Product ${pack.productId} (${(pack.coins || pack.diamonds).toLocaleString()} Coins) is currently unavailable on Google Play (no active purchase option configured in Google Play Console).\n\nPlease choose another pack or try again later.`,
         'info'
       );
       return;
@@ -293,30 +310,39 @@ const Wallet = () => {
       setLoading(false);
       setPurchasingPackId(null);
 
-      const errStr = typeof err === 'string' ? err : JSON.stringify(err || {});
-      const errMsg = err?.message || String(err || '');
-      const isUserCancel = err?.code === 'E_USER_CANCELLED' || errMsg.toLowerCase().includes('cancel') || errStr.toLowerCase().includes('cancel');
-      const isDeveloperSigningError = err?.code === 'developer-error' || err?.code === 'E_DEVELOPER_ERROR' || errMsg.toLowerCase().includes('signed correctly') || errMsg.toLowerCase().includes('developer');
-      const isItemUnavailable = err?.code === 'E_ITEM_UNAVAILABLE' || err?.code === 'item-unavailable' || errMsg.toLowerCase().includes('item_unavailable') || errMsg.toLowerCase().includes('unavailable on google play');
-      const isAlreadyOwned = err?.code === 'E_ALREADY_OWNED' || 
-                             errStr.toLowerCase().includes('already own') ||
-                             errStr.toLowerCase().includes('already_owned');
+      const parsed = parseBillingError(err, pack.productId);
 
-      if (isAlreadyOwned) {
+      if (parsed.isUserCancel) {
+        console.log(`[Wallet] User canceled purchase flow for ${pack.productId}`);
+        return;
+      }
+
+      if (parsed.isAlreadyOwned) {
         AlertService.show(
           'Completing Previous Purchase 🔄',
           'You already own this item from a previous transaction. Syncing and crediting your Coins now...',
           'info'
         );
         await BillingService.restorePurchases(verifyPurchaseWithBackend);
-      } else if (isDeveloperSigningError || isItemUnavailable) {
+        return;
+      }
+
+      if (parsed.isItemUnavailable) {
         AlertService.show(
-          'Purchase Unavailable',
-          `Google Play could not start this purchase. Check your Play Store account and try again.\n\nDetails: ${errMsg || err?.code || 'Product unavailable'}`,
+          'Product Unavailable',
+          `Product ${pack.productId} (${(pack.coins || pack.diamonds).toLocaleString()} Coins) is currently unavailable on Google Play (no active purchase option configured in Google Play Console).`,
           'error'
         );
-      } else if (!isUserCancel) {
-        AlertService.show('Error', err.message || 'Payment could not be processed', 'error');
+      } else if (parsed.isBillingUnavailable) {
+        AlertService.show('Billing Unavailable', parsed.userMessage, 'error');
+      } else if (parsed.isServiceDisconnected || parsed.isServiceUnavailable) {
+        AlertService.show('Service Unavailable', parsed.userMessage, 'error');
+      } else if (parsed.isDeveloperError) {
+        AlertService.show('Configuration Error', parsed.userMessage, 'error');
+      } else if (parsed.isNetworkError) {
+        AlertService.show('Network Error', parsed.userMessage, 'error');
+      } else {
+        AlertService.show('Purchase Interrupted', parsed.userMessage || err.message || 'Payment could not be processed', 'error');
       }
     }
   };
@@ -459,7 +485,7 @@ const Wallet = () => {
                   <View style={styles.balanceLabelCol}>
                     <Text style={[styles.balanceLabel, { color: '#FEF3C7', textShadowColor: 'rgba(0,0,0,0.65)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>My Coins</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={[styles.balanceCount, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }]}>{formatCompactBalance(user?.coins ?? user?.diamonds ?? 0)}</Text>
+                      <Text style={[styles.balanceCount, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }]}>{formatCompactBalance(user?.diamonds ?? 0)}</Text>
                       <Image source={diamondIcon} style={{ width: 24, height: 24, marginLeft: 6 }} resizeMode="contain" />
                     </View>
                   </View>
@@ -491,7 +517,8 @@ const Wallet = () => {
             <View style={styles.packsGrid}>
               {packList.map((pack) => {
                 const isPackLoading = purchasingPackId === pack.productId;
-                const displayPrice = pack.localizedPrice || (pack.priceInr ? `₹${pack.priceInr.toLocaleString()}` : 'Unavailable');
+                const isAvailable = Boolean(pack.available && pack.localizedPrice);
+                const displayPrice = pack.localizedPrice || 'Unavailable';
 
                 return (
                   <TouchableOpacity
@@ -501,7 +528,7 @@ const Wallet = () => {
                     style={[
                       styles.packCard,
                       pack.isPopular && styles.packCardPopular,
-                      (loading || isPackLoading) && { opacity: 0.7 },
+                      (!isAvailable || loading || isPackLoading) && { opacity: isAvailable ? 0.7 : 0.6 },
                     ]}
                     activeOpacity={0.8}
                   >
@@ -518,7 +545,7 @@ const Wallet = () => {
                     </View>
 
                     <LinearGradient
-                      colors={['#7c4dff', '#4f46e5']}
+                      colors={isAvailable ? ['#7c4dff', '#4f46e5'] : ['#94A3B8', '#64748B']}
                       style={styles.packButtonGradient}
                     >
                       {isPackLoading ? (

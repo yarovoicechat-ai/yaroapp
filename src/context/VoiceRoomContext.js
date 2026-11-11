@@ -1,4 +1,5 @@
 import { getRoomSeatConfig } from '../utils/roomSeats';
+import { resolveRoomMicMute } from '../utils/roomMicState';
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { AppState, NativeModules } from 'react-native';
 import { navigationRef, navigate, navigateToVoiceRoom } from '../utils/navigationRef';
@@ -17,6 +18,7 @@ import {
 } from 'react-native-agora';
 import InCallManager from 'react-native-incall-manager';
 import { AgoraClientService } from '../services/agoraService';
+import InAppReviewService from '../services/InAppReviewService';
 
 const normalizeRoomId = (id) => {
   const clean = String(id || '').trim();
@@ -110,6 +112,7 @@ export const VoiceRoomProvider = ({ children }) => {
   const isMutedRef = useRef(isMuted);
   isMutedRef.current = isMuted;
   const desiredLocalAudioRef = useRef({ isOnSeat: false, isMuted: true });
+  const roomModerationRef = useRef({ mutedUsers: [], isGlobalRoomManager: false });
   const musicSwitchTimerRef = useRef(null);
   const musicSwitchRequestRef = useRef(0);
   const musicLoadTimeoutRef = useRef(null);
@@ -967,6 +970,7 @@ export const VoiceRoomProvider = ({ children }) => {
     setAdmins([]);
     setBannedChatUsers([]);
     setMutedUsers([]);
+    roomModerationRef.current = { mutedUsers: [], isGlobalRoomManager: Boolean(currentUser?.isGlobalRoomManager) };
     setLocallyMutedUsers([]);
 
     try {
@@ -1082,6 +1086,10 @@ export const VoiceRoomProvider = ({ children }) => {
           setAdmins(Array.isArray(data?.admins) ? data.admins.map(String) : []);
           setBannedChatUsers(Array.isArray(data?.bannedChatUsers) ? data.bannedChatUsers.map(String) : []);
           setMutedUsers(Array.isArray(data?.mutedUsers) ? data.mutedUsers.map(String) : []);
+          roomModerationRef.current = {
+            mutedUsers: Array.isArray(data?.mutedUsers) ? data.mutedUsers.map(String) : [],
+            isGlobalRoomManager: Boolean(data?.isGlobalRoomManager),
+          };
           if (!serverSaysOwner && currentUserId) {
             setChatMessages((prev) => {
               if (prev.some((m) => m.type === 'welcome')) return prev;
@@ -1164,6 +1172,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         sock.on('voice_room:manager_role_updated', (data) => {
           setIsGlobalRoomManager(Boolean(data?.isGlobalRoomManager));
+          roomModerationRef.current.isGlobalRoomManager = Boolean(data?.isGlobalRoomManager);
         });
 
         // 1.1 Reaction received broadcast
@@ -1291,12 +1300,13 @@ export const VoiceRoomProvider = ({ children }) => {
           console.log('📡 [VoiceRoom] Real-time seat update:', data?.seatIndex, data?.user?.name);
           if (data?.seats && Array.isArray(data.seats)) {
             const mapped = mapSeatsWithCurrentUser(data.seats, currentUserId);
-            setSeats(mapped);
             const mySeat = mapped.find((s) => s.user && s.user.isCurrentUser);
             if (mySeat) {
               setCurrentSeatIndex(mySeat.seatIndex);
-              const isServerMuted = !isGlobalRoomManager && mutedUsers.some((id) => String(id) === String(currentUserId));
-              const shouldMute = Boolean(mySeat.isMuted || isServerMuted);
+              const moderation = roomModerationRef.current;
+              const isServerMuted = !moderation.isGlobalRoomManager && moderation.mutedUsers.includes(String(currentUserId));
+              const shouldMute = resolveRoomMicMute(desiredLocalAudioRef.current, mySeat.isMuted, isServerMuted);
+              mySeat.isMuted = shouldMute;
               setIsMuted(shouldMute);
               syncLocalMicState(true, shouldMute);
             } else if (currentSeatIndexRef.current !== null && currentSeatIndexRef.current !== undefined) {
@@ -1305,6 +1315,7 @@ export const VoiceRoomProvider = ({ children }) => {
               syncLocalMicState(false, true);
               scheduleAgoraAuthorizationRefresh();
             }
+            setSeats(mapped);
           }
         });
 
@@ -1327,7 +1338,10 @@ export const VoiceRoomProvider = ({ children }) => {
           if (!isCurrentRoomEvent(data)) return;
           if (Array.isArray(data?.admins)) setAdmins(data.admins.map(String));
           if (Array.isArray(data?.bannedChatUsers)) setBannedChatUsers(data.bannedChatUsers.map(String));
-          if (Array.isArray(data?.mutedUsers)) setMutedUsers(data.mutedUsers.map(String));
+          if (Array.isArray(data?.mutedUsers)) {
+            roomModerationRef.current.mutedUsers = data.mutedUsers.map(String);
+            setMutedUsers(roomModerationRef.current.mutedUsers);
+          }
         });
 
         sock.on('voice_room:force_mute', (data) => {
@@ -1708,6 +1722,7 @@ export const VoiceRoomProvider = ({ children }) => {
         });
 
         sock.emit('voice_room:subscribe_gifts', { roomId });
+        InAppReviewService.recordRoomJoined(roomId, currentUserId);
       }
     } catch (err) {
       console.warn('VoiceRoom socket initialization error:', err);
@@ -2006,6 +2021,7 @@ export const VoiceRoomProvider = ({ children }) => {
       volumeThrottleTimerRef.current = null;
     }
     desiredLocalAudioRef.current = { isOnSeat: false, isMuted: true };
+    roomModerationRef.current = { mutedUsers: [], isGlobalRoomManager: false };
     isMutedRef.current = true;
     currentSeatIndexRef.current = null;
 
@@ -2048,6 +2064,9 @@ export const VoiceRoomProvider = ({ children }) => {
       });
       detachSocketListeners(sock);
       socketRef.current = null;
+    }
+    if (roomId) {
+      InAppReviewService.recordRoomExited(roomId, userPayload.userId);
     }
     activeRoomIdRef.current = null;
     setActiveRoom(null);
@@ -2104,7 +2123,7 @@ export const VoiceRoomProvider = ({ children }) => {
       return;
     }
 
-    const next = !isMuted;
+    const next = !isMutedRef.current;
     setIsMuted(next);
     syncLocalMicState(true, next);
     setSeats((seatList) => seatList.map((s) =>
@@ -2203,8 +2222,8 @@ export const VoiceRoomProvider = ({ children }) => {
       : (explicitSeatIndex !== null ? explicitSeatIndex : currentSeatIndexRef.current);
 
     const isEmojiObj = typeof emojiOrItem === 'object' && emojiOrItem !== null;
-    const emojiVal = isEmojiObj ? (emojiOrItem.pngUrl || emojiOrItem.icon || emojiOrItem.code || emojiOrItem.emoji) : emojiOrItem;
-    const gifUrl = isEmojiObj ? (emojiOrItem.gifUrl || emojiOrItem.localGif) : (isObj ? optionsOrName.gifUrl : null);
+    const emojiVal = isEmojiObj ? (emojiOrItem.code || emojiOrItem.gifUrl || emojiOrItem.name || emojiOrItem.emoji) : emojiOrItem;
+    const gifUrl = isEmojiObj ? (emojiOrItem.gifUrl || (typeof emojiOrItem.localGif === 'string' ? emojiOrItem.localGif : null)) : (isObj ? optionsOrName.gifUrl : null);
     const emojiName = isEmojiObj ? emojiOrItem.name : (isObj ? optionsOrName.name : null);
 
     if (sock && roomId && emojiVal) {
@@ -2213,7 +2232,7 @@ export const VoiceRoomProvider = ({ children }) => {
         emoji: emojiVal,
         gifUrl,
         name: emojiName,
-        emojiData: isEmojiObj ? emojiOrItem : null,
+        emojiData: isEmojiObj ? { code: emojiOrItem.code, name: emojiOrItem.name, gifUrl: emojiOrItem.gifUrl } : null,
         user: userName,
         userId: resolvedUserId,
         seatIndex: seatIdx,

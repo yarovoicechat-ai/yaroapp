@@ -41,15 +41,15 @@ export function seatReactionMedia({ emoji, gifUrl, emojiData }) {
     }
   }
 
-  // Seat reactions MUST be animated GIF or classic emoji text - NEVER static PNG
-  // (PNG is exclusively for emoji picker popup display)
-  const candidates = [
-    bundled?.localGif,
-    typeof animation === 'string' && imageUrl(animation) && /\/emoji_[^/]+\.gif/i.test(animation)
-      ? { uri: resolveAssetUrl(animation.replace(/\/emoji_([^/]+\.gif)/i, '/anim_emoji_$1')) }
-      : (typeof animation === 'string' && imageUrl(animation) ? { uri: resolveAssetUrl(animation) } : null),
-    typeof animation === 'string' && imageUrl(animation) ? { uri: resolveAssetUrl(animation) } : null,
-  ].filter(Boolean);
+  const cover = imageUrl(emoji) ? emoji : emojiData?.pngUrl;
+  const candidates = bundled
+    ? [bundled.localGif].filter(Boolean)
+    : [
+        typeof animation === 'string' && imageUrl(animation) && /\/emoji_[^/]+\.gif/i.test(animation)
+          ? { uri: resolveAssetUrl(animation.replace(/\/emoji_([^/]+\.gif)/i, '/anim_emoji_$1')) }
+          : (typeof animation === 'string' && imageUrl(animation) ? { uri: resolveAssetUrl(animation) } : null),
+        imageUrl(cover) && cover !== animation ? { uri: resolveAssetUrl(cover) } : null,
+      ].filter(Boolean);
 
   return {
     sources: candidates,

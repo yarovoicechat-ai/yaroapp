@@ -14,6 +14,7 @@ import {
   Share,
   Image,
   ImageBackground,
+  Linking,
 } from 'react-native';
 
 const meDiamondCardBg = require('../../assets/card/me_diamond_card_bg.png');
@@ -168,6 +169,7 @@ export default function MeScreen() {
   );
 
   const [appConfig, setAppConfig] = useState({ isFamilyEnabled: false, isCpEnabled: false, isInviteEarnEnabled: false });
+  const [meBanners, setMeBanners] = useState([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -180,6 +182,13 @@ export default function MeScreen() {
               isCpEnabled: Boolean(res.data.data.isCpEnabled),
               isInviteEarnEnabled: Boolean(res.data.data.isInviteEarnEnabled),
             });
+          }
+        })
+        .catch(() => {});
+      apiUtil.get('/public/banners?placement=me')
+        .then(res => {
+          if (isMounted && res.data?.data) {
+            setMeBanners(Array.isArray(res.data.data) ? res.data.data : []);
           }
         })
         .catch(() => {});
@@ -708,7 +717,7 @@ export default function MeScreen() {
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.diamondCardValue} numberOfLines={1}>
-                    {formatCompactBalance(user?.coinBalance ?? user?.coins ?? user?.diamonds ?? 0)}
+                    {formatCompactBalance(user?.diamonds ?? user?.diamondBalance ?? 0)}
                   </Text>
                   <Text style={styles.diamondCardLabel} numberOfLines={1}>
                     Coins
@@ -741,7 +750,7 @@ export default function MeScreen() {
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.beansCardValue} numberOfLines={1}>
-                    {formatCompactBalance(user?.beanBalance ?? user?.beans ?? user?.coins ?? 0)}
+                    {formatCompactBalance(user?.coins ?? user?.beans ?? user?.beanBalance ?? 0)}
                   </Text>
                   <Text style={styles.beansCardLabel} numberOfLines={1}>
                     My Beans
@@ -754,6 +763,60 @@ export default function MeScreen() {
             </ImageBackground>
           </TouchableOpacity>
         </View>
+
+        {/* Coin Top-up & Recharge Hero Banner */}
+        {meBanners.length > 0 ? (
+          <TouchableOpacity
+            activeOpacity={0.92}
+            onPress={() => {
+              const b = meBanners[0];
+              if (b.targetType === 'internal' && b.targetScreen) {
+                navigation.navigate(b.targetScreen);
+              } else if (b.targetType === 'external' && b.linkUrl) {
+                Linking.openURL(b.linkUrl).catch(() => {});
+              } else {
+                navigation.navigate('Wallet');
+              }
+            }}
+            style={styles.meBannerContainer}
+          >
+            <Image
+              source={{ uri: meBanners[0].imageUrl }}
+              style={styles.meBannerImage}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.92}
+            onPress={() => navigation.navigate('Wallet')}
+            style={styles.coinTopUpBannerContainer}
+          >
+            <LinearGradient
+              colors={['#D97706', '#F59E0B', '#FBBF24']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.coinTopUpBannerGradient}
+            >
+              <View style={styles.coinTopUpLeft}>
+                <View style={styles.coinTopUpBadge}>
+                  <MaterialCommunityIcons name="lightning-bolt" size={13} color="#92400E" style={{ marginRight: 2 }} />
+                  <Text style={styles.coinTopUpBadgeText}>COIN RECHARGE</Text>
+                </View>
+                <Text style={styles.coinTopUpTitle}>Get Extra Bonus Coins Today!</Text>
+                <Text style={styles.coinTopUpSubtitle} numberOfLines={1}>
+                  Instant recharge with UPI, Cards & Net Banking
+                </Text>
+              </View>
+              <View style={styles.coinTopUpRight}>
+                <View style={styles.coinTopUpBtn}>
+                  <Text style={styles.coinTopUpBtnText}>Top Up</Text>
+                  <MaterialIcons name="chevron-right" size={16} color="#B45309" />
+                </View>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
 
         {/* Invite & Earn High-Visibility Hero Banner */}
         {appConfig.isInviteEarnEnabled && (
@@ -1119,6 +1182,87 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+
+  meBannerContainer: {
+    marginHorizontal: 4,
+    marginBottom: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    height: 90,
+    elevation: 3,
+  },
+  meBannerImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+  },
+  coinTopUpBannerContainer: {
+    marginHorizontal: 4,
+    marginBottom: 14,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: '#F59E0B',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  coinTopUpBannerGradient: {
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  coinTopUpLeft: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  coinTopUpBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  coinTopUpBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#B45309',
+    letterSpacing: 0.5,
+  },
+  coinTopUpTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#78350F',
+    marginBottom: 2,
+  },
+  coinTopUpSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#92400E',
+  },
+  coinTopUpRight: {
+    justifyContent: 'center',
+  },
+  coinTopUpBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    elevation: 2,
+  },
+  coinTopUpBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#B45309',
+    marginRight: 2,
   },
 
   // Invite & Earn Banner

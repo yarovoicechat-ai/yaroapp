@@ -1725,11 +1725,11 @@ export default function VoiceRoomScreen() {
     });
   }
 
-  // Top 2 seats: Seat 0 (Host) & Seat 1 (Co-Host / CP)
-  const topTwoSeats = fullSeats.slice(0, 2);
+  // Top seat: Seat 0 (Host 👑)
+  const topTwoSeats = fullSeats.slice(0, 1);
 
-  // Bottom remaining seats: exactly bottomCount seats (8, 10, or 15)!
-  const bottomRemainingSeats = fullSeats.slice(2, 2 + seatConfig.bottomCount);
+  // Bottom guest seats: exactly bottomCount seats (1 to bottomCount)!
+  const bottomRemainingSeats = fullSeats.slice(1, 1 + seatConfig.bottomCount);
   const isCompactLayout = seatConfig.isCompact;
   const bottomSeatsPerRow = seatConfig.seatsPerRow;
   const bottomSeatRows = [];

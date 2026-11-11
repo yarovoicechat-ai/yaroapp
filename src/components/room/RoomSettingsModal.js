@@ -11,6 +11,8 @@ import {
   Dimensions,
   Alert,
   StatusBar,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -574,7 +576,10 @@ export default function RoomSettingsModal({
           statusBarTranslucent
           onRequestClose={() => setEditNameModalVisible(false)}
         >
-          <View style={styles.centerModalBackdrop}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.centerModalBackdrop}
+          >
             <View style={styles.dialogCard}>
               <Text style={styles.dialogTitle}>Edit Room Name</Text>
               <View style={styles.dialogInputContainer}>
@@ -609,7 +614,7 @@ export default function RoomSettingsModal({
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* ─── DIALOG: EDIT ANNOUNCEMENT (Screenshot 3) ─── */}
@@ -620,7 +625,10 @@ export default function RoomSettingsModal({
           statusBarTranslucent
           onRequestClose={() => setEditAnnouncementModalVisible(false)}
         >
-          <View style={styles.centerModalBackdrop}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.centerModalBackdrop}
+          >
             <View style={styles.dialogCard}>
               <Text style={styles.dialogTitle}>Edit Announcement</Text>
               <View style={[styles.dialogInputContainer, { height: 110, alignItems: 'flex-start' }]}>
@@ -658,7 +666,7 @@ export default function RoomSettingsModal({
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* ─── BOTTOM SHEET: HONORARY TITLE (Screenshot 4) ─── */}

@@ -25,9 +25,9 @@ const CARD_WIDTH = (width - 48) / 2;
 
 const FALLBACK_ROOM_THEMES = [
   {
-    id: 'default',
-    itemId: 'default',
-    name: 'Default Twilight',
+    id: 'theme_1',
+    itemId: 'theme_1',
+    name: 'Theme 1 (Classic Twilight)',
     coverImage: DEFAULT_ROOM_BG,
     bgColors: ['#3A0E5C', '#1E0A3C', '#0B031E'],
     previewColor: '#9333EA',

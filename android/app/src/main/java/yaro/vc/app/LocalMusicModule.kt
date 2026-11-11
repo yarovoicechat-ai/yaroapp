@@ -24,11 +24,14 @@ class LocalMusicModule(private val reactContext: ReactApplicationContext) :
                     MediaStore.Audio.Media.DATA,
                     MediaStore.Audio.Media.DISPLAY_NAME,
                     MediaStore.Audio.Media.SIZE,
-                    MediaStore.Audio.Media.IS_MUSIC
+                    MediaStore.Audio.Media.IS_MUSIC,
+                    MediaStore.Audio.Media.IS_RINGTONE,
+                    MediaStore.Audio.Media.IS_NOTIFICATION,
+                    MediaStore.Audio.Media.IS_ALARM
                 )
 
-                // Query: only audio marked as music, with size >= 50KB and duration >= 10s (or duration 0/null during index)
-                val selection = "(${MediaStore.Audio.Media.IS_MUSIC} != 0) AND (${MediaStore.Audio.Media.SIZE} IS NULL OR ${MediaStore.Audio.Media.SIZE} >= 50000) AND (${MediaStore.Audio.Media.DURATION} IS NULL OR ${MediaStore.Audio.Media.DURATION} >= 10000 OR ${MediaStore.Audio.Media.DURATION} == 0)"
+                // Query: only audio marked as music, excluding ringtones, notifications and alarms
+                val selection = "(${MediaStore.Audio.Media.IS_MUSIC} != 0) AND (${MediaStore.Audio.Media.IS_RINGTONE} == 0 OR ${MediaStore.Audio.Media.IS_RINGTONE} IS NULL) AND (${MediaStore.Audio.Media.IS_NOTIFICATION} == 0 OR ${MediaStore.Audio.Media.IS_NOTIFICATION} IS NULL) AND (${MediaStore.Audio.Media.IS_ALARM} == 0 OR ${MediaStore.Audio.Media.IS_ALARM} IS NULL) AND (${MediaStore.Audio.Media.SIZE} IS NULL OR ${MediaStore.Audio.Media.SIZE} >= 50000) AND (${MediaStore.Audio.Media.DURATION} IS NULL OR ${MediaStore.Audio.Media.DURATION} >= 10000 OR ${MediaStore.Audio.Media.DURATION} == 0)"
                 // Sort by recently added first - never append LIMIT in sortOrder string on modern Android
                 val sortOrder = "${MediaStore.Audio.Media.DATE_ADDED} DESC"
 
@@ -46,6 +49,9 @@ class LocalMusicModule(private val reactContext: ReactApplicationContext) :
                     val displayNameCol = it.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME)
                     val sizeCol = it.getColumnIndex(MediaStore.Audio.Media.SIZE)
                     val isMusicCol = it.getColumnIndex(MediaStore.Audio.Media.IS_MUSIC)
+                    val isRingtoneCol = it.getColumnIndex(MediaStore.Audio.Media.IS_RINGTONE)
+                    val isNotifCol = it.getColumnIndex(MediaStore.Audio.Media.IS_NOTIFICATION)
+                    val isAlarmCol = it.getColumnIndex(MediaStore.Audio.Media.IS_ALARM)
                     val isRecordingCol = try {
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                             it.getColumnIndex(MediaStore.Audio.Media.IS_RECORDING)
@@ -55,6 +61,17 @@ class LocalMusicModule(private val reactContext: ReactApplicationContext) :
                     while (it.moveToNext() && count < maxSongs) {
                         // Check is_music flag
                         if (isMusicCol >= 0 && it.getInt(isMusicCol) == 0) {
+                            continue
+                        }
+
+                        // Check ringtone / notification / alarm flags
+                        if (isRingtoneCol >= 0 && it.getInt(isRingtoneCol) != 0) {
+                            continue
+                        }
+                        if (isNotifCol >= 0 && it.getInt(isNotifCol) != 0) {
+                            continue
+                        }
+                        if (isAlarmCol >= 0 && it.getInt(isAlarmCol) != 0) {
                             continue
                         }
 
@@ -160,7 +177,13 @@ class LocalMusicModule(private val reactContext: ReactApplicationContext) :
             "/voice memo",
             "/voicememo",
             "/.trash",
-            "/cache"
+            "/cache",
+            "/system/media",
+            "/product/media",
+            "/system/product",
+            "/oem/media",
+            "/vendor/media",
+            "/system/etc"
         )
 
         for (kw in excludedPathKeywords) {
@@ -192,7 +215,16 @@ class LocalMusicModule(private val reactContext: ReactApplicationContext) :
             "voice memo",
             "voicememo",
             "audiomemo",
-            "call_rec"
+            "call_rec",
+            "ringtone",
+            "ring tone",
+            "phone ring",
+            "incoming call",
+            "default ringtone",
+            "system ring",
+            "dial tone",
+            "alert tone",
+            "hangup"
         )
         for (phrase in recordingPhrases) {
             if (combined.contains(phrase)) {

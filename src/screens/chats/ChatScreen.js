@@ -605,6 +605,10 @@ const Massage = ({ route }) => {
 
   const startCall = async () => {
     if (calling) return;
+    if (!hasCallHosting) {
+      AlertService.show('Call unavailable', 'This user is not accepting calls.', 'info');
+      return;
+    }
     const targetHostId = otherUser?._id || otherUser?.userId;
     if (!targetHostId) {
       AlertService.show('Call unavailable', 'Invalid user information.', 'error');
@@ -713,9 +717,11 @@ const Massage = ({ route }) => {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={startCall} disabled={calling} style={styles.navBlockButton}>
-            {calling ? <ActivityIndicator size="small" color="#6C5CE7" /> : <Icon name="call" size={20} color="#6C5CE7" />}
-          </TouchableOpacity>
+          {hasCallHosting && (
+            <TouchableOpacity onPress={startCall} disabled={calling} style={styles.navBlockButton}>
+              {calling ? <ActivityIndicator size="small" color="#6C5CE7" /> : <Icon name="call" size={20} color="#6C5CE7" />}
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.navBlockButton}>
             <Icon name="more-vert" size={22} color="#1E293B" />
           </TouchableOpacity>

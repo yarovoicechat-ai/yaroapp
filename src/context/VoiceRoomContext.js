@@ -862,6 +862,7 @@ export const VoiceRoomProvider = ({ children }) => {
     sock.off('voice_room:theme_updated');
     sock.off('voice_room:seat_skin_updated');
     sock.off('voice_room:seat_charm_updated');
+    sock.off('voice_room:seats_updated');
     sock.off('voice_room:moved_to_audience');
     sock.off('voice_room:user_kicked');
     sock.off('voice_room:force_leave');
@@ -1393,6 +1394,14 @@ export const VoiceRoomProvider = ({ children }) => {
           console.log('📡 [VoiceRoom] Room seat charm updated:', data?.showSeatCharm);
           if (data && typeof data.showSeatCharm === 'boolean') {
             setShowSeatCharm(data.showSeatCharm);
+          }
+          if (data?.seats && Array.isArray(data.seats)) {
+            setSeats(mapSeatsWithCurrentUser(data.seats, currentUserId));
+          }
+        });
+        sock.on('voice_room:seats_updated', (data) => {
+          if (data?.seats && Array.isArray(data.seats)) {
+            setSeats(mapSeatsWithCurrentUser(data.seats, currentUserId));
           }
         });
 

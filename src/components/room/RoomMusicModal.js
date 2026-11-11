@@ -104,6 +104,8 @@ const isLikelyRecording = (title = '', path = '') => {
     '/notification',
     '/alarms',
     '/alarm',
+    '/system/media',
+    '/product/media',
     'standard recording',
     'voice recording',
     'audio recording',
@@ -113,6 +115,13 @@ const isLikelyRecording = (title = '', path = '') => {
     'voicenote',
     'voice memo',
     'voicememo',
+    'ringtone',
+    'ring tone',
+    'phone ring',
+    'incoming call',
+    'default ringtone',
+    'system ring',
+    'dial tone',
   ];
 
   for (const kw of excluded) {

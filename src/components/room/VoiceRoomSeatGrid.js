@@ -77,6 +77,7 @@ export default function VoiceRoomSeatGrid({
                               emoji={activeSeatReactions[seat.seatIndex].emoji}
                               gifUrl={activeSeatReactions[seat.seatIndex].gifUrl}
                               emojiData={activeSeatReactions[seat.seatIndex].emojiData}
+                              name={activeSeatReactions[seat.seatIndex].name || activeSeatReactions[seat.seatIndex].emojiData?.name}
                               id={activeSeatReactions[seat.seatIndex].id}
                               size={54}
                             />
@@ -133,7 +134,7 @@ export default function VoiceRoomSeatGrid({
         {bottomSeatRows.map((row, rowIdx) => (
           <View key={`bottom-row-${rowIdx}`} style={[styles.seatsRow, { marginTop: 10 }]}>
             {row.map((seat) => {
-              const seatNum = `No.${seat.seatIndex - 1}`;
+              const seatNum = `No.${seat.seatIndex}`;
               const isOccupied = Boolean(seat.user);
               const seatWidth = isCompactLayout ? (width - 16) / 5 : (width - 24) / 4;
               const circleSize = isCompactLayout ? 50 : 58;
@@ -187,6 +188,7 @@ export default function VoiceRoomSeatGrid({
                               emoji={activeSeatReactions[seat.seatIndex].emoji}
                               gifUrl={activeSeatReactions[seat.seatIndex].gifUrl}
                               emojiData={activeSeatReactions[seat.seatIndex].emojiData}
+                              name={activeSeatReactions[seat.seatIndex].name || activeSeatReactions[seat.seatIndex].emojiData?.name}
                               id={activeSeatReactions[seat.seatIndex].id}
                               size={avatarSize}
                             />

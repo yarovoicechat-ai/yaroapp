@@ -280,8 +280,9 @@ export const SEAT_SKIN_ASSETS = {
 
 // Purchasable themes/skins come from the API; only code-native defaults live here.
 export const DEFAULT_ROOM_THEME = {
-  id: 'default',
-  name: 'Default',
+  id: 'theme_1',
+  itemId: 'theme_1',
+  name: 'Theme 1 (Classic Twilight)',
   coverImage: DEFAULT_ROOM_BG,
   bgColors: ['#3A0E5C', '#1E0A3C', '#0B031E'],
   previewColor: '#9333EA',
@@ -460,7 +461,7 @@ const normalizeTheme = (value) => {
     return rawId === pid || rawId === pname || rawId.includes(pid);
   });
   const base = matchedPreset || DEFAULT_ROOM_THEME;
-  const isDefault = (base.id === 'default' || rawId === 'default' || !rawId);
+  const isDefault = (base.id === 'theme_1' || base.id === 'default' || rawId === 'theme_1' || rawId === 'default' || !rawId);
   const metadata = asset.metadata || {};
 
   return {

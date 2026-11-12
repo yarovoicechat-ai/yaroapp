@@ -24,7 +24,7 @@ jest.mock('../utils/apiUtil', () => ({
   apiPublic: { get: jest.fn().mockResolvedValue({ data: { success: true, data: [] } }) },
 }));
 
-test('emoji picker shows 3D PNG emojis with name labels underneath', async () => {
+test('emoji picker shows image tiles without cluttering name labels', async () => {
   let tree;
   await act(async () => {
     tree = renderer.create(<RoomEmojiModal visible onClose={jest.fn()} onSelectEmoji={jest.fn()} />);
@@ -34,12 +34,11 @@ test('emoji picker shows 3D PNG emojis with name labels underneath', async () =>
   const images = tree.root.findAllByType(Image);
   expect(images.length).toBeGreaterThanOrEqual(30);
 
-  // Verify emoji names are rendered underneath
+  // Name labels should not crowd the image tiles
   const names = tree.root.findAllByType(Text).filter(
     node => StyleSheet.flatten(node.props.style)?.color === '#E2E8F0'
   );
-  expect(names.length).toBeGreaterThanOrEqual(30);
-  expect(names[0].props.children).toBeDefined();
+  expect(names).toHaveLength(0);
 
   await act(async () => tree.unmount());
 });

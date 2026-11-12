@@ -42,14 +42,18 @@ export function seatReactionMedia({ emoji, gifUrl, emojiData }) {
   }
 
   const cover = imageUrl(emoji) ? emoji : emojiData?.pngUrl;
+  // A custom uploaded animation for an existing code must override its bundled fallback.
+  const customAnimation = [gifUrl, emojiData?.gifUrl].find(value =>
+    imageUrl(value) && bundled && assetPath(value) !== assetPath(bundled.gifUrl) &&
+    !/\/emoji_[^/]+\.gif(?:[?#]|$)/i.test(value));
   const candidates = bundled
-    ? [bundled.localGif].filter(Boolean)
+    ? [customAnimation ? { uri: resolveAssetUrl(customAnimation) } : null, bundled.localGif].filter(Boolean)
     : [
-        typeof animation === 'string' && imageUrl(animation) && /\/emoji_[^/]+\.gif/i.test(animation)
-          ? { uri: resolveAssetUrl(animation.replace(/\/emoji_([^/]+\.gif)/i, '/anim_emoji_$1')) }
-          : (typeof animation === 'string' && imageUrl(animation) ? { uri: resolveAssetUrl(animation) } : null),
-        imageUrl(cover) && cover !== animation ? { uri: resolveAssetUrl(cover) } : null,
-      ].filter(Boolean);
+      typeof animation === 'string' && imageUrl(animation) && /\/emoji_[^/]+\.gif/i.test(animation)
+        ? { uri: resolveAssetUrl(animation.replace(/\/emoji_([^/]+\.gif)/i, '/anim_emoji_$1')) }
+        : (typeof animation === 'string' && imageUrl(animation) ? { uri: resolveAssetUrl(animation) } : null),
+      imageUrl(cover) && cover !== animation ? { uri: resolveAssetUrl(cover) } : null,
+    ].filter(Boolean);
 
   return {
     sources: candidates,

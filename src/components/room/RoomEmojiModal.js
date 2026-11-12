@@ -176,9 +176,6 @@ export default function RoomEmojiModal({
                         resizeMode="contain"
                       />
                     </View>
-                    <Text numberOfLines={2} style={styles.emojiName}>
-                      {item.name}
-                    </Text>
                   </TouchableOpacity>
                 );
               })
@@ -274,25 +271,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   emojiIconWrap: {
-    width: 48,
-    height: 48,
+    width: 56,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   emojiImage: {
-    width: 44,
-    height: 44,
-  },
-  emojiName: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#E2E8F0',
-    textAlign: 'center',
-    lineHeight: 12,
-    marginTop: 2,
-    paddingHorizontal: 2,
-    width: '100%',
+    width: 52,
+    height: 52,
   },
   classicEmojiBtn: {
     width: 64,

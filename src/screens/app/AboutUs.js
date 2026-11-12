@@ -219,6 +219,12 @@ export default function AboutUs() {
             </View>
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.licenseCard}>
+                <Text style={styles.licenseItemTitle}>Animated Noto Emoji by Google</Text>
+                <Text style={styles.licenseItemText}>Creative Commons Attribution 4.0 International. Unmodified animation artwork.</Text>
+                <Text style={styles.licenseItemText}>https://googlefonts.github.io/noto-emoji-animation/</Text>
+                <Text style={styles.licenseItemText}>https://creativecommons.org/licenses/by/4.0/</Text>
+              </View>
+              <View style={styles.licenseCard}>
                 <Text style={styles.licenseItemTitle}>React Native</Text>
                 <Text style={styles.licenseItemText}>MIT License - Copyright (c) Meta Platforms, Inc.</Text>
               </View>

@@ -45,3 +45,16 @@ test('classic Unicode emoji renders as text without an image request', () => {
   expect(tree.root.findByType(Text).props.children).toBe('❤️');
   act(() => tree.unmount());
 });
+
+test('seat reaction does not show the emoji name over the avatar', () => {
+  let tree;
+  act(() => { tree = renderer.create(<SeatReaction emoji="dizzy" name="Dizzy" emojiData={{ code: 'dizzy', name: 'Dizzy' }} />); });
+  expect(tree.root.findAllByType(Text)).toHaveLength(0);
+  act(() => tree.unmount());
+});
+
+test('custom server animation overrides bundled media for an existing reaction code', () => {
+  const media = seatReactionMedia({ emoji: 'dizzy', emojiData: { code: 'dizzy', gifUrl: '/uploads/dizzy-v2.gif' } });
+  expect(media.sources[0]).toEqual({ uri: 'https://api.yaroapp.in/uploads/dizzy-v2.gif' });
+  expect(media.sources[1]).toBe(101);
+});

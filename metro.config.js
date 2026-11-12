@@ -11,6 +11,11 @@ module.exports = mergeConfig(defaultConfig, {
     babelTransformerPath: require.resolve('react-native-svg-transformer'),
   },
   resolver: {
+    // Native build outputs contain no app JavaScript and can overwhelm Windows crawling.
+    blockList: [
+      ...[defaultConfig.resolver.blockList].flat().filter(Boolean),
+      /[/\\]android[/\\](?:.*[/\\])?(?:build|\.cxx|\.gradle)[/\\]/,
+    ],
     assetExts: defaultConfig.resolver.assetExts.filter(ext => ext !== 'svg'),
     sourceExts: [...defaultConfig.resolver.sourceExts, 'svg'],
   },

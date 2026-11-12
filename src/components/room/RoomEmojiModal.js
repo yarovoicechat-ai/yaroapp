@@ -114,6 +114,7 @@ export default function RoomEmojiModal({
           {/* Categories Horizontal Pills */}
           <ScrollView
             horizontal
+            style={styles.categoryList}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoryScroll}
           >
@@ -223,6 +224,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#94A3B8',
     textAlign: 'center',
+  },
+  categoryList: {
+    height: 44,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   categoryScroll: {
     flexDirection: 'row',

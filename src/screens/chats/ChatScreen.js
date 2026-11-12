@@ -62,6 +62,17 @@ const Massage = ({ route }) => {
   const routeConversationId = routeParams.conversationId;
   const otherUser = routeParams.otherUser || routeParams.user || routeParams.chatUser || {};
   const lastMessageTime = routeParams.lastMessageTime;
+  const hostTypes = otherUser?.hostTypes || [];
+  const hasCallHosting = Boolean(
+    otherUser?.isHost ||
+    otherUser?.isApprovedHost ||
+    otherUser?.isHostApproved ||
+    otherUser?.hostingApproved ||
+    String(otherUser?.hostStatus || '').toLowerCase() === 'approved' ||
+    ['host', 'agency'].includes(String(otherUser?.role || '').toLowerCase()) ||
+    (Array.isArray(hostTypes) && hostTypes.some(type => ['voice', 'video', 'voice_call', 'video_call', 'call', 'audio'].includes(String(type).toLowerCase())))
+  );
+
   const isMongoId = (value) => /^[a-f\d]{24}$/i.test(String(value || ''));
   const [conversationId, setConversationId] = useState(() =>
     isMongoId(routeConversationId) ? String(routeConversationId) : null
@@ -378,16 +389,6 @@ const Massage = ({ route }) => {
     }
 
     const userBalance = Number(user?.diamonds || 0);
-    const hostTypes = otherUser?.hostTypes || [];
-    const hasCallHosting = Boolean(
-      otherUser?.isHost ||
-      otherUser?.isApprovedHost ||
-      otherUser?.isHostApproved ||
-      otherUser?.hostingApproved ||
-      String(otherUser?.hostStatus || '').toLowerCase() === 'approved' ||
-      ['host', 'agency'].includes(String(otherUser?.role || '').toLowerCase()) ||
-      (Array.isArray(hostTypes) && hostTypes.some(type => ['voice', 'video', 'voice_call', 'video_call', 'call', 'audio'].includes(String(type).toLowerCase())))
-    );
     const isSenderExempt = ['admin', 'superadmin', 'root'].includes(String(user?.role || '').toLowerCase());
     const paidChat = hasCallHosting && !isSenderExempt;
     if (paidChat && userBalance < 2) {

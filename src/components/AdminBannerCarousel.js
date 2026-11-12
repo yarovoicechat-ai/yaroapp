@@ -1,3 +1,4 @@
+import { isBannerForPlacement } from '../utils/bannerPlacement';
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -66,19 +67,10 @@ export default function AdminBannerCarousel({ placement }) {
 
       const payload = response.data?.data;
       const items = Array.isArray(payload) ? payload : (payload?.banners || response.data?.banners || []);
-      const allActive = items.filter(item => item?.isActive !== false).map(normalizeBanner).filter(Boolean);
-      let selected = items
-        .filter(item => {
-          const itemPlacements = Array.isArray(item?.placements) && item.placements.length
-            ? item.placements
-            : [item?.placement || 'home'];
-          return (itemPlacements.includes(placement) || itemPlacements.includes('all')) && item?.isActive !== false;
-        })
+      const selected = items
+        .filter(item => isBannerForPlacement(item, placement))
         .map(normalizeBanner)
         .filter(Boolean);
-      if (selected.length === 0 && allActive.length > 0) {
-        selected = allActive;
-      }
       setBanners(selected);
       setActiveIndex(0);
       activeIndexRef.current = 0;
@@ -92,7 +84,7 @@ export default function AdminBannerCarousel({ placement }) {
       console.log(`[BANNERS:${placement}] Fetch failed:`, error?.message || error);
       try {
         const cached = JSON.parse(await AsyncStorage.getItem(cacheKey) || '[]');
-        if (fetchId.current === requestId && Array.isArray(cached)) setBanners(cached);
+        if (fetchId.current === requestId && Array.isArray(cached)) setBanners(cached.filter(item => isBannerForPlacement(item, placement)));
       } catch (_) {}
     }
   }, [cacheKey, placement]);

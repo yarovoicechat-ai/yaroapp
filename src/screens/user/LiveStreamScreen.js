@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { apiUtil } from '../../utils/apiUtil';
 import { useVoiceRoom } from '../../context/VoiceRoomContext';
 import { getUserAvatar } from '../../utils/avatarUtil';
+import { AlertService } from '../../utils/AlertService';
 
 import LiveTopHeader from '../../components/live/LiveTopHeader';
 import LiveGiftBanner from '../../components/live/LiveGiftBanner';
@@ -74,12 +75,12 @@ export default function LiveStreamScreen({ navigation, route }) {
     { id: '4', senderName: 'Abhishek Kumar', text: 'I love you', level: 10, isSvip: false },
   ]);
 
-  // PK Battle State
-  const [isPK, setIsPK] = useState(true);
-  const [leftScore, setLeftScore] = useState(140);
-  const [rightScore, setRightScore] = useState(3240);
-  const rivalUser = {
-    name: 'Shelly',
+  // PK Battle State - Default is false (active only during PK match)
+  const [isPK, setIsPK] = useState(Boolean(route.params?.isPK || room.isPKActive || room.pkBattleActive || false));
+  const [leftScore, setLeftScore] = useState(room.leftScore || 0);
+  const [rightScore, setRightScore] = useState(room.rightScore || 0);
+  const rivalUser = room.rivalUser || {
+    name: 'Rival Broadcaster',
     avatar: 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
   };
 
@@ -347,6 +348,20 @@ export default function LiveStreamScreen({ navigation, route }) {
     engineRef.current?.switchCamera();
   };
 
+  const handleTogglePK = () => {
+    if (!isHost) {
+      AlertService.show('Notice', 'Only the broadcaster can initiate PK Battle', 'info');
+      return;
+    }
+    const next = !isPK;
+    setIsPK(next);
+    if (next) {
+      AlertService.show('PK Battle', 'PK Battle started!', 'success');
+    } else {
+      AlertService.show('PK Battle', 'PK Battle ended.', 'info');
+    }
+  };
+
   const videoHeight = isPK ? height * 0.44 : height;
 
   return (
@@ -389,12 +404,19 @@ export default function LiveStreamScreen({ navigation, route }) {
             </View>
           </View>
         ) : (
-          rtc && connected && (isHost || remoteReady) && (
-            <RtcSurfaceView
-              style={StyleSheet.absoluteFill}
-              canvas={{ uid: isHost ? 0 : rtc.hostUid }}
-            />
-          )
+          <View style={StyleSheet.absoluteFill}>
+            {rtc && connected && (isHost || remoteReady) ? (
+              <RtcSurfaceView
+                style={StyleSheet.absoluteFill}
+                canvas={{ uid: isHost ? 0 : rtc.hostUid }}
+              />
+            ) : (
+              <View style={[styles.avatarFallback, StyleSheet.absoluteFill]}>
+                <Image source={getUserAvatar(room.host)} style={styles.streamFallbackAvatarLarge} />
+                <Text style={styles.fallbackTextLarge}>{room.host?.name || 'Broadcaster'}</Text>
+              </View>
+            )}
+          </View>
         )}
 
         {/* Ambient Dark/Gradient Overlay */}
@@ -474,7 +496,7 @@ export default function LiveStreamScreen({ navigation, route }) {
       {/* 7. Bottom Action Controls Bar */}
       <LiveBottomControls
         onOpenChat={() => setChatInputVisible(true)}
-        onOpenPK={() => setIsPK(!isPK)}
+        onOpenPK={handleTogglePK}
         onOpenGift={() => setGiftModalVisible(true)}
         onOpenPromo={() => {}}
         onPressHeart={handleLike}
@@ -566,6 +588,19 @@ const styles = StyleSheet.create({
     color: '#CBD5E1',
     fontWeight: '800',
     fontSize: 12,
+  },
+  streamFallbackAvatarLarge: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: '#EC4899',
+    marginBottom: 12,
+  },
+  fallbackTextLarge: {
+    color: '#F8FAFC',
+    fontWeight: '800',
+    fontSize: 18,
   },
   streamTagLeft: {
     position: 'absolute',

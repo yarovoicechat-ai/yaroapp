@@ -19,7 +19,7 @@ for (const isHost of [false, true]) {
       tree = renderer.create(<ChatScreen route={{ params: { conversationId: '1234567890abcdef12345678', otherUser: { _id: 'recipient', name: 'Recipient', isHost } } }} />);
     });
     const callIcons = tree.root.findAll(node => node.type === 'Icon' && node.props.name === 'call');
-    expect(callIcons).toHaveLength(isHost ? 1 : 0);
+    expect(callIcons).toHaveLength(0);
     await act(async () => tree.unmount());
   });
 }

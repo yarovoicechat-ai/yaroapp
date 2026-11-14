@@ -15,7 +15,6 @@ import { apiUtil } from '../../utils/apiUtil';
 import { getSocket } from '../../sockets';
 import { AuthContext } from '../../context/AuthProvider';
 import { AlertService } from '../../utils/AlertService';
-import { CALL_COINS_PER_MINUTE_VOICE, hasCallStartIdentity } from '../../utils/callValidation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,7 +39,7 @@ const Notifications = () => {
                     ? res.data.data
                     : [];
 
-                const seenCallTransactions = new Set();
+
                 const activityItems = list.filter((item) => {
                     if (String(item?.type || 'system').toLowerCase() === 'system') return false;
                     const titleText = String(item?.title || '').toLowerCase();
@@ -48,14 +47,7 @@ const Notifications = () => {
                     if (titleText.includes('dummy') || titleText.includes('test alert') || bodyText.includes('dummy') || bodyText.includes('test alert')) {
                         return false;
                     }
-                    if (String(item?.type || '').toLowerCase() !== 'call') return true;
-                    const targetUserId = item?.data?.targetUserId || item?.data?.callerId || item?.data?.hostId;
-                    if (!targetUserId) return false;
-                    const transactionId = String(item?.data?.transactionId || '');
-                    if (!transactionId) return false;
-                    if (seenCallTransactions.has(transactionId)) return false;
-                    seenCallTransactions.add(transactionId);
-                    return true;
+                    return !['call', 'call_state', 'missed_call'].includes(String(item?.type || '').toLowerCase());
                 });
                 const formattedData = activityItems.map((item, idx) => ({
                     id: String(item?._id || item?.id || idx),
@@ -105,76 +97,7 @@ const Notifications = () => {
         return () => socket?.off('notification:new', refresh);
     }, [fetchNotifications]);
 
-    const callBack = async item => {
-        if (callbackInFlightRef.current) return;
-        const userCoins = Number(user?.coins ?? user?.diamonds ?? 0);
-        console.log('[CALL] START REQUEST | COINS:', userCoins);
 
-        const showInsufficientCoinsAlert = () => {
-            AlertService.show(
-                'Insufficient Coins',
-                'Your Coin balance is too low to start this call. Please recharge your Coins to continue.',
-                'error',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Recharge Now', onPress: () => navigation.navigate('Recharge') },
-                ]
-            );
-        };
-
-        if (userCoins < CALL_COINS_PER_MINUTE_VOICE) {
-            console.log('[CALL] INSUFFICIENT COINS | REJECTED ON FRONTEND');
-            showInsufficientCoinsAlert();
-            return;
-        }
-
-        console.log('[CALL] BALANCE OK');
-        try {
-            callbackInFlightRef.current = true;
-            const response = await apiUtil.post('/call/start', { hostId: item.data?.targetUserId });
-            if (!response.data?.success || !hasCallStartIdentity(response.data?.data)) {
-                const msg = response.data?.message || 'Failed to start call.';
-                const errCode = response.data?.data?.code || response.data?.data?.errorCode;
-                if (
-                    errCode === 'INSUFFICIENT_COINS' ||
-                    errCode === 'INSUFFICIENT_DIAMONDS' ||
-                    msg.includes('INSUFFICIENT_COINS') ||
-                    msg.includes('INSUFFICIENT_DIAMONDS') ||
-                    msg.toLowerCase().includes('coin') ||
-                    msg.toLowerCase().includes('diamond')
-                ) {
-                    showInsufficientCoinsAlert();
-                } else {
-                    AlertService.show('Call unavailable', msg, 'error');
-                }
-                return;
-            }
-            navigation.navigate('OutGoing', {
-                ...response.data.data,
-                name: item.data?.targetName || 'User',
-                hostId: item.data?.targetUserId,
-                image: item.data?.targetImage,
-                isCaller: true,
-            });
-        } catch (error) {
-            const msg = error.response?.data?.message || error.message || 'Callback unavailable';
-            const errCode = error.response?.data?.data?.code || error.response?.data?.data?.errorCode;
-            if (
-                errCode === 'INSUFFICIENT_COINS' ||
-                errCode === 'INSUFFICIENT_DIAMONDS' ||
-                msg.includes('INSUFFICIENT_COINS') ||
-                msg.includes('INSUFFICIENT_DIAMONDS') ||
-                msg.toLowerCase().includes('coin') ||
-                msg.toLowerCase().includes('diamond')
-            ) {
-                showInsufficientCoinsAlert();
-            } else {
-                AlertService.show('Call unavailable', msg, 'error');
-            }
-        } finally {
-            callbackInFlightRef.current = false;
-        }
-    };
 
     const renderItem = ({ item }) => (
         <View style={[styles.messageCard, !item.isRead && styles.unreadCard]}>
@@ -192,7 +115,7 @@ const Notifications = () => {
                     style={styles.iconContainer}
                 >
                     <Icon
-                        name={item.type === 'call' ? 'phone-missed' : item.type === 'promo' ? 'card-giftcard' : item.type === 'event' ? 'celebration' : 'notifications'}
+                        name={item.type === 'promo' ? 'card-giftcard' : item.type === 'event' ? 'celebration' : 'notifications'}
                         size={20}
                         color="#fff"
                     />
@@ -221,12 +144,6 @@ const Notifications = () => {
                                 <Text style={styles.eventDate}>Starts: {dayjs(item.data.startAt).format('DD MMM, hh:mm A')}</Text>
                             ) : null}
                         </View>
-                    ) : null}
-                    {item.type === 'call' && item.data?.targetUserId ? (
-                        <TouchableOpacity style={styles.callbackButton} onPress={() => callBack(item)}>
-                            <Icon name="call" size={16} color="#fff" />
-                            <Text style={styles.callbackText}>Call again</Text>
-                        </TouchableOpacity>
                     ) : null}
                 </View>
             </View>

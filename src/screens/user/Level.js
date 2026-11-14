@@ -287,7 +287,7 @@ function LevelScreen() {
                 {user?.name || 'Yaro Host'}
               </Text>
               <Text style={styles.heroBonusText}>
-                +<Text style={styles.heroBonusVal}>{currentLevelObj.bonusRate} Beans/min</Text> Call Rate Boost
+                <Text style={styles.heroBonusVal}>Level {currentLevel}</Text> Activity Rewards
               </Text>
             </View>
           </View>
@@ -309,7 +309,7 @@ function LevelScreen() {
               />
             </View>
             <Text style={styles.nextLevelTip}>
-              Reach Level {currentLevel + 1} to unlock exclusive badges and call multiplier!
+              Reach Level {currentLevel + 1} to unlock exclusive badges and rewards!
             </Text>
           </View>
         </LinearGradient>
@@ -436,7 +436,7 @@ function LevelScreen() {
                       )}
                     </View>
                     <Text style={styles.levelCardExp}>
-                      {item.expRequired} EXP Needed  •  +{item.bonusRate} Beans/min
+                      {item.expRequired} EXP Needed
                     </Text>
 
                     {/* Unlocks Showcase Row */}
@@ -491,7 +491,6 @@ function LevelScreen() {
 
           {[
             { id: 'q1', title: 'Daily Check-in', desc: 'Login to YaroApp today', exp: 10, icon: 'calendar' },
-            { id: 'q2', title: 'Talk on 1-to-1 Call', desc: 'Complete 3 minutes of voice call', exp: 25, icon: 'call' },
             { id: 'q3', title: 'Voice Room Party', desc: 'Stay in any voice party room for 10 min', exp: 35, icon: 'headset' },
             { id: 'q4', title: 'Send Lucky Gift', desc: 'Send any gift to your favorite host', exp: 50, icon: 'gift' },
           ].map((task) => {

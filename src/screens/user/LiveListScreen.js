@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,332 +6,342 @@ import {
   FlatList,
   Image,
   StyleSheet,
-  Dimensions,
-  StatusBar,
+  useWindowDimensions,
   RefreshControl,
+  ActivityIndicator,
+  TextInput,
+  Linking,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { apiUtil } from '../../utils/apiUtil';
-import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
-import EmptyStateView from '../../components/EmptyStateView';
-import SkeletonLoader from '../../components/SkeletonLoader';
+import {
+  getAppTopSafeInset,
+  getTabScreenBottomPadding,
+} from '../../utils/safeAreaUtils';
+import { getUserAvatar } from '../../utils/avatarUtil';
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 40) / 2;
-const CATEGORIES = ['All', 'Chat 💬', 'Music 🎵', 'Gaming 🎮', 'PK Battle ⚔️'];
-
-export default function LiveListScreen() {
-  const navigation = useNavigation();
+export default function LiveListScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const topSafeInset = getAppTopSafeInset(insets.top);
-  const bottomPadding = getStackScreenBottomPadding(insets.bottom, 24);
-
-  const [activeCategory, setActiveCategory] = useState('All');
+  const { width } = useWindowDimensions();
+  const [category, setCategory] = useState('Live');
+  const [rooms, setRooms] = useState([]);
+  const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [streams, setStreams] = useState([]);
-
-  const fetchLiveStreams = useCallback(async () => {
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const fetchRooms = useCallback(async () => {
     try {
-      // Fetch online hosts / live streamers from API
-      const res = await apiUtil.get('/user/hosts?limit=30');
-      if (res.data?.success) {
-        const payload = res.data.data?.hostsData || res.data.data;
-        const hosts = payload?.hosts || (Array.isArray(payload) ? payload : []);
-
-        const mapped = hosts
-          .filter((host) =>
-            (host?.isLive === true || host?.isStreaming === true || host?.liveStream?.isLive === true) &&
-            Boolean(host.liveStream?.roomId || host.liveRoomId || host.roomId),
-          )
-          .map((host, index) => ({
-            id: String(host.liveStream?.id || host.liveStream?._id || host.liveRoomId || host.roomId || host._id || host.userId || index),
-            title: host.liveStream?.title || host.liveTitle || `${host.name || 'Host'}'s Live Stream`,
-            hostName: host.name || 'Broadcaster',
-            coverImage: host.liveStream?.coverImage || host.liveCoverImage || host.image || host.avatar || '',
-            viewers: Number(host.liveStream?.viewerCount ?? host.viewerCount ?? host.viewers ?? 0) || 0,
-            category: host.liveStream?.category || host.liveCategory || host.category || 'All',
-            hostObj: host,
-            roomId: host.liveStream?.roomId || host.liveRoomId || host.roomId || '',
-          }));
-        setStreams(mapped);
-      } else {
-        setStreams([]);
-      }
+      const res = await apiUtil.get('/live/rooms');
+      setRooms(res.data.data || []);
+      setError('');
     } catch (e) {
-      setStreams([]);
+      setError(
+        e.response?.data?.message ||
+          'Unable to load live rooms. Pull down to retry.',
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
-
-  useEffect(() => {
-    fetchLiveStreams();
-  }, [fetchLiveStreams]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchLiveStreams();
-  };
-
-  const filteredStreams = activeCategory === 'All'
-    ? streams
-    : streams.filter(s => s.category.toLowerCase().includes(activeCategory.toLowerCase()));
-
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
-      activeOpacity={0.9}
-      onPress={() => navigation.navigate('LiveStream', { isHost: false, host: item.hostObj, roomId: item.roomId })}
-    >
-      {item.coverImage ? (
-        <Image source={{ uri: item.coverImage }} style={styles.cardCover} />
-      ) : (
-        <View style={[styles.cardCover, { backgroundColor: '#312E81' }]} />
-      )}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.8)']}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* Live Badge */}
-      <View style={styles.liveBadge}>
-        <View style={styles.redPulseDot} />
-        <Text style={styles.liveText}>LIVE</Text>
-      </View>
-
-      {/* Viewers Pill */}
-      <View style={styles.viewersPill}>
-        <Icon name="eye" size={11} color="#FFFFFF" />
-        <Text style={styles.viewersText}>{item.viewers}</Text>
-      </View>
-
-      {/* Bottom Info */}
-      <View style={styles.bottomInfo}>
-        <Text style={styles.streamTitle} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.hostName} numberOfLines={1}>{item.hostName}</Text>
-      </View>
-    </TouchableOpacity>
+  useFocusEffect(
+    useCallback(() => {
+      fetchRooms();
+      apiUtil
+        .get('/public/banners?placement=home')
+        .then(res => {
+          const payload = res.data?.data;
+          setBanners(Array.isArray(payload) ? payload : payload?.banners || []);
+        })
+        .catch(() => {});
+      const timer = setInterval(fetchRooms, 15000);
+      return () => clearInterval(timer);
+    }, [fetchRooms]),
   );
-
+  const filtered = rooms.filter(
+    room =>
+      (category === 'Live' ||
+        category === 'New' ||
+        room.category === category) &&
+      `${room.title} ${room.host?.name || ''}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+  );
+  if (category === 'New')
+    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  // Rows allow a full-width panel-managed banner after the first two live cards.
+  const rows = [];
+  for (let i = 0; i < filtered.length; i += 2) {
+    rows.push({ id: filtered[i]._id, rooms: filtered.slice(i, i + 2) });
+    if (i === 0 && banners[0]) rows.push({ id: 'banner', banner: banners[0] });
+  }
+  const cardWidth = (width - 18) / 2;
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: topSafeInset + 6 }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Icon name="chevron-back" size={24} color="#0F172A" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Live Discovery</Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Search')}
-          style={styles.searchBtn}
-        >
-          <Icon name="search-outline" size={20} color="#0F172A" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Categories */}
-      <View style={styles.categoryRow}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={CATEGORIES}
-          keyExtractor={(item) => item}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-          renderItem={({ item }) => (
+      <View
+        style={[
+          styles.header,
+          { paddingTop: getAppTopSafeInset(insets.top) + 10 },
+        ]}
+      >
+        <View style={styles.tabs}>
+          {['Live', 'New', 'Beauty', 'PK'].map(item => (
             <TouchableOpacity
-              style={[styles.catBtn, activeCategory === item && styles.catBtnActive]}
-              onPress={() => setActiveCategory(item)}
+              key={item}
+              onPress={() => setCategory(item)}
+              style={styles.tab}
             >
-              <Text style={[styles.catText, activeCategory === item && styles.catTextActive]}>
+              <Text
+                style={[styles.tabText, item === category && styles.active]}
+              >
                 {item}
               </Text>
+              {item === category && <View style={styles.underline} />}
             </TouchableOpacity>
-          )}
-        />
-      </View>
-
-      {/* Streams Grid */}
-      {loading ? (
-        <View style={{ padding: 16, flexDirection: 'row', gap: 12 }}>
-          <SkeletonLoader width={CARD_WIDTH} height={200} borderRadius={18} />
-          <SkeletonLoader width={CARD_WIDTH} height={200} borderRadius={18} />
+          ))}
         </View>
+        <TouchableOpacity
+          accessibilityLabel="Rankings"
+          onPress={() => navigation.navigate('Ranking')}
+        >
+          <Icon name="trophy" size={26} color="#F9C400" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityLabel="Search live rooms"
+          onPress={() => setSearchOpen(!searchOpen)}
+        >
+          <Icon name="search-outline" size={27} color="#111" />
+        </TouchableOpacity>
+      </View>
+      {searchOpen && (
+        <TextInput
+          autoFocus
+          style={styles.search}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search live rooms or hosts"
+          placeholderTextColor="#94A3B8"
+        />
+      )}
+      <LinearGradient
+        colors={['#DF18CF', '#EF4444', '#211365', '#C914B4', '#45C51D']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.strip}
+      />
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 60 }} color="#E11D48" />
       ) : (
         <FlatList
-          data={filteredStreams}
-          numColumns={2}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={{ padding: 14, paddingBottom: bottomPadding + 60 }}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7C3AED" />}
-          ListEmptyComponent={
-            <EmptyStateView
-              icon="videocam-outline"
-              title="No Active Streams"
-              subtitle="No broadcasters are currently live in this category."
+          data={rows}
+          keyExtractor={item => item.id}
+          contentContainerStyle={{
+            paddingTop: 6,
+            paddingBottom: getTabScreenBottomPadding(insets.bottom) + 20,
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                fetchRooms();
+              }}
+              tintColor="#E11D48"
             />
+          }
+          ListHeaderComponent={
+            error ? (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Icon name="videocam-outline" size={46} color="#CBD5E1" />
+              <Text style={styles.emptyTitle}>Be the first to go live</Text>
+              <Text style={styles.emptyText}>
+                Start your live room from the centre tab.
+              </Text>
+              <TouchableOpacity
+                style={styles.create}
+                onPress={() => navigation.navigate('CreateLive')}
+              >
+                <Text style={{ color: '#FFF', fontWeight: '700' }}>
+                  Create Live Room
+                </Text>
+              </TouchableOpacity>
+            </View>
+          }
+          renderItem={({ item }) =>
+            item.banner ? (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  const url =
+                    item.banner.linkUrl ||
+                    item.banner.redirectUrl ||
+                    item.banner.link;
+                  if (/^https?:\/\//i.test(url || ''))
+                    Linking.openURL(url).catch(() => {});
+                }}
+              >
+                <Image
+                  source={{ uri: item.banner.image || item.banner.imageUrl }}
+                  style={styles.banner}
+                />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.row}>
+                {item.rooms.map(room => (
+                  <TouchableOpacity
+                    key={room._id}
+                    style={[
+                      styles.card,
+                      { width: cardWidth, height: cardWidth * 1.48 },
+                    ]}
+                    onPress={() =>
+                      navigation.navigate('LiveStream', {
+                        roomId: room._id,
+                        room,
+                      })
+                    }
+                  >
+                    <Image
+                      source={getUserAvatar(
+                        room.coverImage || room.host?.image,
+                      )}
+                      style={StyleSheet.absoluteFill}
+                      resizeMode="cover"
+                    />
+                    <LinearGradient
+                      colors={['transparent', '#0009']}
+                      style={styles.shade}
+                    />
+                    <View style={styles.live}>
+                      <Text style={styles.liveText}>LIVE</Text>
+                    </View>
+                    <View style={styles.viewers}>
+                      <Icon name="eye" size={11} color="#FFF" />
+                      <Text style={styles.liveText}>
+                        {room.viewerCount || 0}
+                      </Text>
+                    </View>
+                    <View style={styles.host}>
+                      <Image
+                        source={getUserAvatar(room.host)}
+                        style={styles.avatar}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.name} numberOfLines={1}>
+                          {room.host?.name || 'Live host'}
+                        </Text>
+                        <Text style={styles.roomTitle} numberOfLines={1}>
+                          {room.title}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )
           }
         />
       )}
     </View>
   );
 }
-
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
+  screen: { flex: 1, backgroundColor: '#FFF' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    paddingHorizontal: 17,
+    paddingBottom: 20,
+    gap: 20,
   },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  searchBtn: {
-    padding: 4,
-  },
-  categoryRow: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  catBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: '#F8FAFC',
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  catBtnActive: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
-  },
-  catText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  catTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  card: {
-    width: CARD_WIDTH,
-    height: 220,
-    borderRadius: 18,
-    overflow: 'hidden',
-    marginBottom: 14,
-    position: 'relative',
-    backgroundColor: '#1E293B',
-  },
-  cardCover: {
-    width: '100%',
-    height: '100%',
-  },
-  liveBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.85)',
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    borderRadius: 10,
-    gap: 4,
-  },
-  redPulseDot: {
-    width: 6,
-    height: 6,
+  tabs: { flexDirection: 'row', flex: 1, gap: 20 },
+  tab: { position: 'relative' },
+  tabText: { fontSize: 17, fontWeight: '800', color: '#111' },
+  active: { color: '#111' },
+  underline: {
+    height: 3,
+    width: 20,
     borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-  },
-  liveText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  viewersPill: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    borderRadius: 10,
-    gap: 4,
-  },
-  viewersText: {
-    color: '#FFFFFF',
-    fontSize: 10.5,
-    fontWeight: '700',
-  },
-  bottomInfo: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    right: 10,
-  },
-  streamTitle: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  hostName: {
-    color: '#E2E8F0',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  fab: {
-    position: 'absolute',
+    backgroundColor: '#E11D48',
     alignSelf: 'center',
-    borderRadius: 24,
-    overflow: 'hidden',
-    elevation: 6,
-    shadowColor: '#EC4899',
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
+    marginTop: 4,
   },
-  fabGradient: {
+  strip: { height: 12 },
+  search: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: '#F1F5F9',
+    padding: 12,
+    borderRadius: 12,
+    color: '#111',
+  },
+  row: { flexDirection: 'row', gap: 6, paddingHorizontal: 6 },
+  card: { overflow: 'hidden', marginBottom: 6, backgroundColor: '#334155' },
+  shade: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '35%' },
+  host: {
+    position: 'absolute',
+    bottom: 12,
+    left: 9,
+    right: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
     gap: 8,
   },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+  avatar: { width: 26, height: 26, borderRadius: 13 },
+  name: { color: '#FFF', fontWeight: '800', fontSize: 16 },
+  roomTitle: { color: '#E2E8F0', fontSize: 10, marginTop: 2 },
+  live: {
+    position: 'absolute',
+    top: 9,
+    left: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 5,
+    backgroundColor: '#E11D48',
   },
+  liveText: { color: '#FFF', fontWeight: '800', fontSize: 9 },
+  viewers: {
+    position: 'absolute',
+    top: 9,
+    right: 8,
+    backgroundColor: '#0006',
+    borderRadius: 8,
+    padding: 4,
+    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  banner: {
+    width: '100%',
+    height: 110,
+    marginVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  empty: { alignItems: 'center', padding: 48, paddingTop: 90 },
+  emptyTitle: {
+    fontSize: 21,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 20,
+  },
+  emptyText: { color: '#64748B', textAlign: 'center', marginTop: 9 },
+  create: {
+    backgroundColor: '#E11D48',
+    padding: 15,
+    borderRadius: 15,
+    marginTop: 22,
+  },
+  error: { color: '#DC2626', padding: 18 },
 });

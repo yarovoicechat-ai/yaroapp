@@ -20,7 +20,6 @@ import IdManage from "../screens/user/IdManage";
 import AboutUs from "../screens/app/AboutUs";
 import ContactUs from "../screens/app/ContactUs";
 import Setting from "../screens/user/Setting";
-import OneToOne from "../screens/user/OneToOne";
 import Language from "../screens/user/Language";
 import EditProfile from "../screens/user/EditProfile";
 import HelpAndSupport from "../screens/app/HelpAndSupport";
@@ -35,10 +34,6 @@ import PrivacyPolicy from "../screens/app/PrivacyPolicy";
 import RefundPolicy from "../screens/app/RefundPolicy";
 import TermOfUse from "../screens/app/TermOfUse";
 import Message from "../screens/chats/ChatScreen";
-import Incoming from "../screens/call/callIncomingScreen";
-import OutGoing from "../screens/call/callOutgoing";
-import OnGoing from "../screens/call/ongoingWithGifts";
-import CallHistoryScreen from "../screens/call/callHistoryScreen";
 import Account from "../screens/user/Account";
 import MobileVerification from "../screens/auth/PhoneVerify";
 import MobileOtp from "../screens/auth/PhoneVerifyOtp";
@@ -48,7 +43,6 @@ import CoinHistory from "../screens/user/CoinHistory";
 import Earning from "../screens/user/Earning";
 import InviteEarn from "../screens/user/InviteEarn";
 import HostProfile from "../screens/user/HostProfile";
-import CallsScreen from "../screens/chats/CallsScreen";
 import GiftsScreen from "../screens/chats/GiftsScreen";
 import SystemNoticeScreen from "../screens/chats/SystemNoticeScreen";
 import AgencyDetails from "../screens/user/AgencyDetails";
@@ -69,8 +63,8 @@ import CpSpaceScreen from "../screens/user/CpSpaceScreen";
 import UPIVerify from "../screens/user/UPIVerify";
 import LinkAccount from "../screens/user/LinkAccount";
 import SearchScreen from "../screens/user/SearchScreen";
-import VideoCallScreen from "../screens/call/VideoCallScreen";
 import LiveStreamScreen from "../screens/user/LiveStreamScreen";
+import LiveHistoryScreen from '../screens/user/LiveHistoryScreen';
 import LiveListScreen from "../screens/user/LiveListScreen";
 import ShortsFeedScreen from "../screens/user/ShortsFeedScreen";
 import UploadShortScreen from "../screens/user/UploadShortScreen";
@@ -93,7 +87,6 @@ export default function AppStack() {
       }}
     >
       <Stack.Screen name="MainTabs" component={BottomTabsNavigator} />
-      <Stack.Screen name="OneToOne" component={OneToOne} />
       <Stack.Screen name="Wallet" component={Wallet} />
       <Stack.Screen name="Details" component={Details} />
       <Stack.Screen name="TransactionDetails" component={Details} />
@@ -124,20 +117,6 @@ export default function AppStack() {
       <Stack.Screen name="TermOfUse" component={TermOfUse} />
       <Stack.Screen name="Chat" component={Message} />
       <Stack.Screen name="Message" component={Message} />
-      <Stack.Screen name="Incomming" component={Incoming} options={{ animation: "none", gestureEnabled: false }} />
-      <Stack.Screen name="OutGoing" component={OutGoing} options={{ animation: "none", gestureEnabled: false }} />
-      <Stack.Screen
-        name="OnGoing"
-        component={OnGoing}
-        options={{
-          animation: "fade",
-          presentation: "transparentModal",
-          detachPreviousScreen: false,
-          gestureEnabled: false,
-          cardStyle: { backgroundColor: 'transparent' },
-        }}
-      />
-      <Stack.Screen name="CallHistory" component={CallHistoryScreen} />
       <Stack.Screen name="Account" component={Account} />
       <Stack.Screen name="MobileVerify" component={MobileVerification} />
       <Stack.Screen name="MobileVerifyOtp" component={MobileOtp} />
@@ -156,7 +135,6 @@ export default function AppStack() {
       <Stack.Screen name="Earning" component={Earning} />
       <Stack.Screen name="ExchangeCoins" component={ExchangeCoins} />
       <Stack.Screen name="InviteEarn" component={InviteEarn} />
-      <Stack.Screen name="CallsScreen" component={CallsScreen} />
       <Stack.Screen name="GiftsScreen" component={GiftsScreen} />
       <Stack.Screen name="SystemNoticeScreen" component={SystemNoticeScreen} />
       <Stack.Screen name="AgencyDetails" component={AgencyDetails} />
@@ -174,9 +152,9 @@ export default function AppStack() {
       <Stack.Screen name="UPIVerify" component={UPIVerify} />
       <Stack.Screen name="LinkAccount" component={LinkAccount} />
       <Stack.Screen name="Search" component={SearchScreen} />
-      <Stack.Screen name="VideoCall" component={VideoCallScreen} options={{ gestureEnabled: false, detachPreviousScreen: false }} />
       <Stack.Screen name="LiveStream" component={LiveStreamScreen} />
       <Stack.Screen name="LiveList" component={LiveListScreen} />
+      <Stack.Screen name="LiveHistory" component={LiveHistoryScreen} />
       <Stack.Screen name="ShortsFeed" component={ShortsFeedScreen} />
       <Stack.Screen name="UploadShort" component={UploadShortScreen} />
       <Stack.Screen name="Store" component={StoreScreen} />

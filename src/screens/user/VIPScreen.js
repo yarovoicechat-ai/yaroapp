@@ -63,7 +63,7 @@ const VIP_TIERS = [
     perks: [
       { icon: 'crown-outline', title: 'Gold Avatar Halo', desc: 'Shining gold crown halo over your profile picture' },
       { icon: 'bullhorn-outline', title: 'Room Entrance Toast', desc: 'Screen toast alerts everyone when you join any voice room' },
-      { icon: 'percent', title: '+15% Beans Boost', desc: 'Earn 15% extra Beans on all video/voice calls' },
+      { icon: 'percent', title: '+15% Beans Boost', desc: 'View eligible VIP rewards and privileges' },
     ],
   },
   {

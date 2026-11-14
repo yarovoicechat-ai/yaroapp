@@ -1,434 +1,185 @@
-import messaging from '@react-native-firebase/messaging';
+﻿import messaging from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { EventType } from '@notifee/react-native';
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import { apiUtil } from './apiUtil';
 import { navigate, navigationRef } from './navigationRef';
 import {
-    getCallParams,
-    handleCallNotificationEvent,
-} from './CallNotificationService';
-import { handleMessageNotificationEvent, showMessageNotification } from './MessageNotificationService';
-import { getSocket } from '../sockets';
-import { isActivityNotification, showActivityNotification, handleActivityNotificationEvent } from './ActivityNotificationService';
+  handleMessageNotificationEvent,
+  showMessageNotification,
+} from './MessageNotificationService';
 import {
-    applyTerminalCallState,
-    canOpenIncomingCall,
-    clearStoredCallState,
-} from './callLifecycle';
+  isActivityNotification,
+  showActivityNotification,
+  handleActivityNotificationEvent,
+} from './ActivityNotificationService';
 
 export const ensureAllNotificationChannels = async () => {
-    try {
-        if (Platform.OS === 'android') {
-            await notifee.createChannels([
-                {
-                    id: 'activity_notifications_v1',
-                    name: 'Activity & Room Alerts',
-                    importance: 4, // AndroidImportance.HIGH
-                    sound: 'default',
-                    vibration: true,
-                },
-                {
-                    id: 'chat_messages_v2',
-                    name: 'Chat messages',
-                    importance: 4, // AndroidImportance.HIGH
-                    sound: 'default',
-                    vibration: true,
-                },
-                {
-                    id: 'incoming_call_v2',
-                    name: 'Incoming Calls',
-                    importance: 4, // AndroidImportance.HIGH
-                    sound: 'default',
-                    vibration: true,
-                },
-                {
-                    id: 'call_channel',
-                    name: 'Calls & General',
-                    importance: 4, // AndroidImportance.HIGH
-                    sound: 'default',
-                    vibration: true,
-                },
-                {
-                    id: 'default',
-                    name: 'General Notifications',
-                    importance: 3, // AndroidImportance.DEFAULT
-                    sound: 'default',
-                },
-            ]);
-        }
-    } catch (channelErr) {
-        console.log('Channel creation notice:', channelErr.message);
-    }
+  if (Platform.OS !== 'android') return;
+  await notifee.createChannels([
+    {
+      id: 'activity_notifications_v1',
+      name: 'Activity & Room Alerts',
+      importance: 4,
+      sound: 'default',
+    },
+    {
+      id: 'chat_messages_v2',
+      name: 'Chat messages',
+      importance: 4,
+      sound: 'default',
+    },
+    {
+      id: 'default',
+      name: 'General Notifications',
+      importance: 3,
+      sound: 'default',
+    },
+  ]);
+  // Remove obsolete ringing channels and any persisted incoming notifications.
+  await notifee.deleteChannel('incoming_call_v2');
+  await notifee.deleteChannel('call_channel');
+  await AsyncStorage.multiRemove([
+    'pendingCall',
+    'acceptedCall',
+    'acceptingCall',
+  ]);
 };
-
-export const requestUserPermission = async () => {
-    try {
-        await ensureAllNotificationChannels();
-        if (Platform.OS === 'android' && Platform.Version >= 33) {
-            try {
-                await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-            } catch (permErr) {
-                console.log('Android POST_NOTIFICATIONS request deferred:', permErr.message);
-            }
-        }
-
-        const authStatus = await messaging().requestPermission();
-        const enabled =
-            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-        if (enabled) await syncFCMToken();
-    } catch (error) {
-        console.log('Notification permission notice:', error.message);
-    }
-};
-
 export const syncFCMToken = async () => {
-    try {
-        const fcmToken = await messaging().getToken();
-        if (!fcmToken) return;
-
-        await AsyncStorage.setItem('fcmToken', fcmToken);
-        const accessToken = await AsyncStorage.getItem('accessToken');
-        if (accessToken) await apiUtil.post('/user/save-fcm', { fcmToken });
-    } catch (error) {
-        console.log('FCM token sync deferred:', error.response?.data || error.message);
-    }
+  try {
+    const fcmToken = await messaging().getToken();
+    if (!fcmToken) return;
+    await AsyncStorage.setItem('fcmToken', fcmToken);
+    if (await AsyncStorage.getItem('accessToken'))
+      await apiUtil.post('/user/save-fcm', { fcmToken });
+  } catch (e) {
+    console.log('FCM sync deferred:', e.message);
+  }
 };
-
-const navigationRetryTimers = new Map();
-
-const closeIncomingIfMatching = transactionId => {
-    if (!transactionId || !navigationRef.isReady()) return;
-    const currentRoute = navigationRef.getCurrentRoute();
+export const requestUserPermission = async () => {
+  try {
+    await ensureAllNotificationChannels();
+    if (Platform.OS === 'android' && Platform.Version >= 33)
+      await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+      );
+    const status = await messaging().requestPermission();
     if (
-        currentRoute?.name === 'Incomming' &&
-        String(currentRoute?.params?.transactionId || '') === String(transactionId) &&
-        navigationRef.getRootState()?.routeNames?.includes('MainTabs')
-    ) {
-        navigationRef.resetRoot({ index: 0, routes: [{ name: 'MainTabs' }] });
-        console.log(`[NAVIGATION] INCOMING_CLOSED tx=${transactionId}`);
-    }
+      [
+        messaging.AuthorizationStatus.AUTHORIZED,
+        messaging.AuthorizationStatus.PROVISIONAL,
+      ].includes(status)
+    )
+      await syncFCMToken();
+  } catch (e) {
+    console.log('Notification permission deferred:', e.message);
+  }
 };
-
-const applyTerminalAndClose = async data => {
-    await applyTerminalCallState(data);
-    closeIncomingIfMatching(data?.transactionId || data?.callId);
-};
-
-const navigateWithRetry = (screen, params, options = {}) => {
-    const { resetRoot = false, onNavigated, key = screen } = options;
-    const existingTimer = navigationRetryTimers.get(key);
-    if (existingTimer) clearInterval(existingTimer);
-
-    let retries = 0;
-    const timer = setInterval(() => {
-        const rootState = navigationRef.isReady() ? navigationRef.getRootState() : null;
-        const routeIsRegistered = rootState?.routeNames?.includes(screen);
-        if (routeIsRegistered) {
-            clearInterval(timer);
-            navigationRetryTimers.delete(key);
-            if (resetRoot) {
-                if (['OnGoing', 'VideoCall', 'Incomming'].includes(screen)) {
-                    navigationRef.resetRoot({
-                        index: 1,
-                        routes: [{ name: 'MainTabs' }, { name: screen, params }],
-                    });
-                } else {
-                    navigationRef.resetRoot({ index: 0, routes: [{ name: screen, params }] });
-                }
-            } else {
-                navigate(screen, params);
-            }
-            onNavigated?.();
-        } else if (++retries > 600) {
-            clearInterval(timer);
-            navigationRetryTimers.delete(key);
-        }
-    }, 100);
-    navigationRetryTimers.set(key, timer);
-};
-
-const handleAcceptedCallNavigation = data => {
-    const params = getCallParams(data);
-    if (!params.transactionId) return;
-
-    const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
-    const alreadyOnThisCall =
-        ['OnGoing', 'VideoCall'].includes(currentRoute?.name) &&
-        String(currentRoute?.params?.transactionId) === String(params.transactionId);
-    if (alreadyOnThisCall) {
-        clearStoredCallState(params.transactionId)
-            .catch(error => console.error('Accepted call cleanup failed:', error.message));
-        return;
-    }
-
-    navigateWithRetry(params.isVideo ? 'VideoCall' : 'OnGoing', params, {
-        resetRoot: true,
-        key: `call-${params.transactionId}`,
-        onNavigated: () => {
-            clearStoredCallState(params.transactionId)
-                .catch(error => console.error('Accepted call cleanup failed:', error.message));
-        },
+const retired = data =>
+  ['call', 'call_state', 'missed_call'].includes(data?.type);
+const open = async (message, attempt = 0) => {
+  const data = message?.data || {};
+  if (retired(data)) return;
+  if (!navigationRef.isReady()) {
+    if (attempt < 20) setTimeout(() => open(message, attempt + 1), 500);
+    return;
+  }
+  if (data.type === 'message')
+    navigate('Chat', {
+      conversationId: data.conversationId,
+      otherUser: {
+        _id: data.senderId,
+        name: data.senderName || 'User',
+        image: data.senderImage || '',
+      },
     });
+  else if (data.type === 'live' && data.roomId)
+    navigate('LiveStream', { roomId: data.roomId });
+  else if (data.type === 'room_open' && data.roomId)
+    navigate('VoiceRoom', { roomId: data.roomId });
+  else if (data.action === 'open_face_verification')
+    navigate('FaceVerification');
+  else if (data.action === 'open_kyc_verification') navigate('Kyc');
+  else if (data.action === 'login_redirect') navigate('SignIn');
+  else if (data.action === 'open_system_messages' || data.type === 'system')
+    navigate('SystemMessage');
+  else navigate('Notifications');
 };
-
-const handleNotificationNavigation = async remoteMessage => {
-    if (remoteMessage?.data?.type === 'call') {
-        const params = getCallParams(remoteMessage.data);
-        if (!params.transactionId) return;
-
-        const acceptingStr = await AsyncStorage.getItem('acceptingCall');
-        if (acceptingStr) {
-            const accepting = JSON.parse(acceptingStr);
-            const isSameCall = String(accepting.transactionId) === String(params.transactionId);
-            const isFresh = Date.now() - Number(accepting.startedAt || 0) < 15000;
-            if (isSameCall && isFresh) {
-                setTimeout(() => handleNotificationNavigation(remoteMessage), 200);
-                return;
-            }
-            if (!isFresh) await AsyncStorage.removeItem('acceptingCall');
-        }
-
-        const acceptedStr = await AsyncStorage.getItem('acceptedCall');
-        if (acceptedStr) {
-            const acceptedCall = JSON.parse(acceptedStr);
-            const acceptedParams = getCallParams(acceptedCall);
-            if (String(acceptedParams.transactionId) === String(params.transactionId)) {
-                handleAcceptedCallNavigation(acceptedCall);
-                return;
-            }
-        }
-
-        let liveParams = params;
-        try {
-            const response = await apiUtil.get(`/call/status/${params.transactionId}`);
-            const statusData = response.data?.data || {};
-            const status = String(statusData.status || '').toLowerCase();
-            const resolvedParams = { ...params, ...statusData, agora: statusData.agora || params.agora };
-            if (['accepted', 'connecting', 'connected'].includes(status)) {
-                handleAcceptedCallNavigation(resolvedParams);
-                return;
-            }
-            if (!['initiated', 'ringing'].includes(status)) {
-                await applyTerminalAndClose({
-                    transactionId: params.transactionId,
-                    state: status || 'ended',
-                    eventAt: Date.now(),
-                });
-                return;
-            }
-            liveParams = resolvedParams;
-        } catch (error) {
-            console.log('Incoming call status validation failed:', error.response?.status || error.message);
-            return;
-        }
-
-        if (!await canOpenIncomingCall(liveParams)) return;
-        const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
-        if (
-            ['Incomming', 'OnGoing', 'VideoCall'].includes(currentRoute?.name) &&
-            String(currentRoute?.params?.transactionId || '') === String(liveParams.transactionId)
-        ) return;
-
-        navigateWithRetry('Incomming', liveParams, {
-            resetRoot: true,
-            key: `call-${liveParams.transactionId}`,
-            onNavigated: () => {
-                clearStoredCallState(liveParams.transactionId, ['pendingCall'])
-                    .catch(error => console.error('Pending call cleanup failed:', error.message));
-            },
-        });
-    } else if (remoteMessage?.data?.type === 'message') {
-        navigateWithRetry('Chat', {
-            conversationId: remoteMessage.data.conversationId,
-            otherUser: {
-                _id: remoteMessage.data.senderId,
-                name: remoteMessage.data.senderName || 'User',
-                image: remoteMessage.data.senderImage || '',
-            },
-        });
-    } else if (remoteMessage?.data?.action === 'open_face_verification') {
-        navigateWithRetry('FaceVerification');
-    } else if (remoteMessage?.data?.action === 'open_kyc_verification') {
-        navigateWithRetry('Kyc');
-    } else if (remoteMessage?.data?.type === 'missed_call' || remoteMessage?.data?.action === 'open_activity') {
-        navigateWithRetry('Notifications');
-    } else if (remoteMessage?.data?.type === 'system' || remoteMessage?.data?.action === 'open_system_messages') {
-        navigateWithRetry('SystemMessage');
-    } else if (remoteMessage?.data?.type === 'room_open' && remoteMessage?.data?.roomId) {
-        navigateWithRetry('VoiceRoom', { roomId: remoteMessage.data.roomId });
-    } else if (remoteMessage?.data?.action === 'login_redirect') {
-        navigateWithRetry('SignIn');
-    }
-};
-
-const checkPendingCallPayload = async (attempt = 0) => {
-    try {
-        const acceptedStr = await AsyncStorage.getItem('acceptedCall');
-        if (acceptedStr) {
-            handleAcceptedCallNavigation(JSON.parse(acceptedStr));
-            return;
-        }
-
-        const pendingStr = await AsyncStorage.getItem('pendingCall');
-        if (pendingStr) {
-            handleNotificationNavigation({ data: JSON.parse(pendingStr) });
-            return;
-        }
-
-        // Accept can launch the Activity while its headless API request is
-        // still finishing, so briefly wait for the accepted payload.
-        if (attempt < 75) {
-            setTimeout(() => checkPendingCallPayload(attempt + 1), 200);
-        }
-    } catch (error) {
-        console.error('Pending call restore failed:', error);
-    }
-};
-
-const checkPendingMessagePayload = async () => {
-    const pending = await AsyncStorage.getItem('pendingMessage');
-    if (!pending) return;
-    await AsyncStorage.removeItem('pendingMessage');
-    await handleNotificationNavigation({ data: JSON.parse(pending) });
-};
-
-const checkPendingActivityPayload = async () => {
-    const pending = await AsyncStorage.getItem('pendingActivityNotification');
-    if (!pending) return;
-    const data = JSON.parse(pending);
-    await handleNotificationNavigation({ data });
-    await AsyncStorage.removeItem('pendingActivityNotification');
-};
-
 export const NotificationListen = () => {
-    const appStateSubscription = AppState.addEventListener('change', nextState => {
-        if (nextState === 'active') {
-            syncFCMToken();
-            checkPendingCallPayload();
-            checkPendingActivityPayload().catch(error => console.log('Activity notification restore:', error.message));
-        }
-    });
-    const unsubscribeTokenRefresh = messaging().onTokenRefresh(async fcmToken => {
-        await AsyncStorage.setItem('fcmToken', fcmToken);
-        const accessToken = await AsyncStorage.getItem('accessToken');
-        if (accessToken) {
-            await apiUtil.post('/user/save-fcm', { fcmToken })
-                .catch(error => console.log('Token refresh sync failed:', error.message));
-        }
-    });
-
-    // FCM remains active even when Home.js and its socket listener are not mounted.
-    const unsubscribeMessage = messaging().onMessage(async remoteMessage => {
-        if (remoteMessage.data?.type === 'message') {
-            const current = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
-            if (current?.name !== 'Chat' || String(current?.params?.conversationId) !== String(remoteMessage.data.conversationId)) {
-                await showMessageNotification(remoteMessage.data);
-            }
-        } else if (isActivityNotification(remoteMessage.data) || remoteMessage.notification) {
-            await showActivityNotification({
-                ...(remoteMessage.data || {}),
-                title: remoteMessage.data?.title || remoteMessage.notification?.title,
-                body: remoteMessage.data?.body || remoteMessage.notification?.body,
-            });
-        } else if (remoteMessage.data?.type === 'call_state') {
-            await applyTerminalAndClose(remoteMessage.data);
-        } else if (remoteMessage.data?.type === 'call') {
-            // Socket.IO normally opens the live incoming screen immediately. Keep
-            // FCM as a delayed fallback in case the socket was connected but missed
-            // this event during a brief delivery gap.
-            if (getSocket()?.connected) {
-                const transactionId = String(remoteMessage.data?.transactionId || remoteMessage.data?.callId || '');
-                setTimeout(() => {
-                    const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
-                    const currentCallId = String(currentRoute?.params?.transactionId || '');
-                    if (!['Incomming', 'OnGoing', 'VideoCall'].includes(currentRoute?.name) || currentCallId !== transactionId) {
-                        handleNotificationNavigation(remoteMessage);
-                    }
-                }, 1500);
-                return;
-            }
-            await handleNotificationNavigation(remoteMessage);
-        }
-    });
-
-    const unsubscribeOpened = messaging().onNotificationOpenedApp(message => {
-        handleNotificationNavigation(message).catch(error =>
-            console.error('Notification navigation failed:', error.message));
-    });
-
-    const unsubscribeNotifee = notifee.onForegroundEvent(async event => {
-        try {
-            if (isActivityNotification(event.detail?.notification?.data)) {
-                const data = await handleActivityNotificationEvent(event);
-                if (data) await checkPendingActivityPayload();
-                return;
-            }
-            if (event.detail?.notification?.data?.type === 'message') {
-                const messageResult = await handleMessageNotificationEvent(event);
-                if (messageResult?.action === 'open') {
-                    await AsyncStorage.removeItem('pendingMessage');
-                    await handleNotificationNavigation({ data: messageResult.data });
-                }
-                return;
-            }
-            const result = await handleCallNotificationEvent(event);
-            if (result?.action === 'accept') {
-                handleAcceptedCallNavigation(result.data);
-            } else if (result?.action === 'open') {
-                await handleNotificationNavigation({ data: result.data });
-            }
-        } catch (error) {
-            console.error('Call notification action failed:', error.response?.data || error.message);
-        }
-    });
-
-    messaging().getInitialNotification().then(remoteMessage => {
-        if (remoteMessage) {
-            handleNotificationNavigation(remoteMessage).catch(error =>
-                console.error('Initial notification navigation failed:', error.message));
-        }
-    });
-    notifee.getInitialNotification().then(async initial => {
-        if (!initial) return;
-        const data = initial.notification?.data;
-        if (isActivityNotification(data)) {
-            await handleNotificationNavigation({ data });
-            await AsyncStorage.removeItem('pendingActivityNotification');
-        } else if (data?.type === 'message') {
-            const result = await handleMessageNotificationEvent({
-                type: EventType.PRESS,
-                detail: initial,
-            });
-            if (result?.action === 'open') {
-                await AsyncStorage.removeItem('pendingMessage');
-                await handleNotificationNavigation({ data: result.data });
-            }
-        } else if (data?.type === 'call') {
-            const pressActionId = initial.pressAction?.id;
-            const result = await handleCallNotificationEvent({
-                type: pressActionId ? EventType.ACTION_PRESS : EventType.PRESS,
-                detail: initial,
-            });
-            if (result?.action === 'accept') {
-                handleAcceptedCallNavigation(result.data);
-            } else if (result?.action === 'open') {
-                await handleNotificationNavigation({ data: result.data });
-            }
-        }
-    }).catch(error => console.error('Initial local notification failed:', error.message));
-    checkPendingCallPayload();
-    checkPendingActivityPayload().catch(error => console.log('Activity notification restore:', error.message));
-    checkPendingMessagePayload().catch(error =>
-        console.error('Pending message restore failed:', error.message));
-
-    return () => {
-        appStateSubscription.remove();
-        unsubscribeTokenRefresh?.();
-        unsubscribeMessage?.();
-        unsubscribeOpened?.();
-        unsubscribeNotifee?.();
-    };
+  const restore = async () => {
+    for (const key of ['pendingMessage', 'pendingActivityNotification']) {
+      const stored = await AsyncStorage.getItem(key);
+      if (stored) {
+        await open({ data: JSON.parse(stored) });
+        await AsyncStorage.removeItem(key);
+      }
+    }
+  };
+  const appState = AppState.addEventListener('change', state => {
+    if (state === 'active') {
+      syncFCMToken();
+      restore().catch(() => {});
+    }
+  });
+  const refresh = messaging().onTokenRefresh(async token => {
+    await AsyncStorage.setItem('fcmToken', token);
+    if (await AsyncStorage.getItem('accessToken'))
+      await apiUtil.post('/user/save-fcm', { fcmToken: token }).catch(() => {});
+  });
+  const foreground = messaging().onMessage(async message => {
+    if (retired(message.data)) return;
+    if (message.data?.type === 'message') {
+      const current = navigationRef.isReady()
+        ? navigationRef.getCurrentRoute()
+        : null;
+      if (
+        current?.name !== 'Chat' ||
+        String(current?.params?.conversationId) !==
+          String(message.data.conversationId)
+      )
+        await showMessageNotification(message.data);
+    } else if (isActivityNotification(message.data) || message.notification)
+      await showActivityNotification({
+        ...(message.data || {}),
+        title: message.data?.title || message.notification?.title,
+        body: message.data?.body || message.notification?.body,
+      });
+  });
+  const opened = messaging().onNotificationOpenedApp(message => {
+    open(message).catch(() => {});
+  });
+  const local = notifee.onForegroundEvent(async event => {
+    const data = event.detail?.notification?.data;
+    if (retired(data)) return;
+    if (data?.type === 'message') {
+      const result = await handleMessageNotificationEvent(event);
+      if (result?.action === 'open') {
+        await AsyncStorage.removeItem('pendingMessage');
+        await open({ data: result.data });
+      }
+    } else if (isActivityNotification(data)) {
+      await handleActivityNotificationEvent(event);
+      await restore();
+    } else if (event.type === EventType.PRESS) await open({ data });
+  });
+  messaging()
+    .getInitialNotification()
+    .then(message => {
+      if (message) return open(message);
+    })
+    .catch(() => {});
+  notifee
+    .getInitialNotification()
+    .then(initial => {
+      if (initial) return open({ data: initial.notification?.data });
+    })
+    .catch(() => {});
+  restore().catch(() => {});
+  return () => {
+    appState.remove();
+    refresh();
+    foreground();
+    opened();
+    local();
+  };
 };

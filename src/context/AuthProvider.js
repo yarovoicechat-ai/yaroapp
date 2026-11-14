@@ -161,7 +161,6 @@ export const AuthProvider = ({ children }) => {
         'refreshToken',
         'role',
         'cachedUser',
-        'acceptingCall',
       ]);
       const stored = Object.fromEntries(values);
       if (!stored.accessToken || !stored.refreshToken) {
@@ -171,14 +170,6 @@ export const AuthProvider = ({ children }) => {
 
       setIsAuthenticated(true);
       setRole(stored.role || 'user');
-      const acceptingCall = (() => {
-        try {
-          const value = JSON.parse(stored.acceptingCall || 'null');
-          return value && Date.now() - Number(value.startedAt || 0) < 20000;
-        } catch (_) {
-          return false;
-        }
-      })();
 
       if (stored.cachedUser) {
         try {
@@ -186,20 +177,13 @@ export const AuthProvider = ({ children }) => {
           userRef.current = cached;
           setUser(cached);
           syncEquippedState(cached);
-          if (!acceptingCall) setLoading(false);
+          setLoading(false);
           if (cached.userId === 888888) return;
         } catch (_) {
           await AsyncStorage.removeItem('cachedUser');
         }
       }
 
-      if (acceptingCall) {
-        for (let attempt = 0; attempt < 75; attempt += 1) {
-          if (await AsyncStorage.getItem('acceptedCall')) break;
-          await new Promise((resolve) => setTimeout(resolve, 200));
-        }
-        setLoading(false);
-      }
 
       await fetchUserProfile();
       const socket = await initSocket();

@@ -497,7 +497,7 @@ const EditProfile = () => {
                   <Text style={styles.levelBadgeText}>LV.{user?.level ?? '—'}</Text>
                 </LinearGradient>
               </View>
-              <Text style={styles.levelSubText}>Dynamic level calculated from active calling</Text>
+              <Text style={styles.levelSubText}>Your activity and gift level</Text>
             </View>
           </View>
 

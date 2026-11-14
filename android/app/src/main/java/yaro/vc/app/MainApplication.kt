@@ -46,41 +46,7 @@ class MainApplication : Application(), ReactApplication {
       }
     }
 
-    createNotificationChannel()
     loadReactNative(this)
   }
 
-  private fun createNotificationChannel() {
-    try {
-      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-        val channelId = "call_channel"
-        val channelName = "Incoming Calls"
-        val channelDescription = "Notifications for incoming calls"
-        val importance = android.app.NotificationManager.IMPORTANCE_HIGH
-
-        val channel = android.app.NotificationChannel(channelId, channelName, importance).apply {
-          description = channelDescription
-          enableVibration(true)
-          
-          val soundUri = android.net.Uri.parse(
-            "${android.content.ContentResolver.SCHEME_ANDROID_RESOURCE}://${packageName}/raw/incallmanager_ringtone"
-          )
-          
-          val audioAttributes = android.media.AudioAttributes.Builder()
-            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-            .build()
-            
-          setSound(soundUri, audioAttributes)
-        }
-
-        val notificationManager = getSystemService(android.app.NotificationManager::class.java)
-        notificationManager?.createNotificationChannel(channel)
-      }
-    } catch (e: Exception) {
-      if (BuildConfig.DEBUG) {
-        android.util.Log.e("MainApplication", "Failed to create notification channel", e)
-      }
-    }
-  }
 }

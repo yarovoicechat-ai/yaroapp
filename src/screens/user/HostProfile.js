@@ -23,7 +23,6 @@ import { apiUtil, API_BASE_URL } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
 import { AuthContext } from '../../context/AuthProvider';
 import Sound from 'react-native-sound';
-import { CALL_COINS_PER_MINUTE_VOICE, hasCallStartIdentity } from '../../utils/callValidation';
 import { isValidAudioPath, normalizeLanguages, resolveAudioUrl } from '../../utils/hostPresentation';
 
 // Enable playing audio in silent mode (iOS)
@@ -73,10 +72,8 @@ const HostProfile = () => {
     }
   };
   
-  const [calling, setCalling] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const soundRef = useRef(null);
-  const callInFlightRef = useRef(false);
 
   // UGC Moderation: Report & Block
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -99,7 +96,7 @@ const HostProfile = () => {
 
     Alert.alert(
       'Block User',
-      `Are you sure you want to block ${host.name || 'this host'}? They will no longer be able to call or interact with you.`,
+      `Are you sure you want to block ${host.name || 'this host'}? They will no longer be able to interact with you.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -151,84 +148,9 @@ const HostProfile = () => {
 
   const languageList = normalizeLanguages(host.languages, host.language);
 
-  const showInsufficientCoinsAlert = () => {
-    AlertService.show(
-      'Insufficient Coins',
-      'Your Coin balance is too low to start this call. Please recharge your Coins to continue.',
-      'error',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Recharge Now', onPress: () => navigation.navigate('Recharge') },
-      ]
-    );
-  };
 
-  const startCall = async () => {
-    if (callInFlightRef.current) return;
-    const targetHostId = host._id || host.id || host.userId;
-    if (!targetHostId) {
-      AlertService.show('Call unavailable', 'Invalid host profile information.', 'error');
-      return;
-    }
 
-    const userCoins = Number(user?.coins ?? user?.diamonds ?? 0);
-    console.log('[CALL] START REQUEST | BALANCE:', userCoins);
 
-    if (userCoins < CALL_COINS_PER_MINUTE_VOICE) {
-      console.log('[CALL] INSUFFICIENT BALANCE | REJECTED ON FRONTEND');
-      showInsufficientCoinsAlert();
-      return;
-    }
-
-    console.log('[CALL] BALANCE OK');
-    try {
-      callInFlightRef.current = true;
-      setCalling(true);
-      const response = await apiUtil.post('/call/start', { hostId: targetHostId });
-      if (!response.data?.success || !hasCallStartIdentity(response.data?.data)) {
-        const msg = response.data?.message || 'Failed to start call.';
-        const errCode = response.data?.data?.code || response.data?.data?.errorCode;
-        if (
-          errCode === 'INSUFFICIENT_COINS' ||
-          errCode === 'INSUFFICIENT_DIAMONDS' ||
-          msg.includes('INSUFFICIENT_COINS') ||
-          msg.includes('INSUFFICIENT_DIAMONDS') ||
-          msg.toLowerCase().includes('coin') ||
-          msg.toLowerCase().includes('diamond')
-        ) {
-          showInsufficientCoinsAlert();
-        } else {
-          AlertService.show('Call unavailable', msg, 'error');
-        }
-        return;
-      }
-      navigation.navigate('OutGoing', {
-        ...response.data.data,
-        name: host.name || 'Host',
-        hostId: host._id || host.userId || host.id,
-        image: host.image,
-        isCaller: true,
-      });
-    } catch (error) {
-      const msg = error.response?.data?.message || error.message || 'Please try again.';
-      const errCode = error.response?.data?.data?.code || error.response?.data?.data?.errorCode;
-      if (
-        errCode === 'INSUFFICIENT_COINS' ||
-        errCode === 'INSUFFICIENT_DIAMONDS' ||
-        msg.includes('INSUFFICIENT_COINS') ||
-        msg.includes('INSUFFICIENT_DIAMONDS') ||
-        msg.toLowerCase().includes('coin') ||
-        msg.toLowerCase().includes('diamond')
-      ) {
-        showInsufficientCoinsAlert();
-      } else {
-        AlertService.show('Call unavailable', msg, 'error');
-      }
-    } finally {
-      callInFlightRef.current = false;
-      setCalling(false);
-    }
-  };
 
   const getRawHostAudioPath = (hostObj) => {
     if (!hostObj || typeof hostObj !== 'object') return null;
@@ -391,12 +313,6 @@ const HostProfile = () => {
         <View style={styles.chips}>
           {languageList.map((language, index) => <Text key={`${language}-${index}`} style={styles.chip}>{language}</Text>)}
         </View>
-        <TouchableOpacity onPress={startCall} disabled={calling} style={styles.callWrap}>
-          <LinearGradient colors={['#FF6B00', '#FF2D87', '#C026D3']} style={styles.callButton}>
-            {calling ? <ActivityIndicator color="#fff" /> : <Icon name="call" size={22} color="#fff" />}
-            <Text style={styles.callText}>{calling ? 'Calling...' : 'Call Now'}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
       </ScrollView>
 
       {/* UGC Report User Modal */}

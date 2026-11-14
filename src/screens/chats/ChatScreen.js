@@ -63,7 +63,7 @@ const Massage = ({ route }) => {
   const otherUser = routeParams.otherUser || routeParams.user || routeParams.chatUser || {};
   const lastMessageTime = routeParams.lastMessageTime;
   const hostTypes = otherUser?.hostTypes || [];
-  const hasCallHosting = Boolean(
+  const isPaidChatHost = Boolean(
     otherUser?.isHost ||
     otherUser?.isApprovedHost ||
     otherUser?.isHostApproved ||
@@ -99,7 +99,6 @@ const Massage = ({ route }) => {
   }).current;
   const [inputText, setInputText] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
-  const [calling, setCalling] = useState(false);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [sendingGift, setSendingGift] = useState(false);
   const [gifts, setGifts] = useState([]);
@@ -390,11 +389,11 @@ const Massage = ({ route }) => {
 
     const userBalance = Number(user?.diamonds || 0);
     const isSenderExempt = ['admin', 'superadmin', 'root'].includes(String(user?.role || '').toLowerCase());
-    const paidChat = hasCallHosting && !isSenderExempt;
+    const paidChat = isPaidChatHost && !isSenderExempt;
     if (paidChat && userBalance < 2) {
       AlertService.show(
         'Insufficient Diamonds',
-        'A message to a call host costs 2 Diamonds. Please recharge your wallet.',
+        'A message to a host costs 2 Diamonds. Please recharge your wallet.',
         'error',
         [
           { text: 'Cancel', style: 'cancel' },
@@ -592,72 +591,9 @@ const Massage = ({ route }) => {
     }
   };
 
-  const showInsufficientDiamondsAlert = () => {
-    AlertService.show(
-      'Insufficient Diamonds',
-      'Your Diamond balance is too low to start this call. Please recharge your Diamonds to continue.',
-      'error',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Recharge Now', onPress: () => navigation.navigate('Recharge') },
-      ]
-    );
-  };
 
-  const startCall = async () => {
-    if (calling) return;
-    if (!hasCallHosting) {
-      AlertService.show('Call unavailable', 'This user is not accepting calls.', 'info');
-      return;
-    }
-    const targetHostId = otherUser?._id || otherUser?.userId;
-    if (!targetHostId) {
-      AlertService.show('Call unavailable', 'Invalid user information.', 'error');
-      return;
-    }
-    const userDiamonds = Number(user?.diamonds !== undefined ? user.diamonds : (user?.coins || 0));
-    console.log('[CALL] START REQUEST | DIAMONDS:', userDiamonds);
 
-    if (userDiamonds < 1) {
-      console.log('[CALL] INSUFFICIENT DIAMONDS | REJECTED ON FRONTEND');
-      showInsufficientDiamondsAlert();
-      return;
-    }
 
-    console.log('[CALL] BALANCE OK');
-    try {
-      setCalling(true);
-      const response = await apiUtil.post('/call/start', { hostId: targetHostId });
-      if (!response.data?.success || !response.data?.data) {
-        const msg = response.data?.message || 'Failed to start call.';
-        const errCode = response.data?.data?.code || response.data?.data?.errorCode;
-        if (errCode === 'INSUFFICIENT_DIAMONDS' || msg.includes('INSUFFICIENT_DIAMONDS') || msg.toLowerCase().includes('diamond')) {
-          showInsufficientDiamondsAlert();
-        } else {
-          AlertService.show('Call failed', msg, 'error');
-        }
-        return;
-      }
-      const data = response.data?.data;
-      navigation.navigate('OutGoing', {
-        ...data,
-        name: otherUser?.name || 'Host',
-        hostId: otherUser?._id || otherUser?.userId || otherUser?.id,
-        image: otherUser?.image,
-        isCaller: true,
-      });
-    } catch (error) {
-      const msg = error.response?.data?.message || error.message || 'This person is not available.';
-      const errCode = error.response?.data?.data?.code || error.response?.data?.data?.errorCode;
-      if (errCode === 'INSUFFICIENT_DIAMONDS' || msg.includes('INSUFFICIENT_DIAMONDS') || msg.toLowerCase().includes('diamond')) {
-        showInsufficientDiamondsAlert();
-      } else {
-        AlertService.show('Call unavailable', msg, 'error');
-      }
-    } finally {
-      setCalling(false);
-    }
-  };
 
   return (
     <ScreenBackgroundView style={[{ flex: 1, backgroundColor: '#F8FAFC' }, { paddingBottom: 0 }]}>
@@ -718,11 +654,6 @@ const Massage = ({ route }) => {
             </View>
           </TouchableOpacity>
 
-          {hasCallHosting && (
-            <TouchableOpacity onPress={startCall} disabled={calling} style={styles.navBlockButton}>
-              {calling ? <ActivityIndicator size="small" color="#6C5CE7" /> : <Icon name="call" size={20} color="#6C5CE7" />}
-            </TouchableOpacity>
-          )}
           <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.navBlockButton}>
             <Icon name="more-vert" size={22} color="#1E293B" />
           </TouchableOpacity>

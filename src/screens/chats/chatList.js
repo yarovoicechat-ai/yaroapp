@@ -25,7 +25,6 @@ const diamondIcon = require('../../assets/icons/diamond.png');
 
 const INBOX_SUB_TABS = [
   { id: 'all_messages', label: 'All Messages', icon: 'chatbubbles-outline' },
-  { id: 'calls', label: 'Calls', icon: 'call-outline' },
   { id: 'gifts', label: 'Gifts', icon: 'gift-outline' },
 ];
 
@@ -61,29 +60,11 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
   const { user } = useContext(AuthContext);
   const [activeSubTab, setActiveSubTab] = useState('all_messages');
   const { conversations, loading, refresh: fetchConversations } = useInboxMessages();
-  const [calls, setCalls] = useState([]);
-  const [loadingCalls, setLoadingCalls] = useState(false);
   const [giftHistory, setGiftHistory] = useState([]);
   const [loadingGifts, setLoadingGifts] = useState(false);
   const [systemNotices, setSystemNotices] = useState([]);
   const [loadingNotices, setLoadingNotices] = useState(false);
 
-  const fetchCalls = useCallback(async () => {
-    try {
-      setLoadingCalls(true);
-      const res = await apiUtil.get('/call/history?days=7');
-      const callData = res.data?.data?.calls || res.data?.data || [];
-      if (Array.isArray(callData)) {
-        setCalls(callData);
-      } else {
-        setCalls([]);
-      }
-    } catch (e) {
-      setCalls([]);
-    } finally {
-      setLoadingCalls(false);
-    }
-  }, []);
 
   const fetchGiftHistory = useCallback(async () => {
     try {
@@ -178,14 +159,12 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
 
   useEffect(() => {
     fetchConversations();
-    fetchCalls();
-  }, [fetchConversations, fetchCalls]);
+  }, [fetchConversations]);
 
   const handleSubTabPress = (tabId) => {
     setActiveSubTab(tabId);
     if (tabId === 'calls' && calls.length === 0) {
-      fetchCalls();
-    }
+      }
     if (tabId === 'gifts') fetchGiftHistory();
     if (tabId === 'system') fetchSystemNotices();
   };
@@ -265,62 +244,6 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
           <Icon name="chevron-forward" size={18} color="#CBD5E1" style={{ marginTop: 4 }} />
         </View>
       </TouchableOpacity>
-    );
-  };
-
-  // Render call log row
-  const renderCallCard = ({ item }) => {
-    const isIncoming = (item.type || '').toLowerCase().includes('in');
-    const isMissed = (item.type || '').toLowerCase().includes('miss');
-    const callerName = item.name || item.callerName || 'Unknown Caller';
-    const callerImg = item.image ? { uri: item.image } : (item.callerImage ? { uri: item.callerImage } : require('../../assets/avtar.webp'));
-    const durationText = item.duration || item.timing || '1-on-1 Call';
-
-    return (
-      <View style={styles.cardWrapper}>
-        <View style={styles.avatarWrapper}>
-          <Image source={callerImg} style={styles.userAvatarImg} />
-          <View
-            style={[
-              styles.callTypeDot,
-              { backgroundColor: isMissed ? '#EF4444' : isIncoming ? '#22C55E' : '#3B82F6' },
-            ]}
-          >
-            <Icon
-              name={isMissed ? 'close' : isIncoming ? 'arrow-down-outline' : 'arrow-up-outline'}
-              size={10}
-              color="#FFFFFF"
-            />
-          </View>
-        </View>
-
-        <View style={styles.cardMainContent}>
-          <View style={styles.nameAgeBadgeRow}>
-            <Text style={styles.userNameText}>{callerName}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Icon
-              name="call-outline"
-              size={13}
-              color={isMissed ? '#EF4444' : '#64748B'}
-              style={{ marginRight: 4 }}
-            />
-            <Text style={[styles.lastMsgSnippet, isMissed && { color: '#EF4444' }]}>
-              {durationText}
-            </Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.callBackBtn}
-          onPress={() => {
-            openScreen('OneToOne', { hostId: item.hostId || item.id });
-          }}
-        >
-          <Icon name="call" size={16} color="#6C5CE7" />
-        </TouchableOpacity>
-      </View>
     );
   };
 
@@ -412,8 +335,6 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
           <Text style={styles.mainHeaderTitle}>
             {activeSubTab === 'all_messages'
               ? 'Inbox'
-              : activeSubTab === 'calls'
-              ? 'Call Logs'
               : activeSubTab === 'gifts'
               ? 'Gift Box'
               : 'System Notices'}
@@ -421,8 +342,6 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
           <Text style={styles.mainHeaderSubtitle}>
             {activeSubTab === 'all_messages'
               ? 'Your messages & chats'
-              : activeSubTab === 'calls'
-              ? 'Recent voice & video calls'
               : activeSubTab === 'gifts'
               ? 'Gifts received & sent'
               : 'Official updates & alerts'}
@@ -434,8 +353,7 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
             style={styles.actionCircleBtn}
             activeOpacity={0.8}
             onPress={() => {
-              if (activeSubTab === 'calls') openScreen('CallHistory');
-              else if (activeSubTab === 'gifts') openScreen('GiftsScreen');
+              if (activeSubTab === 'gifts') openScreen('GiftsScreen');
               else if (activeSubTab === 'system') openScreen('SystemNoticeScreen');
             }}
           >
@@ -503,43 +421,10 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
                 <Icon name="chatbubble-ellipses-outline" size={42} color="#94A3B8" />
                 <Text style={styles.emptyStateTitle}>No Active Conversations</Text>
                 <Text style={styles.emptyStateSubtitle}>
-                  Connect with people through voice calls and party rooms to chat!
+                  Connect with people through live and party rooms to chat!
                 </Text>
               </View>
             ) : null
-          }
-          contentContainerStyle={[
-            styles.listContentContainer,
-            { paddingBottom: bottomTabBarPadding },
-          ]}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-
-      {activeSubTab === 'calls' && (
-        <FlatList
-          data={calls}
-          renderItem={renderCallCard}
-          keyExtractor={(item, index) => item.id || item._id || String(index)}
-          ListEmptyComponent={
-            loadingCalls ? (
-              <ActivityIndicator size="small" color="#6C5CE7" style={{ marginTop: 40 }} />
-            ) : (
-              <View style={styles.emptyStateContainer}>
-                <Icon name="call-outline" size={42} color="#94A3B8" />
-                <Text style={styles.emptyStateTitle}>No Call Logs Yet</Text>
-                <Text style={styles.emptyStateSubtitle}>
-                  Start a 1-to-1 voice or video call with hosts to see your history here!
-                </Text>
-                <TouchableOpacity
-                  style={styles.primaryActionBtn}
-                  onPress={() => openScreen('OneToOne')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.primaryActionBtnText}>Find Hosts to Call</Text>
-                </TouchableOpacity>
-              </View>
-            )
           }
           contentContainerStyle={[
             styles.listContentContainer,

@@ -95,7 +95,7 @@ const HostApply = () => {
     const [district, setDistrict] = useState('');
 
     // Hosting Categories / Types (voice, video, room)
-    const [selectedHostTypes, setSelectedHostTypes] = useState(['voice', 'video', 'room']);
+    const [selectedHostTypes, setSelectedHostTypes] = useState(['live', 'room']);
 
     const toggleHostType = (typeKey) => {
         setSelectedHostTypes((prev) => {
@@ -254,7 +254,7 @@ const HostApply = () => {
     // ── Submit Form ──────────────────────────────────────────────────────────
     const handleSubmit = async () => {
         if (!selectedHostTypes || selectedHostTypes.length === 0) {
-            return AlertService.show('Required', 'Please select at least one Hosting Type (Voice Call, Video Call, or Room Hosting).', 'error');
+            return AlertService.show('Required', 'Please select at least one Hosting Type (Live Video or Party Room Hosting).', 'error');
         }
         if (!name.trim()) return AlertService.show('Required', 'Please enter your Name.', 'error');
         if (!age.trim()) return AlertService.show('Required', 'Please enter your Age.', 'error');
@@ -305,8 +305,8 @@ const HostApply = () => {
                 name,
                 hostTypes: selectedHostTypes,
                 hostingTypes: selectedHostTypes,
-                canVoiceCall: selectedHostTypes.includes('voice'),
-                canVideoCall: selectedHostTypes.includes('video'),
+                canVoiceCall: false,
+                canVideoCall: false,
                 canRoomHost: selectedHostTypes.includes('room'),
                 age: parsedAge,
                 gender,
@@ -437,16 +437,10 @@ const HostApply = () => {
                         <View style={{ width: '100%', marginBottom: 4 }}>
                             <Text style={styles.infoLabel}>Active Hosting Services</Text>
                             <View style={styles.approvedTypesRow}>
-                                {(hostStatus.canVoiceCall ?? (!hostStatus.hostTypes || hostStatus.hostTypes.includes('voice'))) && (
-                                    <View style={[styles.typeBadgePill, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }]}>
-                                        <Icon name="mic" size={14} color="#4F46E5" />
-                                        <Text style={[styles.typeBadgeText, { color: '#4338CA' }]}>Voice Call</Text>
-                                    </View>
-                                )}
-                                {(hostStatus.canVideoCall ?? (!hostStatus.hostTypes || hostStatus.hostTypes.includes('video'))) && (
+                                {(hostStatus.canLiveHost ?? (!hostStatus.hostTypes || hostStatus.hostTypes.includes('live'))) && (
                                     <View style={[styles.typeBadgePill, { backgroundColor: '#FDF2F8', borderColor: '#FBCFE8' }]}>
                                         <Icon name="videocam" size={14} color="#DB2777" />
-                                        <Text style={[styles.typeBadgeText, { color: '#BE185D' }]}>Video Call</Text>
+                                        <Text style={[styles.typeBadgeText, { color: '#BE185D' }]}>Video Live</Text>
                                     </View>
                                 )}
                                 {(hostStatus.canRoomHost ?? (!hostStatus.hostTypes || hostStatus.hostTypes.includes('room'))) && (
@@ -465,7 +459,7 @@ const HostApply = () => {
                         <View style={{ marginLeft: 12, flex: 1 }}>
                             <Text style={styles.approvedTitle}>Official Host Active</Text>
                             <Text style={styles.approvedSub}>
-                                Aapka Host Account Agency under successfully active hai. Live streaming aur 1-on-1 audio/video calls se earnings receive kar sakte hain.
+                                Aapka Host Account Agency under successfully active hai. Live streaming aur public live rooms se earnings receive kar sakte hain.
                             </Text>
                         </View>
                     </View>
@@ -587,49 +581,28 @@ const HostApply = () => {
                 {/* Hosting Type Selection Section */}
                 <View style={styles.formSection}>
                     <Text style={styles.sectionHeading}>Select Hosting Services *</Text>
-                    <Text style={styles.sectionSubHeading}>Choose the services you want to provide (any combination of Voice, Video, or Room)</Text>
+                    <Text style={styles.sectionSubHeading}>Choose the services you want to provide (Live Video and Party Rooms)</Text>
 
                     <View style={styles.hostTypeCardsGrid}>
-                        {/* Voice Call Option */}
+                        {/* Video Live Option */}
                         <TouchableOpacity
                             style={[
                                 styles.hostTypeCard,
-                                selectedHostTypes.includes('voice') && styles.hostTypeCardSelected
+                                selectedHostTypes.includes('live') && styles.hostTypeCardSelected
                             ]}
                             activeOpacity={0.8}
-                            onPress={() => toggleHostType('voice')}
-                        >
-                            <View style={styles.hostTypeCardHeader}>
-                                <View style={[styles.hostTypeIconWrap, { backgroundColor: '#EEF2FF' }]}>
-                                    <Icon name="mic" size={22} color="#4F46E5" />
-                                </View>
-                                <View style={[styles.checkCircle, selectedHostTypes.includes('voice') && styles.checkCircleActive]}>
-                                    {selectedHostTypes.includes('voice') && <Icon name="check" size={14} color="#fff" />}
-                                </View>
-                            </View>
-                            <Text style={styles.hostTypeCardTitle}>Voice Call</Text>
-                            <Text style={styles.hostTypeCardDesc}>1-on-1 private audio calls from callers</Text>
-                        </TouchableOpacity>
-
-                        {/* Video Call Option */}
-                        <TouchableOpacity
-                            style={[
-                                styles.hostTypeCard,
-                                selectedHostTypes.includes('video') && styles.hostTypeCardSelected
-                            ]}
-                            activeOpacity={0.8}
-                            onPress={() => toggleHostType('video')}
+                            onPress={() => toggleHostType('live')}
                         >
                             <View style={styles.hostTypeCardHeader}>
                                 <View style={[styles.hostTypeIconWrap, { backgroundColor: '#FDF2F8' }]}>
                                     <Icon name="videocam" size={22} color="#DB2777" />
                                 </View>
-                                <View style={[styles.checkCircle, selectedHostTypes.includes('video') && styles.checkCircleActive]}>
-                                    {selectedHostTypes.includes('video') && <Icon name="check" size={14} color="#fff" />}
+                                <View style={[styles.checkCircle, selectedHostTypes.includes('live') && styles.checkCircleActive]}>
+                                    {selectedHostTypes.includes('live') && <Icon name="check" size={14} color="#fff" />}
                                 </View>
                             </View>
-                            <Text style={styles.hostTypeCardTitle}>Video Call</Text>
-                            <Text style={styles.hostTypeCardDesc}>1-on-1 live HD video calls with VIP callers</Text>
+                            <Text style={styles.hostTypeCardTitle}>Video Live</Text>
+                            <Text style={styles.hostTypeCardDesc}>Broadcast live video to your audience</Text>
                         </TouchableOpacity>
 
                         {/* Room Hosting Option */}

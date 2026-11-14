@@ -8,11 +8,6 @@ import './src/locales/i18n';
 import App from './App';
 import { name as appName } from './app.json';
 
-import {
-  handleCallNotificationEvent,
-  showIncomingCallNotification,
-} from './src/utils/CallNotificationService';
-import { applyTerminalCallState } from './src/utils/callLifecycle';
 
 import {
   handleMessageNotificationEvent,
@@ -29,16 +24,13 @@ notifee.onBackgroundEvent(async event => {
     return handleMessageNotificationEvent(event);
   }
 
-  return handleCallNotificationEvent(event);
+
 });
 
 // Headless task for FCM messages while app is killed/background
 messaging().setBackgroundMessageHandler(async remoteMessage => {
-  if (remoteMessage?.data?.type === 'call') {
-    await showIncomingCallNotification(remoteMessage.data);
-  } else if (remoteMessage?.data?.type === 'call_state') {
-    await applyTerminalCallState(remoteMessage.data);
-  } else if (isActivityNotification(remoteMessage?.data) || remoteMessage?.notification) {
+  if (['call', 'call_state', 'missed_call'].includes(remoteMessage?.data?.type)) return;
+  if (isActivityNotification(remoteMessage?.data) || remoteMessage?.notification) {
     await showActivityNotification({
       ...(remoteMessage?.data || {}),
       title: remoteMessage?.data?.title || remoteMessage?.notification?.title,

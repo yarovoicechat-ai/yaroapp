@@ -175,9 +175,9 @@ export default function Ranking() {
   const fetchRanking = useCallback(async () => {
     try {
       setLoading(true);
-      const metric = activeCategory === 'Honor' ? 'diamonds' : activeCategory === 'Charm' ? 'coins' : 'call';
+      const metric = activeCategory === 'Honor' ? 'diamonds' : activeCategory === 'Charm' ? 'coins' : 'rooms';
       const range = activePeriod.toLowerCase();
-      const res = await apiUtil.get('/call/ranking', { params: { type: metric, range } });
+      const res = await apiUtil.get('/live/ranking', { params: { type: metric, range } });
 
       if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
         const mapped = res.data.data.map((item, index) => ({

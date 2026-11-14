@@ -66,31 +66,13 @@ export default function DataCenter() {
     const fetchActivity = async () => {
       try {
         setActivityLoading(true);
-        const [callResult, giftResult] = await Promise.allSettled([
-          apiUtil.get('/call/history?days=30'),
-          apiUtil.get('/gifts/received', { params: { limit: 100 } }),
-        ]);
-        const callRows = callResult.status === 'fulfilled'
-          ? callResult.value.data?.data?.calls || []
-          : [];
-        const callItems = Array.isArray(callRows) ? callRows.filter((item) => /call/i.test(String(item.type || ''))) : [];
-        const mapCall = (item) => ({
-          ...item,
-          id: String(item._id || item.id),
-          callerName: item.name || item.callerName || 'User',
-          date: item.date || (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''),
-          beansEarned: Number(item.commission ?? (Number(item.voice || 0) + Number(item.gift || 0))),
-          giftsReceived: Number(item.gift || 0),
-          durationSeconds: String(item.duration || '').split(':').reduce((total, part) => total * 60 + (Number(part) || 0), 0),
-        });
-        const video = callItems.filter((item) => /video/i.test(String(item.type || ''))).map(mapCall);
-        const voice = callItems.filter((item) => !/video/i.test(String(item.type || ''))).map(mapCall);
+        const [giftResult] = await Promise.allSettled([apiUtil.get('/gifts/received', { params: { limit: 100 } })]);
         const giftRows = giftResult.status === 'fulfilled'
           ? giftResult.value.data?.data?.transactions || []
           : [];
         if (isMounted) {
-          setVoiceCalls(voice);
-          setVideoCalls(video);
+          setVoiceCalls([]);
+          setVideoCalls([]);
           setReceivedGifts(Array.isArray(giftRows) ? giftRows : []);
         }
       } catch (error) {
@@ -127,8 +109,6 @@ export default function DataCenter() {
     const hasRoom = liveAgency?.canRoomHost === true || user?.canRoomHost === true ||
       userTypes.includes('room') || userTypes.includes('room_hosting');
 
-    if (hasVoice) tabs.push({ id: 'voice', label: 'Voice Call', icon: 'call-outline', mIcon: 'phone' });
-    if (hasVideo) tabs.push({ id: 'video', label: 'Video Call', icon: 'videocam-outline', mIcon: 'videocam' });
     if (hasRoom) tabs.push({ id: 'room', label: 'Room Hosting', icon: 'radio-outline', mIcon: 'mic' });
     return tabs;
   }, [liveAgency, user]);

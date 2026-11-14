@@ -230,7 +230,6 @@ export default function UserProfileScreen() {
   const [fetchedUser, setFetchedUser] = useState(incomingUser);
   const [isFollowing, setIsFollowing] = useState(Boolean(incomingUser?.isFollowing));
   const [followLoading, setFollowLoading] = useState(false);
-  const [callingInProgress, setCallingInProgress] = useState(false);
 
   // Medal Target & Milestone Modal State
   const [showMedalModal, setShowMedalModal] = useState(false);
@@ -330,9 +329,7 @@ export default function UserProfileScreen() {
       currentRoomId: rawCurrentRoom,
       currentRoomTitle: raw.currentRoomTitle || (rawCurrentRoom ? `${raw.name || 'User'}'s Room` : ''),
       isInRoom: Boolean(rawCurrentRoom),
-      isHost: Boolean(raw.isHost ?? (raw.role === 'host' || raw.callRate > 0)),
-      callRate: raw.callRate || 600,
-      videoCallRate: raw.videoCallRate || 1200,
+      isHost: Boolean(raw.isHost ?? raw.role === 'host'),
     };
   }, [route.params, fetchedUser]);
 
@@ -420,42 +417,7 @@ export default function UserProfileScreen() {
     }
   };
 
-  const handleStartAudioCall = async () => {
-    if (callingInProgress) return;
-    const userCoins = Math.max(Number(currentUser?.coins || 0), Number(currentUser?.diamonds || 0));
-    if (userCoins < targetUser.callRate) {
-      Alert.alert('Insufficient Coins', 'Please recharge your coins to call this host.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Recharge', onPress: () => navigation.navigate('Wallet') },
-      ]);
-      return;
-    }
 
-    try {
-      setCallingInProgress(true);
-      const res = await apiUtil.post('/call/start', {
-        hostId: targetUser._id,
-        isVideo: false,
-        callType: 'audio',
-      });
-      if (res.data?.success && res.data?.data) {
-        navigation.navigate('OutGoing', {
-          ...res.data.data,
-          name: targetUser.name,
-          hostId: targetUser._id || targetUser.userId || targetUser.id,
-          image: targetUser.avatar,
-          isCaller: true,
-          isVideo: false,
-        });
-      } else {
-        AlertService.show('Call Unavailable', res.data?.message || 'Unable to connect call.', 'error');
-      }
-    } catch (err) {
-      AlertService.show('Call Error', err.response?.data?.message || err.message, 'error');
-    } finally {
-      setCallingInProgress(false);
-    }
-  };
 
   return (
     <View style={styles.screenContainer}>
@@ -1228,21 +1190,6 @@ export default function UserProfileScreen() {
             <Text style={styles.chatActionText}>Chat</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.callActionBtn}
-            onPress={handleStartAudioCall}
-            disabled={callingInProgress}
-            activeOpacity={0.8}
-          >
-            {callingInProgress ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Icon name="call" size={18} color="#FFFFFF" />
-                <Text style={styles.callActionText}>Call ({targetUser.callRate} Coins)</Text>
-              </>
-            )}
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.followActionBtn, isFollowing && styles.followingActionBtn]}

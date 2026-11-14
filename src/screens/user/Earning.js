@@ -41,12 +41,9 @@ const Earning = () => {
   const fetchEarnings = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await apiUtil.get('/call/history');
-      if (res.data?.success && res.data?.data?.calls) {
-        const earningCalls = res.data.data.calls.filter(
-          (call) => call.commission && call.commission > 0,
-        );
-        setEarnings(earningCalls);
+      const res = await apiUtil.get('/gifts/received');
+      if (res.data?.success) {
+        setEarnings((res.data.data?.transactions || []).map(item => ({ ...item, name: item.senderId?.name || 'User', commission: item.hostEarning || 0, type: 'gift' })));
       }
     } catch (err) {
       console.log('Error fetching earnings:', err);

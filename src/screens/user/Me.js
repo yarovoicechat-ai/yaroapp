@@ -290,8 +290,8 @@ export default function MeScreen() {
       onPress: () => navigation.navigate('VerificationHub'),
     },
     ...(isApprovedHost ? [{
-      id: 'idManage',
-      label: 'ID Manage',
+      id: 'liveActivity',
+      label: 'Live Activity',
       icon: (
         <View style={[styles.serviceIconCircle, { backgroundColor: '#F0F9FF' }]}>
           <Ionicons name="id-card" size={26} color="#0284C7" />
@@ -328,16 +328,6 @@ export default function MeScreen() {
         </View>
       ),
       onPress: () => navigation.navigate('MyItems'),
-    },
-    {
-      id: 'callHistory',
-      label: 'Call History',
-      icon: (
-        <View style={[styles.serviceIconCircle, { backgroundColor: '#F0FDF4' }]}>
-          <Ionicons name="call" size={25} color="#16A34A" />
-        </View>
-      ),
-      onPress: () => navigation.navigate('CallHistory'),
     },
     {
       id: 'blockedUsers',

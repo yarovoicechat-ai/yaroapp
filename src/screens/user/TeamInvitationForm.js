@@ -31,7 +31,7 @@ export default function TeamInvitationForm() {
     phone: '',
     city: '',
     experienceYears: '',
-    hostTypes: ['voice'],
+    hostTypes: ['room'],
   });
 
   const setField = (key, value) => setForm(f => ({ ...f, [key]: value }));
@@ -52,7 +52,7 @@ export default function TeamInvitationForm() {
       return;
     }
     if (invite?.role === 'host' && (!form.hostTypes || form.hostTypes.length === 0)) {
-      AlertService.show('Hosting Type', 'Please select at least one hosting category (Voice, Video, or Room).', 'warning');
+      AlertService.show('Hosting Type', 'Please select at least one hosting category (Party Room).', 'warning');
       return;
     }
 
@@ -221,8 +221,6 @@ export default function TeamInvitationForm() {
                     <Text style={styles.label}>Hosting Categories (select all that apply) *</Text>
                     <View style={styles.hostTypesGrid}>
                       {[
-                        { key: 'voice', label: '1-on-1 Voice Calling', icon: 'call' },
-                        { key: 'video', label: '1-on-1 Video Calling', icon: 'videocam' },
                         { key: 'room', label: 'Voice Party Room', icon: 'radio' },
                       ].map(type => {
                         const selected = form.hostTypes.includes(type.key);

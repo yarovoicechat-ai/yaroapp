@@ -14,8 +14,8 @@ import LinearGradient from "react-native-linear-gradient";
 import Svg, { Path } from "react-native-svg";
 import { TabActions } from "@react-navigation/native";
 
-import Home from "../screens/user/Home";
-import OneToOne from "../screens/user/OneToOne";
+import Home from "../screens/user/LiveListScreen";
+import CreateLiveScreen from "../screens/user/CreateLiveScreen";
 import Party from "../screens/user/Party";
 import ChatListScreen from "../screens/chats/chatList";
 import Me from "../screens/user/Me";
@@ -38,15 +38,11 @@ const NOTCH_DEPTH = 22;
 
 const TAB_CONFIG = {
   Home: {
-    label: "Home",
-    activeIcon: "home",
-    inactiveIcon: "home-outline",
+    label: "Live",
+    activeIcon: "radio",
+    inactiveIcon: "radio-outline",
   },
-  OneToOne: {
-    label: "1 to 1",
-    activeIcon: "call",
-    inactiveIcon: "call-outline",
-  },
+  CreateLive: { label: "Create Live", activeIcon: "add-circle", inactiveIcon: "add-circle-outline" },
   Party: {
     label: "Party",
     activeIcon: "people",
@@ -323,8 +319,8 @@ export default function BottomTabsNavigator() {
         }}
       >
         <Tab.Screen name="Home" component={Home} />
-        <Tab.Screen name="OneToOne" component={OneToOne} />
         <Tab.Screen name="Party" component={Party} />
+        <Tab.Screen name="CreateLive" component={CreateLiveScreen} />
         <Tab.Screen name="ChatScreen" component={ChatListScreen} />
         <Tab.Screen name="Me" component={Me} />
       </Tab.Navigator>

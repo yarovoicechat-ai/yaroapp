@@ -1,6 +1,5 @@
 import notifee, { EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getCallParams } from '../utils/CallNotificationService';
 import { showActivityNotification, showRoomOpenSocketNotification, handleActivityNotificationEvent } from '../utils/ActivityNotificationService';
 
 jest.mock('../utils/apiUtil', () => ({ apiUtil: { post: jest.fn() } }));
@@ -17,16 +16,7 @@ test('socket room opening displays the same notification ID and room target as p
   }));
 });
 
-test.each([true, 'true'])('notification video flag %s survives call restoration', isVideo => {
-  const params = getCallParams({ callId: 'call-1', isVideo, callerId: 'caller-1', agora: '{"appId":"app"}' });
-  expect(params).toMatchObject({ transactionId: 'call-1', isVideo: true, callerId: 'caller-1', agora: { appId: 'app' } });
-});
-
-test('audio notification does not become a video call', () => {
-  expect(getCallParams({ isVideo: 'false' }).isVideo).toBe(false);
-});
-
-test.each(['missed_call', 'room_open', 'system'])('%s produces a visible notification', async type => {
+test.each(['live', 'room_open', 'system'])('%s produces a visible notification', async type => {
   await showActivityNotification({ type, title: 'Title', body: 'Body', transactionId: 'call-1', roomId: 'room-1' });
   expect(notifee.displayNotification).toHaveBeenCalledWith(expect.objectContaining({
     title: 'Title', body: 'Body', data: expect.objectContaining({ type }),

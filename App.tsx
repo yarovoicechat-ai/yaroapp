@@ -10,7 +10,6 @@ import { navigationRef } from "./src/utils/navigationRef";
 
 import { NativeModules, StatusBar, StyleSheet, View } from "react-native";
 import FloatingVoiceRoomWidget from "./src/components/FloatingVoiceRoomWidget";
-import FloatingVideoCallWidget from "./src/components/FloatingVideoCallWidget";
 
 const AppTheme = {
   ...DefaultTheme,
@@ -97,12 +96,10 @@ const AppWrapper = () => {
         <AppNavigator />
       </NavigationContainer>
       <FloatingVoiceRoomWidget />
-      <FloatingVideoCallWidget />
     </View>
   );
 };
 
-import { CallProvider } from "./src/context/CallContext";
 import { VoiceRoomProvider } from "./src/context/VoiceRoomContext";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -111,11 +108,9 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <UIProvider>
-          <CallProvider>
             <VoiceRoomProvider>
               <AppWrapper />
             </VoiceRoomProvider>
-          </CallProvider>
         </UIProvider>
       </AuthProvider>
     </SafeAreaProvider>

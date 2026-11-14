@@ -170,7 +170,7 @@ export default function Setting() {
         } else {
           AlertService.show(
             'Enable Floating Controls',
-            'Allow Yaro to display floating call controls over other apps so you can mute, unmute, or return to active voice calls while using other apps.',
+            'Allow Yaro to display floating Party room controls over other apps so you can return to your room while using other apps.',
             'info',
             [
               { text: 'Cancel', style: 'cancel' },

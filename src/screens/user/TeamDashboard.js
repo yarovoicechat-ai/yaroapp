@@ -21,7 +21,7 @@ import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil, API_BASE_URL } from '../../utils/apiUtil';
 import { AlertService } from '../../utils/AlertService';
 
-const CHANNELS = ['voice', 'video', 'room'];
+const CHANNELS = ['room'];
 const CHANNEL_NAMES = {
   voice: 'Voice Calling',
   video: 'Video Calling',
@@ -683,68 +683,6 @@ export default function TeamDashboard() {
 
             {/* 3 Channels Breakdown Cards */}
             <View style={styles.channelCardsGrid}>
-              {/* Voice Calling */}
-              <View style={[styles.channelCard, { borderColor: '#10b98144' }]}>
-                <View style={styles.channelHeader}>
-                  <Ionicons name="call" size={16} color="#34d399" />
-                  <Text style={styles.channelName}>Voice Calls</Text>
-                  <Text style={styles.channelPercent}>
-                    {calcPercent(voice?.achieved, voice?.target)}%
-                  </Text>
-                </View>
-                <Text style={styles.channelAchieved}>{formatNumber(voice?.achieved)} Beans</Text>
-                <View style={styles.progressBarBg}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        backgroundColor: '#10b981',
-                        width: `${calcPercent(voice?.achieved, voice?.target)}%`,
-                      },
-                    ]}
-                  />
-                </View>
-                <View style={styles.channelStatsRow}>
-                  <Text style={styles.targetPending}>
-                    Pending: {formatNumber(voice?.pending)}
-                  </Text>
-                  <Text style={styles.targetGoal}>
-                    Target: {formatNumber(voice?.target)}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Video Calling */}
-              <View style={[styles.channelCard, { borderColor: '#0ea5e944' }]}>
-                <View style={styles.channelHeader}>
-                  <Ionicons name="videocam" size={16} color="#38bdf8" />
-                  <Text style={styles.channelName}>Video Calls</Text>
-                  <Text style={styles.channelPercent}>
-                    {calcPercent(video?.achieved, video?.target)}%
-                  </Text>
-                </View>
-                <Text style={styles.channelAchieved}>{formatNumber(video?.achieved)} Beans</Text>
-                <View style={styles.progressBarBg}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        backgroundColor: '#0ea5e9',
-                        width: `${calcPercent(video?.achieved, video?.target)}%`,
-                      },
-                    ]}
-                  />
-                </View>
-                <View style={styles.channelStatsRow}>
-                  <Text style={styles.targetPending}>
-                    Pending: {formatNumber(video?.pending)}
-                  </Text>
-                  <Text style={styles.targetGoal}>
-                    Target: {formatNumber(video?.target)}
-                  </Text>
-                </View>
-              </View>
-
               {/* Party Room */}
               <View style={[styles.channelCard, { borderColor: '#a855f744' }]}>
                 <View style={styles.channelHeader}>
@@ -777,20 +715,6 @@ export default function TeamDashboard() {
               </View>
             </View>
 
-            {/* Combined 1-on-1 Calls Strip */}
-            <View style={styles.combinedStrip}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.combinedTitle}>Combined 1-on-1 Calls (Voice + Video)</Text>
-                <Text style={styles.combinedValue}>
-                  {formatNumber(totalCallsAchieved)} Beans achieved · {formatNumber(totalCallsPending)} pending of {formatNumber(totalCallsTarget)}
-                </Text>
-              </View>
-              <View style={styles.totalBadge}>
-                <Text style={styles.totalBadgeText}>
-                  Total Pending: {formatNumber(totalPendingBeans)}
-                </Text>
-              </View>
-            </View>
           </View>
         )}
 

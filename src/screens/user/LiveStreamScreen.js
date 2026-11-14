@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   AppState,
   Alert,
+  Dimensions,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -17,9 +19,25 @@ import {
   ClientRoleType,
   RtcSurfaceView,
 } from 'react-native-agora';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+
 import { apiUtil } from '../../utils/apiUtil';
 import { useVoiceRoom } from '../../context/VoiceRoomContext';
+import { getUserAvatar } from '../../utils/avatarUtil';
+
+import LiveTopHeader from '../../components/live/LiveTopHeader';
+import LiveGiftBanner from '../../components/live/LiveGiftBanner';
+import LivePKBar from '../../components/live/LivePKBar';
+import LiveChatOverlay from '../../components/live/LiveChatOverlay';
+import LiveFloatingSideBadges from '../../components/live/LiveFloatingSideBadges';
+import LiveBottomControls from '../../components/live/LiveBottomControls';
+import LiveGiftTrayModal from '../../components/live/LiveGiftTrayModal';
+import LiveToolsBottomSheet from '../../components/live/LiveToolsBottomSheet';
+import LiveChatInputModal from '../../components/live/LiveChatInputModal';
+
+const { width, height } = Dimensions.get('window');
 
 export default function LiveStreamScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
@@ -32,10 +50,49 @@ export default function LiveStreamScreen({ navigation, route }) {
   const [error, setError] = useState('');
   const [muted, setMuted] = useState(false);
   const [camera, setCamera] = useState(true);
+
+  // Live Stream Features & Interactivity State
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [likeCount, setLikeCount] = useState(9);
+  const [hearts, setHearts] = useState([]);
+  const [comboCount, setComboCount] = useState(0);
+  const [comboEmoji, setComboEmoji] = useState('❤️');
+  const [recentGift, setRecentGift] = useState({
+    senderName: 'Rocky',
+    giftEmoji: '🌹',
+    count: 1,
+  });
+  const [giftBanner, setGiftBanner] = useState({
+    senderName: 'THAKUR SAHAB',
+    receiverName: 'AB',
+    giftName: 'Lion King',
+  });
+  const [messages, setMessages] = useState([
+    { id: '1', senderName: 'Priyanshu', text: 'Welcome to the live show!', level: 12, isSvip: false },
+    { id: '2', senderName: 'Rocky', text: 'Hello everyone ❤️', level: 18, isSvip: false },
+    { id: '3', senderName: 'VIP Master', text: 'yha bhut shor ha', level: 30, isSvip: true, svipLevel: 1 },
+    { id: '4', senderName: 'Abhishek Kumar', text: 'I love you', level: 10, isSvip: false },
+  ]);
+
+  // PK Battle State
+  const [isPK, setIsPK] = useState(true);
+  const [leftScore, setLeftScore] = useState(140);
+  const [rightScore, setRightScore] = useState(3240);
+  const rivalUser = {
+    name: 'Shelly',
+    avatar: 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+  };
+
+  // Modals Visibility
+  const [giftModalVisible, setGiftModalVisible] = useState(false);
+  const [toolsModalVisible, setToolsModalVisible] = useState(false);
+  const [chatInputVisible, setChatInputVisible] = useState(false);
+
   const engineRef = useRef(null);
   const rtcRef = useRef(route.params?.rtc || null);
   const closing = useRef(false);
   const captureStarted = useRef(false);
+
   const close = async () => {
     if (closing.current) return;
     closing.current = true;
@@ -51,6 +108,7 @@ export default function LiveStreamScreen({ navigation, route }) {
       /* Host heartbeat lease expires after disconnection. */
     }
   };
+
   useEffect(() => {
     let disposed = false;
     let timer;
@@ -204,6 +262,7 @@ export default function LiveStreamScreen({ navigation, route }) {
       }
     };
   }, [roomId]);
+
   useEffect(
     () =>
       navigation.addListener('beforeRemove', event => {
@@ -223,35 +282,167 @@ export default function LiveStreamScreen({ navigation, route }) {
       }),
     [navigation],
   );
+
   const isHost = rtc?.isHost;
+
+  // Interactivity Handlers
+  const handleLike = () => {
+    setLikeCount(prev => prev + 1);
+    const heartColors = ['#F43F5E', '#EC4899', '#A855F7', '#38BDF8', '#F59E0B', '#10B981'];
+    const randomColor = heartColors[Math.floor(Math.random() * heartColors.length)];
+    setHearts(prev => [...prev.slice(-15), { id: 'heart-' + Date.now() + '-' + Math.random(), color: randomColor }]);
+  };
+
+  const handleHeartComplete = heartId => {
+    setHearts(prev => prev.filter(h => h.id !== heartId));
+  };
+
+  const handleSendMessage = text => {
+    const newMsg = {
+      id: 'msg-' + Date.now(),
+      senderName: isHost ? (room.host?.name || 'Broadcaster') : 'Me',
+      text,
+      level: 15,
+      isSvip: false,
+    };
+    setMessages(prev => [...prev.slice(-30), newMsg]);
+  };
+
+  const handleSendGift = ({ gift, quantity, receiver }) => {
+    setGiftModalVisible(false);
+    setComboEmoji(gift.emoji || '🎁');
+    setComboCount(prev => prev + quantity);
+    setRecentGift({
+      senderName: 'Me',
+      giftEmoji: gift.emoji || '🎁',
+      count: quantity,
+    });
+    setGiftBanner({
+      senderName: 'Me',
+      receiverName: receiver.name || 'Broadcaster',
+      giftName: gift.name,
+    });
+    if (receiver.name === rivalUser.name) {
+      setRightScore(prev => prev + gift.price * quantity);
+    } else {
+      setLeftScore(prev => prev + gift.price * quantity);
+    }
+  };
+
+  const handleSayHi = () => {
+    handleSendMessage('Hi there broadcaster! 👋');
+  };
+
+  const handleToggleMute = () => {
+    engineRef.current?.muteLocalAudioStream(!muted);
+    setMuted(!muted);
+  };
+
+  const handleToggleCamera = () => {
+    engineRef.current?.muteLocalVideoStream(camera);
+    setCamera(!camera);
+  };
+
+  const handleSwitchCamera = () => {
+    engineRef.current?.switchCamera();
+  };
+
+  const videoHeight = isPK ? height * 0.44 : height;
+
   return (
     <View style={styles.screen}>
-      {rtc && connected && (isHost || remoteReady) && (
-        <RtcSurfaceView
-          style={StyleSheet.absoluteFill}
-          canvas={{ uid: isHost ? 0 : rtc.hostUid }}
+      {/* 1. Main Video Area (Single Host or PK Split Screen) */}
+      <View style={[styles.videoContainer, { height: videoHeight }]}>
+        {isPK ? (
+          <View style={styles.pkSplitRow}>
+            {/* Left Stream: Broadcaster */}
+            <View style={styles.streamHalf}>
+              {rtc && connected && (isHost || remoteReady) ? (
+                <RtcSurfaceView
+                  style={StyleSheet.absoluteFill}
+                  canvas={{ uid: isHost ? 0 : rtc.hostUid }}
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Image source={getUserAvatar(room.host)} style={styles.streamFallbackAvatar} />
+                  <Text style={styles.fallbackText}>{room.host?.name || 'Broadcaster'}</Text>
+                </View>
+              )}
+              {/* Broadcaster Name & Score Tag */}
+              <View style={styles.streamTagLeft}>
+                <Text style={styles.starSmall}>⭐</Text>
+                <Text style={styles.streamScore}>{leftScore}</Text>
+              </View>
+            </View>
+
+            {/* Right Stream: Rival Broadcaster */}
+            <View style={styles.streamHalf}>
+              <View style={styles.avatarFallback}>
+                <Image source={getUserAvatar(rivalUser)} style={styles.streamFallbackAvatar} />
+                <Text style={styles.fallbackText}>{rivalUser.name}</Text>
+              </View>
+              {/* Rival Broadcaster Name & Score Tag */}
+              <View style={styles.streamTagRight}>
+                <Text style={styles.streamTagHostText}>💖 {rivalUser.name} 💖</Text>
+                <Text style={styles.streamScore}>⭐ {rightScore}</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          rtc && connected && (isHost || remoteReady) && (
+            <RtcSurfaceView
+              style={StyleSheet.absoluteFill}
+              canvas={{ uid: isHost ? 0 : rtc.hostUid }}
+            />
+          )
+        )}
+
+        {/* Ambient Dark/Gradient Overlay */}
+        <LinearGradient
+          colors={['rgba(15, 23, 42, 0.75)', 'transparent', 'rgba(15, 23, 42, 0.9)']}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
         />
-      )}
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.host}>
-          <Text style={styles.name}>
-            {room.host?.name || room.title || 'Live'}
-          </Text>
-          <Text style={styles.meta}>
-            LIVE · {room.viewerCount || 0} viewers
-          </Text>
-        </View>
-        <TouchableOpacity
-          accessibilityLabel="Leave live"
-          style={styles.control}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="close" size={26} color="#FFF" />
-        </TouchableOpacity>
       </View>
+
+      {/* 2. Top Header Bar (Host Capsule, Diamonds, Supporters, Close) */}
+      <View style={{ paddingTop: insets.top + 8 }}>
+        <LiveTopHeader
+          room={room}
+          isHost={isHost}
+          viewerCount={room.viewerCount || 0}
+          diamonds={room.totalDiamonds || 103190}
+          hourlyRank={36}
+          level={9}
+          isFollowing={isFollowing}
+          onFollow={() => setIsFollowing(!isFollowing)}
+          onClose={() => navigation.goBack()}
+          onPressHost={() => {}}
+        />
+      </View>
+
+      {/* 3. Luxury Broadcast Gift Banner */}
+      <LiveGiftBanner banner={giftBanner} />
+
+      {/* 4. PK Versus Bar */}
+      {isPK && (
+        <View style={styles.pkBarWrapper}>
+          <View style={styles.gentlemanPill}>
+            <Text style={styles.gentlemanText}>🕊️ Be Gentleman 🙏</Text>
+          </View>
+          <LivePKBar
+            isPKActive={isPK}
+            leftScore={leftScore}
+            rightScore={rightScore}
+            timeLeft="04:33"
+          />
+        </View>
+      )}
+
+      {/* 5. Center Status / Connection Indicator */}
       {(!connected || (!isHost && !remoteReady) || !!error) && (
         <View style={styles.status}>
-          {!error && <ActivityIndicator color="#FFF" />}
+          {!error && <ActivityIndicator color="#FFF" size="large" />}
           <Text style={styles.message}>
             {error ||
               (connected
@@ -260,67 +451,175 @@ export default function LiveStreamScreen({ navigation, route }) {
           </Text>
         </View>
       )}
-      {isHost && connected && (
-        <View style={[styles.controls, { bottom: insets.bottom + 24 }]}>
-          <TouchableOpacity
-            accessibilityLabel="Switch camera"
-            style={styles.control}
-            onPress={() => engineRef.current?.switchCamera()}
-          >
-            <Icon name="camera-reverse" size={26} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            accessibilityLabel={muted ? 'Unmute microphone' : 'Mute microphone'}
-            style={styles.control}
-            onPress={() => {
-              engineRef.current?.muteLocalAudioStream(!muted);
-              setMuted(!muted);
-            }}
-          >
-            <Icon name={muted ? 'mic-off' : 'mic'} size={26} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            accessibilityLabel={camera ? 'Turn camera off' : 'Turn camera on'}
-            style={styles.control}
-            onPress={() => {
-              engineRef.current?.muteLocalVideoStream(camera);
-              setCamera(!camera);
-            }}
-          >
-            <Icon
-              name={camera ? 'videocam' : 'videocam-off'}
-              size={26}
-              color="#FFF"
-            />
-          </TouchableOpacity>
-        </View>
-      )}
+
+      {/* 6. Lower Content: Floating Badges (Right) + Live Chat Stream (Left) */}
+      <View style={styles.lowerArea} pointerEvents="box-none">
+        <LiveChatOverlay
+          messages={messages}
+          recentGift={recentGift}
+          onSayHi={handleSayHi}
+          onPressMessage={() => {}}
+        />
+
+        <LiveFloatingSideBadges
+          hearts={hearts}
+          onHeartComplete={handleHeartComplete}
+          comboCount={comboCount}
+          comboEmoji={comboEmoji}
+          onPressTask={() => {}}
+          onPressEvent={() => {}}
+        />
+      </View>
+
+      {/* 7. Bottom Action Controls Bar */}
+      <LiveBottomControls
+        onOpenChat={() => setChatInputVisible(true)}
+        onOpenPK={() => setIsPK(!isPK)}
+        onOpenGift={() => setGiftModalVisible(true)}
+        onOpenPromo={() => {}}
+        onPressHeart={handleLike}
+        onOpenTools={() => setToolsModalVisible(true)}
+        likeCount={likeCount}
+        bottomPadding={insets.bottom + 10}
+      />
+
+      {/* 8. Modals: Gift Tray, Basic Tools, Live Chat Input */}
+      <LiveGiftTrayModal
+        visible={giftModalVisible}
+        onClose={() => setGiftModalVisible(false)}
+        coinBalance={1000}
+        hostUser={room.host || { name: room.title || 'Broadcaster' }}
+        rivalUser={rivalUser}
+        isPK={isPK}
+        onSendGift={handleSendGift}
+        onRecharge={() => {}}
+        bottomPadding={insets.bottom}
+      />
+
+      <LiveToolsBottomSheet
+        visible={toolsModalVisible}
+        onClose={() => setToolsModalVisible(false)}
+        isHost={isHost}
+        muted={muted}
+        camera={camera}
+        onSwitchCamera={handleSwitchCamera}
+        onToggleMute={handleToggleMute}
+        onToggleCamera={handleToggleCamera}
+        onShare={() => setToolsModalVisible(false)}
+        onReport={() => setToolsModalVisible(false)}
+        onDailyTask={() => setToolsModalVisible(false)}
+        bottomPadding={insets.bottom}
+      />
+
+      <LiveChatInputModal
+        visible={chatInputVisible}
+        onClose={() => setChatInputVisible(false)}
+        onSendMessage={handleSendMessage}
+      />
     </View>
   );
 }
+
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#080B18' },
-  header: {
-    flexDirection: 'row',
-    paddingHorizontal: 18,
-    alignItems: 'center',
+  screen: {
+    flex: 1,
+    backgroundColor: '#080B18',
     justifyContent: 'space-between',
   },
-  host: {
-    padding: 12,
-    borderRadius: 20,
-    backgroundColor: '#0008',
-    maxWidth: '80%',
+  videoContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    width: '100%',
+    backgroundColor: '#0F172A',
+    overflow: 'hidden',
   },
-  name: { color: '#FFF', fontWeight: '800', fontSize: 17 },
-  meta: { color: '#FDA4AF', fontWeight: '700', marginTop: 4 },
-  control: {
-    backgroundColor: '#0008',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  pkSplitRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  streamHalf: {
+    flex: 1,
+    backgroundColor: '#1E293B',
+    position: 'relative',
+    overflow: 'hidden',
+    borderRightWidth: 0.5,
+    borderLeftWidth: 0.5,
+    borderColor: '#334155',
+  },
+  avatarFallback: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#1E1B4B',
+  },
+  streamFallbackAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: '#EC4899',
+    marginBottom: 8,
+  },
+  fallbackText: {
+    color: '#CBD5E1',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  streamTagLeft: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 3,
+  },
+  streamTagRight: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    alignItems: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  streamTagHostText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  streamScore: {
+    color: '#FEF08A',
+    fontWeight: '900',
+    fontSize: 10,
+  },
+  starSmall: {
+    fontSize: 9,
+  },
+  pkBarWrapper: {
+    marginTop: 30,
+    zIndex: 15,
+  },
+  gentlemanPill: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(14, 165, 233, 0.35)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(14, 165, 233, 0.6)',
+  },
+  gentlemanText: {
+    color: '#E0F2FE',
+    fontSize: 10,
+    fontWeight: '800',
   },
   status: {
     position: 'absolute',
@@ -329,6 +628,7 @@ const styles = StyleSheet.create({
     right: 24,
     alignItems: 'center',
     gap: 14,
+    zIndex: 25,
   },
   message: {
     color: '#FFF',
@@ -338,10 +638,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
   },
-  controls: {
-    position: 'absolute',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 20,
+  lowerArea: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    position: 'relative',
+    zIndex: 10,
   },
 });

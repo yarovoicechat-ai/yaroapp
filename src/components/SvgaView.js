@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image, Pressable, Text } from 'react-native';
 import { NavigationContext } from '@react-navigation/native';
 import GiftMedia, { NativeSvgaPlayer as NativeSvga } from './GiftMedia';
+import AssetImage from './AssetImage';
+import { resolveMediaUrl } from '../utils/assetUrl';
 
 const normalizeUrl = (url) => {
   if (!url) return '';
@@ -20,11 +22,7 @@ const normalizeUrl = (url) => {
   if (/^(?:https?:\/\/|file:\/\/|content:\/\/|data:|asset:\/\/)/i.test(trimmed)) {
     return trimmed;
   }
-  if (trimmed.toLowerCase().endsWith('.svga') && !trimmed.includes('://')) {
-    return `asset://${trimmed.replace(/^\/+/, '')}`;
-  }
-  const clean = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  return `https://api.yaroapp.in${clean}`;
+  return resolveMediaUrl(trimmed);
 };
 
 /**
@@ -46,6 +44,7 @@ export default function SvgaView({
   onError,
 }) {
   const [failed, setFailed] = React.useState(false);
+  const [attempt, setAttempt] = React.useState(0);
   const navigation = React.useContext(NavigationContext);
   const subscribeToFocus = React.useCallback(callback => {
     if (!navigation) return () => {};
@@ -60,13 +59,22 @@ export default function SvgaView({
 
   React.useEffect(() => {
     setFailed(false);
+    setAttempt(0);
   }, [src]);
+  React.useEffect(() => {
+    if (!failed || attempt >= 2) return undefined;
+    const timer = setTimeout(() => { setAttempt(value => value + 1); setFailed(false); }, 1000 * (attempt + 1));
+    return () => clearTimeout(timer);
+  }, [failed, attempt]);
 
-  if (!src || (failed && normalizedFallback)) {
+  if (typeof source === 'number') return <Image source={source} style={style} resizeMode={resizeMode} />;
+
+  if (!src || failed) {
     if (normalizedFallback) {
-      return <Image source={{ uri: normalizedFallback }} style={style} resizeMode={resizeMode} />;
+      return <AssetImage source={{ uri: normalizedFallback }} style={style} resizeMode={resizeMode} />;
     }
-    return null;
+    return src ? <Pressable style={[style, { alignItems: 'center', justifyContent: 'center' }]} accessibilityLabel="Retry animation loading"
+      onPress={() => { setAttempt(value => value + 1); setFailed(false); }}><Text style={{ color: '#94A3B8', fontSize: 22 }}>↻</Text></Pressable> : null;
   }
 
   const isSvga = /\.svga(?:[?#]|$)/i.test(src);
@@ -82,7 +90,7 @@ export default function SvgaView({
           />
         ) : null}
         <NativeSvga
-            key={src}
+            key={`${src}:${attempt}`}
             source={src}
             loops={loops}
             autoPlay={autoPlay && isFocused}
@@ -91,7 +99,7 @@ export default function SvgaView({
             muteBuiltInAudio={muteBuiltInAudio}
             onPlaybackFinished={onFinish}
             onPlaybackError={(error) => {
-              if (normalizedFallback) setFailed(true);
+              setFailed(true);
               onError?.(error);
             }}
             style={[StyleSheet.absoluteFillObject, { backgroundColor: 'transparent' }]}

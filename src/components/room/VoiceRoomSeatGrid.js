@@ -6,6 +6,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import VipMicWave from './VipMicWave';
 import IdentityDisplayName from '../identity/IdentityDisplayName';
 import AvatarWithFrame from '../AvatarWithFrame';
+import SvgaView from '../SvgaView';
 import { DEFAULT_SEAT_IMAGE, LOCK_SEAT_IMAGE } from '../../utils/cosmeticResolver';
 
 const { width } = Dimensions.get('window');
@@ -107,8 +108,9 @@ export default function VoiceRoomSeatGrid({
                           resizeMode="cover"
                         />
                       ) : (
-                        <Image
-                          source={DEFAULT_SEAT_IMAGE}
+                        <SvgaView
+                          source={activeSeatSkin?.animationUrl || activeSeatSkin?.imageUrl || DEFAULT_SEAT_IMAGE}
+                          fallbackImage={activeSeatSkin?.imageUrl}
                           style={{ width: 56, height: 56, borderRadius: 28 }}
                           resizeMode="cover"
                         />
@@ -234,9 +236,10 @@ export default function VoiceRoomSeatGrid({
                             }}
                             resizeMode="cover"
                           />
-                        ) : activeSeatSkin?.imageUrl ? (
-                          <Image
-                            source={typeof activeSeatSkin.imageUrl === 'string' ? { uri: activeSeatSkin.imageUrl } : activeSeatSkin.imageUrl}
+                        ) : (activeSeatSkin?.animationUrl || activeSeatSkin?.imageUrl) ? (
+                          <SvgaView
+                            source={activeSeatSkin.animationUrl || activeSeatSkin.imageUrl}
+                            fallbackImage={activeSeatSkin.imageUrl}
                             style={{
                               width: circleSize,
                               height: circleSize,

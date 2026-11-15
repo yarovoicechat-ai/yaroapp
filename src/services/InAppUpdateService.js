@@ -3,7 +3,7 @@ import SpInAppUpdates, {
 } from 'sp-react-native-in-app-updates';
 import { Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
-import api from '../utils/apiUtil';
+import { apiPublic } from '../utils/apiUtil';
 
 class InAppUpdateService {
   constructor() {
@@ -16,38 +16,56 @@ class InAppUpdateService {
    * Returns details on update status.
    */
   async checkUpdateStatus() {
+    if (!this.pendingCheck) {
+      this.pendingCheck = this.readUpdateStatus().finally(() => { this.pendingCheck = null; });
+    }
+    return this.pendingCheck;
+  }
+
+  async readUpdateStatus() {
     const currentBuildNumber = parseInt(DeviceInfo.getBuildNumber() || '0', 10);
     const currentVersionName = DeviceInfo.getVersion();
 
     let playStoreUpdateAvailable = false;
     let playStoreInfo = null;
 
-    if (Platform.OS === 'android') {
-      try {
-        const result = await this.inAppUpdates.checkNeedsUpdate();
-        if (result && result.shouldUpdate) {
-          playStoreUpdateAvailable = true;
-          playStoreInfo = result;
+    const playCheck = async () => {
+      if (Platform.OS === 'android') {
+        let timeout;
+        try {
+          const result = await Promise.race([
+            this.inAppUpdates.checkNeedsUpdate(),
+            new Promise(resolve => { timeout = setTimeout(() => resolve(null), 5000); }),
+          ]);
+          if (result && result.shouldUpdate) {
+            playStoreUpdateAvailable = true;
+            playStoreInfo = result;
+          }
+        } catch (err) {
+          console.log('[IN_APP_UPDATE] Play Store check note:', err?.message || err);
+        } finally {
+          clearTimeout(timeout);
         }
-      } catch (err) {
-        console.log('[IN_APP_UPDATE] Play Store check note:', err?.message || err);
       }
-    }
+    };
 
     // Check optional backend minimumSupportedVersion
     let backendForceUpdate = false;
-    try {
-      const response = await api.get('/settings');
-      if (response && response.data && response.data.success && response.data.data) {
-        const settings = response.data.data;
-        const minVersion = Number(settings.minimumSupportedVersion || 0);
-        if (minVersion > 0 && currentBuildNumber < minVersion) {
-          backendForceUpdate = true;
+    const backendCheck = async () => {
+      try {
+        const response = await apiPublic.get('/public/settings', { timeout: 5000, networkRetry: false });
+        if (response && response.data && response.data.success && response.data.data) {
+          const settings = response.data.data;
+          const minVersion = Number(settings.minimumSupportedVersion || 0);
+          if (minVersion > 0 && currentBuildNumber < minVersion) {
+            backendForceUpdate = true;
+          }
         }
+      } catch (backendErr) {
+        // Retain the existing offline fallback to the Play Store check.
       }
-    } catch (backendErr) {
-      // Ignore backend settings network error, fallback to Play Store check
-    }
+    };
+    await Promise.all([playCheck(), backendCheck()]);
 
     const isUpdateRequired = playStoreUpdateAvailable || backendForceUpdate;
 

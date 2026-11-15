@@ -51,7 +51,7 @@ export default function LiveChatOverlay({
         style={styles.sayHiChip}
       >
         <LinearGradient
-          colors={['#06B6D4', '#0D9488']}
+          colors={['#00ECC9', '#00CDBA']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.sayHiGradient}

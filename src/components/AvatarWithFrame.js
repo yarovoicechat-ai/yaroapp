@@ -6,6 +6,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { getUserAvatar, getCachedAvatarSource } from '../utils/avatarUtil';
 import { normalizeCosmeticAsset, resolveFrameAsset } from '../utils/cosmeticResolver';
 import SvgaView from './SvgaView';
+import AssetImage from './AssetImage';
 import { getRankFrame, HOLE_CONFIG } from './ranking/RankAvatar';
 
 /**
@@ -264,9 +265,8 @@ function AvatarWithFrame({
           },
         ]}
       >
-        <Image
+        <AssetImage
           source={avatar}
-          defaultSource={getUserAvatar(null, user?.gender)}
           resizeMethod="resize"
           fadeDuration={0}
           style={[
@@ -319,13 +319,14 @@ function AvatarWithFrame({
         >
           <SvgaView
             source={uploadedFrame?.animationUrl || frameOverlaySource}
+            fallbackImage={typeof frameOverlaySource === 'string' && !/\.svga(?:[?#]|$)/i.test(frameOverlaySource) ? frameOverlaySource : undefined}
             style={StyleSheet.absoluteFillObject}
             loops={0}
             resizeMode="contain"
           />
         </View>
       ) : frameOverlaySource ? (
-        <Image
+        <AssetImage
           source={typeof frameOverlaySource === 'string' ? { uri: frameOverlaySource } : frameOverlaySource}
           style={{
             position: 'absolute',

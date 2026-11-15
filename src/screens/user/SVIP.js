@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   AppState,
-  Image,
   Modal,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -22,6 +21,8 @@ import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/saf
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { presentVipTier } from '../../utils/vipPlanPresentation';
 import SvgaView from '../../components/SvgaView';
+import AssetImage from '../../components/AssetImage';
+import CosmeticAsset from '../../components/cosmetics/CosmeticAsset';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
 import { AuthContext } from '../../context/AuthProvider';
 import { AlertService } from '../../utils/AlertService';
@@ -219,7 +220,7 @@ export default function SVIPScreen() {
                 loops={0}
               />
             ) : currentTier.badge?.imageUrl ? (
-              <Image
+              <AssetImage
                 source={{ uri: currentTier.badge.imageUrl }}
                 style={styles.heroBadgeImage}
                 resizeMode="contain"
@@ -251,15 +252,7 @@ export default function SVIPScreen() {
                 })}
               >
                 <View style={styles.previewCardInner}>
-                  {currentTier.entry.imageUrl || currentTier.entry.previewUrl ? (
-                    <Image
-                      source={{ uri: currentTier.entry.imageUrl || currentTier.entry.previewUrl }}
-                      style={{ width: 110, height: 95 }}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <Icon name="car-sport" size={48} color="#FBBF24" />
-                  )}
+                  <CosmeticAsset item={currentTier.entry} previewOnly style={{ width: 110, height: 95 }} resizeMode="contain" />
                   <View style={styles.previewPlayPill}>
                     <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
                     <Text style={styles.previewPlayText}>Preview</Text>
@@ -299,15 +292,7 @@ export default function SVIPScreen() {
                 })}
               >
                 <View style={styles.previewCardInner}>
-                  {currentTier.badge.imageUrl ? (
-                    <Image
-                      source={{ uri: currentTier.badge.imageUrl }}
-                      style={{ width: 80, height: 80 }}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <Icon name="ribbon-outline" size={44} color="#FBBF24" />
-                  )}
+                  <CosmeticAsset item={currentTier.badge} previewOnly style={{ width: 80, height: 80 }} resizeMode="contain" />
                   <View style={styles.previewPlayPill}>
                     <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
                     <Text style={styles.previewPlayText}>Preview</Text>
@@ -327,15 +312,7 @@ export default function SVIPScreen() {
                 })}
               >
                 <View style={styles.previewCardInner}>
-                  {currentTier.chatBubble.imageUrl ? (
-                    <Image
-                      source={{ uri: currentTier.chatBubble.imageUrl }}
-                      style={{ width: 95, height: 75 }}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <Icon name="chatbubble-ellipses" size={44} color="#FBBF24" />
-                  )}
+                  <CosmeticAsset item={currentTier.chatBubble} previewOnly style={{ width: 95, height: 75 }} resizeMode="contain" />
                   <View style={styles.previewPlayPill}>
                     <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
                     <Text style={styles.previewPlayText}>Preview</Text>
@@ -355,15 +332,7 @@ export default function SVIPScreen() {
                 })}
               >
                 <View style={styles.previewCardInner}>
-                  {currentTier.tag.imageUrl ? (
-                    <Image
-                      source={{ uri: currentTier.tag.imageUrl }}
-                      style={{ width: 85, height: 60 }}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <Icon name="pricetag" size={44} color="#FBBF24" />
-                  )}
+                  <CosmeticAsset item={currentTier.tag} previewOnly style={{ width: 85, height: 60 }} resizeMode="contain" />
                   <View style={styles.previewPlayPill}>
                     <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
                     <Text style={styles.previewPlayText}>Preview</Text>
@@ -383,15 +352,7 @@ export default function SVIPScreen() {
                 })}
               >
                 <View style={styles.previewCardInner}>
-                  {currentTier.micWave.imageUrl ? (
-                    <Image
-                      source={{ uri: currentTier.micWave.imageUrl }}
-                      style={{ width: 85, height: 85 }}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <Icon name="mic" size={44} color="#FBBF24" />
-                  )}
+                  <CosmeticAsset item={currentTier.micWave} previewOnly style={{ width: 85, height: 85 }} resizeMode="contain" />
                   <View style={styles.previewPlayPill}>
                     <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
                     <Text style={styles.previewPlayText}>Preview</Text>
@@ -411,15 +372,7 @@ export default function SVIPScreen() {
                 })}
               >
                 <View style={styles.previewCardInner}>
-                  {currentTier.profileCard.imageUrl ? (
-                    <Image
-                      source={{ uri: currentTier.profileCard.imageUrl }}
-                      style={{ width: 95, height: 85 }}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <Icon name="person" size={44} color="#FBBF24" />
-                  )}
+                  <CosmeticAsset item={currentTier.profileCard} previewOnly style={{ width: 95, height: 85 }} resizeMode="contain" />
                   <View style={styles.previewPlayPill}>
                     <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
                     <Text style={styles.previewPlayText}>Preview</Text>
@@ -439,15 +392,7 @@ export default function SVIPScreen() {
                 })}
               >
                 <View style={styles.previewCardInner}>
-                  {currentTier.giftBroadcast.imageUrl ? (
-                    <Image
-                      source={{ uri: currentTier.giftBroadcast.imageUrl }}
-                      style={{ width: 95, height: 80 }}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <Icon name="gift" size={44} color="#FBBF24" />
-                  )}
+                  <CosmeticAsset item={currentTier.giftBroadcast} previewOnly style={{ width: 95, height: 80 }} resizeMode="contain" />
                   <View style={styles.previewPlayPill}>
                     <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
                     <Text style={styles.previewPlayText}>Preview</Text>
@@ -467,15 +412,7 @@ export default function SVIPScreen() {
                 })}
               >
                 <View style={styles.previewCardInner}>
-                  {currentTier.vipId.imageUrl ? (
-                    <Image
-                      source={{ uri: currentTier.vipId.imageUrl }}
-                      style={{ width: 85, height: 70 }}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <Icon name="finger-print" size={44} color="#FBBF24" />
-                  )}
+                  <CosmeticAsset item={currentTier.vipId} previewOnly style={{ width: 85, height: 70 }} resizeMode="contain" />
                   <View style={styles.previewPlayPill}>
                     <Icon name="play" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
                     <Text style={styles.previewPlayText}>Preview</Text>

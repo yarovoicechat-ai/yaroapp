@@ -16,9 +16,9 @@ export default function LiveTopHeader({
   isHost = false,
   viewerCount = 0,
   topSupporters = [],
-  diamonds = 103190,
-  hourlyRank = 36,
-  level = 9,
+  diamonds = 0,
+  hourlyRank = 0,
+  level = 1,
   isFollowing = false,
   onFollow,
   onClose,
@@ -29,12 +29,7 @@ export default function LiveTopHeader({
   const hostName = host.name || room.title || 'Live Broadcaster';
   const hostAvatar = getUserAvatar(host);
 
-  const defaultSupporters = [
-    { id: '1', name: 'King', avatar: 'https://api.yaroapp.in/uploads/avatars/male_default.webp', score: '75K', crown: '#F59E0B' },
-    { id: '2', name: 'Queen', avatar: 'https://api.yaroapp.in/uploads/avatars/female_default.webp', score: '9K', crown: '#94A3B8' },
-    { id: '3', name: 'Prince', avatar: 'https://api.yaroapp.in/uploads/avatars/male_default.webp', score: '4.5K', crown: '#CD7F32' },
-  ];
-  const supporters = topSupporters.length > 0 ? topSupporters : defaultSupporters;
+  const supporters = topSupporters;
 
   return (
     <View style={styles.container}>
@@ -58,7 +53,7 @@ export default function LiveTopHeader({
             <View style={styles.charmRow}>
               <Text style={styles.flameIcon}>🔥</Text>
               <Text style={styles.charmText}>
-                {room.hotScore ? String(room.hotScore) : '2,170'}
+                {room.hotScore ? String(room.hotScore) : '0'}
               </Text>
             </View>
           </View>
@@ -70,7 +65,7 @@ export default function LiveTopHeader({
               style={[styles.followBtn, isFollowing && styles.followingBtn]}
             >
               <LinearGradient
-                colors={isFollowing ? ['#475569', '#334155'] : ['#06B6D4', '#0EA5E9']}
+                colors={isFollowing ? ['#475569', '#334155'] : ['#00ECC9', '#00CDBA']}
                 style={styles.followGradient}
               >
                 <Icon
@@ -78,6 +73,7 @@ export default function LiveTopHeader({
                   size={14}
                   color="#FFF"
                 />
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{isFollowing ? 'Following' : 'Follow Me'}</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
@@ -172,7 +168,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 3,
     paddingRight: 6,
-    maxWidth: 165,
+    maxWidth: 190,
+    flexShrink: 1,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
   },
@@ -229,9 +226,11 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   followGradient: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    flexDirection: 'row',
+    paddingHorizontal: 6,
+    gap: 2,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },

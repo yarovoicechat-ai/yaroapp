@@ -69,7 +69,7 @@ export const getCachedAvatarSource = (rawUri) => {
   const key = rawUri.trim();
   let cached = avatarSourceCache.get(key);
   if (!cached) {
-    cached = { uri: key, cache: 'force-cache' };
+    cached = { uri: key, cache: 'default' };
     if (avatarSourceCache.size > 300) {
       const oldestKey = avatarSourceCache.keys().next().value;
       avatarSourceCache.delete(oldestKey);
@@ -116,19 +116,18 @@ export const getUserAvatar = (userOrImage, fallbackGender = null) => {
           userOrImage.equippedFrameAsset?.animationUrl ||
           null;
 
-        const candidate =
-          userOrImage.avatar ||
-          userOrImage.profilePic ||
-          userOrImage.photo ||
-          userOrImage.profileImage ||
-          userOrImage.image;
+        const candidate = [userOrImage.avatar, userOrImage.profilePic,
+          userOrImage.photo, userOrImage.profileImage, userOrImage.image]
+          .map(value => value?.uri || value)
+          .find(value => typeof value === 'number' || (isValidAvatarUrl(value) &&
+            value !== frameUrl && !/\.svga(?:[?#]|$)/i.test(value)));
 
         // Candidate must not be the frame asset URL or an SVGA animation
         if (
           candidate &&
-          typeof candidate === 'string' &&
+          (typeof candidate === 'string' || typeof candidate === 'number') &&
           candidate !== frameUrl &&
-          !candidate.toLowerCase().endsWith('.svga')
+          (typeof candidate === 'number' || !/\.svga(?:[?#]|$)/i.test(candidate))
         ) {
           customUrl = candidate;
         }

@@ -1,4 +1,5 @@
 import { getUserAvatar } from './avatarUtil';
+import { resolveMediaUrl } from './assetUrl';
 
 export const USER_COSMETIC_FIELDS = [
   'nameEffect',
@@ -40,14 +41,7 @@ export const USER_COSMETIC_FIELDS = [
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
 
 export const resolveAssetUrl = (url) => {
-  if (!url || typeof url !== 'string') return '';
-  const trimmed = url.trim();
-  if (!trimmed) return '';
-  if (/^(?:https?:\/\/|file:\/\/|content:\/\/|data:|asset:\/\/)/i.test(trimmed)) {
-    return trimmed;
-  }
-  const clean = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  return `https://api.yaroapp.in${clean}`;
+  return resolveMediaUrl(url);
 };
 
 const isRemoteAssetUrl = (value) =>
@@ -514,7 +508,9 @@ const normalizeSeatSkin = (value) => {
     id: asset.id || asset.itemId || asset._id || base.id,
     itemId: asset.itemId || asset.id || asset._id || base.itemId,
     name: asset.name || base.name,
-    imageUrl: asset.imageUrl || asset.coverImage || metadata.imageUrl || base.imageUrl,
+    imageUrl: typeof (asset.imageUrl || asset.coverImage || metadata.imageUrl) === 'string'
+      ? resolveAssetUrl(asset.imageUrl || asset.coverImage || metadata.imageUrl) : (asset.imageUrl || asset.coverImage || metadata.imageUrl || base.imageUrl),
+    animationUrl: resolveAssetUrl(asset.animationUrl || metadata.animationUrl),
     seatSkinType: asset.seatSkinType || metadata.seatSkinType || base.seatSkinType,
     icon: asset.icon || metadata.icon || base.icon,
     previewColor:

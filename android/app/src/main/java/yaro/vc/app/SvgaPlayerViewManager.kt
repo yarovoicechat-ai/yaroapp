@@ -59,6 +59,7 @@ class ResumableSVGAImageView(context: Context) : SVGAImageView(context) {
 
 class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
   private val sources = WeakHashMap<SVGAImageView, String>()
+  private val loadingSources = WeakHashMap<SVGAImageView, String>()
   private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
   private fun emit(view: SVGAImageView, event: String) {
@@ -147,6 +148,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
     val rView = view as? ResumableSVGAImageView
     if (source.isNullOrBlank()) {
       sources.remove(view)
+      loadingSources.remove(view)
       rView?.lastVideoItem = null
       mainHandler.post {
         view.stopAnimation(false)
@@ -159,13 +161,17 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
       rView.resumeIfNeeded()
       return
     }
+    if (loadingSources[view] == source) return
 
     sources[view] = source
+    loadingSources[view] = source
+    rView?.lastVideoItem = null
 
     val callback = object : SVGAParser.ParseCompletion {
       override fun onComplete(videoItem: SVGAVideoEntity) {
         mainHandler.post {
           if (sources[view] != source) return@post
+          loadingSources.remove(view)
           rView?.lastVideoItem = videoItem
           val drawable = SVGADrawable(videoItem)
           view.setImageDrawable(drawable)
@@ -176,8 +182,12 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
       }
 
       override fun onError() {
-        android.util.Log.e("SvgaPlayerViewManager", "Error decoding SVGA from source: $source")
-        emit(view, "topPlaybackError")
+        mainHandler.post {
+          if (sources[view] != source) return@post
+          loadingSources.remove(view)
+          android.util.Log.e("SvgaPlayerViewManager", "Error decoding SVGA")
+          emit(view, "topPlaybackError")
+        }
       }
     }
 
@@ -212,6 +222,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
         SVGAParser.shareParser().decodeFromAssets(assetPath, callback)
       }
     } catch (e: Exception) {
+      loadingSources.remove(view)
       android.util.Log.e("SvgaPlayerViewManager", "Exception loading SVGA: $source", e)
       emit(view, "topPlaybackError")
     }
@@ -219,6 +230,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
 
   override fun onDropViewInstance(view: SVGAImageView) {
     sources.remove(view)
+    loadingSources.remove(view)
     (view as? ResumableSVGAImageView)?.lastVideoItem = null
     view.stopAnimation(false)
     view.setImageDrawable(null)

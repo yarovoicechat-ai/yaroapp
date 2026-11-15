@@ -17,3 +17,10 @@ test('asset can gain navigation context without changing hook order or crashing'
  expect(tree.root.findByType('NativeSvga').props.autoPlay).toBe(true);
  await act(async () => tree.unmount());
 });
+
+test('server SVGA path is downloaded over HTTPS rather than looked up in APK assets', async () => {
+ let tree;
+ await act(async () => { tree = renderer.create(<SvgaView source="/uploads/store/real.svga" />); });
+ expect(tree.root.findByType('NativeSvga').props.source).toBe('https://api.yaroapp.in/uploads/store/real.svga');
+ await act(async () => tree.unmount());
+});

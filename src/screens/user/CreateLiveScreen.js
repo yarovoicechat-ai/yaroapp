@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   ScrollView,
   Image,
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -27,13 +29,21 @@ export default function CreateLiveScreen({ navigation }) {
     setBusy(true);
     setError('');
     try {
+      if (Platform.OS === 'android') {
+        const permissions = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.CAMERA, PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+        ]);
+        if (Object.values(permissions).some(value => value !== PermissionsAndroid.RESULTS.GRANTED)) {
+          throw new Error('Camera and microphone permissions are required to go live.');
+        }
+      }
       const res = await apiUtil.post('/live/rooms', {
         title: title.trim(),
         category,
-        coverImage: /^https:\/\//i.test(user?.image || '') ? user.image : '',
+        coverImage: /^https:\/\//i.test(user?.avatar || user?.image || '') ? (user.avatar || user.image) : '',
       });
       const { room, rtc } = res.data.data;
-      navigation.navigate('LiveStream', { roomId: room._id, room, rtc });
+      navigation.navigate('LiveStream', { roomId: room._id, room, rtc, permissionsGranted: true });
     } catch (e) {
       setError(
         e.response?.data?.message || e.message || 'Could not start live.',

@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Image,
   Platform,
   StyleSheet,
-  View,
+  Pressable,
+  Text,
   requireNativeComponent,
 } from 'react-native';
 import { SvgUri } from 'react-native-svg';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Video from 'react-native-video';
 import { SvgaPlayer } from '@dasimems/react-native-svga';
+import AssetImage from './AssetImage';
 
 export const NativeSvgaPlayer = Platform.OS === 'android'
   ? requireNativeComponent('SvgaPlayerView')
@@ -38,7 +38,14 @@ const GiftMedia = ({
   onError,
 }) => {
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [source]);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => { setFailed(false); setAttempt(0); }, [source]);
+  useEffect(() => {
+    if (!failed || attempt >= 2) return undefined;
+    const timer = setTimeout(() => { setAttempt(value => value + 1); setFailed(false); }, 1000 * (attempt + 1));
+    return () => clearTimeout(timer);
+  }, [failed, attempt]);
+  const fail = error => { setFailed(true); onError?.(error); };
   const type = useMemo(() => inferType(source, mediaType), [source, mediaType]);
   const flattenedStyle = StyleSheet.flatten(style) || {};
   const width = flattenedStyle.width || '100%';
@@ -46,12 +53,13 @@ const GiftMedia = ({
 
   if (!source || failed) {
     if (fallbackSource) {
-      return <Image source={fallbackSource} style={style} resizeMode={resizeMode} />;
+      return <AssetImage source={fallbackSource} style={style} resizeMode={resizeMode} />;
     }
     return (
-      <View style={[styles.fallback, style]}>
-        <Icon name="gift-outline" size={32} color="#FFD76A" />
-      </View>
+      <Pressable style={[styles.fallback, style]} accessibilityLabel="Retry media loading"
+        onPress={() => { setAttempt(value => value + 1); setFailed(false); }}>
+        <Text style={{ color: '#94A3B8', fontSize: 22 }}>↻</Text>
+      </Pressable>
     );
   }
 
@@ -59,18 +67,20 @@ const GiftMedia = ({
     if (NativeSvgaPlayer) {
       return (
         <NativeSvgaPlayer
+          key={`${source}:${attempt}`}
           source={source}
           style={style}
           loops={repeat ? 0 : 1}
           autoPlay
           scaleMode={resizeMode === 'contain' ? 'aspectFit' : 'aspectFill'}
           onPlaybackFinished={onFinish}
-          onPlaybackError={(error) => { setFailed(true); onError?.(error); }}
+          onPlaybackError={fail}
         />
       );
     }
     return (
       <SvgaPlayer
+        key={`${source}:${attempt}`}
         source={source}
         style={style}
         loops={repeat ? 0 : 1}
@@ -78,7 +88,7 @@ const GiftMedia = ({
         muteBuiltInAudio={muted}
         scaleMode={resizeMode === 'contain' ? 'aspectFit' : 'aspectFill'}
         onFinish={onFinish}
-        onError={(error) => { setFailed(true); onError?.(error); }}
+        onError={fail}
       />
     );
   }
@@ -86,10 +96,11 @@ const GiftMedia = ({
   if (type === 'svg') {
     return (
       <SvgUri
+        key={`${source}:${attempt}`}
         uri={source}
         width={width}
         height={height}
-        onError={() => setFailed(true)}
+        onError={fail}
       />
     );
   }
@@ -97,6 +108,7 @@ const GiftMedia = ({
   if (type === 'video' || type === 'mp4') {
     return (
       <Video
+        key={`${source}:${attempt}`}
         source={{ uri: source }}
         style={style}
         resizeMode={resizeMode}
@@ -106,7 +118,7 @@ const GiftMedia = ({
         playInBackground={false}
         playWhenInactive={false}
         ignoreSilentSwitch="ignore"
-        onError={() => setFailed(true)}
+        onError={fail}
       />
     );
   }
@@ -114,11 +126,11 @@ const GiftMedia = ({
   // Fresco dependencies enable animated GIF and animated WebP playback on
   // Android; static PNG/JPEG/WebP uses the same component.
   return (
-    <Image
+    <AssetImage
       source={{ uri: source }}
       style={style}
       resizeMode={resizeMode}
-      onError={() => setFailed(true)}
+      onError={onError}
     />
   );
 };

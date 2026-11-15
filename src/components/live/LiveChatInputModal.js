@@ -44,7 +44,7 @@ export default function LiveChatInputModal({
     >
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <TouchableOpacity
           style={StyleSheet.absoluteFillObject}
@@ -53,6 +53,9 @@ export default function LiveChatInputModal({
         />
 
         <View style={styles.inputContainer}>
+<View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+            {['Hello', 'Please sing something', 'You’re on fire!'].map(message => <TouchableOpacity key={message} onPress={() => setText(message)} style={{ backgroundColor: '#F1EDF5', borderRadius: 16, padding: 8 }}><Text style={{ color: '#42354C', fontSize: 11 }}>{message}</Text></TouchableOpacity>)}
+          </View>
           {/* Quick Emoji Bar */}
           <View style={styles.emojiRow}>
             {QUICK_EMOJIS.map(em => (
@@ -72,7 +75,7 @@ export default function LiveChatInputModal({
               autoFocus
               value={text}
               onChangeText={setText}
-              placeholder="Say something nice..."
+              placeholder="Say something…"
               placeholderTextColor="#94A3B8"
               maxLength={150}
               returnKeyType="send"
@@ -106,7 +109,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   inputContainer: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 16,
@@ -134,11 +137,11 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: 'rgba(30, 41, 59, 0.85)',
+    backgroundColor: '#F4F4F6',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    color: '#FFF',
+    color: '#292335',
     fontSize: 14,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',

@@ -39,7 +39,8 @@ const addNetworkRetry = (client) => {
     async error => {
       const config = error.config;
       const retryable = !error.response || [502, 503, 504].includes(error.response?.status);
-      if (config && retryable && !config.__networkRetried) {
+      const readOnly = ['get', 'head', 'options'].includes(String(config?.method || 'get').toLowerCase());
+      if (config && readOnly && config.networkRetry !== false && retryable && !config.__networkRetried) {
         config.__networkRetried = true;
         await new Promise(resolve => setTimeout(resolve, 700));
         return client.request(config);

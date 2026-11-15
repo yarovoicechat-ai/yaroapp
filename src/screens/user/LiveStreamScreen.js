@@ -11,6 +11,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -37,6 +38,10 @@ import LiveBottomControls from '../../components/live/LiveBottomControls';
 import LiveGiftTrayModal from '../../components/live/LiveGiftTrayModal';
 import LiveToolsBottomSheet from '../../components/live/LiveToolsBottomSheet';
 import LiveChatInputModal from '../../components/live/LiveChatInputModal';
+import LiveConnectionSheet from '../../components/live/LiveConnectionSheet';
+import LiveRechargeSheet from '../../components/live/LiveRechargeSheet';
+import LiveGuestRequestsSheet from '../../components/live/LiveGuestRequestsSheet';
+import { getSocket } from '../../sockets';
 
 const { width, height } = Dimensions.get('window');
 
@@ -45,38 +50,36 @@ export default function LiveStreamScreen({ navigation, route }) {
   const { activeRoom, leaveRoom } = useVoiceRoom();
   const roomId = route.params?.roomId;
   const [room, setRoom] = useState(route.params?.room || {});
-  const [rtc, setRtc] = useState(null);
+  const [rtc, setRtc] = useState(route.params?.rtc || null);
+  const [previewReady, setPreviewReady] = useState(false);
   const [connected, setConnected] = useState(false);
   const [remoteReady, setRemoteReady] = useState(false);
   const [error, setError] = useState('');
   const [muted, setMuted] = useState(false);
   const [camera, setCamera] = useState(true);
+  const [connectionVisible, setConnectionVisible] = useState(false);
+  const [requestPending, setRequestPending] = useState(false);
+  const [mirrored, setMirrored] = useState(false);
+  const [coinBalance, setCoinBalance] = useState(0);
+  const [sendingGift, setSendingGift] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [beauty, setBeauty] = useState(false);
+  const [rechargeVisible, setRechargeVisible] = useState(false);
+  const [requestsVisible, setRequestsVisible] = useState(false);
+  const [joinRequests, setJoinRequests] = useState([]);
 
   // Live Stream Features & Interactivity State
   const [isFollowing, setIsFollowing] = useState(false);
-  const [likeCount, setLikeCount] = useState(9);
+  const [likeCount, setLikeCount] = useState(room.totalLikes || 0);
   const [hearts, setHearts] = useState([]);
   const [comboCount, setComboCount] = useState(0);
   const [comboEmoji, setComboEmoji] = useState('❤️');
-  const [recentGift, setRecentGift] = useState({
-    senderName: 'Rocky',
-    giftEmoji: '🌹',
-    count: 1,
-  });
-  const [giftBanner, setGiftBanner] = useState({
-    senderName: 'THAKUR SAHAB',
-    receiverName: 'AB',
-    giftName: 'Lion King',
-  });
-  const [messages, setMessages] = useState([
-    { id: '1', senderName: 'Priyanshu', text: 'Welcome to the live show!', level: 12, isSvip: false },
-    { id: '2', senderName: 'Rocky', text: 'Hello everyone ❤️', level: 18, isSvip: false },
-    { id: '3', senderName: 'VIP Master', text: 'yha bhut shor ha', level: 30, isSvip: true, svipLevel: 1 },
-    { id: '4', senderName: 'Abhishek Kumar', text: 'I love you', level: 10, isSvip: false },
-  ]);
+  const [recentGift, setRecentGift] = useState(null);
+  const [giftBanner, setGiftBanner] = useState(null);
+  const [messages, setMessages] = useState([]);
 
   // PK Battle State - Default is false (active only during PK match)
-  const [isPK, setIsPK] = useState(Boolean(route.params?.isPK || room.isPKActive || room.pkBattleActive || false));
+  const [isPK] = useState(Boolean(route.params?.isPK || room.isPKActive || room.pkBattleActive || false));
   const [leftScore, setLeftScore] = useState(room.leftScore || 0);
   const [rightScore, setRightScore] = useState(room.rightScore || 0);
   const rivalUser = room.rivalUser || {
@@ -93,10 +96,139 @@ export default function LiveStreamScreen({ navigation, route }) {
   const rtcRef = useRef(route.params?.rtc || null);
   const closing = useRef(false);
   const captureStarted = useRef(false);
+  const guestCamera = useRef(true);
+  const guestMuted = useRef(false);
+  const [guests, setGuests] = useState(room.guests || []);
+  const roomRef = useRef(room);
+  roomRef.current = room;
+  const giftSendingRef = useRef(false);
+
+  const refreshBalance = async () => {
+    try {
+      const response = await apiUtil.get('/user/profile');
+      const profile = response.data?.data?.user || response.data?.data;
+      setCoinBalance(Number(profile?.diamonds || 0));
+    } catch (_) { /* Keep the last confirmed balance while offline. */ }
+  };
+  const openRecharge = () => {
+    setGiftModalVisible(false);
+    setRechargeVisible(true);
+  };
+  const followHost = async () => {
+    const hostId = room.host?.userId || room.host?._id;
+    if (!hostId || followLoading) return;
+    setFollowLoading(true);
+    try {
+      await apiUtil.post('/user/follow/' + encodeURIComponent(hostId));
+      setIsFollowing(value => !value);
+    } catch (e) { AlertService.show('Follow', e.response?.data?.message || 'Please try again.', 'error'); }
+    finally { setFollowLoading(false); }
+  };
+  const closeConnection = () => {
+    setConnectionVisible(false);
+    if (!rtcRef.current?.isCoHost) {
+      engineRef.current?.stopPreview();
+      captureStarted.current = false;
+    }
+  };
+  const openConnection = async () => {
+    if (!engineRef.current || !connected) return;
+    if (Platform.OS === 'android') {
+      const result = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.CAMERA, PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+      ]);
+      if (Object.values(result).some(value => value !== PermissionsAndroid.RESULTS.GRANTED)) {
+        AlertService.show('Permission required', 'Allow camera and microphone to preview a connection.', 'info');
+        return;
+      }
+    }
+    if (closing.current || !engineRef.current) return;
+    engineRef.current.startPreview();
+    captureStarted.current = true;
+    setConnectionVisible(true);
+  };
+  const requestConnection = () => {
+    const socket = getSocket();
+    if (!socket?.connected) {
+      AlertService.show('Reconnecting', 'Please try again when connected.', 'info');
+      return;
+    }
+    guestCamera.current = camera;
+    guestMuted.current = muted;
+    socket.emit('live:apply_join', { roomId });
+    setRequestPending(true);
+  };
+
+  useEffect(() => {
+    const socket = getSocket();
+    refreshBalance();
+    if (!socket) return undefined;
+    const join = () => socket.emit('live:join', { roomId });
+    const handlers = {
+      connect: join,
+      'live:chat_message': message => setMessages(current => [...current.slice(-49), message]),
+      'live:viewer_joined': data => setRoom(current => ({ ...current, viewerCount: data.viewerCount })),
+      'live:viewer_left': data => setRoom(current => ({ ...current, viewerCount: data.viewerCount })),
+      'live:like_update': data => setLikeCount(data.totalLikes),
+      'live:gift_received': data => {
+        setComboCount(data.gift?.quantity || 1);
+        setComboEmoji('🎁');
+        setGiftBanner({ senderName: data.sender?.name, receiverName: roomRef.current.host?.name, giftName: data.gift?.name });
+        setRecentGift({ senderName: data.sender?.name, giftEmoji: '🎁', count: data.gift?.quantity });
+        setRoom(current => ({ ...current, totalDiamonds: data.totalDiamonds, topSupporters: data.topSupporters }));
+        setLeftScore(data.leftScore || 0); setRightScore(data.rightScore || 0);
+        refreshBalance();
+      },
+      'live:error': data => { setRequestPending(false); AlertService.show('Live', data.message, 'error'); },
+      'live:guest_rejected': data => {
+        if (data.roomId !== roomId) return;
+        setRequestPending(false);
+        AlertService.show('Connection request', 'The broadcaster declined your request.', 'info');
+      },
+      'live:join_request_received': data => {
+        if (data.roomId !== roomId || !rtcRef.current?.isHost) return;
+        setJoinRequests(current => [...current.filter(user => user.id !== data.user.id), data.user]);
+        Alert.alert('Connection request', data.user.name + ' wants to join your live.', [
+          { text: 'Decline', onPress: () => respondToRequest(data.user.id, false) },
+          { text: 'Accept', onPress: () => respondToRequest(data.user.id, true) },
+        ]);
+      },
+      'live:guest_accepted': data => {
+        if (data.roomId !== roomId || closing.current || !engineRef.current) return;
+        const engine = engineRef.current;
+        engine.renewToken(data.rtc.token);
+        engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+        engine.updateChannelMediaOptions({ clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+          publishCameraTrack: guestCamera.current, publishMicrophoneTrack: !guestMuted.current });
+        engine.startPreview();
+        captureStarted.current = true;
+        rtcRef.current = { ...rtcRef.current, ...data.rtc };
+        setRtc(rtcRef.current);
+        setRequestPending(false); setConnectionVisible(false);
+      },
+      'live:guest_joined': data => setGuests(current => [...current.filter(g => g.id !== data.guest.id), data.guest]),
+      'live:guest_left': data => setGuests(current => current.filter(g => (g.id || g.user?._id || g.user) !== data.userId)),
+    };
+    Object.entries(handlers).forEach(([event, handler]) => socket.on(event, handler));
+    if (socket.connected) join();
+    return () => {
+      Object.entries(handlers).forEach(([event, handler]) => socket.off(event, handler));
+      if (rtcRef.current?.isCoHost) socket.emit('live:leave_guest', { roomId });
+      socket.emit('live:leave', { roomId });
+    };
+  }, [roomId]);
+
+  const respondToRequest = (targetUserId, accept) => {
+    const socket = getSocket();
+    if (!socket?.connected) return;
+    socket.emit(accept ? 'live:accept_guest' : 'live:reject_guest', { roomId, targetUserId });
+    setJoinRequests(current => current.filter(user => user.id !== targetUserId));
+  };
 
   const close = async () => {
     if (closing.current) return;
     closing.current = true;
+    if (rtcRef.current?.isCoHost) getSocket()?.emit('live:leave_guest', { roomId });
     engineRef.current?.stopPreview();
     engineRef.current?.leaveChannel();
     captureStarted.current = false;
@@ -113,19 +245,25 @@ export default function LiveStreamScreen({ navigation, route }) {
   useEffect(() => {
     let disposed = false;
     let timer;
+    let connectionTimer;
     const setup = async () => {
       try {
         if (activeRoom) await leaveRoom(undefined, { navigateBack: false });
-        const response = await apiUtil.post(`/live/rooms/${roomId}/join`);
-        const data = response.data.data;
+        // Create already returns the authenticated host's RTC credentials.
+        // Viewers still join through the server to validate access/register a lease.
+        const supplied = route.params?.rtc;
+        const data = supplied?.isHost && supplied?.token && route.params?.room?._id === roomId
+          ? { room: route.params.room, rtc: supplied }
+          : (await apiUtil.post(`/live/rooms/${roomId}/join`)).data.data;
         rtcRef.current = data.rtc;
         if (disposed || closing.current) {
           await close();
           return;
         }
         setRoom(data.room);
+        setGuests(data.room.guests || []);
         setRtc(data.rtc);
-        if (data.rtc.isHost && Platform.OS === 'android') {
+        if ((data.rtc.isHost || data.rtc.isCoHost) && Platform.OS === 'android' && !route.params?.permissionsGranted) {
           const result = await PermissionsAndroid.requestMultiple([
             PermissionsAndroid.PERMISSIONS.CAMERA,
             PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
@@ -151,13 +289,15 @@ export default function LiveStreamScreen({ navigation, route }) {
         });
         engine.registerEventHandler({
           onJoinChannelSuccess: () => {
-            if (!disposed && !closing.current) setConnected(true);
+            clearTimeout(connectionTimer);
+            if (!disposed && !closing.current) { setConnected(true); setError(''); }
           },
+          onFirstLocalVideoFrame: () => { if (!disposed && !closing.current) setPreviewReady(true); },
           onUserJoined: (_connection, uid) => {
-            if (!disposed && uid === data.rtc.hostUid) setRemoteReady(true);
+            if (!disposed && Number(uid) === Number(data.rtc.hostUid)) setRemoteReady(true);
           },
           onUserOffline: (_connection, uid) => {
-            if (!disposed && uid === data.rtc.hostUid) {
+            if (!disposed && Number(uid) === Number(data.rtc.hostUid)) {
               setRemoteReady(false);
               setError('The host disconnected.');
             }
@@ -182,7 +322,8 @@ export default function LiveStreamScreen({ navigation, route }) {
         });
         engine.enableVideo();
         const isHost = data.rtc.isHost;
-        if (isHost) {
+        const publishing = isHost || data.rtc.isCoHost;
+        if (publishing) {
           engine.startPreview();
           captureStarted.current = true;
         }
@@ -191,16 +332,22 @@ export default function LiveStreamScreen({ navigation, route }) {
           data.rtc.channelName,
           data.rtc.agoraUid,
           {
-            clientRoleType: isHost
+            clientRoleType: publishing
               ? ClientRoleType.ClientRoleBroadcaster
               : ClientRoleType.ClientRoleAudience,
-            publishCameraTrack: isHost,
-            publishMicrophoneTrack: isHost,
+            publishCameraTrack: Boolean(publishing),
+            publishMicrophoneTrack: Boolean(publishing),
             autoSubscribeAudio: true,
             autoSubscribeVideo: true,
           },
         );
         if (result < 0) throw new Error(`Unable to join live (${result}).`);
+        connectionTimer = setTimeout(() => {
+          if (!disposed && !closing.current) {
+            setError('Live connection timed out. Check your connection and try again.');
+            close();
+          }
+        }, 20000);
         const heartbeat = async () => {
           if (closing.current) return;
           try {
@@ -220,10 +367,10 @@ export default function LiveStreamScreen({ navigation, route }) {
             }
           }
         };
-        await heartbeat();
         if (!disposed) timer = setInterval(heartbeat, 15000);
       } catch (e) {
-        await close();
+        clearTimeout(connectionTimer);
+        close();
         engineRef.current?.stopPreview();
         engineRef.current?.leaveChannel();
         if (!disposed)
@@ -238,7 +385,7 @@ export default function LiveStreamScreen({ navigation, route }) {
     const appState = AppState.addEventListener('change', state => {
       if (
         state !== 'active' &&
-        rtcRef.current?.isHost &&
+        (rtcRef.current?.isHost || captureStarted.current) &&
         captureStarted.current
       ) {
         close();
@@ -252,6 +399,7 @@ export default function LiveStreamScreen({ navigation, route }) {
     return () => {
       disposed = true;
       clearInterval(timer);
+      clearTimeout(connectionTimer);
       appState.remove();
       close();
       const engine = engineRef.current;
@@ -288,6 +436,8 @@ export default function LiveStreamScreen({ navigation, route }) {
 
   // Interactivity Handlers
   const handleLike = () => {
+    if (!getSocket()?.connected) return;
+    getSocket().emit('live:like', { roomId, count: 1 });
     setLikeCount(prev => prev + 1);
     const heartColors = ['#F43F5E', '#EC4899', '#A855F7', '#38BDF8', '#F59E0B', '#10B981'];
     const randomColor = heartColors[Math.floor(Math.random() * heartColors.length)];
@@ -299,35 +449,28 @@ export default function LiveStreamScreen({ navigation, route }) {
   };
 
   const handleSendMessage = text => {
-    const newMsg = {
-      id: 'msg-' + Date.now(),
-      senderName: isHost ? (room.host?.name || 'Broadcaster') : 'Me',
-      text,
-      level: 15,
-      isSvip: false,
-    };
-    setMessages(prev => [...prev.slice(-30), newMsg]);
+    const socket = getSocket();
+    if (!socket?.connected) {
+      AlertService.show('Reconnecting', 'Please wait for the live connection.', 'info');
+      return;
+    }
+    socket.emit('live:chat', { roomId, text });
   };
 
-  const handleSendGift = ({ gift, quantity, receiver }) => {
-    setGiftModalVisible(false);
-    setComboEmoji(gift.emoji || '🎁');
-    setComboCount(prev => prev + quantity);
-    setRecentGift({
-      senderName: 'Me',
-      giftEmoji: gift.emoji || '🎁',
-      count: quantity,
-    });
-    setGiftBanner({
-      senderName: 'Me',
-      receiverName: receiver.name || 'Broadcaster',
-      giftName: gift.name,
-    });
-    if (receiver.name === rivalUser.name) {
-      setRightScore(prev => prev + gift.price * quantity);
-    } else {
-      setLeftScore(prev => prev + gift.price * quantity);
-    }
+  const handleSendGift = async ({ gift, quantity, receiver }) => {
+    if (giftSendingRef.current) return;
+    giftSendingRef.current = true;
+    setSendingGift(true);
+    try {
+      const response = await apiUtil.post('/live/rooms/' + roomId + '/gift', {
+        giftId: gift.id, quantity, target: receiver === rivalUser ? 'rival' : 'host',
+      });
+      setRoom(current => ({ ...current, totalDiamonds: response.data?.data?.totalDiamonds ?? current.totalDiamonds }));
+      setGiftModalVisible(false);
+      refreshBalance();
+    } catch (e) {
+      AlertService.show('Gift not sent', e.response?.data?.message || 'Please try again.', 'error');
+    } finally { giftSendingRef.current = false; setSendingGift(false); }
   };
 
   const handleSayHi = () => {
@@ -348,20 +491,6 @@ export default function LiveStreamScreen({ navigation, route }) {
     engineRef.current?.switchCamera();
   };
 
-  const handleTogglePK = () => {
-    if (!isHost) {
-      AlertService.show('Notice', 'Only the broadcaster can initiate PK Battle', 'info');
-      return;
-    }
-    const next = !isPK;
-    setIsPK(next);
-    if (next) {
-      AlertService.show('PK Battle', 'PK Battle started!', 'success');
-    } else {
-      AlertService.show('PK Battle', 'PK Battle ended.', 'info');
-    }
-  };
-
   const videoHeight = isPK ? height * 0.44 : height;
 
   return (
@@ -372,7 +501,7 @@ export default function LiveStreamScreen({ navigation, route }) {
           <View style={styles.pkSplitRow}>
             {/* Left Stream: Broadcaster */}
             <View style={styles.streamHalf}>
-              {rtc && connected && (isHost || remoteReady) ? (
+              {rtc && ((isHost && !error) || (connected && remoteReady)) ? (
                 <RtcSurfaceView
                   style={StyleSheet.absoluteFill}
                   canvas={{ uid: isHost ? 0 : rtc.hostUid }}
@@ -405,7 +534,7 @@ export default function LiveStreamScreen({ navigation, route }) {
           </View>
         ) : (
           <View style={StyleSheet.absoluteFill}>
-            {rtc && connected && (isHost || remoteReady) ? (
+            {rtc && ((isHost && !error) || (connected && remoteReady)) ? (
               <RtcSurfaceView
                 style={StyleSheet.absoluteFill}
                 canvas={{ uid: isHost ? 0 : rtc.hostUid }}
@@ -421,7 +550,7 @@ export default function LiveStreamScreen({ navigation, route }) {
 
         {/* Ambient Dark/Gradient Overlay */}
         <LinearGradient
-          colors={['rgba(15, 23, 42, 0.75)', 'transparent', 'rgba(15, 23, 42, 0.9)']}
+          colors={['rgba(0, 0, 0, 0.22)', 'transparent', 'rgba(0, 0, 0, 0.38)']}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
         />
@@ -433,18 +562,23 @@ export default function LiveStreamScreen({ navigation, route }) {
           room={room}
           isHost={isHost}
           viewerCount={room.viewerCount || 0}
-          diamonds={room.totalDiamonds || 103190}
-          hourlyRank={36}
-          level={9}
+          diamonds={room.totalDiamonds || 0}
+          hourlyRank={room.hourlyRank || 0}
+          level={room.host?.level || 1}
+          topSupporters={room.topSupporters || []}
           isFollowing={isFollowing}
-          onFollow={() => setIsFollowing(!isFollowing)}
+          onFollow={followHost}
           onClose={() => navigation.goBack()}
-          onPressHost={() => {}}
+          onPressHost={() => room.host?._id && navigation.navigate('UserProfile', { userId: room.host._id })}
         />
       </View>
 
       {/* 3. Luxury Broadcast Gift Banner */}
       <LiveGiftBanner banner={giftBanner} />
+      {guests.length > 0 && <View style={styles.guestVideos}>
+        {guests.map(guest => <RtcSurfaceView key={guest.id || guest.agoraUid}
+          style={styles.guestVideo} canvas={{ uid: guest.agoraUid === rtc?.agoraUid ? 0 : guest.agoraUid }} />)}
+      </View>}
 
       {/* 4. PK Versus Bar */}
       {isPK && (
@@ -464,7 +598,7 @@ export default function LiveStreamScreen({ navigation, route }) {
       {/* 5. Center Status / Connection Indicator */}
       {(!connected || (!isHost && !remoteReady) || !!error) && (
         <View style={styles.status}>
-          {!error && <ActivityIndicator color="#FFF" size="large" />}
+          {!error && !previewReady && <ActivityIndicator color="#FFF" size="large" />}
           <Text style={styles.message}>
             {error ||
               (connected
@@ -496,9 +630,9 @@ export default function LiveStreamScreen({ navigation, route }) {
       {/* 7. Bottom Action Controls Bar */}
       <LiveBottomControls
         onOpenChat={() => setChatInputVisible(true)}
-        onOpenPK={handleTogglePK}
+        onOpenPK={isHost ? () => setRequestsVisible(true) : openConnection}
         onOpenGift={() => setGiftModalVisible(true)}
-        onOpenPromo={() => {}}
+        onOpenPromo={openRecharge}
         onPressHeart={handleLike}
         onOpenTools={() => setToolsModalVisible(true)}
         likeCount={likeCount}
@@ -509,12 +643,13 @@ export default function LiveStreamScreen({ navigation, route }) {
       <LiveGiftTrayModal
         visible={giftModalVisible}
         onClose={() => setGiftModalVisible(false)}
-        coinBalance={1000}
+        coinBalance={coinBalance}
+        sending={sendingGift}
         hostUser={room.host || { name: room.title || 'Broadcaster' }}
         rivalUser={rivalUser}
         isPK={isPK}
         onSendGift={handleSendGift}
-        onRecharge={() => {}}
+        onRecharge={openRecharge}
         bottomPadding={insets.bottom}
       />
 
@@ -527,10 +662,31 @@ export default function LiveStreamScreen({ navigation, route }) {
         onSwitchCamera={handleSwitchCamera}
         onToggleMute={handleToggleMute}
         onToggleCamera={handleToggleCamera}
-        onShare={() => setToolsModalVisible(false)}
+        onShare={() => { setToolsModalVisible(false); Share.share({ message: 'Join my live on Yaro: https://yaroapp.in/room/' + roomId }); }}
         onReport={() => setToolsModalVisible(false)}
         onDailyTask={() => setToolsModalVisible(false)}
         bottomPadding={insets.bottom}
+      />
+
+      <LiveGuestRequestsSheet visible={requestsVisible} requests={joinRequests}
+        onClose={() => setRequestsVisible(false)} onRespond={respondToRequest} bottomPadding={insets.bottom} />
+
+      <LiveRechargeSheet visible={rechargeVisible} onClose={() => setRechargeVisible(false)}
+        onContinue={productId => { setRechargeVisible(false); navigation.navigate('Recharge', { productId }); }}
+        bottomPadding={insets.bottom} />
+
+      <LiveConnectionSheet
+        visible={connectionVisible}
+        onClose={closeConnection}
+        camera={camera} muted={muted} mirrored={mirrored}
+        beauty={beauty} onBeauty={() => {
+          engineRef.current?.setBeautyEffectOptions(!beauty, { lighteningLevel: 0.5, smoothnessLevel: 0.5, rednessLevel: 0.1 });
+          setBeauty(value => !value);
+        }}
+        preview={<RtcSurfaceView style={StyleSheet.absoluteFill} canvas={{ uid: 0, mirrorMode: mirrored ? 1 : 2 }} />}
+        onCamera={handleToggleCamera} onMute={handleToggleMute}
+        onRotate={handleSwitchCamera} onMirror={() => setMirrored(value => !value)}
+        pending={requestPending} onRequest={requestConnection} bottomPadding={insets.bottom}
       />
 
       <LiveChatInputModal
@@ -543,6 +699,8 @@ export default function LiveStreamScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  guestVideos: { position: 'absolute', top: '22%', right: 10, gap: 8, zIndex: 12 },
+  guestVideo: { width: 100, height: 140, borderRadius: 10, overflow: 'hidden' },
   screen: {
     flex: 1,
     backgroundColor: '#080B18',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { apiUtil } from '../../utils/apiUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
 
 const { width } = Dimensions.get('window');
@@ -23,7 +24,8 @@ const QUANTITIES = [1, 10, 20, 50, 99];
 export default function LiveGiftTrayModal({
   visible,
   onClose,
-  coinBalance = 1000,
+  coinBalance = 0,
+  sending = false,
   hostUser = {},
   rivalUser = {},
   isPK = false,
@@ -34,28 +36,40 @@ export default function LiveGiftTrayModal({
   const [selectedCategory, setSelectedCategory] = useState('Hot');
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [selectedReceiver, setSelectedReceiver] = useState('host'); // 'host' | 'rival'
-  const [selectedGiftId, setSelectedGiftId] = useState('hi');
+  const [selectedGiftId, setSelectedGiftId] = useState(null);
   const [quantity, setQuantity] = useState(1);
 
+  const [gifts, setGifts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    if (!visible) return undefined;
+    let disposed = false;
+    setLoading(true); setLoadError(false);
+    apiUtil.get('/gifts').then(response => {
+      if (disposed) return;
+      const items = Array.isArray(response.data?.data) ? response.data.data : [];
+      setGifts(items.filter(g => g.isActive !== false).map(g => ({ ...g, id: g._id || g.id,
+        price: Number(g.price ?? g.cost ?? 0), image: g.image || g.icon,
+        category: g.categoryId?.name || g.category || 'Hot' })));
+    }).catch(() => { if (!disposed) setLoadError(true); })
+      .finally(() => { if (!disposed) setLoading(false); });
+    return () => { disposed = true; };
+  }, [visible, retry]);
+  const categories = [...new Set([...CATEGORIES, ...gifts.map(g => g.category)])];
+  const sampleGifts = gifts.filter(g => {
+    const categoryMatches = selectedCategory === 'Hot' ? true : g.category.toLowerCase() === selectedCategory.toLowerCase();
+    const [min, max] = selectedFilter.split('-').map(Number);
+    return categoryMatches && (selectedFilter === 'All' || (g.price >= min && g.price <= max));
+  });
+  const selectedGift = sampleGifts.find(g => g.id === selectedGiftId);
   if (!visible) return null;
 
-  const sampleGifts = [
-    { id: 'hi', name: 'Hi', price: 1, xp: '5XP', icon: '👋', emoji: '💜' },
-    { id: 'rose', name: 'Rose', price: 1, xp: '1XP', icon: '🌹', emoji: '🌹' },
-    { id: 'heart', name: 'Love Heart', price: 5, xp: '5XP', icon: '💖', emoji: '💖' },
-    { id: 'love_key', name: 'Love Key', price: 10, xp: '10XP', icon: '🗝️', emoji: '🗝️' },
-    { id: 'lucky_bag', name: 'Lucky Bag', price: 50, xp: '50XP', icon: '🧧', emoji: '🧧' },
-    { id: 'mystery_box', name: 'Mystery Box', price: 100, xp: '100XP', icon: '🎁', emoji: '🎁' },
-    { id: 'super_nova', name: 'Super Nova', price: 150, xp: '150XP', icon: '✨', emoji: '✨' },
-    { id: 'rocket', name: 'Rocket', price: 1500, xp: '1500XP', icon: '🚀', emoji: '🚀' },
-    { id: 'superbike', name: 'Superbike', price: 2000, xp: '2000XP', icon: '🏍️', emoji: '🏍️' },
-    { id: 'yacht', name: 'Luxury Yacht', price: 5000, xp: '5000XP', icon: '🛥️', emoji: '🛥️' },
-    { id: 'sports_car', name: 'Sports Car', price: 10000, xp: '10000XP', icon: '🏎️', emoji: '🏎️' },
-    { id: 'castle', name: 'Dream Castle', price: 50000, xp: '50000XP', icon: '🏰', emoji: '🏰' },
-  ];
-
   const handleSend = () => {
-    const gift = sampleGifts.find(g => g.id === selectedGiftId) || sampleGifts[0];
+    const gift = selectedGift;
+    if (!gift || sending) return;
+    if (gift.price * quantity > coinBalance) { onRecharge?.(); return; }
     onSendGift && onSendGift({
       gift,
       quantity,
@@ -89,7 +103,7 @@ export default function LiveGiftTrayModal({
                   style={[styles.xpBarFill, { width: '25%' }]}
                 />
               </View>
-              <Text style={styles.xpRequireText}>XP requires: 8400</Text>
+              <Text style={styles.xpRequireText}>Send a gift to show your support</Text>
             </View>
 
             <View style={styles.levelBadge}>
@@ -138,8 +152,8 @@ export default function LiveGiftTrayModal({
           </View>
 
           {/* 3. Category Tabs */}
-          <View style={styles.categoryTabs}>
-            {CATEGORIES.map(cat => (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryTabs}>
+            {categories.map(cat => (
               <TouchableOpacity
                 key={cat}
                 onPress={() => setSelectedCategory(cat)}
@@ -160,7 +174,7 @@ export default function LiveGiftTrayModal({
             <TouchableOpacity style={styles.bagTab}>
               <MaterialCommunityIcons name="bag-personal-outline" size={18} color="#94A3B8" />
             </TouchableOpacity>
-          </View>
+          </ScrollView>
 
           {/* 4. Price Range Filter Chips */}
           <ScrollView
@@ -195,6 +209,9 @@ export default function LiveGiftTrayModal({
             contentContainerStyle={styles.giftsGrid}
             showsVerticalScrollIndicator={false}
           >
+            {loading && <Text style={styles.emptyText}>Loading gifts…</Text>}
+            {loadError && <TouchableOpacity onPress={() => setRetry(value => value + 1)}><Text style={styles.emptyText}>Could not load gifts. Tap to retry.</Text></TouchableOpacity>}
+            {!loading && !loadError && !sampleGifts.length && <Text style={styles.emptyText}>No gifts in this category</Text>}
             {sampleGifts.map(g => {
               const isSelected = selectedGiftId === g.id;
               return (
@@ -209,7 +226,9 @@ export default function LiveGiftTrayModal({
                       <Text style={styles.giftXpText}>{g.xp}</Text>
                     </View>
                   )}
-                  <Text style={styles.giftIcon}>{g.icon}</Text>
+                  {typeof g.image === 'string' && /^https?:/.test(g.image)
+                    ? <Image source={{ uri: g.image }} style={styles.giftImage} resizeMode="contain" />
+                    : <Text style={styles.giftIcon}>🎁</Text>}
                   <Text style={styles.giftCardName} numberOfLines={1}>
                     {g.name}
                   </Text>
@@ -259,6 +278,8 @@ export default function LiveGiftTrayModal({
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={handleSend}
+              disabled={!selectedGift || sending}
+              accessibilityState={{ disabled: !selectedGift || sending }}
               style={styles.sendBtn}
             >
               <LinearGradient
@@ -267,7 +288,7 @@ export default function LiveGiftTrayModal({
                 end={{ x: 1, y: 0 }}
                 style={styles.sendGradient}
               >
-                <Text style={styles.sendText}>Send</Text>
+                <Text style={styles.sendText}>{sending ? 'Sending…' : 'Send'}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -278,13 +299,15 @@ export default function LiveGiftTrayModal({
 }
 
 const styles = StyleSheet.create({
+  emptyText: { color: '#B8ADC8', padding: 24, textAlign: 'center', width: '100%' },
+  giftImage: { width: 48, height: 48, marginBottom: 4 },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    backgroundColor: '#0F1123',
+    backgroundColor: '#10091F',
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
     paddingTop: 12,

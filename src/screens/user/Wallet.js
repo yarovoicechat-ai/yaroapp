@@ -49,7 +49,7 @@ const CoinPacks = [
   { id: 'b2c_9', coins: 1000000, diamonds: 500000, price: 5000, badge: 'WHALE' },
 ];
 
-const Wallet = () => {
+const Wallet = ({ route } = {}) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
@@ -428,7 +428,9 @@ const Wallet = () => {
     );
   };
 
-  const packList = Object.values(productsCatalog);
+  const requestedProductId = route?.params?.productId;
+  const packList = Object.values(productsCatalog).sort((a, b) =>
+    Number(b.productId === requestedProductId) - Number(a.productId === requestedProductId));
 
   return (
     <View style={styles.container}>
@@ -528,6 +530,7 @@ const Wallet = () => {
                     style={[
                       styles.packCard,
                       pack.isPopular && styles.packCardPopular,
+                      pack.productId === requestedProductId && { borderColor: '#F22498', borderWidth: 2 },
                       (!isAvailable || loading || isPackLoading) && { opacity: isAvailable ? 0.7 : 0.6 },
                     ]}
                     activeOpacity={0.8}

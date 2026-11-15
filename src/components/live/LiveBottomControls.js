@@ -32,7 +32,7 @@ export default function LiveBottomControls({
           end={{ x: 1, y: 0 }}
           style={styles.chatGradient}
         >
-          <Text style={styles.chatText}>Hi there</Text>
+          <Text style={styles.chatText}>Say something</Text>
         </LinearGradient>
       </TouchableOpacity>
 
@@ -71,8 +71,8 @@ export default function LiveBottomControls({
           colors={['#F43F5E', '#E11D48']}
           style={styles.promoGradient}
         >
-          <Text style={styles.promoTextTop}>90%</Text>
-          <Text style={styles.promoTextSub}>OFF</Text>
+          <Text style={styles.promoTextTop}>TOP</Text>
+          <Text style={styles.promoTextSub}>UP</Text>
         </LinearGradient>
       </TouchableOpacity>
 
@@ -114,10 +114,11 @@ const styles = StyleSheet.create({
   chatPill: {
     borderRadius: 20,
     overflow: 'hidden',
-    minWidth: 92,
+    minWidth: 80,
+    flexShrink: 1,
   },
   chatGradient: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingVertical: 9,
     alignItems: 'center',
     justifyContent: 'center',
@@ -128,8 +129,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
+    width: 34,
+    height: 34,
     borderRadius: 20,
     backgroundColor: 'rgba(15, 23, 42, 0.65)',
     alignItems: 'center',
@@ -138,8 +139,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   giftCircle: {
-    width: 44,
-    height: 44,
+    width: 38,
+    height: 38,
     borderRadius: 22,
     overflow: 'hidden',
     elevation: 6,

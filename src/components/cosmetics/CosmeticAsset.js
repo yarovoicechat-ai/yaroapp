@@ -20,9 +20,9 @@ export const getCosmeticFormatBadge = (item) => {
   return { label: '✨ Exclusive Item', color: '#F59E0B', bg: '#FFFBEB' };
 };
 
-export default function CosmeticAsset({ item, style, resizeMode = 'contain' }) {
+export default function CosmeticAsset({ item, style, resizeMode = 'contain', previewOnly = false }) {
   const imageUrl = item?.coverImageUrl || item?.imageUrl || item?.image;
-  const source = item?.animationUrl || imageUrl;
+  const source = previewOnly && imageUrl && !/\.svga(?:[?#]|$)/i.test(String(imageUrl)) ? imageUrl : item?.animationUrl || imageUrl;
   if (!source) return null;
 
   return (

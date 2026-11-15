@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Image,
   StyleSheet,
   Dimensions,
   StatusBar,
@@ -29,6 +28,8 @@ import StorePurchaseConfirmModal from '../../components/cosmetics/StorePurchaseC
 import CosmeticAsset from '../../components/cosmetics/CosmeticAsset';
 import CosmeticFormatBadge from '../../components/cosmetics/CosmeticFormatBadge';
 import DurationPicker from '../../components/cosmetics/DurationPicker';
+import AssetImage from '../../components/AssetImage';
+const Image = AssetImage;
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - 48) / 2;
@@ -134,8 +135,6 @@ export default function StoreScreen() {
         }
       } catch (error) {
         if (isMounted) {
-          setCatalog(createEmptyCatalog());
-          setSelectedItem(null);
           AlertService.show(
             'Store',
             error?.response?.data?.message || 'Store catalog load nahi ho saka.',
@@ -240,6 +239,13 @@ export default function StoreScreen() {
           </View>
         </LinearGradient>
       );
+    }
+
+    // Prefer the uploaded catalog media over a generated category illustration.
+    if (activeCategory !== 'Frames' && (item.animationUrl || item.imageUrl || item.image || item.coverImageUrl)) {
+      return <View style={[styles.previewCard, { alignItems: 'center', justifyContent: 'center' }]}>
+        <StoreAsset item={item} style={{ width: '100%', height: 190 }} />
+      </View>;
     }
 
     // 1. UNIQUE ID PREVIEW
@@ -364,8 +370,8 @@ export default function StoreScreen() {
             <View style={styles.micSeatSimBox}>
               <View style={[styles.micSeatCircle, { borderColor: skinBg, width: 68, height: 68, borderRadius: 34, overflow: 'hidden', borderWidth: 2 }]}>
                 {imgSrc ? (
-                  <Image
-                    source={typeof imgSrc === 'string' ? { uri: imgSrc } : imgSrc}
+                  <StoreAsset
+                    item={item}
                     style={{ width: '100%', height: '100%' }}
                     resizeMode="cover"
                   />
@@ -659,7 +665,7 @@ export default function StoreScreen() {
                 ) : activeCategory === 'Frames' ? (
                   <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor}12` }]}>
                     {(item.coverImageUrl || item.imageUrl || item.image) ? (
-                      <Image
+                      <AssetImage
                         source={{ uri: item.coverImageUrl || item.imageUrl || item.image }}
                         style={styles.gridItemAsset}
                         resizeMode="contain"
@@ -682,7 +688,7 @@ export default function StoreScreen() {
                         resizeMode="contain"
                       />
                     ) : (
-                      <StoreAsset item={item} style={styles.gridItemAsset} />
+                      <StoreAsset item={item} previewOnly style={styles.gridItemAsset} />
                     )}
                   </View>
                 ) : activeCategory === 'Seat Skin' ? (
@@ -699,7 +705,7 @@ export default function StoreScreen() {
                   </View>
                 ) : item.animationUrl || item.imageUrl ? (
                   <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor}18` }]}>
-                    <StoreAsset item={item} style={styles.gridItemAsset} />
+                    <StoreAsset item={item} previewOnly style={styles.gridItemAsset} />
                   </View>
                 ) : (
                   <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor}18` }]}>

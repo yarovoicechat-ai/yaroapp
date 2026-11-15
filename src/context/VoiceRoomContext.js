@@ -1375,6 +1375,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 4.1 Real-time Room Theme Updated (All users update instantly)
         sock.on('voice_room:theme_updated', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] Room theme updated:', data?.themeId);
           if (data && Object.prototype.hasOwnProperty.call(data, 'themeId')) {
             setCurrentRoomTheme(data.themeAsset || data.themeId || null);
@@ -1383,6 +1384,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 4.2 Real-time Seat Skin Updated (All seats update instantly)
         sock.on('voice_room:seat_skin_updated', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] Room seat skin updated:', data?.seatSkinId);
           if (data && Object.prototype.hasOwnProperty.call(data, 'seatSkinId')) {
             setCurrentSeatSkin(data.seatSkinAsset || data.seatSkinId || null);
@@ -1391,6 +1393,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 4.3 Real-time Seat Charm (Flower 🌸) Updated
         sock.on('voice_room:seat_charm_updated', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] Room seat charm updated:', data?.showSeatCharm);
           if (data && typeof data.showSeatCharm === 'boolean') {
             setShowSeatCharm(data.showSeatCharm);
@@ -1400,6 +1403,7 @@ export const VoiceRoomProvider = ({ children }) => {
           }
         });
         sock.on('voice_room:seats_updated', (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           if (data?.seats && Array.isArray(data.seats)) {
             setSeats(mapSeatsWithCurrentUser(data.seats, currentUserId));
           }

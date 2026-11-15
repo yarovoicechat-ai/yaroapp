@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, AppState } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { apiUtil } from '../../utils/apiUtil';
 import { getSocket } from '../../sockets';
@@ -36,6 +36,7 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
     if (!roomId) return undefined;
     let alive = true;
     let attached = null;
+    let fetching = false;
     lastSnapshot.current = null;
     setMatch(null);
     setError('');
@@ -45,6 +46,8 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
       apply(data);
     };
     const poll = async () => {
+      if (fetching || !alive || AppState.currentState === 'background') return;
+      fetching = true;
       const socket = getSocket();
       if (socket && socket !== attached) {
         attached?.off('room_pk:state', handleState);
@@ -56,12 +59,20 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
         const response = await apiUtil.get(base);
         if (alive && sequence === requestSequence.current) apply(response.data?.data || null);
       } catch { /* Socket updates remain available; retry silently on next poll. */ }
+      finally { fetching = false; }
     };
     poll();
-    const interval = setInterval(poll, 3000);
-    const clock = setInterval(() => setNow(Date.now()), 250);
-    return () => { alive = false; clearInterval(interval); clearInterval(clock); attached?.off('room_pk:state', handleState); };
+    const interval = setInterval(poll, 15000);
+    const foreground = AppState.addEventListener('change', state => { if (state === 'active') poll(); });
+    return () => { alive = false; clearInterval(interval); foreground.remove(); attached?.off('room_pk:state', handleState); };
   }, [roomId, base, apply]);
+
+  const hasMatch = Boolean(match);
+  useEffect(() => {
+    if (!hasMatch && !visible) return undefined;
+    const clock = setInterval(() => { if (AppState.currentState !== 'background') setNow(Date.now()); }, 1000);
+    return () => clearInterval(clock);
+  }, [hasMatch, visible]);
 
   const view = roomPKView(match, roomId, now, offset);
   useEffect(() => {

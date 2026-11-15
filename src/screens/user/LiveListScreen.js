@@ -1,9 +1,10 @@
-﻿import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   FlatList,
+  ScrollView,
   Image,
   StyleSheet,
   useWindowDimensions,
@@ -22,11 +23,28 @@ import {
   getTabScreenBottomPadding,
 } from '../../utils/safeAreaUtils';
 import { getUserAvatar } from '../../utils/avatarUtil';
+import CountryPickerModal from '../../components/party/CountryPickerModal';
+import { countries } from '../../constants/countries';
+
+const POPULAR_COUNTRY_CHIPS = [
+  { id: 'all', name: '', label: 'All', flag: '🔥' },
+  { id: 'in', name: 'India', label: 'India', flag: '🇮🇳' },
+  { id: 'pk', name: 'Pakistan', label: 'Pakistan', flag: '🇵🇰' },
+  { id: 'bd', name: 'Bangladesh', label: 'Bangladesh', flag: '🇧🇩' },
+  { id: 'ae', name: 'United Arab Emirates', label: 'UAE', flag: '🇦🇪' },
+  { id: 'sa', name: 'Saudi Arabia', label: 'Saudi', flag: '🇸🇦' },
+  { id: 'us', name: 'United States', label: 'USA', flag: '🇺🇸' },
+  { id: 'gb', name: 'United Kingdom', label: 'UK', flag: '🇬🇧' },
+  { id: 'more', name: 'MORE', label: 'More 🌐', flag: '🌐' },
+];
 
 export default function LiveListScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [category, setCategory] = useState('Live');
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
   const [rooms, setRooms] = useState([]);
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +54,9 @@ export default function LiveListScreen({ navigation }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const fetchRooms = useCallback(async () => {
     try {
-      const res = await apiUtil.get('/live/rooms');
+      const params = {};
+      if (selectedCountry) params.country = selectedCountry;
+      const res = await apiUtil.get('/live/rooms', { params });
       setRooms(res.data.data || []);
       setError('');
     } catch (e) {
@@ -48,7 +68,7 @@ export default function LiveListScreen({ navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedCountry]);
   useFocusEffect(
     useCallback(() => {
       fetchRooms();
@@ -64,13 +84,21 @@ export default function LiveListScreen({ navigation }) {
     }, [fetchRooms]),
   );
   const filtered = rooms.filter(
-    room =>
-      (category === 'Live' ||
+    room => {
+      const matchesCategory =
+        category === 'Live' ||
         category === 'New' ||
-        room.category === category) &&
-      `${room.title} ${room.host?.name || ''}`
+        room.category === category;
+      const matchesSearch = `${room.title} ${room.host?.name || ''}`
         .toLowerCase()
-        .includes(search.toLowerCase()),
+        .includes(search.toLowerCase());
+      const matchesCountry =
+        !selectedCountry ||
+        String(room.country || room.host?.country || '')
+          .trim()
+          .toLowerCase() === selectedCountry.trim().toLowerCase();
+      return matchesCategory && matchesSearch && matchesCountry;
+    }
   );
   if (category === 'New')
     filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -128,12 +156,54 @@ export default function LiveListScreen({ navigation }) {
           placeholderTextColor="#94A3B8"
         />
       )}
-      <LinearGradient
-        colors={['#DF18CF', '#EF4444', '#211365', '#C914B4', '#45C51D']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.strip}
-      />
+      {/* Country Filter Chips Row */}
+      <View style={styles.countryBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.countryScroll}
+        >
+          {POPULAR_COUNTRY_CHIPS.map(chip => {
+            const isSelected =
+              chip.id === 'more'
+                ? false
+                : (!selectedCountry && !chip.name) ||
+                  (selectedCountry &&
+                    chip.name &&
+                    selectedCountry.toLowerCase() === chip.name.toLowerCase());
+
+            return (
+              <TouchableOpacity
+                key={chip.id}
+                onPress={() => {
+                  if (chip.id === 'more') {
+                    setCountryPickerVisible(true);
+                  } else {
+                    setSelectedCountry(chip.name);
+                  }
+                }}
+                activeOpacity={0.8}
+                style={[
+                  styles.countryChip,
+                  isSelected && styles.countryChipActive,
+                ]}
+              >
+                {Boolean(chip.flag) && (
+                  <Text style={styles.countryFlag}>{chip.flag}</Text>
+                )}
+                <Text
+                  style={[
+                    styles.countryLabel,
+                    isSelected && styles.countryLabelActive,
+                  ]}
+                >
+                  {chip.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
       {loading ? (
         <ActivityIndicator style={{ marginTop: 60 }} color="#E11D48" />
       ) : (
@@ -253,6 +323,23 @@ export default function LiveListScreen({ navigation }) {
           }
         />
       )}
+      <CountryPickerModal
+        visible={countryPickerVisible}
+        onClose={() => setCountryPickerVisible(false)}
+        bottomPadding={insets.bottom}
+        countries={countries}
+        search={countrySearch}
+        onSearchChange={setCountrySearch}
+        selectedCountry={selectedCountry}
+        onSelectCountry={c => {
+          setSelectedCountry(c);
+          setCountryPickerVisible(false);
+        }}
+        onSelectAll={() => {
+          setSelectedCountry('');
+          setCountryPickerVisible(false);
+        }}
+      />
     </View>
   );
 }
@@ -277,7 +364,44 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 4,
   },
-  strip: { height: 12 },
+  countryBar: {
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  countryScroll: {
+    paddingHorizontal: 14,
+    gap: 8,
+    alignItems: 'center',
+  },
+  countryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  countryChipActive: {
+    backgroundColor: '#FFF1F2',
+    borderColor: '#E11D48',
+  },
+  countryFlag: {
+    fontSize: 14,
+    marginRight: 5,
+  },
+  countryLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  countryLabelActive: {
+    color: '#E11D48',
+    fontWeight: '800',
+  },
   search: {
     marginHorizontal: 16,
     marginBottom: 14,

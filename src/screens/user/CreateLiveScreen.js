@@ -41,6 +41,7 @@ export default function CreateLiveScreen({ navigation }) {
         title: title.trim(),
         category,
         coverImage: /^https:\/\//i.test(user?.avatar || user?.image || '') ? (user.avatar || user.image) : '',
+        country: user?.country || 'India',
       });
       const { room, rtc } = res.data.data;
       navigation.navigate('LiveStream', { roomId: room._id, room, rtc, permissionsGranted: true });

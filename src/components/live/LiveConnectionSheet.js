@@ -3,11 +3,12 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, useWindowDimensions } 
 import Icon from 'react-native-vector-icons/Ionicons';
 
 export default function LiveConnectionSheet({ visible, onClose, preview, camera, muted,
-  mirrored, beauty, onBeauty, onCamera, onMute, onRotate, onMirror, onRequest, pending, bottomPadding = 0 }) {
+  mirrored, beauty, onBeauty, onEffects, onCamera, onMute, onRotate, onMirror, onRequest, pending, bottomPadding = 0 }) {
   const { height } = useWindowDimensions();
   const controls = [
     ['Camera', camera ? 'videocam-outline' : 'videocam-off-outline', onCamera],
     ['Beauty', 'sparkles-outline', onBeauty],
+    ...(onEffects ? [['Effects', 'color-wand-outline', onEffects]] : []),
     ['Rotate', 'camera-reverse-outline', onRotate],
     [muted ? 'Unmute' : 'Mute', muted ? 'mic-off-outline' : 'mic-outline', onMute],
     ['Mirror', 'swap-horizontal-outline', onMirror],

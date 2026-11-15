@@ -122,24 +122,6 @@ export default function LiveFloatingSideBadges({
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* 2. Event Banner Card (Food Mania / Constellation) */}
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={onPressEvent}
-        style={styles.eventCard}
-      >
-        <LinearGradient
-          colors={['#8B5CF6', '#EC4899']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.eventGradient}
-        >
-          <MaterialCommunityIcons name="gamepad-variant" size={18} color="#FFF" />
-          <Text style={styles.eventTitle}>Food</Text>
-          <Text style={styles.eventSubtitle}>Mania</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-
       {/* 3. Gift Combo Multiplier Bubble */}
       {comboCount > 1 && (
         <Animated.View

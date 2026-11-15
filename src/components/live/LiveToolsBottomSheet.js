@@ -24,6 +24,8 @@ export default function LiveToolsBottomSheet({
   onShare,
   onReport,
   onDailyTask,
+  onEffects,
+  onBeauty,
   bottomPadding = 16,
 }) {
   if (!visible) return null;
@@ -35,7 +37,8 @@ export default function LiveToolsBottomSheet({
         { id: 'cam', name: camera ? 'Camera Off' : 'Camera On', icon: camera ? 'videocam-outline' : 'videocam-off-outline', action: onToggleCamera },
         { id: 'share', name: 'Share', icon: 'share-social-outline', action: onShare },
         { id: 'task', name: 'Daily task', icon: 'calendar-outline', action: onDailyTask },
-        { id: 'beauty', name: 'Beauty', icon: 'sparkles-outline', action: onClose },
+        { id: 'beauty', name: 'Beauty', icon: 'sparkles-outline', action: onBeauty || onClose },
+        { id: 'effects', name: 'Effects', icon: 'color-wand-outline', action: onEffects || onClose },
         { id: 'settings', name: 'Live settings', icon: 'settings-outline', action: onClose },
       ]
     : [

@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   PermissionsAndroid,
   Platform,
@@ -12,6 +13,7 @@ import {
   Dimensions,
   Image,
   Share,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -44,10 +46,22 @@ import LiveGuestRequestsSheet from '../../components/live/LiveGuestRequestsSheet
 import GiftContributionListModal from '../../components/live/GiftContributionListModal';
 import LiveEndSummaryModal from '../../components/live/LiveEndSummaryModal';
 import { getSocket } from '../../sockets';
+import { ARManager, ARFilterPanel, useARSession, useARLifecycle } from '../../features/YaroAR';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LiveStreamScreen({ navigation, route }) {
+  const ar = useARSession();
+  useARLifecycle();
+  const [arPanelTab, setArPanelTab] = useState(null);
+  const arUnbindRef = useRef(null);
+  const arReleaseRef = useRef(Promise.resolve());
+  const releaseAR = async () => {
+    const unbind = arUnbindRef.current;
+    arUnbindRef.current = null;
+    if (unbind) arReleaseRef.current = unbind();
+    await arReleaseRef.current;
+  };
   const insets = useSafeAreaInsets();
   const { activeRoom, leaveRoom } = useVoiceRoom();
   const roomId = route.params?.roomId;
@@ -65,7 +79,6 @@ export default function LiveStreamScreen({ navigation, route }) {
   const [coinBalance, setCoinBalance] = useState(0);
   const [sendingGift, setSendingGift] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
-  const [beauty, setBeauty] = useState(false);
   const [rechargeVisible, setRechargeVisible] = useState(false);
   const [requestsVisible, setRequestsVisible] = useState(false);
   const [joinRequests, setJoinRequests] = useState([]);
@@ -81,18 +94,29 @@ export default function LiveStreamScreen({ navigation, route }) {
   const [messages, setMessages] = useState([]);
 
   // PK Battle State - Default is false (active only during PK match)
-  const [isPK] = useState(Boolean(route.params?.isPK || room.isPKActive || room.pkBattleActive || false));
-  const [leftScore, setLeftScore] = useState(room.leftScore || 0);
-  const [rightScore, setRightScore] = useState(room.rightScore || 0);
+  const [isPK, setIsPK] = useState(
+    Boolean(
+      route.params?.isPK ||
+        room.isPKActive ||
+        room.pkBattleActive ||
+        room.pk?.isActive ||
+        false,
+    ),
+  );
+  const [leftScore, setLeftScore] = useState(room.leftScore || room.pk?.leftScore || 0);
+  const [rightScore, setRightScore] = useState(room.rightScore || room.pk?.rightScore || 0);
 
   // New Modals State: Contribution Ranking & Live Ended Summary
   const [contributionModalVisible, setContributionModalVisible] = useState(false);
   const [endSummaryVisible, setEndSummaryVisible] = useState(false);
   const liveStartTime = useRef(Date.now());
-  const rivalUser = room.rivalUser || {
-    name: 'Rival Broadcaster',
-    avatar: 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
-  };
+  const [rivalUser, setRivalUser] = useState(
+    room.rivalUser || {
+      name: 'Rival Broadcaster',
+      avatar: 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
+    },
+  );
+  const lastTapRef = useRef(0);
 
   // Modals Visibility
   const [giftModalVisible, setGiftModalVisible] = useState(false);
@@ -134,6 +158,7 @@ export default function LiveStreamScreen({ navigation, route }) {
   const closeConnection = () => {
     setConnectionVisible(false);
     if (!rtcRef.current?.isCoHost) {
+      void releaseAR().catch(e => ARManager.update({ error: e.message }));
       engineRef.current?.stopPreview();
       captureStarted.current = false;
     }
@@ -150,7 +175,11 @@ export default function LiveStreamScreen({ navigation, route }) {
       }
     }
     if (closing.current || !engineRef.current) return;
-    engineRef.current.startPreview();
+    if (!arUnbindRef.current) arUnbindRef.current = ARManager.bind(engineRef.current, { inChannel: false });
+    if (ARManager.getSnapshot().trackId === null) {
+      engineRef.current.enableLocalVideo?.(true);
+      engineRef.current.startPreview();
+    }
     captureStarted.current = true;
     setConnectionVisible(true);
   };
@@ -171,6 +200,9 @@ export default function LiveStreamScreen({ navigation, route }) {
     refreshBalance();
     if (!socket) return undefined;
     const join = () => socket.emit('live:join', { roomId });
+    if (socket.connected) {
+      join();
+    }
     const handlers = {
       connect: join,
       'live:chat_message': message => setMessages(current => [...current.slice(-49), message]),
@@ -179,9 +211,9 @@ export default function LiveStreamScreen({ navigation, route }) {
       'live:like_update': data => setLikeCount(data.totalLikes),
       'live:gift_received': data => {
         setComboCount(data.gift?.quantity || 1);
-        setComboEmoji('🎁');
-        setGiftBanner({ senderName: data.sender?.name, receiverName: roomRef.current.host?.name, giftName: data.gift?.name });
-        setRecentGift({ senderName: data.sender?.name, giftEmoji: '🎁', count: data.gift?.quantity });
+        setComboEmoji(data.gift?.icon || data.gift?.image || '🎁');
+        setGiftBanner({ senderName: data.sender?.name, receiverName: roomRef.current?.host?.name || 'Broadcaster', giftName: data.gift?.name });
+        setRecentGift({ senderName: data.sender?.name, giftEmoji: data.gift?.icon || data.gift?.image || '🎁', count: data.gift?.quantity });
         setRoom(current => ({ ...current, totalDiamonds: data.totalDiamonds, topSupporters: data.topSupporters }));
         setLeftScore(data.leftScore || 0); setRightScore(data.rightScore || 0);
         refreshBalance();
@@ -200,14 +232,20 @@ export default function LiveStreamScreen({ navigation, route }) {
           { text: 'Accept', onPress: () => respondToRequest(data.user.id, true) },
         ]);
       },
-      'live:guest_accepted': data => {
+      'live:guest_accepted': async data => {
         if (data.roomId !== roomId || closing.current || !engineRef.current) return;
+        await arReleaseRef.current;
+        if (closing.current || !engineRef.current) return;
         const engine = engineRef.current;
+        if (!arUnbindRef.current) arUnbindRef.current = ARManager.bind(engine, { inChannel: true });
+        ARManager.channelPublishing(true);
         engine.renewToken(data.rtc.token);
         engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
         engine.updateChannelMediaOptions({ clientRoleType: ClientRoleType.ClientRoleBroadcaster,
-          publishCameraTrack: guestCamera.current, publishMicrophoneTrack: !guestMuted.current });
-        engine.startPreview();
+          publishCameraTrack: guestCamera.current && ARManager.getSnapshot().trackId === null,
+          ...(ARManager.getSnapshot().trackId !== null ? { publishCustomVideoTrack: true, customVideoTrackId: ARManager.getSnapshot().trackId } : {}),
+          publishMicrophoneTrack: !guestMuted.current });
+        if (ARManager.getSnapshot().trackId === null) engine.startPreview();
         captureStarted.current = true;
         rtcRef.current = { ...rtcRef.current, ...data.rtc };
         setRtc(rtcRef.current);
@@ -215,6 +253,42 @@ export default function LiveStreamScreen({ navigation, route }) {
       },
       'live:guest_joined': data => setGuests(current => [...current.filter(g => g.id !== data.guest.id), data.guest]),
       'live:guest_left': data => setGuests(current => current.filter(g => (g.id || g.user?._id || g.user) !== data.userId)),
+      'live:pk_started': data => {
+        setIsPK(true);
+        if (data.rivalHost) setRivalUser(data.rivalHost);
+        if (data.leftScore !== undefined) setLeftScore(data.leftScore);
+        if (data.rightScore !== undefined) setRightScore(data.rightScore);
+      },
+      'live:pk_score_update': data => {
+        if (data.leftScore !== undefined) setLeftScore(data.leftScore);
+        if (data.rightScore !== undefined) setRightScore(data.rightScore);
+      },
+      'live:pk_ended': () => {
+        setIsPK(false);
+        setRivalUser(null);
+        setLeftScore(0);
+        setRightScore(0);
+      },
+      'live:pk_invitation_received': data => {
+        if (!rtcRef.current?.isHost) return;
+        Alert.alert(
+          '⚔️ PK Battle Challenge',
+          `${data.fromHost?.name || 'A Broadcaster'} challenged you to a PK Battle!`,
+          [
+            { text: 'Decline', style: 'cancel' },
+            {
+              text: 'Accept ⚔️',
+              onPress: () => {
+                socket.emit('live:pk_accept', {
+                  roomId,
+                  inviterRoomId: data.fromRoomId,
+                });
+                setIsPK(true);
+              },
+            },
+          ],
+        );
+      },
     };
     Object.entries(handlers).forEach(([event, handler]) => socket.on(event, handler));
     if (socket.connected) join();
@@ -233,11 +307,13 @@ export default function LiveStreamScreen({ navigation, route }) {
   };
 
   const close = async () => {
-    if (closing.current) return;
+    if (closing.current) return arReleaseRef.current;
     closing.current = true;
+    const closingEngine = engineRef.current;
+    await releaseAR();
     if (rtcRef.current?.isCoHost) getSocket()?.emit('live:leave_guest', { roomId });
-    engineRef.current?.stopPreview();
-    engineRef.current?.leaveChannel();
+    closingEngine?.stopPreview();
+    closingEngine?.leaveChannel();
     captureStarted.current = false;
     setConnected(false);
     try {
@@ -288,16 +364,22 @@ export default function LiveStreamScreen({ navigation, route }) {
           await close();
           return;
         }
+        await ARManager.waitForRelease();
+        if (disposed || closing.current) return;
         const engine = createAgoraRtcEngine();
         engineRef.current = engine;
         engine.initialize({
           appId: data.rtc.appId,
           channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
         });
+        if (data.rtc.isHost || data.rtc.isCoHost) arUnbindRef.current = ARManager.bind(engine, { inChannel: true });
         engine.registerEventHandler({
           onJoinChannelSuccess: () => {
             clearTimeout(connectionTimer);
             if (!disposed && !closing.current) { setConnected(true); setError(''); }
+            if (!disposed && data.rtc.isHost && route.params?.arEffectId) {
+              void ARManager.select(route.params.arEffectId).catch(e => ARManager.update({ error: e.message }));
+            }
           },
           onFirstLocalVideoFrame: () => { if (!disposed && !closing.current) setPreviewReady(true); },
           onUserJoined: (_connection, uid) => {
@@ -413,9 +495,11 @@ export default function LiveStreamScreen({ navigation, route }) {
       const engine = engineRef.current;
       engineRef.current = null;
       if (engine) {
-        engine.stopPreview();
-        engine.leaveChannel();
-        engine.release();
+        void releaseAR().finally(() => {
+          engine.stopPreview();
+          engine.leaveChannel();
+          engine.release();
+        });
       }
     };
   }, [roomId]);
@@ -490,13 +574,70 @@ export default function LiveStreamScreen({ navigation, route }) {
     setMuted(!muted);
   };
 
-  const handleToggleCamera = () => {
+  const handleToggleCamera = async () => {
+    if (ARManager.getSnapshot().trackId !== null) {
+      try {
+        if (camera) await ARManager.pause(); else await ARManager.resume();
+        if (rtcRef.current?.isHost || rtcRef.current?.isCoHost) {
+          engineRef.current?.updateChannelMediaOptions({ publishCustomVideoTrack: !camera });
+        }
+        setCamera(!camera);
+      } catch (e) { AlertService.show('Camera', e.message || 'Could not change camera state.', 'error'); }
+      return;
+    }
     engineRef.current?.muteLocalVideoStream(camera);
     setCamera(!camera);
   };
 
   const handleSwitchCamera = () => {
+    if (ar.trackId !== null) {
+      AlertService.show('Camera', 'Reset AR before switching the camera.', 'info');
+      return;
+    }
     engineRef.current?.switchCamera();
+  };
+
+  const handleScreenDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 350) {
+      handleLike();
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  };
+
+  const handleTogglePK = async () => {
+    const socket = getSocket();
+    if (!socket?.connected) {
+      AlertService.show('Reconnecting', 'Please wait for live connection.', 'info');
+      return;
+    }
+    if (isPK) {
+      socket.emit('live:pk_end', { roomId });
+      setIsPK(false);
+      AlertService.show('PK Battle', 'PK Battle ended.', 'info');
+    } else {
+      try {
+        const res = await apiUtil.get('/live/rooms');
+        const activeRooms = res.data?.data?.rooms || [];
+        const otherRooms = activeRooms.filter(r => r._id !== roomId && r.status === 'live');
+        if (otherRooms.length > 0) {
+          const target = otherRooms[0];
+          socket.emit('live:pk_invite', { roomId, targetRoomId: target._id });
+          AlertService.show('PK Match', `Challenged ${target.host?.name || 'Broadcaster'} to PK Battle!`, 'info');
+        } else {
+          // If no other host is live right now, simulate/toggle local PK match
+          setIsPK(true);
+          setLeftScore(0);
+          setRightScore(0);
+          AlertService.show('PK Battle', 'PK Battle mode activated!', 'info');
+        }
+      } catch (err) {
+        setIsPK(true);
+      }
+    }
+    setRequestsVisible(false);
   };
 
   const videoHeight = isPK ? height * 0.44 : height;
@@ -504,65 +645,67 @@ export default function LiveStreamScreen({ navigation, route }) {
   return (
     <View style={styles.screen}>
       {/* 1. Main Video Area (Single Host or PK Split Screen) */}
-      <View style={[styles.videoContainer, { height: videoHeight }]}>
-        {isPK ? (
-          <View style={styles.pkSplitRow}>
-            {/* Left Stream: Broadcaster */}
-            <View style={styles.streamHalf}>
+      <TouchableWithoutFeedback onPress={handleScreenDoubleTap}>
+        <View style={[styles.videoContainer, { height: videoHeight }]}>
+          {isPK ? (
+            <View style={styles.pkSplitRow}>
+              {/* Left Stream: Broadcaster */}
+              <View style={styles.streamHalf}>
+                {rtc && ((isHost && !error) || (connected && remoteReady)) ? (
+                  <RtcSurfaceView
+                    style={StyleSheet.absoluteFill}
+                    canvas={{ uid: isHost ? 0 : rtc.hostUid, ...(isHost && ar.trackId !== null ? { sourceType: 4 } : {}) }}
+                  />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Image source={getUserAvatar(room.host)} style={styles.streamFallbackAvatar} />
+                    <Text style={styles.fallbackText}>{room.host?.name || 'Broadcaster'}</Text>
+                  </View>
+                )}
+                {/* Broadcaster Name & Score Tag */}
+                <View style={styles.streamTagLeft}>
+                  <Text style={styles.starSmall}>⭐</Text>
+                  <Text style={styles.streamScore}>{leftScore}</Text>
+                </View>
+              </View>
+
+              {/* Right Stream: Rival Broadcaster */}
+              <View style={styles.streamHalf}>
+                <View style={styles.avatarFallback}>
+                  <Image source={getUserAvatar(rivalUser)} style={styles.streamFallbackAvatar} />
+                  <Text style={styles.fallbackText}>{rivalUser.name}</Text>
+                </View>
+                {/* Rival Broadcaster Name & Score Tag */}
+                <View style={styles.streamTagRight}>
+                  <Text style={styles.streamTagHostText}>💖 {rivalUser.name} 💖</Text>
+                  <Text style={styles.streamScore}>⭐ {rightScore}</Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={StyleSheet.absoluteFill}>
               {rtc && ((isHost && !error) || (connected && remoteReady)) ? (
                 <RtcSurfaceView
                   style={StyleSheet.absoluteFill}
-                  canvas={{ uid: isHost ? 0 : rtc.hostUid }}
+                  canvas={{ uid: isHost ? 0 : rtc.hostUid, ...(isHost && ar.trackId !== null ? { sourceType: 4 } : {}) }}
                 />
               ) : (
-                <View style={styles.avatarFallback}>
-                  <Image source={getUserAvatar(room.host)} style={styles.streamFallbackAvatar} />
-                  <Text style={styles.fallbackText}>{room.host?.name || 'Broadcaster'}</Text>
+                <View style={[styles.avatarFallback, StyleSheet.absoluteFill]}>
+                  <Image source={getUserAvatar(room.host)} style={styles.streamFallbackAvatarLarge} />
+                  <Text style={styles.fallbackTextLarge}>{room.host?.name || 'Broadcaster'}</Text>
                 </View>
               )}
-              {/* Broadcaster Name & Score Tag */}
-              <View style={styles.streamTagLeft}>
-                <Text style={styles.starSmall}>⭐</Text>
-                <Text style={styles.streamScore}>{leftScore}</Text>
-              </View>
             </View>
+          )}
 
-            {/* Right Stream: Rival Broadcaster */}
-            <View style={styles.streamHalf}>
-              <View style={styles.avatarFallback}>
-                <Image source={getUserAvatar(rivalUser)} style={styles.streamFallbackAvatar} />
-                <Text style={styles.fallbackText}>{rivalUser.name}</Text>
-              </View>
-              {/* Rival Broadcaster Name & Score Tag */}
-              <View style={styles.streamTagRight}>
-                <Text style={styles.streamTagHostText}>💖 {rivalUser.name} 💖</Text>
-                <Text style={styles.streamScore}>⭐ {rightScore}</Text>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View style={StyleSheet.absoluteFill}>
-            {rtc && ((isHost && !error) || (connected && remoteReady)) ? (
-              <RtcSurfaceView
-                style={StyleSheet.absoluteFill}
-                canvas={{ uid: isHost ? 0 : rtc.hostUid }}
-              />
-            ) : (
-              <View style={[styles.avatarFallback, StyleSheet.absoluteFill]}>
-                <Image source={getUserAvatar(room.host)} style={styles.streamFallbackAvatarLarge} />
-                <Text style={styles.fallbackTextLarge}>{room.host?.name || 'Broadcaster'}</Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Ambient Dark/Gradient Overlay */}
-        <LinearGradient
-          colors={['rgba(0, 0, 0, 0.22)', 'transparent', 'rgba(0, 0, 0, 0.38)']}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
-      </View>
+          {/* Ambient Dark/Gradient Overlay */}
+          <LinearGradient
+            colors={['rgba(0, 0, 0, 0.22)', 'transparent', 'rgba(0, 0, 0, 0.38)']}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+        </View>
+      </TouchableWithoutFeedback>
 
       {/* 2. Top Header Bar (Host Capsule, Diamonds, Supporters, Close) */}
       <View style={{ paddingTop: insets.top + 8 }}>
@@ -586,7 +729,7 @@ export default function LiveStreamScreen({ navigation, route }) {
       <LiveGiftBanner banner={giftBanner} />
       {guests.length > 0 && <View style={styles.guestVideos}>
         {guests.map(guest => <RtcSurfaceView key={guest.id || guest.agoraUid}
-          style={styles.guestVideo} canvas={{ uid: guest.agoraUid === rtc?.agoraUid ? 0 : guest.agoraUid }} />)}
+          style={styles.guestVideo} canvas={{ uid: guest.agoraUid === rtc?.agoraUid ? 0 : guest.agoraUid, ...(guest.agoraUid === rtc?.agoraUid && ar.trackId !== null ? { sourceType: 4 } : {}) }} />)}
       </View>}
 
       {/* 4. PK Versus Bar */}
@@ -641,10 +784,6 @@ export default function LiveStreamScreen({ navigation, route }) {
         onOpenChat={() => setChatInputVisible(true)}
         onOpenPK={isHost ? () => setRequestsVisible(true) : openConnection}
         onOpenGift={() => setGiftModalVisible(true)}
-        onOpenPromo={openRecharge}
-        onPressHeart={handleLike}
-        onOpenTools={() => setToolsModalVisible(true)}
-        likeCount={likeCount}
         bottomPadding={insets.bottom + 10}
       />
 
@@ -674,11 +813,20 @@ export default function LiveStreamScreen({ navigation, route }) {
         onShare={() => { setToolsModalVisible(false); Share.share({ message: 'Join my live on Yaro: https://yaroapp.in/room/' + roomId }); }}
         onReport={() => setToolsModalVisible(false)}
         onDailyTask={() => setToolsModalVisible(false)}
+        onEffects={() => { setToolsModalVisible(false); setArPanelTab('Effects'); }}
+        onBeauty={() => { setToolsModalVisible(false); setArPanelTab('Beauty'); }}
         bottomPadding={insets.bottom}
       />
 
-      <LiveGuestRequestsSheet visible={requestsVisible} requests={joinRequests}
-        onClose={() => setRequestsVisible(false)} onRespond={respondToRequest} bottomPadding={insets.bottom} />
+      <LiveGuestRequestsSheet
+        visible={requestsVisible}
+        requests={joinRequests}
+        onClose={() => setRequestsVisible(false)}
+        onRespond={respondToRequest}
+        isPK={isPK}
+        onTogglePK={handleTogglePK}
+        bottomPadding={insets.bottom}
+      />
 
       <LiveRechargeSheet visible={rechargeVisible} onClose={() => setRechargeVisible(false)}
         onContinue={productId => { setRechargeVisible(false); navigation.navigate('Recharge', { productId }); }}
@@ -688,15 +836,22 @@ export default function LiveStreamScreen({ navigation, route }) {
         visible={connectionVisible}
         onClose={closeConnection}
         camera={camera} muted={muted} mirrored={mirrored}
-        beauty={beauty} onBeauty={() => {
-          engineRef.current?.setBeautyEffectOptions(!beauty, { lighteningLevel: 0.5, smoothnessLevel: 0.5, rednessLevel: 0.1 });
-          setBeauty(value => !value);
-        }}
-        preview={<RtcSurfaceView style={StyleSheet.absoluteFill} canvas={{ uid: 0, mirrorMode: mirrored ? 1 : 2 }} />}
+        beauty={Boolean(ar.selectedId)} onBeauty={() => setArPanelTab('Beauty')}
+        onEffects={() => setArPanelTab('Effects')}
+        preview={<RtcSurfaceView style={StyleSheet.absoluteFill} canvas={{ uid: 0, sourceType: ar.trackId === null ? 0 : 4, mirrorMode: mirrored ? 1 : 2 }} />}
         onCamera={handleToggleCamera} onMute={handleToggleMute}
         onRotate={handleSwitchCamera} onMirror={() => setMirrored(value => !value)}
         pending={requestPending} onRequest={requestConnection} bottomPadding={insets.bottom}
       />
+
+      <Modal visible={arPanelTab !== null} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setArPanelTab(null)}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: '#0006' }}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} accessibilityLabel="Close AR effects" onPress={() => setArPanelTab(null)} />
+          <View style={{ paddingBottom: insets.bottom + 8, paddingHorizontal: 8 }}>
+            <ARFilterPanel key={arPanelTab || 'Effects'} initialTab={arPanelTab || 'Effects'} onClose={() => setArPanelTab(null)} />
+          </View>
+        </View>
+      </Modal>
 
       <LiveChatInputModal
         visible={chatInputVisible}

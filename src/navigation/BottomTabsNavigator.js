@@ -133,6 +133,10 @@ const CustomTabBar = ({ state, descriptors, navigation, totalUnread }) => {
   const svgPath = getCurvedNotchPath(barWidth, BAR_HEIGHT, activeCx);
 
   const activeRoute = state.routes[state.index];
+  // Hide bottom tab bar completely when camera preview / CreateLiveScreen is active
+  if (activeRoute?.name === 'CreateLive') {
+    return null;
+  }
   const activeConfig = activeRoute ? TAB_CONFIG[activeRoute.name] : null;
 
   return (

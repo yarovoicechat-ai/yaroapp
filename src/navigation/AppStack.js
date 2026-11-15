@@ -75,6 +75,7 @@ import TasksScreen from "../screens/user/TasksScreen";
 import FanClubScreen from "../screens/user/FanClubScreen";
 import VIPScreen from "../screens/user/VIPScreen";
 import DataCenter from "../screens/user/DataCenter";
+import ARFilterStudio from '../features/YaroAR/screens/ARFilterStudio';
 
 const Stack = createStackNavigator();
 
@@ -166,6 +167,7 @@ export default function AppStack() {
       <Stack.Screen name="VIP" component={SVIP} />
       <Stack.Screen name="BeansHistory" component={CoinHistory} />
       <Stack.Screen name="DataCenter" component={DataCenter} />
+      <Stack.Screen name="ARFilterStudio" component={ARFilterStudio} />
     </Stack.Navigator>
   );
 }

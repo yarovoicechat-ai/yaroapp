@@ -190,6 +190,11 @@ export default function MeScreen() {
 
   // 4 items in every line (Row 1: Tasks, Fan Club, Level, Apply Hosting)
   const serviceItems = [
+    {
+      id: 'arEffects', label: 'Effects',
+      icon: <View style={[styles.serviceIconCircle, { backgroundColor: '#F3E8FF' }]}><Ionicons name="sparkles-outline" size={26} color="#A855F7" /></View>,
+      onPress: () => navigation.navigate('ARFilterStudio'),
+    },
     ...((hasBdPrivilege || hasAgencyPrivilege || isApprovedHost || ['owner', 'operator', 'superAdmin', 'admin'].includes(user?.role)) ? [{
       id: 'teamTargets', label: 'Team & Targets', icon: <View style={[styles.serviceIconCircle, { backgroundColor: '#EEF2FF' }]}><MaterialCommunityIcons name="account-group-outline" size={26} color="#4F46E5" /></View>,
       onPress: () => navigation.navigate('TeamDashboard'),

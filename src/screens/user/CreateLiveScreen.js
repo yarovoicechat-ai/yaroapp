@@ -1,4 +1,5 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useContext, useState, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -11,6 +12,8 @@ import {
   Platform,
   StatusBar,
   Share,
+  AppState,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -18,20 +21,22 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import LinearGradient from 'react-native-linear-gradient';
 import {
   createAgoraRtcEngine,
-  RtcSurfaceView,
 } from 'react-native-agora';
 import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil } from '../../utils/apiUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import SelectLiveChannelModal from '../../components/live/SelectLiveChannelModal';
+import { ARManager, ARPreview, ARFilterPanel, useARLifecycle } from '../../features/YaroAR';
+import AgoraClientService from '../../services/agoraService';
 
-export default function CreateLiveScreen({ navigation }) {
+export default function CreateLiveScreen({ navigation, route }) {
   const { user } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [channel, setChannel] = useState('Dance');
   const [channelModalVisible, setChannelModalVisible] = useState(false);
   const [roomType, setRoomType] = useState('Ordinary Room'); // 'Ordinary Room' or 'Multi-guest Room'
+  const [roomTypeModalVisible, setRoomTypeModalVisible] = useState(false);
   const [coverImage, setCoverImage] = useState(
     /^https:\/\//i.test(user?.avatar || user?.image || '')
       ? user.avatar || user.image
@@ -39,14 +44,31 @@ export default function CreateLiveScreen({ navigation }) {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [beautyActive, setBeautyActive] = useState(true);
   const [cameraReady, setCameraReady] = useState(false);
+  const arTab = route?.params?.arTab || 'Beauty';
 
   const engineRef = useRef(null);
+  const arUnbindRef = useRef(null);
+  const releasePreview = useCallback(async () => {
+    const engine=engineRef.current;
+    engineRef.current=null;
+    const unbind=arUnbindRef.current;
+    arUnbindRef.current=null;
+    if(unbind) await unbind();
+    try { engine?.stopPreview(); engine?.release(); } catch {}
+  }, []);
+  useARLifecycle();
 
   // Initialize camera preview on mount
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     let mounted = true;
+    const lifecycle=AppState.addEventListener('change', state => {
+      if (ARManager.getSnapshot().trackId !== null) return;
+      const engine=engineRef.current;
+      if (!engine) return;
+      if (state === 'active') { engine.enableLocalVideo(true); engine.startPreview(); }
+      else { engine.stopPreview(); engine.enableLocalVideo(false); }
+    });
 
     async function initCameraPreview() {
       try {
@@ -55,31 +77,24 @@ export default function CreateLiveScreen({ navigation }) {
             PermissionsAndroid.PERMISSIONS.CAMERA,
             PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
           ]);
-          if (
-            granted[PermissionsAndroid.PERMISSIONS.CAMERA] !==
-            PermissionsAndroid.RESULTS.GRANTED
-          ) {
+          if (Object.values(granted).some(value => value !== PermissionsAndroid.RESULTS.GRANTED)) {
+            if(mounted) setError('Camera and microphone permissions are required to start live.');
             return;
           }
         }
 
+        const config=await AgoraClientService.getActiveAgoraConfig();
+        await ARManager.waitForRelease();
+        if(!mounted) return;
         const engine = createAgoraRtcEngine();
         engineRef.current = engine;
-        // Temporary preview appId or fallback
-        const res = await apiUtil.get('/live/rooms').catch(() => null);
-        engine.initialize({ appId: '915509c2a6574fcfb454378f4803d21b' });
+        engine.initialize({ appId: config.appId });
         engine.enableVideo();
+        arUnbindRef.current=ARManager.bind(engine);
         engine.startPreview();
-        engine.setBeautyEffectOptions(true, {
-          lighteningContrastLevel: 1,
-          lighteningLevel: 0.7,
-          smoothnessLevel: 0.5,
-          rednessLevel: 0.1,
-          sharpnessLevel: 0.3,
-        });
         if (mounted) setCameraReady(true);
       } catch (err) {
-        console.log('Camera preview error:', err?.message);
+        if(mounted) setError(err?.message || 'Camera preview unavailable.');
       }
     }
 
@@ -87,32 +102,22 @@ export default function CreateLiveScreen({ navigation }) {
 
     return () => {
       mounted = false;
-      try {
-        engineRef.current?.stopPreview();
-        engineRef.current?.release();
-      } catch {}
+      lifecycle.remove();
+      setCameraReady(false);
+      void releasePreview().catch(err=>setError(err.message));
     };
-  }, []);
+  }, [releasePreview]));
 
   const handleFlipCamera = () => {
+    if(ARManager.getSnapshot().trackId!==null) {
+      setError('Reset AR before switching the camera.');
+      return;
+    }
     try {
       engineRef.current?.switchCamera();
     } catch {}
   };
 
-  const handleToggleBeauty = () => {
-    const nextState = !beautyActive;
-    setBeautyActive(nextState);
-    try {
-      engineRef.current?.setBeautyEffectOptions(nextState, {
-        lighteningContrastLevel: 1,
-        lighteningLevel: nextState ? 0.7 : 0,
-        smoothnessLevel: nextState ? 0.5 : 0,
-        rednessLevel: nextState ? 0.1 : 0,
-        sharpnessLevel: nextState ? 0.3 : 0,
-      });
-    } catch {}
-  };
 
   const handleShare = async () => {
     try {
@@ -129,19 +134,12 @@ export default function CreateLiveScreen({ navigation }) {
   };
 
   const start = async () => {
-    if (busy) return;
+    if (busy || !cameraReady) return;
     const finalTitle = title.trim() || `${user?.name || 'Live'}'s room`;
     setBusy(true);
     setError('');
 
     try {
-      // Release local preview engine before joining main LiveStream screen
-      try {
-        engineRef.current?.stopPreview();
-        engineRef.current?.release();
-        engineRef.current = null;
-      } catch {}
-
       const mode = roomType === 'Multi-guest Room' ? 'multi' : 'single';
       const res = await apiUtil.post('/live/rooms', {
         title: finalTitle,
@@ -153,11 +151,15 @@ export default function CreateLiveScreen({ navigation }) {
       });
 
       const { room, rtc } = res.data.data;
+      const arEffectId=ARManager.getSnapshot().selectedId;
+      await releasePreview();
+      setCameraReady(false);
       navigation.navigate('LiveStream', {
         roomId: room._id,
         room,
         rtc,
         permissionsGranted: true,
+        arEffectId,
       });
     } catch (e) {
       setError(
@@ -174,7 +176,7 @@ export default function CreateLiveScreen({ navigation }) {
 
       {/* 1. Full-screen Camera Preview Background */}
       {cameraReady ? (
-        <RtcSurfaceView style={StyleSheet.absoluteFill} canvas={{ uid: 0 }} />
+        <ARPreview style={StyleSheet.absoluteFill} />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.cameraPlaceholder]}>
           <Image
@@ -290,17 +292,17 @@ export default function CreateLiveScreen({ navigation }) {
             <Text style={styles.controlLabel}>Flip</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleToggleBeauty} style={styles.controlItem}>
-            <View
-              style={[
-                styles.controlCircle,
-                beautyActive && styles.controlCircleActive,
-              ]}
-            >
+          <TouchableOpacity
+            onPress={() => {
+              // Beauty filter trigger
+            }}
+            style={styles.controlItem}
+          >
+            <View style={styles.controlCircle}>
               <MaterialCommunityIcons
                 name="auto-fix"
                 size={22}
-                color={beautyActive ? '#FF1493' : '#FFFFFF'}
+                color="#FFFFFF"
               />
             </View>
             <Text style={styles.controlLabel}>Beauty</Text>
@@ -314,7 +316,7 @@ export default function CreateLiveScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={handleToggleRoomType}
+            onPress={() => setRoomTypeModalVisible(true)}
             style={styles.controlItem}
           >
             <View style={styles.controlCircle}>
@@ -330,7 +332,7 @@ export default function CreateLiveScreen({ navigation }) {
 
         {/* Start Live Button */}
         <TouchableOpacity
-          disabled={busy}
+          disabled={busy || !cameraReady}
           onPress={start}
           activeOpacity={0.85}
           style={styles.startLiveButton}
@@ -349,16 +351,97 @@ export default function CreateLiveScreen({ navigation }) {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Room Type Tag (Bottom Left) */}
+        {/* Room Type Bottom Indicator (matching Reference Screenshot) */}
         <TouchableOpacity
-          onPress={handleToggleRoomType}
-          style={styles.roomTypeBadge}
           activeOpacity={0.8}
+          onPress={() => setRoomTypeModalVisible(true)}
+          style={styles.roomTypeBottomPill}
         >
-          <Icon name="lock-closed" size={13} color="#FF1493" />
-          <Text style={styles.roomTypeBadgeText}>{roomType}</Text>
+          <Icon
+            name={roomType === 'Ordinary Room' ? 'lock-closed' : 'people'}
+            size={18}
+            color="#FF1493"
+          />
+          <Text style={styles.roomTypeBottomText}>{roomType}</Text>
         </TouchableOpacity>
+
+        <ARFilterPanel key={arTab} initialTab={arTab} />
       </View>
+
+      {/* Room Type Selector Modal */}
+      <Modal
+        visible={roomTypeModalVisible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setRoomTypeModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setRoomTypeModalVisible(false)}
+          />
+          <View style={[styles.roomTypeSheet, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Select Room Type</Text>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setRoomType('Ordinary Room');
+                setRoomTypeModalVisible(false);
+              }}
+              style={[
+                styles.roomTypeOption,
+                roomType === 'Ordinary Room' && styles.roomTypeOptionSelected,
+              ]}
+            >
+              <View style={[styles.roomTypeIconWrap, { backgroundColor: 'rgba(255, 20, 147, 0.15)' }]}>
+                <Icon name="lock-closed" size={24} color="#FF1493" />
+              </View>
+              <View style={styles.roomTypeInfo}>
+                <Text style={styles.roomTypeOptionTitle}>Ordinary Room (Single Live)</Text>
+                <Text style={styles.roomTypeOptionSub}>
+                  Host + 1 Guest Co-Host max. Viewers must apply, host approves.
+                </Text>
+              </View>
+              <Icon
+                name={roomType === 'Ordinary Room' ? 'checkmark-circle' : 'ellipse-outline'}
+                size={22}
+                color={roomType === 'Ordinary Room' ? '#FF1493' : '#64748B'}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setRoomType('Multi-guest Room');
+                setRoomTypeModalVisible(false);
+              }}
+              style={[
+                styles.roomTypeOption,
+                roomType === 'Multi-guest Room' && styles.roomTypeOptionSelected,
+              ]}
+            >
+              <View style={[styles.roomTypeIconWrap, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
+                <Icon name="people" size={24} color="#A855F7" />
+              </View>
+              <View style={styles.roomTypeInfo}>
+                <Text style={styles.roomTypeOptionTitle}>Multi-guest Room (Multi Live)</Text>
+                <Text style={styles.roomTypeOptionSub}>
+                  Host + up to 6 Guest Co-Hosts. Viewers must apply, host approves.
+                </Text>
+              </View>
+              <Icon
+                name={roomType === 'Multi-guest Room' ? 'checkmark-circle' : 'ellipse-outline'}
+                size={22}
+                color={roomType === 'Multi-guest Room' ? '#A855F7' : '#64748B'}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* 5. Select Live Channel Modal */}
       <SelectLiveChannelModal
@@ -503,15 +586,15 @@ const styles = StyleSheet.create({
   controlsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   controlItem: {
     alignItems: 'center',
   },
   controlCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -529,7 +612,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 26,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   startLiveGradient: {
     paddingVertical: 14,
@@ -556,5 +639,83 @@ const styles = StyleSheet.create({
     color: '#FF69B4',
     fontSize: 11,
     fontWeight: '700',
+  },
+  roomTypeBottomPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginTop: 4,
+  },
+  roomTypeBottomText: {
+    color: '#FF1493',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  roomTypeSheet: {
+    backgroundColor: '#1E293B',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#64748B',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  roomTypeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  roomTypeOptionSelected: {
+    borderColor: '#FF1493',
+    backgroundColor: 'rgba(255, 20, 147, 0.08)',
+  },
+  roomTypeIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  roomTypeInfo: {
+    flex: 1,
+  },
+  roomTypeOptionTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  roomTypeOptionSub: {
+    color: '#94A3B8',
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

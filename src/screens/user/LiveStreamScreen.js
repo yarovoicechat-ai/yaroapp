@@ -41,6 +41,8 @@ import LiveChatInputModal from '../../components/live/LiveChatInputModal';
 import LiveConnectionSheet from '../../components/live/LiveConnectionSheet';
 import LiveRechargeSheet from '../../components/live/LiveRechargeSheet';
 import LiveGuestRequestsSheet from '../../components/live/LiveGuestRequestsSheet';
+import GiftContributionListModal from '../../components/live/GiftContributionListModal';
+import LiveEndSummaryModal from '../../components/live/LiveEndSummaryModal';
 import { getSocket } from '../../sockets';
 
 const { width, height } = Dimensions.get('window');
@@ -82,6 +84,11 @@ export default function LiveStreamScreen({ navigation, route }) {
   const [isPK] = useState(Boolean(route.params?.isPK || room.isPKActive || room.pkBattleActive || false));
   const [leftScore, setLeftScore] = useState(room.leftScore || 0);
   const [rightScore, setRightScore] = useState(room.rightScore || 0);
+
+  // New Modals State: Contribution Ranking & Live Ended Summary
+  const [contributionModalVisible, setContributionModalVisible] = useState(false);
+  const [endSummaryVisible, setEndSummaryVisible] = useState(false);
+  const liveStartTime = useRef(Date.now());
   const rivalUser = room.rivalUser || {
     name: 'Rival Broadcaster',
     avatar: 'https://api.yaroapp.in/uploads/avatars/female_default.webp',
@@ -364,6 +371,7 @@ export default function LiveStreamScreen({ navigation, route }) {
               captureStarted.current = false;
               setConnected(false);
               setError('This live has ended.');
+              setEndSummaryVisible(true);
             }
           }
         };
@@ -424,7 +432,7 @@ export default function LiveStreamScreen({ navigation, route }) {
             style: 'destructive',
             onPress: async () => {
               await close();
-              navigation.dispatch(event.data.action);
+              setEndSummaryVisible(true);
             },
           },
         ]);
@@ -570,6 +578,7 @@ export default function LiveStreamScreen({ navigation, route }) {
           onFollow={followHost}
           onClose={() => navigation.goBack()}
           onPressHost={() => room.host?._id && navigation.navigate('UserProfile', { userId: room.host._id })}
+          onPressSupporter={() => setContributionModalVisible(true)}
         />
       </View>
 
@@ -694,8 +703,36 @@ export default function LiveStreamScreen({ navigation, route }) {
         onClose={() => setChatInputVisible(false)}
         onSendMessage={handleSendMessage}
       />
+
+      {/* 9. Contribution Ranking List Modal */}
+      <GiftContributionListModal
+        visible={contributionModalVisible}
+        onClose={() => setContributionModalVisible(false)}
+        roomId={roomId}
+        hostId={room.host?._id || room.host}
+      />
+
+      {/* 10. Live Ended Summary Modal */}
+      <LiveEndSummaryModal
+        visible={endSummaryVisible}
+        onReturnHome={() => {
+          setEndSummaryVisible(false);
+          navigation.navigate('MainTabs');
+        }}
+        host={room.host || { name: room.title || 'Host' }}
+        durationText={formatDuration(Date.now() - liveStartTime.current)}
+        income={room.totalDiamonds || 0}
+        viewerCount={room.viewerCount || 0}
+      />
     </View>
   );
+}
+
+function formatDuration(ms) {
+  const totalSecs = Math.max(0, Math.floor(ms / 1000));
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
+  return `${String(mins).padStart(2, '0')}min ${String(secs).padStart(2, '0')}s`;
 }
 
 const styles = StyleSheet.create({

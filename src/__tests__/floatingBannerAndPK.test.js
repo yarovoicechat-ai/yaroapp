@@ -4,9 +4,9 @@ import FloatingGameBannerWidget from '../components/room/FloatingGameBannerWidge
 import LiveBottomControls from '../components/live/LiveBottomControls';
 import LivePKBar from '../components/live/LivePKBar';
 import RoomPKPanel from '../components/room/RoomPKPanel';
-import AlertService from '../utils/alertService';
+import AlertService from '../utils/AlertService';
 
-jest.mock('../utils/alertService', () => ({
+jest.mock('../utils/AlertService', () => ({
   show: jest.fn(),
   info: jest.fn(),
   error: jest.fn(),

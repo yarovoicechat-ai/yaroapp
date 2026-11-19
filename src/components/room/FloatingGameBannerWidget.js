@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import AlertService from '../../utils/alertService';
+import AlertService from '../../utils/AlertService';
 import { LIVE_GAMES_LIST } from '../live/LiveGamesModal';
 
 // Event / Promotion Banner items

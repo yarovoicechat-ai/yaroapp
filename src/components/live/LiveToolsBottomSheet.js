@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -16,32 +17,46 @@ export default function LiveToolsBottomSheet({
   visible,
   onClose,
   isHost = false,
+  isCoHost = false,
+  isLocked = false,
   muted = false,
   camera = true,
   onSwitchCamera,
   onToggleMute,
   onToggleCamera,
+  onLockRoom,
   onShare,
   onReport,
   onDailyTask,
   onEffects,
   onBeauty,
+  onGames,
   bottomPadding = 16,
 }) {
   if (!visible) return null;
 
   const tools = isHost
     ? [
+        { id: 'games', name: 'Live Games', icon: 'game-controller-outline', action: onGames },
+        { id: 'lock', name: isLocked ? 'Unlock Live' : 'Lock Live', icon: isLocked ? 'lock-open-outline' : 'lock-closed-outline', action: onLockRoom },
         { id: 'flip', name: 'Flip Camera', icon: 'camera-reverse-outline', action: onSwitchCamera },
         { id: 'mute', name: muted ? 'Unmute' : 'Mute', icon: muted ? 'mic-off-outline' : 'mic-outline', action: onToggleMute },
-        { id: 'cam', name: camera ? 'Camera Off' : 'Camera On', icon: camera ? 'videocam-outline' : 'videocam-off-outline', action: onToggleCamera },
         { id: 'share', name: 'Share', icon: 'share-social-outline', action: onShare },
         { id: 'task', name: 'Daily task', icon: 'calendar-outline', action: onDailyTask },
         { id: 'beauty', name: 'Beauty', icon: 'sparkles-outline', action: onBeauty || onClose },
         { id: 'effects', name: 'Effects', icon: 'color-wand-outline', action: onEffects || onClose },
         { id: 'settings', name: 'Live settings', icon: 'settings-outline', action: onClose },
       ]
-    : [
+    : isCoHost ? [
+        { id: 'games', name: 'Live Games', icon: 'game-controller-outline', action: onGames },
+        { id: 'mute', name: muted ? 'Unmute' : 'Mute', icon: muted ? 'mic-off-outline' : 'mic-outline', action: onToggleMute },
+        { id: 'cam', name: camera ? 'Camera Off' : 'Camera On', icon: camera ? 'videocam-outline' : 'videocam-off-outline', action: onToggleCamera },
+        { id: 'flip', name: 'Flip Camera', icon: 'camera-reverse-outline', action: onSwitchCamera },
+        { id: 'beauty', name: 'Beauty', icon: 'sparkles-outline', action: onBeauty },
+        { id: 'effects', name: 'Effects', icon: 'color-wand-outline', action: onEffects },
+        { id: 'share', name: 'Share', icon: 'share-social-outline', action: onShare },
+      ] : [
+        { id: 'games', name: 'Live Games', icon: 'game-controller-outline', action: onGames },
         { id: 'report', name: 'Report', icon: 'flag-outline', action: onReport },
         { id: 'dislike', name: 'Dislike', icon: 'heart-dislike-outline', action: onClose },
         { id: 'task', name: 'Daily task', icon: 'calendar-outline', action: onDailyTask },
@@ -79,7 +94,11 @@ export default function LiveToolsBottomSheet({
                 key={tool.id}
                 activeOpacity={0.75}
                 onPress={() => {
-                  tool.action && tool.action();
+                  if (!tool.action || tool.action === onClose) {
+                    Alert.alert(tool.name, 'This control is currently unavailable.');
+                    return;
+                  }
+                  tool.action();
                 }}
                 style={styles.toolItem}
               >

@@ -20,7 +20,6 @@ import {
   createAgoraRtcEngine,
   ChannelProfileType,
   ClientRoleType,
-  RtcSurfaceView,
 } from 'react-native-agora';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -39,16 +38,30 @@ import LiveFloatingSideBadges from '../../components/live/LiveFloatingSideBadges
 import LiveBottomControls from '../../components/live/LiveBottomControls';
 import LiveGiftTrayModal from '../../components/live/LiveGiftTrayModal';
 import LiveToolsBottomSheet from '../../components/live/LiveToolsBottomSheet';
+import LiveGamesModal from '../../components/live/LiveGamesModal';
+import LiveRoomGameView from '../../components/live/LiveRoomGameView';
 import LiveChatInputModal from '../../components/live/LiveChatInputModal';
 import LiveConnectionSheet from '../../components/live/LiveConnectionSheet';
 import LiveRechargeSheet from '../../components/live/LiveRechargeSheet';
 import LiveGuestRequestsSheet from '../../components/live/LiveGuestRequestsSheet';
 import GiftContributionListModal from '../../components/live/GiftContributionListModal';
 import LiveEndSummaryModal from '../../components/live/LiveEndSummaryModal';
+import RoomLockModal from '../../components/room/RoomLockModal';
 import { getSocket } from '../../sockets';
-import { ARManager, ARFilterPanel, useARSession, useARLifecycle } from '../../features/YaroAR';
+import { ARManager, ARFilterPanel, ARFaceMaskOverlay, useARSession, useARLifecycle } from '../../features/YaroAR';
+import LiveVideoGrid from '../../components/live/LiveVideoGrid';
+import GiftAnimationEngine from '../../components/gift/GiftAnimationEngine';
+import { useGiftQueue } from '../../components/gift/hooks/useGiftQueue';
+import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
+import RoomEntryEffectEngine from '../../components/room/RoomEntryEffectEngine';
+import { getEffect } from '../../features/YaroAR/effects/registry/effectRegistry';
+import AgoraVideoView from '../../components/live/AgoraVideoView';
 
 const { width, height } = Dimensions.get('window');
+const guestUserId = guest => String(
+  guest?.user?._id || guest?.user?.id || guest?.user?.userId ||
+  (typeof guest?.user === 'string' ? guest.user : '') || guest?.id || guest?.userId || '',
+);
 
 export default function LiveStreamScreen({ navigation, route }) {
   const ar = useARSession();
@@ -68,6 +81,9 @@ export default function LiveStreamScreen({ navigation, route }) {
   const [room, setRoom] = useState(route.params?.room || {});
   const [rtc, setRtc] = useState(route.params?.rtc || null);
   const [previewReady, setPreviewReady] = useState(false);
+  const [engineReady, setEngineReady] = useState(false);
+  const [activeEntry, setActiveEntry] = useState(null);
+  const giftQueue = useGiftQueue();
   const [connected, setConnected] = useState(false);
   const [remoteReady, setRemoteReady] = useState(false);
   const [error, setError] = useState('');
@@ -82,6 +98,11 @@ export default function LiveStreamScreen({ navigation, route }) {
   const [rechargeVisible, setRechargeVisible] = useState(false);
   const [requestsVisible, setRequestsVisible] = useState(false);
   const [joinRequests, setJoinRequests] = useState([]);
+  const [liveSocket, setLiveSocket] = useState(() => getSocket());
+  useEffect(() => {
+    const interval = setInterval(() => setLiveSocket(getSocket()), 500);
+    return () => clearInterval(interval);
+  }, []);
 
   // Live Stream Features & Interactivity State
   const [isFollowing, setIsFollowing] = useState(false);
@@ -92,6 +113,11 @@ export default function LiveStreamScreen({ navigation, route }) {
   const [recentGift, setRecentGift] = useState(null);
   const [giftBanner, setGiftBanner] = useState(null);
   const [messages, setMessages] = useState([]);
+
+  // Live Room In-Screen Games State
+  const [gamesModalVisible, setGamesModalVisible] = useState(false);
+  const [activeGame, setActiveGame] = useState(null);
+  const [isGameMinimized, setIsGameMinimized] = useState(false);
 
   // PK Battle State - Default is false (active only during PK match)
   const [isPK, setIsPK] = useState(
@@ -122,6 +148,47 @@ export default function LiveStreamScreen({ navigation, route }) {
   const [giftModalVisible, setGiftModalVisible] = useState(false);
   const [toolsModalVisible, setToolsModalVisible] = useState(false);
   const [chatInputVisible, setChatInputVisible] = useState(false);
+  const [liveLockModalVisible, setLiveLockModalVisible] = useState(false);
+
+  const handleToggleLiveLock = async () => {
+    setToolsModalVisible(false);
+    const isAllowed = user?.canPrivateLive === true || ['owner', 'superAdmin', 'admin'].includes(String(user?.role));
+    if (!isAllowed) {
+      AlertService.show(
+        'Permission Required 🔒',
+        'Private live option is not enabled for your account. Please contact admin to activate Private Live for your ID.',
+        'info'
+      );
+      return;
+    }
+
+    if (room?.isPrivate) {
+      try {
+        const res = await apiUtil.post(`/live/rooms/${roomId}/lock`, { isLocked: false });
+        if (res.data?.success) {
+          setRoom(prev => ({ ...prev, isPrivate: false }));
+          AlertService.show('Live Unlocked', 'Your live stream is now public.', 'success');
+        }
+      } catch (err) {
+        AlertService.show('Error', err.response?.data?.message || 'Failed to unlock room', 'error');
+      }
+    } else {
+      setLiveLockModalVisible(true);
+    }
+  };
+
+  const handleLiveLockSuccess = async (pin) => {
+    try {
+      const res = await apiUtil.post(`/live/rooms/${roomId}/lock`, { isLocked: true, pin });
+      if (res.data?.success) {
+        setRoom(prev => ({ ...prev, isPrivate: true }));
+        setLiveLockModalVisible(false);
+        AlertService.show('Live Locked 🔒', 'Your live stream is now private. Viewers must enter the password to join.', 'success');
+      }
+    } catch (err) {
+      AlertService.show('Error', err.response?.data?.message || 'Failed to lock room', 'error');
+    }
+  };
 
   const engineRef = useRef(null);
   const rtcRef = useRef(route.params?.rtc || null);
@@ -133,6 +200,12 @@ export default function LiveStreamScreen({ navigation, route }) {
   const roomRef = useRef(room);
   roomRef.current = room;
   const giftSendingRef = useRef(false);
+  const seenGifts = useRef(new Set());
+  useEffect(() => {
+    seenGifts.current.clear();
+    giftQueue.clearQueue();
+    setActiveEntry(null);
+  }, [roomId, giftQueue.clearQueue]);
 
   const refreshBalance = async () => {
     try {
@@ -195,28 +268,75 @@ export default function LiveStreamScreen({ navigation, route }) {
     setRequestPending(true);
   };
 
+  const receiveGift = (data) => {
+    if (data.roomId && String(data.roomId) !== String(roomId)) return;
+    const id = data.transactionId || data.id;
+    if (id && seenGifts.current.has(id)) return;
+    if (id) {
+      seenGifts.current.add(id);
+      if (seenGifts.current.size > 200)
+        seenGifts.current.delete(seenGifts.current.values().next().value);
+    }
+    giftQueue.enqueue({
+      ...data,
+      quantity: data.quantity || data.gift?.quantity || 1,
+      animationId: data.transactionId || data.id,
+      receiver: data.receiver || {
+        id: data.receiverId,
+        name: roomRef.current?.host?.name || 'Broadcaster',
+      },
+    });
+    const visual = resolveGiftVisual(data.gift || data);
+    const quantity = data.quantity || data.gift?.quantity || 1;
+    setComboCount(quantity);
+    setComboEmoji(visual.giftIcon || '🎁');
+    setGiftBanner({
+      senderName: data.sender?.name,
+      receiverName: data.receiver?.name || roomRef.current?.host?.name || 'Broadcaster',
+      giftName: data.gift?.name,
+    });
+    setRecentGift({
+      senderName: data.sender?.name,
+      giftEmoji: visual.giftIcon || '🎁',
+      giftImage: visual.giftImage,
+      giftName: data.gift?.name || 'Gift',
+      count: quantity,
+    });
+    setRoom((current) => ({
+      ...current,
+      totalDiamonds: data.totalDiamonds,
+      topSupporters: data.topSupporters,
+    }));
+    setLeftScore(data.leftScore || 0);
+    setRightScore(data.rightScore || 0);
+    refreshBalance();
+  };
+
   useEffect(() => {
-    const socket = getSocket();
+    const socket = liveSocket;
     refreshBalance();
     if (!socket) return undefined;
     const join = () => socket.emit('live:join', { roomId });
-    if (socket.connected) {
-      join();
-    }
     const handlers = {
       connect: join,
       'live:chat_message': message => setMessages(current => [...current.slice(-49), message]),
       'live:viewer_joined': data => setRoom(current => ({ ...current, viewerCount: data.viewerCount })),
       'live:viewer_left': data => setRoom(current => ({ ...current, viewerCount: data.viewerCount })),
       'live:like_update': data => setLikeCount(data.totalLikes),
-      'live:gift_received': data => {
-        setComboCount(data.gift?.quantity || 1);
-        setComboEmoji(data.gift?.icon || data.gift?.image || '🎁');
-        setGiftBanner({ senderName: data.sender?.name, receiverName: roomRef.current?.host?.name || 'Broadcaster', giftName: data.gift?.name });
-        setRecentGift({ senderName: data.sender?.name, giftEmoji: data.gift?.icon || data.gift?.image || '🎁', count: data.gift?.quantity });
-        setRoom(current => ({ ...current, totalDiamonds: data.totalDiamonds, topSupporters: data.topSupporters }));
-        setLeftScore(data.leftScore || 0); setRightScore(data.rightScore || 0);
-        refreshBalance();
+      'live:gift_received': receiveGift,
+      'entry:effect': data => {
+        if (String(data.roomId) !== String(roomId)) return;
+        setActiveEntry(previous => ({ ...data, queuedEntries: [...(previous?.queuedEntries || []), data].slice(-15) }));
+      },
+      'live:guest_media': data => {
+        if (String(data.roomId) !== String(roomId)) return;
+        setGuests(current => current.map(guest => guestUserId(guest) === String(data.userId)
+          ? { ...guest, muted: data.muted, camera: data.camera } : guest));
+        if (Number(data.agoraUid) === Number(rtcRef.current?.agoraUid) && data.muted === true) {
+          engineRef.current?.muteLocalAudioStream(true);
+          guestMuted.current = true;
+          setMuted(true);
+        }
       },
       'live:error': data => { setRequestPending(false); AlertService.show('Live', data.message, 'error'); },
       'live:guest_rejected': data => {
@@ -251,8 +371,18 @@ export default function LiveStreamScreen({ navigation, route }) {
         setRtc(rtcRef.current);
         setRequestPending(false); setConnectionVisible(false);
       },
-      'live:guest_joined': data => setGuests(current => [...current.filter(g => g.id !== data.guest.id), data.guest]),
-      'live:guest_left': data => setGuests(current => current.filter(g => (g.id || g.user?._id || g.user) !== data.userId)),
+      'live:guest_joined': data => {
+        if (data.roomId && String(data.roomId) !== String(roomId)) return;
+        setGuests(current => {
+          const id = guestUserId(data.guest);
+          const previous = current.find(guest => guestUserId(guest) === id);
+          return [...current.filter(guest => guestUserId(guest) !== id), { ...previous, ...data.guest }];
+        });
+      },
+      'live:guest_left': data => {
+        if (data.roomId && String(data.roomId) !== String(roomId)) return;
+        setGuests(current => current.filter(guest => guestUserId(guest) !== String(data.userId)));
+      },
       'live:pk_started': data => {
         setIsPK(true);
         if (data.rivalHost) setRivalUser(data.rivalHost);
@@ -279,6 +409,7 @@ export default function LiveStreamScreen({ navigation, route }) {
             {
               text: 'Accept ⚔️',
               onPress: () => {
+                setRivalUser(data.fromHost || null);
                 socket.emit('live:pk_accept', {
                   roomId,
                   inviterRoomId: data.fromRoomId,
@@ -293,11 +424,12 @@ export default function LiveStreamScreen({ navigation, route }) {
     Object.entries(handlers).forEach(([event, handler]) => socket.on(event, handler));
     if (socket.connected) join();
     return () => {
+      giftQueue.clearQueue();
       Object.entries(handlers).forEach(([event, handler]) => socket.off(event, handler));
       if (rtcRef.current?.isCoHost) socket.emit('live:leave_guest', { roomId });
       socket.emit('live:leave', { roomId });
     };
-  }, [roomId]);
+  }, [roomId, liveSocket]);
 
   const respondToRequest = (targetUserId, accept) => {
     const socket = getSocket();
@@ -309,6 +441,8 @@ export default function LiveStreamScreen({ navigation, route }) {
   const close = async () => {
     if (closing.current) return arReleaseRef.current;
     closing.current = true;
+    giftQueue.clearQueue();
+    setActiveEntry(null);
     const closingEngine = engineRef.current;
     await releaseAR();
     if (rtcRef.current?.isCoHost) getSocket()?.emit('live:leave_guest', { roomId });
@@ -337,7 +471,7 @@ export default function LiveStreamScreen({ navigation, route }) {
         const supplied = route.params?.rtc;
         const data = supplied?.isHost && supplied?.token && route.params?.room?._id === roomId
           ? { room: route.params.room, rtc: supplied }
-          : (await apiUtil.post(`/live/rooms/${roomId}/join`)).data.data;
+          : (await apiUtil.post(`/live/rooms/${roomId}/join`, { pin: route.params?.pin })).data.data;
         rtcRef.current = data.rtc;
         if (disposed || closing.current) {
           await close();
@@ -368,21 +502,28 @@ export default function LiveStreamScreen({ navigation, route }) {
         if (disposed || closing.current) return;
         const engine = createAgoraRtcEngine();
         engineRef.current = engine;
-        engine.initialize({
+        const initialized = engine.initialize({
           appId: data.rtc.appId,
           channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
         });
+        if (initialized < 0) throw new Error(`Video initialization failed (${initialized}).`);
         if (data.rtc.isHost || data.rtc.isCoHost) arUnbindRef.current = ARManager.bind(engine, { inChannel: true });
         engine.registerEventHandler({
           onJoinChannelSuccess: () => {
             clearTimeout(connectionTimer);
             if (!disposed && !closing.current) { setConnected(true); setError(''); }
             if (!disposed && data.rtc.isHost && route.params?.arEffectId) {
-              void ARManager.select(route.params.arEffectId).catch(e => ARManager.update({ error: e.message }));
+              void ARManager.select(route.params.arEffectId, route.params.arSettings).catch(e => ARManager.update({ error: e.message }));
             }
           },
           onFirstLocalVideoFrame: () => { if (!disposed && !closing.current) setPreviewReady(true); },
+          onLocalVideoStateChanged: (_source, state, code) => {
+            if (!disposed && !closing.current && state === 3) setError(`Camera video failed (${code}).`);
+          },
           onUserJoined: (_connection, uid) => {
+            if (!disposed && Number(uid) === Number(data.rtc.hostUid)) setRemoteReady(true);
+          },
+          onFirstRemoteVideoFrame: (_connection, uid) => {
             if (!disposed && Number(uid) === Number(data.rtc.hostUid)) setRemoteReady(true);
           },
           onUserOffline: (_connection, uid) => {
@@ -409,7 +550,9 @@ export default function LiveStreamScreen({ navigation, route }) {
             }
           },
         });
-        engine.enableVideo();
+        const enabled = engine.enableVideo();
+        if (enabled < 0) throw new Error(`Video could not start (${enabled}).`);
+        setEngineReady(true);
         const isHost = data.rtc.isHost;
         const publishing = isHost || data.rtc.isCoHost;
         if (publishing) {
@@ -558,6 +701,7 @@ export default function LiveStreamScreen({ navigation, route }) {
         giftId: gift.id, quantity, target: receiver === rivalUser ? 'rival' : 'host',
       });
       setRoom(current => ({ ...current, totalDiamonds: response.data?.data?.totalDiamonds ?? current.totalDiamonds }));
+      if (response.data?.data?.giftEvent) receiveGift(response.data.data.giftEvent);
       setGiftModalVisible(false);
       refreshBalance();
     } catch (e) {
@@ -570,11 +714,16 @@ export default function LiveStreamScreen({ navigation, route }) {
   };
 
   const handleToggleMute = () => {
+    if (!rtcRef.current?.isHost && !rtcRef.current?.isCoHost && !connectionVisible) return;
     engineRef.current?.muteLocalAudioStream(!muted);
+    guestMuted.current = !muted;
+    if (rtcRef.current?.isCoHost) getSocket()?.emit('live:guest_media', { roomId, muted: !muted, camera });
     setMuted(!muted);
   };
 
   const handleToggleCamera = async () => {
+    if (rtcRef.current?.isHost) return;
+    if (!rtcRef.current?.isCoHost && !connectionVisible) return;
     if (ARManager.getSnapshot().trackId !== null) {
       try {
         if (camera) await ARManager.pause(); else await ARManager.resume();
@@ -582,19 +731,19 @@ export default function LiveStreamScreen({ navigation, route }) {
           engineRef.current?.updateChannelMediaOptions({ publishCustomVideoTrack: !camera });
         }
         setCamera(!camera);
+        guestCamera.current = !camera;
+        if (rtcRef.current?.isCoHost) getSocket()?.emit('live:guest_media', { roomId, muted, camera: !camera });
       } catch (e) { AlertService.show('Camera', e.message || 'Could not change camera state.', 'error'); }
       return;
     }
     engineRef.current?.muteLocalVideoStream(camera);
+    guestCamera.current = !camera;
+    if (rtcRef.current?.isCoHost) getSocket()?.emit('live:guest_media', { roomId, muted, camera: !camera });
     setCamera(!camera);
   };
 
   const handleSwitchCamera = () => {
-    if (ar.trackId !== null) {
-      AlertService.show('Camera', 'Reset AR before switching the camera.', 'info');
-      return;
-    }
-    engineRef.current?.switchCamera();
+    void ARManager.switchCamera().catch(error => AlertService.show('Camera', error.message, 'error'));
   };
 
   const handleScreenDoubleTap = () => {
@@ -627,35 +776,67 @@ export default function LiveStreamScreen({ navigation, route }) {
           socket.emit('live:pk_invite', { roomId, targetRoomId: target._id });
           AlertService.show('PK Match', `Challenged ${target.host?.name || 'Broadcaster'} to PK Battle!`, 'info');
         } else {
-          // If no other host is live right now, simulate/toggle local PK match
-          setIsPK(true);
-          setLeftScore(0);
-          setRightScore(0);
-          AlertService.show('PK Battle', 'PK Battle mode activated!', 'info');
+          AlertService.show('PK Battle', 'No other broadcaster is available for a PK invitation.', 'info');
         }
       } catch (err) {
-        setIsPK(true);
+        AlertService.show('PK Battle', err.response?.data?.message || 'Could not load available broadcasters.', 'error');
       }
     }
     setRequestsVisible(false);
   };
 
-  const videoHeight = isPK ? height * 0.44 : height;
+  const isHalfScreenGame = Boolean(activeGame && !isGameMinimized);
+  const videoHeight = isHalfScreenGame ? height * 0.42 : isPK ? height * 0.44 : height;
+  const multi = room.mode === 'multi';
+  const muteGuest = guest => getSocket()?.emit('live:mute_guest', {
+    roomId, targetUserId: guestUserId(guest),
+  });
+  const openUserProfile = userId => { if (userId) navigation.navigate('UserProfile', { userId }); };
+  const reportHost = () => Alert.alert('Report broadcast', 'Report this broadcast for inappropriate content?', [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Report', onPress: async () => {
+      try {
+        await apiUtil.post('/user/report', { reportedUserId: room.host?._id || room.host?.id,
+          reason: 'Inappropriate live content', description: `Live broadcast ${roomId}`, reportedType: 'user' });
+        AlertService.show('Report submitted', 'Our safety team will review this broadcast.', 'success');
+      } catch (e) { AlertService.show('Report', e.response?.data?.message || 'Could not send report.', 'error'); }
+    } },
+  ]);
 
   return (
     <View style={styles.screen}>
       {/* 1. Main Video Area (Single Host or PK Split Screen) */}
       <TouchableWithoutFeedback onPress={handleScreenDoubleTap}>
         <View style={[styles.videoContainer, { height: videoHeight }]}>
-          {isPK ? (
+          {multi ? (
+            <View style={{ position: 'absolute', top: insets.top + 95, left: 4, right: 4, height: height * 0.48 }}>
+              <LiveVideoGrid count={room.seatCount || (room.maxGuests || 3) + 1} host={room.host} guests={guests}
+                hostUid={rtc?.hostUid} localUid={rtc?.agoraUid} isHost={isHost} ready={engineReady}
+                trackId={ar.trackId} frontCamera={ar.frontCamera} camera={camera}
+                muted={muted} onMute={isHost || rtc?.isCoHost ? handleToggleMute : undefined}
+                onCamera={rtc?.isCoHost ? handleToggleCamera : undefined}
+                onJoin={!isHost && !rtc?.isCoHost ? openConnection : undefined} onMuteGuest={muteGuest} />
+            </View>
+          ) : isPK ? (
             <View style={styles.pkSplitRow}>
               {/* Left Stream: Broadcaster */}
               <View style={styles.streamHalf}>
-                {rtc && ((isHost && !error) || (connected && remoteReady)) ? (
-                  <RtcSurfaceView
-                    style={StyleSheet.absoluteFill}
-                    canvas={{ uid: isHost ? 0 : rtc.hostUid, ...(isHost && ar.trackId !== null ? { sourceType: 4 } : {}) }}
-                  />
+                {rtc && engineReady && (isHost || connected) ? (
+                  <>
+                    <AgoraVideoView
+                      key={`host-${isHost ? ar.trackId : rtc.hostUid}`}
+                      style={StyleSheet.absoluteFill}
+                      canvas={{ uid: isHost ? 0 : rtc.hostUid, ...(isHost ? { sourceType: ar.trackId === null ? 0 : 4, mirrorMode: ar.frontCamera ? 1 : 2 } : {}) }}
+                    />
+                    {isHost && (
+                      <ARFaceMaskOverlay
+                        effectId={ar.selectedId}
+                        intensity={ar.intensity}
+                        style={StyleSheet.absoluteFill}
+                        compact
+                      />
+                    )}
+                  </>
                 ) : (
                   <View style={styles.avatarFallback}>
                     <Image source={getUserAvatar(room.host)} style={styles.streamFallbackAvatar} />
@@ -673,22 +854,32 @@ export default function LiveStreamScreen({ navigation, route }) {
               <View style={styles.streamHalf}>
                 <View style={styles.avatarFallback}>
                   <Image source={getUserAvatar(rivalUser)} style={styles.streamFallbackAvatar} />
-                  <Text style={styles.fallbackText}>{rivalUser.name}</Text>
+                  <Text style={styles.fallbackText}>{rivalUser?.name || 'Rival broadcaster'}</Text>
                 </View>
                 {/* Rival Broadcaster Name & Score Tag */}
                 <View style={styles.streamTagRight}>
-                  <Text style={styles.streamTagHostText}>💖 {rivalUser.name} 💖</Text>
+                  <Text style={styles.streamTagHostText}>💖 {rivalUser?.name || 'Rival broadcaster'} 💖</Text>
                   <Text style={styles.streamScore}>⭐ {rightScore}</Text>
                 </View>
               </View>
             </View>
           ) : (
             <View style={StyleSheet.absoluteFill}>
-              {rtc && ((isHost && !error) || (connected && remoteReady)) ? (
-                <RtcSurfaceView
-                  style={StyleSheet.absoluteFill}
-                  canvas={{ uid: isHost ? 0 : rtc.hostUid, ...(isHost && ar.trackId !== null ? { sourceType: 4 } : {}) }}
-                />
+              {rtc && engineReady && (isHost || connected) ? (
+                <>
+                  <AgoraVideoView
+                    key={`host-${isHost ? ar.trackId : rtc.hostUid}`}
+                    style={StyleSheet.absoluteFill}
+                    canvas={{ uid: isHost ? 0 : rtc.hostUid, ...(isHost ? { sourceType: ar.trackId === null ? 0 : 4, mirrorMode: ar.frontCamera ? 1 : 2 } : {}) }}
+                  />
+                  {isHost && (
+                    <ARFaceMaskOverlay
+                      effectId={ar.selectedId}
+                      intensity={ar.intensity}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  )}
+                </>
               ) : (
                 <View style={[styles.avatarFallback, StyleSheet.absoluteFill]}>
                   <Image source={getUserAvatar(room.host)} style={styles.streamFallbackAvatarLarge} />
@@ -727,9 +918,20 @@ export default function LiveStreamScreen({ navigation, route }) {
 
       {/* 3. Luxury Broadcast Gift Banner */}
       <LiveGiftBanner banner={giftBanner} />
-      {guests.length > 0 && <View style={styles.guestVideos}>
-        {guests.map(guest => <RtcSurfaceView key={guest.id || guest.agoraUid}
-          style={styles.guestVideo} canvas={{ uid: guest.agoraUid === rtc?.agoraUid ? 0 : guest.agoraUid, ...(guest.agoraUid === rtc?.agoraUid && ar.trackId !== null ? { sourceType: 4 } : {}) }} />)}
+      {!multi && guests.length > 0 && <View style={styles.guestVideos}>
+        {guests.map(guest => {
+          const local = Number(guest.agoraUid) === Number(rtc?.agoraUid);
+          return <View key={guestUserId(guest) || guest.agoraUid} style={styles.guestVideo}>
+          {guest.camera === false || (local && !camera)
+            ? <View style={styles.avatarFallback}><Icon name="videocam-off-outline" size={28} color="#FFF" /></View>
+            : <AgoraVideoView key={`${guest.agoraUid}-${local ? ar.trackId : 'remote'}`} zOrderMediaOverlay style={StyleSheet.absoluteFill}
+              canvas={{ uid: local ? 0 : guest.agoraUid,
+                ...(local ? { sourceType: ar.trackId === null ? 0 : 4, mirrorMode: ar.frontCamera ? 1 : 2 } : {}) }} />}
+          {isHost && <TouchableOpacity style={styles.singleGuestMute} accessibilityLabel={`Mute ${guest.name || 'guest'}`} onPress={() => muteGuest(guest)}>
+            <Icon name="mic-off" color="#FFF" size={18} />
+          </TouchableOpacity>}
+        </View>;
+        })}
       </View>}
 
       {/* 4. PK Versus Bar */}
@@ -749,7 +951,7 @@ export default function LiveStreamScreen({ navigation, route }) {
 
       {/* 5. Center Status / Connection Indicator */}
       {(!connected || (!isHost && !remoteReady) || !!error) && (
-        <View style={styles.status}>
+        <View style={styles.status} pointerEvents="none">
           {!error && !previewReady && <ActivityIndicator color="#FFF" size="large" />}
           <Text style={styles.message}>
             {error ||
@@ -760,32 +962,89 @@ export default function LiveStreamScreen({ navigation, route }) {
         </View>
       )}
 
-      {/* 6. Lower Content: Floating Badges (Right) + Live Chat Stream (Left) */}
-      <View style={styles.lowerArea} pointerEvents="box-none">
-        <LiveChatOverlay
-          messages={messages}
-          recentGift={recentGift}
-          onSayHi={handleSayHi}
-          onPressMessage={() => {}}
-        />
+      {/* 6. Lower Content OR Half-Screen Live Game */}
+      {isHalfScreenGame ? (
+        <View style={[styles.gameAreaContainer, { height: height * 0.58 }]}>
+          <LiveRoomGameView
+            game={activeGame}
+            onClose={() => {
+              setActiveGame(null);
+              setIsGameMinimized(false);
+            }}
+            onMinimize={() => setIsGameMinimized(true)}
+            coinBalance={coinBalance}
+            onUpdateCoinBalance={newBal => setCoinBalance(newBal)}
+            onRecharge={openRecharge}
+            onEmitGameWin={(amount, gameName) => {
+              const winMsg = {
+                id: 'game_win_' + Date.now(),
+                senderId: 'game_system',
+                senderName: 'Game Master',
+                text: `🎉 Won ${amount.toLocaleString()} coins in ${gameName}!`,
+                avatar: null,
+                color: '#FFD700',
+              };
+              setMessages(prev => [...prev.slice(-40), winMsg]);
+              getSocket()?.emit('live:chat_message', {
+                roomId,
+                text: `🎉 Won ${amount.toLocaleString()} coins in ${gameName}!`,
+                type: 'game_win',
+              });
+            }}
+          />
+        </View>
+      ) : (
+        <>
+          <View style={styles.lowerArea} pointerEvents="box-none">
+            <LiveChatOverlay
+              messages={messages}
+              recentGift={recentGift}
+              onSayHi={handleSayHi}
+              onPressMessage={message => openUserProfile(message.senderId)}
+            />
 
-        <LiveFloatingSideBadges
-          hearts={hearts}
-          onHeartComplete={handleHeartComplete}
-          comboCount={comboCount}
-          comboEmoji={comboEmoji}
-          onPressTask={() => {}}
-          onPressEvent={() => {}}
-        />
-      </View>
+            <LiveFloatingSideBadges
+              hearts={hearts}
+              onHeartComplete={handleHeartComplete}
+              comboCount={comboCount}
+              comboEmoji={comboEmoji}
+              onPressTask={() => AlertService.show('Live tasks', 'Live task rewards are currently unavailable.', 'info')}
+              onPressEvent={() => setContributionModalVisible(true)}
+            />
+          </View>
 
-      {/* 7. Bottom Action Controls Bar */}
-      <LiveBottomControls
-        onOpenChat={() => setChatInputVisible(true)}
-        onOpenPK={isHost ? () => setRequestsVisible(true) : openConnection}
-        onOpenGift={() => setGiftModalVisible(true)}
-        bottomPadding={insets.bottom + 10}
-      />
+          {/* 7. Bottom Action Controls Bar */}
+          <LiveBottomControls
+            onOpenChat={() => setChatInputVisible(true)}
+            onOpenPK={isHost ? () => setRequestsVisible(true) : rtc?.isCoHost ? () => setToolsModalVisible(true) : openConnection}
+            onOpenGift={() => setGiftModalVisible(true)}
+            onOpenTools={() => setToolsModalVisible(true)}
+            onOpenGames={() => setGamesModalVisible(true)}
+            bottomPadding={insets.bottom + 10}
+          />
+        </>
+      )}
+
+      {/* Floating Mini-Game Bubble (when minimized) */}
+      {activeGame && isGameMinimized && (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setIsGameMinimized(false)}
+          style={[styles.floatingMiniGamePill, { bottom: insets.bottom + 70 }]}
+          accessibilityLabel="Restore Live Game"
+        >
+          <LinearGradient
+            colors={['#FF6B00', '#FF1493']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.miniGameGradient}
+          >
+            <MaterialCommunityIcons name="gamepad-variant" size={20} color="#FFF" />
+            <Text style={styles.miniGameText}>{activeGame.title}</Text>
+            <View style={styles.miniGameLiveDot} />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
 
       {/* 8. Modals: Gift Tray, Basic Tools, Live Chat Input */}
       <LiveGiftTrayModal
@@ -805,16 +1064,41 @@ export default function LiveStreamScreen({ navigation, route }) {
         visible={toolsModalVisible}
         onClose={() => setToolsModalVisible(false)}
         isHost={isHost}
+        isCoHost={Boolean(rtc?.isCoHost)}
+        isLocked={Boolean(room?.isPrivate)}
         muted={muted}
         camera={camera}
         onSwitchCamera={handleSwitchCamera}
         onToggleMute={handleToggleMute}
         onToggleCamera={handleToggleCamera}
+        onLockRoom={handleToggleLiveLock}
         onShare={() => { setToolsModalVisible(false); Share.share({ message: 'Join my live on Yaro: https://yaroapp.in/room/' + roomId }); }}
-        onReport={() => setToolsModalVisible(false)}
-        onDailyTask={() => setToolsModalVisible(false)}
+        onReport={() => { setToolsModalVisible(false); reportHost(); }}
+        onDailyTask={() => { setToolsModalVisible(false); AlertService.show('Live tasks', 'Live task rewards are currently unavailable.', 'info'); }}
         onEffects={() => { setToolsModalVisible(false); setArPanelTab('Effects'); }}
         onBeauty={() => { setToolsModalVisible(false); setArPanelTab('Beauty'); }}
+        onGames={() => { setToolsModalVisible(false); setGamesModalVisible(true); }}
+        bottomPadding={insets.bottom}
+      />
+
+      {/* Room Lock Modal for host to lock live stream with 4-digit PIN */}
+      <RoomLockModal
+        visible={liveLockModalVisible}
+        mode="set_pin"
+        onClose={() => setLiveLockModalVisible(false)}
+        onSuccess={handleLiveLockSuccess}
+      />
+
+      {/* Live Games Selection Modal */}
+      <LiveGamesModal
+        visible={gamesModalVisible}
+        onClose={() => setGamesModalVisible(false)}
+        onSelectGame={game => {
+          setActiveGame(game);
+          setIsGameMinimized(false);
+        }}
+        coinBalance={coinBalance}
+        onRecharge={openRecharge}
         bottomPadding={insets.bottom}
       />
 
@@ -836,9 +1120,15 @@ export default function LiveStreamScreen({ navigation, route }) {
         visible={connectionVisible}
         onClose={closeConnection}
         camera={camera} muted={muted} mirrored={mirrored}
-        beauty={Boolean(ar.selectedId)} onBeauty={() => setArPanelTab('Beauty')}
+        beauty={getEffect(ar.selectedId)?.category === 'Beauty'}
+        onBeauty={() => setArPanelTab('Beauty')}
         onEffects={() => setArPanelTab('Effects')}
-        preview={<RtcSurfaceView style={StyleSheet.absoluteFill} canvas={{ uid: 0, sourceType: ar.trackId === null ? 0 : 4, mirrorMode: mirrored ? 1 : 2 }} />}
+        preview={
+          <View style={StyleSheet.absoluteFill}>
+            <AgoraVideoView style={StyleSheet.absoluteFill} canvas={{ uid: 0, sourceType: ar.trackId === null ? 0 : 4, mirrorMode: mirrored ? 1 : 2 }} />
+            <ARFaceMaskOverlay effectId={ar.selectedId} intensity={ar.intensity} style={StyleSheet.absoluteFill} compact />
+          </View>
+        }
         onCamera={handleToggleCamera} onMute={handleToggleMute}
         onRotate={handleSwitchCamera} onMirror={() => setMirrored(value => !value)}
         pending={requestPending} onRequest={requestConnection} bottomPadding={insets.bottom}
@@ -867,6 +1157,15 @@ export default function LiveStreamScreen({ navigation, route }) {
         hostId={room.host?._id || room.host}
       />
 
+      <RoomEntryEffectEngine activeEntry={activeEntry} onComplete={id => {
+        setActiveEntry(previous => {
+          if (!previous || !id) return null;
+          const remaining = (previous.queuedEntries || []).filter(entry => entry.entryId !== id);
+          return remaining.length ? { ...remaining[remaining.length - 1], queuedEntries: remaining } : null;
+        });
+      }} />
+      <GiftAnimationEngine animation={giftQueue.activeAnimation} onAnimationComplete={giftQueue.completeAnimation} fullScreen />
+
       {/* 10. Live Ended Summary Modal */}
       <LiveEndSummaryModal
         visible={endSummaryVisible}
@@ -891,6 +1190,7 @@ function formatDuration(ms) {
 }
 
 const styles = StyleSheet.create({
+  singleGuestMute: { position: 'absolute', bottom: 5, right: 5, padding: 7, backgroundColor: '#0009', borderRadius: 20 },
   guestVideos: { position: 'absolute', top: '22%', right: 10, gap: 8, zIndex: 12 },
   guestVideo: { width: 100, height: 140, borderRadius: 10, overflow: 'hidden' },
   screen: {
@@ -1028,5 +1328,43 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     position: 'relative',
     zIndex: 10,
+  },
+  gameAreaContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 30,
+  },
+  floatingMiniGamePill: {
+    position: 'absolute',
+    right: 14,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#FF1493',
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    zIndex: 40,
+  },
+  miniGameGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  miniGameText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  miniGameLiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#00E676',
+    borderWidth: 1,
+    borderColor: '#FFF',
   },
 });

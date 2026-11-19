@@ -47,9 +47,14 @@ export default function LiveTopHeader({
           </View>
 
           <View style={styles.hostInfo}>
-            <Text style={styles.hostName} numberOfLines={1}>
-              {hostName}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <Text style={styles.hostName} numberOfLines={1}>
+                {hostName}
+              </Text>
+              {Boolean(room.isPrivate) && (
+                <Icon name="lock-closed" size={11} color="#C084FC" style={{ marginLeft: 2 }} />
+              )}
+            </View>
             <View style={styles.charmRow}>
               <Text style={styles.flameIcon}>🔥</Text>
               <Text style={styles.charmText}>

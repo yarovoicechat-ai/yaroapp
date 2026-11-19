@@ -23,6 +23,7 @@ class MainApplication : Application(), ReactApplication {
               add(LocalMusicPackage())
               add(SystemBarsPackage())
               add(InAppReviewPackage())
+              add(yaro.vc.app.ar.YaroARPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

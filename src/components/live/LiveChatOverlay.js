@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import GiftMedia from '../GiftMedia';
 
 const { width } = Dimensions.get('window');
 
@@ -35,9 +36,12 @@ export default function LiveChatOverlay({
             {recentGift.senderName || 'VIP'}
           </Text>
           <Text style={styles.giftNoticeText}> Sent </Text>
-          <Text style={styles.giftNoticeIcon}>
-            {recentGift.giftEmoji || '🌹'}
-          </Text>
+          {recentGift.giftImage ? (
+            <GiftMedia source={recentGift.giftImage} style={{ width: 28, height: 28 }} />
+          ) : (
+            <Text style={styles.giftNoticeIcon}>{recentGift.giftEmoji || '🎁'}</Text>
+          )}
+          <Text style={styles.giftNoticeText} numberOfLines={1}>{recentGift.giftName || 'Gift'}</Text>
           <Text style={styles.giftNoticeQty}>
             {' '}x {recentGift.count || 1}
           </Text>

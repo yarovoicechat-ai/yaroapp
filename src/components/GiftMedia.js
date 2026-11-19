@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -35,6 +35,7 @@ const GiftMedia = ({
   repeat = true,
   muted = true,
   onFinish,
+  onLoad,
   onError,
 }) => {
   const [failed, setFailed] = useState(false);
@@ -45,7 +46,7 @@ const GiftMedia = ({
     const timer = setTimeout(() => { setAttempt(value => value + 1); setFailed(false); }, 1000 * (attempt + 1));
     return () => clearTimeout(timer);
   }, [failed, attempt]);
-  const fail = error => { setFailed(true); onError?.(error); };
+  const fail = useCallback(error => { setFailed(true); onError?.(error); }, [onError]);
   const type = useMemo(() => inferType(source, mediaType), [source, mediaType]);
   const flattenedStyle = StyleSheet.flatten(style) || {};
   const width = flattenedStyle.width || '100%';
@@ -53,7 +54,7 @@ const GiftMedia = ({
 
   if (!source || failed) {
     if (fallbackSource) {
-      return <AssetImage source={fallbackSource} style={style} resizeMode={resizeMode} />;
+      return <AssetImage source={fallbackSource} style={style} resizeMode={resizeMode} onLoad={onLoad} />;
     }
     return (
       <Pressable style={[styles.fallback, style]} accessibilityLabel="Retry media loading"
@@ -74,6 +75,7 @@ const GiftMedia = ({
           autoPlay
           scaleMode={resizeMode === 'contain' ? 'aspectFit' : 'aspectFill'}
           onPlaybackFinished={onFinish}
+          onPlaybackReady={onLoad}
           onPlaybackError={fail}
         />
       );
@@ -88,6 +90,7 @@ const GiftMedia = ({
         muteBuiltInAudio={muted}
         scaleMode={resizeMode === 'contain' ? 'aspectFit' : 'aspectFill'}
         onFinish={onFinish}
+        onStart={onLoad}
         onError={fail}
       />
     );
@@ -100,6 +103,7 @@ const GiftMedia = ({
         uri={source}
         width={width}
         height={height}
+        onLoad={onLoad}
         onError={fail}
       />
     );
@@ -118,6 +122,7 @@ const GiftMedia = ({
         playInBackground={false}
         playWhenInactive={false}
         ignoreSilentSwitch="ignore"
+        onLoad={onLoad}
         onError={fail}
       />
     );
@@ -130,6 +135,7 @@ const GiftMedia = ({
       source={{ uri: source }}
       style={style}
       resizeMode={resizeMode}
+      onLoad={onLoad}
       onError={onError}
     />
   );

@@ -80,6 +80,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
   override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> =
     mutableMapOf(
       "topPlaybackFinished" to mapOf("registrationName" to "onPlaybackFinished"),
+      "topPlaybackReady" to mapOf("registrationName" to "onPlaybackReady"),
       "topPlaybackError" to mapOf("registrationName" to "onPlaybackError")
     )
 
@@ -175,6 +176,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
           rView?.lastVideoItem = videoItem
           val drawable = SVGADrawable(videoItem)
           view.setImageDrawable(drawable)
+          emit(view, "topPlaybackReady")
           if (rView?.isAutoPlaying != false) {
             view.startAnimation()
           }

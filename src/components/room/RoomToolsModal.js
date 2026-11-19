@@ -34,6 +34,7 @@ export default function RoomToolsModal({
   onOpenRoomTasks,
   onOpenRoomSupport,
   onOpenMedal,
+  onOpenGames,
   hasRoomHosting = false,
   bottomSafePadding = 16,
 }) {
@@ -255,6 +256,23 @@ export default function RoomToolsModal({
                 <MaterialCommunityIcons name="medal" size={22} color="#F59E0B" />
               </View>
               <Text style={styles.toolLabel}>Medal 🎖️</Text>
+            </TouchableOpacity>
+
+            {/* Live Interactive Cocos Games */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenGames && onOpenGames();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, { borderColor: '#EC4899', backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                <MaterialCommunityIcons name="gamepad-variant" size={22} color="#EC4899" />
+              </View>
+              <Text style={styles.toolLabel}>Games 🎮</Text>
             </TouchableOpacity>
 
             {/* Room Support - only visible if user has room hosting */}

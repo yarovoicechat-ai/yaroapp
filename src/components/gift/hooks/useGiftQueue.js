@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 const PRIORITY_MAP = {
   LUXURY: 100,
@@ -16,10 +16,12 @@ export function useGiftQueue() {
   const queueRef = useRef([]);
   const isPlayingRef = useRef(false);
   const currentTimeoutRef = useRef(null);
+  const activeIdRef = useRef(null);
 
   const processNext = useCallback(() => {
     if (queueRef.current.length === 0) {
       isPlayingRef.current = false;
+      activeIdRef.current = null;
       setActiveAnimation(null);
       return;
     }
@@ -29,6 +31,7 @@ export function useGiftQueue() {
     queueRef.current.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     const item = queueRef.current.shift();
+    activeIdRef.current = item.id;
     setActiveAnimation(item);
 
     const isSvga =
@@ -36,15 +39,16 @@ export function useGiftQueue() {
       /\.svga(?:[?#]|$)/i.test(String(item.animationUrl || item.gift?.animationUrl || ''));
     const duration = isSvga
       ? Math.min(12000, Math.max(4500, Number(item.duration || item.gift?.duration) || 4500))
-      : Math.min(6500, Math.max(1600, Number(item.duration) || 2600));
+      : Math.min(12000, Math.max(2400, Number(item.duration || item.gift?.duration) || 4200));
 
     if (currentTimeoutRef.current) {
       clearTimeout(currentTimeoutRef.current);
     }
 
+    // The player allows up to 12 seconds to load remote media before playback.
     currentTimeoutRef.current = setTimeout(() => {
       processNext();
-    }, duration);
+    }, duration + 13000);
   }, []);
 
   const enqueue = useCallback(
@@ -112,7 +116,22 @@ export function useGiftQueue() {
       clearTimeout(currentTimeoutRef.current);
     }
     isPlayingRef.current = false;
+    activeIdRef.current = null;
     setActiveAnimation(null);
+  }, []);
+
+  const completeAnimation = useCallback((id) => {
+    if (!activeIdRef.current || (id && id !== activeIdRef.current)) return;
+    clearTimeout(currentTimeoutRef.current);
+    currentTimeoutRef.current = null;
+    processNext();
+  }, [processNext]);
+
+  useEffect(() => () => {
+    clearTimeout(currentTimeoutRef.current);
+    queueRef.current = [];
+    activeIdRef.current = null;
+    isPlayingRef.current = false;
   }, []);
 
   return {
@@ -120,5 +139,6 @@ export function useGiftQueue() {
     setActiveAnimation,
     enqueue,
     clearQueue,
+    completeAnimation,
   };
 }

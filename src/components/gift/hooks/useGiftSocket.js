@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
 import { getSocket } from '../../../sockets';
+import { roomEventId } from '../../../utils/roomEvents';
 
 export function useGiftSocket({
   roomId,
@@ -54,6 +55,7 @@ export function useGiftSocket({
     let attachedSocket = null;
     let pollInterval = null;
     let isDisposed = false;
+    let detach = () => {};
 
     const attach = (socket) => {
       if (isDisposed || !socket || attachedSocket) return;
@@ -74,6 +76,7 @@ export function useGiftSocket({
 
     const handleGiftAnimation = (payload) => {
       if (!payload || !isAppActiveRef.current) return;
+      if (payload.roomId && roomId && roomEventId(payload.roomId) !== roomEventId(roomId)) return;
       // Do not duplicate if sender is self (sender already queued local animation)
       if (isSelfUser(payload.sender)) return;
 
@@ -93,6 +96,7 @@ export function useGiftSocket({
 
     const handleGiftReceived = (payload) => {
       if (!payload) return;
+      if (payload.roomId && roomId && roomEventId(payload.roomId) !== roomEventId(roomId)) return;
       // Do not duplicate chat/notification if sender is self
       if (isSelfUser(payload.sender)) return;
 
@@ -160,33 +164,28 @@ export function useGiftSocket({
       socket.on('gift:received', handleGiftReceived);
       socket.on('gift:sent', handleGiftSent);
       socket.on('connect', handleConnect);
+      detach = () => {
+        socket.off('gift:animation', handleGiftAnimation);
+        socket.off('gift:received', handleGiftReceived);
+        socket.off('gift:sent', handleGiftSent);
+        socket.off('connect', handleConnect);
+      };
     };
 
-    const initialSock = getSocket();
-    if (initialSock) {
-      attach(initialSock);
-    } else {
-      let attempts = 0;
-      pollInterval = setInterval(() => {
-        attempts += 1;
-        const s = getSocket();
-        if (s) {
-          clearInterval(pollInterval);
-          attach(s);
-        } else if (attempts > 30) {
-          clearInterval(pollInterval);
-        }
-      }, 500);
-    }
+    const checkSocket = () => {
+      const socket = getSocket();
+      if (socket === attachedSocket) return;
+      detach();
+      attachedSocket = null;
+      if (socket) attach(socket);
+    };
+    checkSocket();
+    pollInterval = setInterval(checkSocket, 1000);
 
     return () => {
       isDisposed = true;
       if (pollInterval) clearInterval(pollInterval);
-      if (attachedSocket) {
-        attachedSocket.off('gift:animation');
-        attachedSocket.off('gift:received');
-        attachedSocket.off('gift:sent');
-      }
+      detach();
     };
   }, [roomId, currentUserId, callId]);
 }

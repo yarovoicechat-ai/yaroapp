@@ -35,3 +35,13 @@ jest.mock('@react-native-firebase/messaging', () => {
   messaging.AuthorizationStatus = { AUTHORIZED: 1, PROVISIONAL: 2 };
   return { __esModule: true, default: messaging };
 });
+jest.mock('react-native-webview', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MockWebView = (props) => React.createElement(View, { testID: 'mock-webview', ...props });
+  return {
+    __esModule: true,
+    WebView: MockWebView,
+    default: MockWebView,
+  };
+});

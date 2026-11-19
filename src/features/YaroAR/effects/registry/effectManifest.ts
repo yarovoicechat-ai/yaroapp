@@ -1,0 +1,4 @@
+export const EFFECT_MANIFEST_VERSION = 1;
+export const BUNDLED_EFFECT_COUNT = 50;
+export const MODEL_SHA256 =
+  '64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff';

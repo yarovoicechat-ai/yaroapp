@@ -1,6 +1,11 @@
 pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
 plugins { id("com.facebook.react.settings") }
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex ->
+    // Optional prevalidated config for offline/reproducible local builds.
+    def localConfig = System.getenv('YARO_AUTOLINK_CONFIG')
+    if (localConfig) ex.autolinkLibrariesFromConfigFile(file(localConfig))
+    else ex.autolinkLibrariesFromCommand(['node', file('../node_modules/@react-native-community/cli/build/bin.js').absolutePath, 'config'])
+}
 rootProject.name = 'MyNewApp'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')

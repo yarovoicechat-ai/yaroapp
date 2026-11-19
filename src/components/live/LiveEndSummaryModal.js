@@ -31,28 +31,34 @@ export default function LiveEndSummaryModal({
 
         <Text style={styles.title}>Live has ended</Text>
 
-        {/* Host Avatar & Name */}
-        <View style={styles.avatarWrapper}>
-          <Image
-            source={getUserAvatar(host)}
-            style={styles.avatar}
-          />
-        </View>
-        <Text style={styles.hostName}>{host?.name || 'YARO Host'}</Text>
+        {/* Unified Summary Card (matching reference Screenshot) */}
+        <View style={styles.mainCard}>
+          {/* Host Avatar & Name */}
+          <View style={styles.avatarWrapper}>
+            <Image
+              source={getUserAvatar(host)}
+              style={styles.avatar}
+            />
+          </View>
+          <Text style={styles.hostName}>{host?.name || 'YARO Host'}</Text>
 
-        {/* Statistics Card */}
-        <View style={styles.statsCard}>
-          <View style={styles.statColumn}>
-            <Text style={styles.statValue}>{durationText}</Text>
-            <Text style={styles.statLabel}>Live duration</Text>
-          </View>
-          <View style={styles.statColumn}>
-            <Text style={styles.statValue}>{income}</Text>
-            <Text style={styles.statLabel}>Income</Text>
-          </View>
-          <View style={styles.statColumn}>
-            <Text style={styles.statValue}>{viewerCount}</Text>
-            <Text style={styles.statLabel}>Viewers</Text>
+          {/* Thin Divider Line */}
+          <View style={styles.divider} />
+
+          {/* Statistics Row */}
+          <View style={styles.statsRow}>
+            <View style={styles.statColumn}>
+              <Text style={styles.statValue}>{durationText}</Text>
+              <Text style={styles.statLabel}>Live duration</Text>
+            </View>
+            <View style={styles.statColumn}>
+              <Text style={styles.statValue}>{income}</Text>
+              <Text style={styles.statLabel}>Income</Text>
+            </View>
+            <View style={styles.statColumn}>
+              <Text style={styles.statValue}>{viewerCount}</Text>
+              <Text style={styles.statLabel}>Viewers</Text>
+            </View>
           </View>
         </View>
 
@@ -79,47 +85,65 @@ export default function LiveEndSummaryModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#3E3E42',
+    backgroundColor: '#38383D',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
     color: '#FF2A85',
-    marginBottom: 40,
+    marginBottom: 32,
+    letterSpacing: 0.3,
+  },
+  mainCard: {
+    width: '100%',
+    backgroundColor: '#26262B',
+    borderRadius: 20,
+    alignItems: 'center',
+    paddingTop: 28,
+    paddingBottom: 22,
+    paddingHorizontal: 16,
+    marginBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
   },
   avatarWrapper: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
     overflow: 'hidden',
   },
   avatar: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   hostName: {
     fontSize: 18,
     fontWeight: '800',
     color: '#FFFFFF',
-    marginBottom: 28,
+    marginBottom: 20,
   },
-  statsCard: {
+  divider: {
     width: '100%',
-    backgroundColor: '#2A2A2E',
-    borderRadius: 16,
+    height: StyleSheet.hairlineWidth || 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    marginBottom: 20,
+  },
+  statsRow: {
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 22,
-    paddingHorizontal: 12,
-    marginBottom: 40,
+    alignItems: 'center',
   },
   statColumn: {
     alignItems: 'center',
@@ -137,14 +161,14 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     width: '100%',
-    borderRadius: 25,
+    borderRadius: 26,
     overflow: 'hidden',
   },
   buttonGradient: {
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 25,
+    borderRadius: 26,
   },
   buttonText: {
     fontSize: 16,

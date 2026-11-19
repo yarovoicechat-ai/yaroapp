@@ -4,6 +4,25 @@ import GiftMedia from '../components/GiftMedia';
 jest.mock('react-native-svg', () => ({ SvgUri: 'AssetSvg' }));
 jest.mock('react-native-video', () => 'AssetVideo');
 jest.mock('@dasimems/react-native-svga', () => ({ SvgaPlayer: 'AssetSvga' }));
+jest.mock('../components/AssetImage', () => 'AssetImage');
+
+test.each([
+  ['https://api.yaroapp.in/uploads/actual.gif', 'AssetImage', 'onLoad'],
+  ['https://api.yaroapp.in/uploads/actual.svg', 'AssetSvg', 'onLoad'],
+  ['https://api.yaroapp.in/uploads/actual.mp4', 'AssetVideo', 'onLoad'],
+  ['https://api.yaroapp.in/uploads/actual.svga', 'AssetSvga', 'onStart'],
+])('media %s reports its actual ready event', async (url, type, event) => {
+  const loaded = jest.fn();
+  let tree;
+  try {
+    await act(async () => { tree = renderer.create(<GiftMedia source={url} onLoad={loaded} />); });
+    expect(loaded).not.toHaveBeenCalled();
+    await act(async () => tree.root.findByType(type).props[event]());
+    expect(loaded).toHaveBeenCalledTimes(1);
+  } finally {
+    if (tree) await act(async () => tree.unmount());
+  }
+});
 
 test.each([
   ['https://api.yaroapp.in/uploads/actual.svg', 'AssetSvg', 'uri'],

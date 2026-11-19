@@ -1,6 +1,6 @@
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { Animated, ImageBackground } from 'react-native';
+import { Animated, ImageBackground, Dimensions } from 'react-native';
 import RoomEntryEffectEngine from '../components/room/RoomEntryEffectEngine';
 import IdentityDisplayName from '../components/identity/IdentityDisplayName';
 
@@ -162,6 +162,9 @@ test('ride and entrance finish independently before advancing the queue', async 
   await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={first} onComplete={onComplete} />); });
   const players = tree.root.findAllByType('SvgaView');
   expect(players.every(player => player.props.loops === 1)).toBe(true);
+  const viewport = Dimensions.get('window');
+  expect(players).toHaveLength(2);
+  expect(players.every(player => player.props.style.width === viewport.width && player.props.style.height === viewport.height)).toBe(true);
   const staleFinish = players[0].props.onFinish;
   await act(async () => tree.update(<RoomEntryEffectEngine activeEntry={{ entryId: 'next', user: { name: 'Next' } }} onComplete={onComplete} />));
   await act(async () => finish.shift()({ finished: true }));
@@ -215,4 +218,19 @@ test('failed custom entrance falls back to a visible default entry banner', asyn
   expect(tree.root.findAllByType(ImageBackground)).toHaveLength(1);
   expect(JSON.stringify(tree.toJSON())).toContain('Visible User');
   expect(JSON.stringify(tree.toJSON())).toContain('enter the room');
+});
+
+test('clearing the active entry immediately cancels the current media and queued arrivals', async () => {
+  const onComplete = jest.fn();
+  const queuedEntries = [
+    { entryId: 'ride', user: { name: 'Rider' }, entry: { animationUrl: 'ride.svga' } },
+    { entryId: 'next', user: { name: 'Next' } },
+  ];
+  await act(async () => { tree = Renderer.create(<RoomEntryEffectEngine activeEntry={{ queuedEntries }} onComplete={onComplete} />); });
+  const staleFinish = tree.root.findByType('SvgaView').props.onFinish;
+  await act(async () => tree.update(<RoomEntryEffectEngine activeEntry={null} onComplete={onComplete} />));
+  expect(tree.toJSON()).toBeNull();
+  await act(async () => staleFinish());
+  expect(tree.toJSON()).toBeNull();
+  expect(onComplete).not.toHaveBeenCalled();
 });

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import SvgaView from '../SvgaView';
+import GiftMedia from '../GiftMedia';
 import AvatarWithFrame from '../AvatarWithFrame';
 import IdentityDisplayName from '../identity/IdentityDisplayName';
 import { resolveEntryAssets, resolveAssetUrl } from '../../utils/cosmeticResolver';
@@ -17,6 +18,15 @@ import { resolveEntryAssets, resolveAssetUrl } from '../../utils/cosmeticResolve
 const { width, height } = Dimensions.get('window');
 
 const DEFAULT_ENTRANCE_BANNER = require('../../assets/banner/default_entrance_banner.png');
+
+function EntryMedia({ source, style, onFinish, onError }) {
+  if (/\.svga(?:[?#]|$)/i.test(source || '')) {
+    return <SvgaView source={source} style={style} loops={1} autoPlay muteBuiltInAudio
+      scaleMode="aspectFit" onFinish={onFinish} onError={onError} />;
+  }
+  return <GiftMedia source={resolveAssetUrl(source)} style={style} repeat={false} muted
+    resizeMode="contain" onFinish={onFinish} onError={onError} />;
+}
 
 export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   const [current, setCurrent] = useState(null);
@@ -49,7 +59,12 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
   }, []);
 
   useEffect(() => {
-    if (!activeEntry) return;
+    if (!activeEntry) {
+      pending.current = [];
+      playing.current = false;
+      setCurrent(null);
+      return;
+    }
     const now = Date.now();
     for (const event of activeEntry.queuedEntries || [activeEntry]) {
       const id = String(
@@ -187,14 +202,10 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
         <>
           {rideMedia ? (
             <View style={styles.mediaStage} pointerEvents="none" collapsable={false}>
-              <SvgaView
+              <EntryMedia
                 key={current.entryId}
                 source={rideMedia}
                 style={{ width, height }}
-                loops={1}
-                autoPlay
-                muteBuiltInAudio
-                scaleMode="aspectFit"
                 onFinish={() => mediaFinished.current(current.entryId, 'ride')}
                 onError={(error) => {
                   console.warn('[RoomEntry] Ride playback failed:', error, rideMedia);
@@ -237,6 +248,17 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
           </Animated.View>
         </>
       ) : null}
+      {customEntrance && failedEntranceId !== current.entryId && (
+        <View style={styles.mediaStage} pointerEvents="none">
+          <EntryMedia source={entranceAsset?.animationUrl || resolvedEntranceAnim || resolvedEntranceImg} style={{ width, height }}
+            onFinish={() => mediaFinished.current(current.entryId, 'entrance')}
+            onError={error => {
+              console.warn('[RoomEntry] Entrance playback failed:', error);
+              setFailedEntranceId(current.entryId);
+              mediaFinished.current(current.entryId, 'entrance');
+            }} />
+        </View>
+      )}
       { /* 2. ENTRANCE EFFECT: Floating bullet banner (Speed jyada, 2 sec pause, Right to Left) with NO comingStage! */ }
         <Animated.View
           style={[
@@ -250,21 +272,6 @@ export default function RoomEntryEffectEngine({ activeEntry, onComplete }) {
         >
           {isEntranceSvga ? (
             <View style={styles.bulletBannerWrap}>
-              <SvgaView
-                key={current.entryId}
-                source={entranceAsset?.animationUrl || resolvedEntranceAnim}
-                style={StyleSheet.absoluteFillObject}
-                loops={1}
-                autoPlay
-                muteBuiltInAudio
-                scaleMode="fill"
-                onFinish={() => mediaFinished.current(current.entryId, 'entrance')}
-                onError={(error) => {
-                  console.warn('[RoomEntry] Entrance playback failed:', error, customEntrance?.animationUrl);
-                  setFailedEntranceId(current.entryId);
-                  mediaFinished.current(current.entryId, 'entrance');
-                }}
-              />
               <View style={styles.bulletInnerContent}>
                 <View style={styles.wealthBadge}>
                   <Text style={styles.wealthGem}>💎</Text>

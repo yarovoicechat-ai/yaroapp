@@ -14,6 +14,7 @@ import {
   Share,
   AppState,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -26,17 +27,30 @@ import { AuthContext } from '../../context/AuthProvider';
 import { apiUtil } from '../../utils/apiUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import SelectLiveChannelModal from '../../components/live/SelectLiveChannelModal';
-import { ARManager, ARPreview, ARFilterPanel, useARLifecycle } from '../../features/YaroAR';
+import { ARManager, ARPreview, ARFilterPanel, ARFaceMaskOverlay, useARLifecycle, useARSession } from '../../features/YaroAR';
 import AgoraClientService from '../../services/agoraService';
+import { useVoiceRoom } from '../../context/VoiceRoomContext';
+import LiveVideoGrid from '../../components/live/LiveVideoGrid';
+import RoomLockModal from '../../components/room/RoomLockModal';
+import { AlertService } from '../../utils/AlertService';
 
 export default function CreateLiveScreen({ navigation, route }) {
+  const ar = useARSession();
   const { user } = useContext(AuthContext);
+  const { activeRoom } = useVoiceRoom();
   const insets = useSafeAreaInsets();
+  const { height: viewportHeight } = useWindowDimensions();
+  const [infoBottom, setInfoBottom] = useState(0);
+  const [controlsHeight, setControlsHeight] = useState(70);
+  const [bottomHeight, setBottomHeight] = useState(190);
   const [title, setTitle] = useState('');
-  const [channel, setChannel] = useState('Dance');
+  const [channel, setChannel] = useState('');
   const [channelModalVisible, setChannelModalVisible] = useState(false);
   const [roomType, setRoomType] = useState('Ordinary Room'); // 'Ordinary Room' or 'Multi-guest Room'
   const [roomTypeModalVisible, setRoomTypeModalVisible] = useState(false);
+  const [isPrivateLive, setIsPrivateLive] = useState(false);
+  const [livePin, setLivePin] = useState('');
+  const [lockModalVisible, setLockModalVisible] = useState(false);
   const [coverImage, setCoverImage] = useState(
     /^https:\/\//i.test(user?.avatar || user?.image || '')
       ? user.avatar || user.image
@@ -45,7 +59,11 @@ export default function CreateLiveScreen({ navigation, route }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [cameraReady, setCameraReady] = useState(false);
-  const arTab = route?.params?.arTab || 'Beauty';
+  const [arTab, setArTab] = useState(route?.params?.arTab || null);
+  const [seatCount, setSeatCount] = useState(4);
+  const controlsTop = infoBottom || insets.top + 190;
+  const gridTop = controlsTop + controlsHeight + 8;
+  const gridHeight = Math.max(80, viewportHeight - bottomHeight - gridTop - 12);
 
   const engineRef = useRef(null);
   const arUnbindRef = useRef(null);
@@ -72,6 +90,10 @@ export default function CreateLiveScreen({ navigation, route }) {
 
     async function initCameraPreview() {
       try {
+        if (activeRoom) {
+          setError('Leave your voice room before opening the live camera.');
+          return;
+        }
         if (Platform.OS === 'android') {
           const granted = await PermissionsAndroid.requestMultiple([
             PermissionsAndroid.PERMISSIONS.CAMERA,
@@ -88,10 +110,24 @@ export default function CreateLiveScreen({ navigation, route }) {
         if(!mounted) return;
         const engine = createAgoraRtcEngine();
         engineRef.current = engine;
-        engine.initialize({ appId: config.appId });
-        engine.enableVideo();
+        const initialized=engine.initialize({ appId: config.appId });
+        if (initialized < 0) throw new Error(`Camera initialization failed (${initialized}).`);
+        engine.registerEventHandler?.({
+          onLocalVideoStateChanged: (_source, state, code) => {
+            if (mounted && state === 3) {
+              setCameraReady(false);
+              setError(`Camera video failed (${code}). Check camera permission and try again.`);
+            }
+          },
+          onError: code => {
+            if (mounted) setError(`Camera engine error (${code}).`);
+          },
+        });
+        const enabled=engine.enableVideo();
+        if (enabled < 0) throw new Error(`Video could not start (${enabled}).`);
         arUnbindRef.current=ARManager.bind(engine);
-        engine.startPreview();
+        const preview=engine.startPreview();
+        if (preview < 0) throw new Error(`Camera preview failed (${preview}).`);
         if (mounted) setCameraReady(true);
       } catch (err) {
         if(mounted) setError(err?.message || 'Camera preview unavailable.');
@@ -106,16 +142,10 @@ export default function CreateLiveScreen({ navigation, route }) {
       setCameraReady(false);
       void releasePreview().catch(err=>setError(err.message));
     };
-  }, [releasePreview]));
+  }, [releasePreview, activeRoom]));
 
   const handleFlipCamera = () => {
-    if(ARManager.getSnapshot().trackId!==null) {
-      setError('Reset AR before switching the camera.');
-      return;
-    }
-    try {
-      engineRef.current?.switchCamera();
-    } catch {}
+    void ARManager.switchCamera().catch(error => setError(error.message));
   };
 
 
@@ -133,6 +163,26 @@ export default function CreateLiveScreen({ navigation, route }) {
     );
   };
 
+  const handleTogglePrivateLive = () => {
+    const isAllowed = user?.canPrivateLive === true || ['owner', 'superAdmin', 'admin'].includes(String(user?.role));
+    if (!isAllowed) {
+      AlertService.show(
+        'Permission Required 🔒',
+        'Private live option is not enabled for your account. Please contact admin to activate Private Live for your ID.',
+        'info'
+      );
+      return;
+    }
+
+    if (isPrivateLive) {
+      setIsPrivateLive(false);
+      setLivePin('');
+      AlertService.show('Notice', 'Private live lock turned off. Your live room is now public.', 'info');
+    } else {
+      setLockModalVisible(true);
+    }
+  };
+
   const start = async () => {
     if (busy || !cameraReady) return;
     const finalTitle = title.trim() || `${user?.name || 'Live'}'s room`;
@@ -146,12 +196,16 @@ export default function CreateLiveScreen({ navigation, route }) {
         category: 'Live',
         channel,
         mode,
+        seatCount: mode === 'multi' ? seatCount : 2,
         coverImage,
         country: user?.country || 'India',
+        isPrivate: isPrivateLive,
+        pin: isPrivateLive ? livePin : '',
       });
 
       const { room, rtc } = res.data.data;
-      const arEffectId=ARManager.getSnapshot().selectedId;
+      const arSettings=ARManager.getSnapshot();
+      const arEffectId=arSettings.selectedId;
       await releasePreview();
       setCameraReady(false);
       navigation.navigate('LiveStream', {
@@ -160,6 +214,7 @@ export default function CreateLiveScreen({ navigation, route }) {
         rtc,
         permissionsGranted: true,
         arEffectId,
+        arSettings: arEffectId ? { intensity: arSettings.intensity, beautyIntensity: arSettings.beautyIntensity, adjustments: arSettings.adjustments, frontCamera: arSettings.frontCamera } : undefined,
       });
     } catch (e) {
       setError(
@@ -170,13 +225,85 @@ export default function CreateLiveScreen({ navigation, route }) {
     }
   };
 
+  const renderCameraControls = () => (
+    <View style={styles.controlsRow}>
+      <TouchableOpacity onPress={handleFlipCamera} style={styles.controlItem}>
+        <View style={styles.controlCircle}>
+          <MaterialCommunityIcons
+            name="camera-flip-outline"
+            size={22}
+            color="#FFFFFF"
+          />
+        </View>
+        <Text style={styles.controlLabel}>Flip</Text>
+      </TouchableOpacity>
+  
+      <TouchableOpacity
+        onPress={() => {
+          setArTab((value) => (value === 'Beauty' ? null : 'Beauty'));
+        }}
+        style={styles.controlItem}
+      >
+        <View style={styles.controlCircle}>
+          <MaterialCommunityIcons name="auto-fix" size={22} color="#FFFFFF" />
+        </View>
+        <Text style={styles.controlLabel}>Beauty</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => {
+          setArTab((value) => (value === 'Effects' ? null : 'Effects'));
+        }}
+        style={styles.controlItem}
+      >
+        <View style={styles.controlCircle}>
+          <MaterialCommunityIcons name="creation" size={22} color="#FFFFFF" />
+        </View>
+        <Text style={styles.controlLabel}>Effects</Text>
+      </TouchableOpacity>
+  
+      <TouchableOpacity onPress={handleShare} style={styles.controlItem}>
+        <View style={styles.controlCircle}>
+          <Icon name="share-social-outline" size={22} color="#FFFFFF" />
+        </View>
+        <Text style={styles.controlLabel}>Share</Text>
+      </TouchableOpacity>
+  
+      <TouchableOpacity
+        onPress={() => setRoomTypeModalVisible(true)}
+        style={styles.controlItem}
+      >
+        <View style={styles.controlCircle}>
+          <MaterialCommunityIcons
+            name="shape-outline"
+            size={22}
+            color="#FFFFFF"
+          />
+        </View>
+        <Text style={styles.controlLabel}>Room type</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* 1. Full-screen Camera Preview Background */}
-      {cameraReady ? (
-        <ARPreview style={StyleSheet.absoluteFill} />
+      {roomType === 'Multi-guest Room' ? (
+        <View testID="multi-live-preview" style={[styles.multiPreview, { top: gridTop, height: gridHeight }]}>
+          <LiveVideoGrid count={seatCount} host={user} hostUid={0} localUid={0} isHost ready={cameraReady}
+            trackId={ar.trackId} frontCamera={ar.frontCamera} />
+        </View>
+      ) : cameraReady ? (
+        <View style={StyleSheet.absoluteFill}>
+          <ARPreview style={StyleSheet.absoluteFill} />
+          <ARFaceMaskOverlay
+            effectId={ar.selectedId}
+            intensity={ar.intensity}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.cameraPlaceholder]}>
           <Image
@@ -215,7 +342,8 @@ export default function CreateLiveScreen({ navigation, route }) {
       </View>
 
       {/* 3. Floating Info Card (Top Area) */}
-      <View style={styles.floatingCard}>
+      <View testID="live-info-card" style={styles.floatingCard}
+        onLayout={({ nativeEvent: { layout } }) => setInfoBottom(layout.y + layout.height + 12)}>
         {/* Cover Box */}
         <TouchableOpacity
           onPress={() => {
@@ -277,58 +405,14 @@ export default function CreateLiveScreen({ navigation, route }) {
         </View>
       )}
 
+      {roomType === 'Multi-guest Room' && <View testID="multi-live-controls"
+        onLayout={({ nativeEvent: { layout } }) => setControlsHeight(layout.height)}
+        style={{ position: 'absolute', top: controlsTop, left: 20, right: 20, zIndex: 11 }}>{renderCameraControls()}</View>}
+
       {/* 4. Bottom Controls Area */}
-      <View style={[styles.bottomArea, { paddingBottom: insets.bottom + 16 }]}>
-        {/* Row of 4 Circular Control Icons */}
-        <View style={styles.controlsRow}>
-          <TouchableOpacity onPress={handleFlipCamera} style={styles.controlItem}>
-            <View style={styles.controlCircle}>
-              <MaterialCommunityIcons
-                name="camera-flip-outline"
-                size={22}
-                color="#FFFFFF"
-              />
-            </View>
-            <Text style={styles.controlLabel}>Flip</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              // Beauty filter trigger
-            }}
-            style={styles.controlItem}
-          >
-            <View style={styles.controlCircle}>
-              <MaterialCommunityIcons
-                name="auto-fix"
-                size={22}
-                color="#FFFFFF"
-              />
-            </View>
-            <Text style={styles.controlLabel}>Beauty</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={handleShare} style={styles.controlItem}>
-            <View style={styles.controlCircle}>
-              <Icon name="share-social-outline" size={22} color="#FFFFFF" />
-            </View>
-            <Text style={styles.controlLabel}>Share</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setRoomTypeModalVisible(true)}
-            style={styles.controlItem}
-          >
-            <View style={styles.controlCircle}>
-              <MaterialCommunityIcons
-                name="shape-outline"
-                size={22}
-                color="#FFFFFF"
-              />
-            </View>
-            <Text style={styles.controlLabel}>Room type</Text>
-          </TouchableOpacity>
-        </View>
+      <View testID="live-start-bottom" onLayout={({ nativeEvent: { layout } }) => setBottomHeight(layout.height)}
+        style={[styles.bottomArea, { paddingBottom: insets.bottom + 16 }]}>
+        {roomType !== 'Multi-guest Room' && renderCameraControls()}
 
         {/* Start Live Button */}
         <TouchableOpacity
@@ -351,22 +435,69 @@ export default function CreateLiveScreen({ navigation, route }) {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Room Type Bottom Indicator (matching Reference Screenshot) */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => setRoomTypeModalVisible(true)}
-          style={styles.roomTypeBottomPill}
-        >
-          <Icon
-            name={roomType === 'Ordinary Room' ? 'lock-closed' : 'people'}
-            size={18}
-            color="#FF1493"
-          />
-          <Text style={styles.roomTypeBottomText}>{roomType}</Text>
-        </TouchableOpacity>
+        {/* Room Type & Lock Control Row */}
+        <View style={styles.bottomPillRow}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setRoomTypeModalVisible(true)}
+            style={styles.roomTypeBottomPill}
+          >
+            <Icon
+              name={roomType === 'Ordinary Room' ? 'videocam' : 'people'}
+              size={18}
+              color="#FF1493"
+            />
+            <Text style={styles.roomTypeBottomText}>{roomType}</Text>
+          </TouchableOpacity>
 
-        <ARFilterPanel key={arTab} initialTab={arTab} />
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleTogglePrivateLive}
+            style={[
+              styles.roomTypeBottomPill,
+              isPrivateLive && { borderColor: '#A855F7', backgroundColor: 'rgba(168, 85, 247, 0.25)' },
+            ]}
+          >
+            <Icon
+              name={isPrivateLive ? 'lock-closed' : (user?.canPrivateLive ? 'lock-open-outline' : 'lock-closed-outline')}
+              size={18}
+              color={isPrivateLive ? '#C084FC' : (user?.canPrivateLive ? '#94A3B8' : '#64748B')}
+            />
+            <Text style={[styles.roomTypeBottomText, isPrivateLive && { color: '#E9D5FF', fontWeight: 'bold' }]}>
+              {isPrivateLive ? 'Private 🔒' : (user?.canPrivateLive ? 'Public Live' : 'Private (Locked)')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
       </View>
+
+      {/* AR Studio / Beauty / Effects Bottom Sheet Modal */}
+      <Modal
+        visible={arTab !== null}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setArTab(null)}
+      >
+        <View style={styles.arModalBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            accessibilityLabel="Close AR effects"
+            onPress={() => setArTab(null)}
+          />
+          <View style={[styles.arSheetContainer, { paddingBottom: insets.bottom + 8 }]}>
+            {arTab && (
+              <ARFilterPanel
+                key={arTab}
+                initialTab={arTab}
+                onClose={() => setArTab(null)}
+                showTabs={false}
+                compact
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Room Type Selector Modal */}
       <Modal
@@ -385,6 +516,14 @@ export default function CreateLiveScreen({ navigation, route }) {
           <View style={[styles.roomTypeSheet, { paddingBottom: insets.bottom + 20 }]}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Select Room Type</Text>
+            <View style={styles.featureTabs}>
+              {[4, 6, 9].map(count => (
+                <TouchableOpacity key={count} style={styles.featureTab} accessibilityLabel={`${count} video boxes`}
+                  onPress={() => { setSeatCount(count); setRoomType('Multi-guest Room'); setRoomTypeModalVisible(false); }}>
+                  <Text style={[styles.controlLabel, roomType === 'Multi-guest Room' && seatCount === count && { color: '#FF72BD' }]}>{count} boxes</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <TouchableOpacity
               activeOpacity={0.8}
@@ -430,7 +569,7 @@ export default function CreateLiveScreen({ navigation, route }) {
               <View style={styles.roomTypeInfo}>
                 <Text style={styles.roomTypeOptionTitle}>Multi-guest Room (Multi Live)</Text>
                 <Text style={styles.roomTypeOptionSub}>
-                  Host + up to 6 Guest Co-Hosts. Viewers must apply, host approves.
+                  {seatCount} video boxes including the host. Host approves join requests.
                 </Text>
               </View>
               <Icon
@@ -439,9 +578,62 @@ export default function CreateLiveScreen({ navigation, route }) {
                 color={roomType === 'Multi-guest Room' ? '#A855F7' : '#64748B'}
               />
             </TouchableOpacity>
+
+            {/* Private Live Option Card */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setRoomTypeModalVisible(false);
+                handleTogglePrivateLive();
+              }}
+              style={[
+                styles.roomTypeOption,
+                isPrivateLive && { borderColor: '#A855F7', backgroundColor: 'rgba(168, 85, 247, 0.12)' },
+              ]}
+            >
+              <View style={[styles.roomTypeIconWrap, { backgroundColor: isPrivateLive ? 'rgba(168, 85, 247, 0.25)' : 'rgba(148, 163, 184, 0.15)' }]}>
+                <Icon name="lock-closed" size={24} color={isPrivateLive ? '#A855F7' : '#94A3B8'} />
+              </View>
+              <View style={styles.roomTypeInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.roomTypeOptionTitle}>Private Live (Lock Room)</Text>
+                  {user?.canPrivateLive ? (
+                    <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                      <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '700' }}>ENABLED</Text>
+                    </View>
+                  ) : (
+                    <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                      <Text style={{ color: '#EF4444', fontSize: 10, fontWeight: '700' }}>ADMIN ONLY</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.roomTypeOptionSub}>
+                  {user?.canPrivateLive
+                    ? (isPrivateLive ? 'Protected with 4-digit PIN. Tap to change or remove.' : 'Set a 4-digit PIN. Only authorized viewers can enter.')
+                    : 'Option requires activation by Admin Panel for your user ID.'}
+                </Text>
+              </View>
+              <Icon
+                name={isPrivateLive ? 'checkmark-circle' : 'lock-closed-outline'}
+                size={22}
+                color={isPrivateLive ? '#A855F7' : '#64748B'}
+              />
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
+
+      {/* Room Lock Modal for setting 4-digit PIN */}
+      <RoomLockModal
+        visible={lockModalVisible}
+        mode="set_pin"
+        onClose={() => setLockModalVisible(false)}
+        onSuccess={(pin) => {
+          setIsPrivateLive(true);
+          setLivePin(pin);
+          AlertService.show('Private Live Enabled 🔒', '4-digit password set successfully. Viewers must enter this password to join your live stream.', 'success');
+        }}
+      />
 
       {/* 5. Select Live Channel Modal */}
       <SelectLiveChannelModal
@@ -455,6 +647,9 @@ export default function CreateLiveScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  multiPreview: { position: 'absolute', left: 8, right: 8 },
+  featureTabs: { flexDirection: 'row', paddingVertical: 10, justifyContent: 'space-around' },
+  featureTab: { paddingHorizontal: 5, paddingVertical: 8, alignItems: 'center' },
   screen: {
     flex: 1,
     backgroundColor: '#0F172A',
@@ -640,15 +835,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  roomTypeBottomPill: {
+  bottomPillRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    alignSelf: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
     marginTop: 4,
+  },
+  roomTypeBottomPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   roomTypeBottomText: {
     color: '#FF1493',
@@ -717,5 +921,13 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 12,
     lineHeight: 16,
+  },
+  arModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  arSheetContainer: {
+    paddingHorizontal: 8,
   },
 });

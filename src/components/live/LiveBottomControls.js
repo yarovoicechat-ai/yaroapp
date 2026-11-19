@@ -12,6 +12,8 @@ export default function LiveBottomControls({
   onOpenChat,
   onOpenPK,
   onOpenGift,
+  onOpenTools,
+  onOpenGames,
   bottomPadding = 12,
 }) {
   return (
@@ -34,6 +36,34 @@ export default function LiveBottomControls({
 
       {/* Right Controls Row */}
       <View style={styles.rightButtonsRow}>
+        {/* Menu Column with Game Button directly above */}
+        <View style={styles.menuColumn}>
+          {onOpenGames && (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={onOpenGames}
+              style={styles.gameIconAboveMenu}
+              accessibilityLabel="Games"
+            >
+              <LinearGradient
+                colors={['#FF6B00', '#FF1493', '#7928CA']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gameGradientBadge}
+              >
+                <MaterialCommunityIcons name="gamepad-variant" size={20} color="#FFF" />
+              </LinearGradient>
+              <View style={styles.gamePillTag}>
+                <Text style={styles.gamePillText}>GAME</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity accessibilityLabel="Live menu" onPress={onOpenTools} style={styles.iconCircle}>
+            <MaterialCommunityIcons name="dots-horizontal" size={24} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+
         {/* 2. Link / PK Mic Button */}
         <TouchableOpacity
           activeOpacity={0.8}
@@ -92,6 +122,46 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '800',
     fontSize: 13,
+  },
+  menuColumn: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    height: 98,
+    marginTop: -54,
+  },
+  gameIconAboveMenu: {
+    alignItems: 'center',
+    marginBottom: 6,
+    zIndex: 25,
+  },
+  gameGradientBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF1493',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  gamePillTag: {
+    position: 'absolute',
+    bottom: -6,
+    backgroundColor: '#FF1493',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#FFF',
+  },
+  gamePillText: {
+    color: '#FFF',
+    fontSize: 8,
+    fontWeight: '900',
   },
   iconCircle: {
     width: 38,

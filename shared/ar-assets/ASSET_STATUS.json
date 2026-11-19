@@ -1,0 +1,9 @@
+{
+  "definitions": 50,
+  "beautyModes": 9,
+  "originalGLBScenes": 45,
+  "verifiedEffects": 0,
+  "deviceVerification": "pending",
+  "iosValidation": "Mac/Xcode/iPhone required",
+  "license": "Original Yaro geometric models; MediaPipe licensed separately"
+}

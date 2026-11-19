@@ -1,4 +1,5 @@
 import { reactionSeatIndex, seatReactionMedia } from '../../utils/seatReactions';
+import { isFreshRoomReaction } from '../../utils/roomEvents';
 import IdentityDisplayId from '../../components/identity/IdentityDisplayId';
 import { buildRoomShare } from '../../utils/shareLinks';
 import { getRoomSeatConfig } from '../../utils/roomSeats';
@@ -89,6 +90,8 @@ import RoomGatherFollowersModal from '../../components/room/RoomGatherFollowersM
 import RoomMessageNoticeModal from '../../components/room/RoomMessageNoticeModal';
 import RoomAnnouncementModal from '../../components/room/RoomAnnouncementModal';
 import RoomInboxModal from '../../components/room/RoomInboxModal';
+import LiveGamesModal from '../../components/live/LiveGamesModal';
+import LiveRoomGameView from '../../components/live/LiveRoomGameView';
 import useInboxMessages from '../../hooks/useInboxMessages';
 import {
   resolveEntryAssets,
@@ -403,6 +406,7 @@ export default function VoiceRoomScreen() {
   // Broadcast Reaction Listener (All users in room see floating reactions & seat moving reactions)
   useEffect(() => {
     if (lastReaction?.emoji) {
+      if (!isFreshRoomReaction(lastReaction, currentRoomId)) return;
       const rxId = String(lastReaction.id || '');
       if (rxId && lastDisplayedReactionIdRef.current === rxId) return;
       lastDisplayedReactionIdRef.current = rxId;
@@ -866,10 +870,15 @@ export default function VoiceRoomScreen() {
   // Modals
   // New Enterprise Gift Flow Hooks
   const { diamondBalance, setDiamondBalance, deductLocalBalance } = useGiftBalance();
-  const { activeAnimation, setActiveAnimation, enqueue: enqueueGiftAnimation } = useGiftQueue();
+  const { activeAnimation, completeAnimation, enqueue: enqueueGiftAnimation, clearQueue: clearGiftQueue } = useGiftQueue();
   const [roomGiftNotifications, setRoomGiftNotifications] = useState([]);
 
   const currentRoomId = activeRoom?.id || activeRoom?.roomId || room?.id || room?.roomId || '';
+  useEffect(() => {
+    clearGiftQueue();
+    setReactions([]);
+    setSeatReactions({});
+  }, [currentRoomId, clearGiftQueue]);
 
   // Register Host and Seats screen positions for Flight Animation targeting
   useEffect(() => {
@@ -1085,6 +1094,9 @@ export default function VoiceRoomScreen() {
   const [selfSeatModalVisible, setSelfSeatModalVisible] = useState(false);
   const [wealthModalVisible, setWealthModalVisible] = useState(false);
   const [onlineUsersModalVisible, setOnlineUsersModalVisible] = useState(false);
+  const [gamesModalVisible, setGamesModalVisible] = useState(false);
+  const [activeGame, setActiveGame] = useState(null);
+  const [isGameMinimized, setIsGameMinimized] = useState(false);
   const topRoomContributors = useMemo(() => {
     const list = Array.isArray(roomContributors) ? roomContributors : [];
     return [...list]
@@ -2287,14 +2299,36 @@ export default function VoiceRoomScreen() {
               badgeText={giftHook.comboCount > 1 ? `x${giftHook.comboCount}` : null}
             />
 
-            {/* 4-Squares Room Tools Trigger */}
-            <TouchableOpacity
-              style={styles.controlCircleBtn}
-              onPress={() => setRoomMenuModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="view-grid-outline" size={22} color="#FFF" />
-            </TouchableOpacity>
+            {/* Menu Column with Game Trigger Above */}
+            <View style={styles.voiceMenuColumn}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setGamesModalVisible(true)}
+                style={styles.voiceGameIconAboveMenu}
+                accessibilityLabel="Games"
+              >
+                <LinearGradient
+                  colors={['#FF6B00', '#FF1493', '#7928CA']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.voiceGameGradientBadge}
+                >
+                  <MaterialCommunityIcons name="gamepad-variant" size={18} color="#FFF" />
+                </LinearGradient>
+                <View style={styles.voiceGamePillTag}>
+                  <Text style={styles.voiceGamePillText}>GAME</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.controlCircleBtn}
+                onPress={() => setRoomMenuModalVisible(true)}
+                activeOpacity={0.8}
+                accessibilityLabel="Room Menu"
+              >
+                <MaterialCommunityIcons name="view-grid-outline" size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
           </>
         ) : (
           <>
@@ -2353,14 +2387,36 @@ export default function VoiceRoomScreen() {
               badgeText={giftHook.comboCount > 1 ? `x${giftHook.comboCount}` : null}
             />
 
-            {/* 6. 4-Squares Room Tools Trigger */}
-            <TouchableOpacity
-              style={styles.controlCircleBtn}
-              onPress={() => setRoomMenuModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="view-grid-outline" size={22} color="#FFF" />
-            </TouchableOpacity>
+            {/* Menu Column with Game Trigger Above */}
+            <View style={styles.voiceMenuColumn}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setGamesModalVisible(true)}
+                style={styles.voiceGameIconAboveMenu}
+                accessibilityLabel="Games"
+              >
+                <LinearGradient
+                  colors={['#FF6B00', '#FF1493', '#7928CA']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.voiceGameGradientBadge}
+                >
+                  <MaterialCommunityIcons name="gamepad-variant" size={18} color="#FFF" />
+                </LinearGradient>
+                <View style={styles.voiceGamePillTag}>
+                  <Text style={styles.voiceGamePillText}>GAME</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.controlCircleBtn}
+                onPress={() => setRoomMenuModalVisible(true)}
+                activeOpacity={0.8}
+                accessibilityLabel="Room Menu"
+              >
+                <MaterialCommunityIcons name="view-grid-outline" size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
           </>
         )}
       </View>
@@ -2519,6 +2575,7 @@ export default function VoiceRoomScreen() {
         onOpenRoomTasks={() => setRoomTasksVisible(true)}
         onOpenMedal={() => navigation.navigate('Medal')}
         hasRoomHosting={hasRoomHosting}
+        onOpenGames={() => setGamesModalVisible(true)}
         onOpenRoomSupport={() => {
           if (hasRoomHosting) {
             setRoomSupportVisible(true);
@@ -2918,7 +2975,8 @@ export default function VoiceRoomScreen() {
       {/* ENTERPRISE GIFT ANIMATION ENGINE (CENTER -> RECIPIENT AVATAR FLIGHT -> BURST) */}
       <GiftAnimationEngine
         animation={activeAnimation}
-        onAnimationComplete={() => setActiveAnimation && setActiveAnimation(null)}
+        onAnimationComplete={completeAnimation}
+        fullScreen
       />
 
       {/* GIFT COMBO POPUP BADGE */}
@@ -3109,6 +3167,72 @@ export default function VoiceRoomScreen() {
             });
           }
         }}
+      />
+
+      {/* 1. Cocos Creator HTML5 Half-Screen Game View */}
+      {Boolean(activeGame && !isGameMinimized) && (
+        <View style={[styles.voiceGameAreaContainer, { height: height * 0.58 }]}>
+          <LiveRoomGameView
+            game={activeGame}
+            onClose={() => {
+              setActiveGame(null);
+              setIsGameMinimized(false);
+            }}
+            onMinimize={() => setIsGameMinimized(true)}
+            coinBalance={Number(user?.diamonds || user?.balance || 0)}
+            onUpdateCoinBalance={(newBal) => {
+              if (typeof updateDiamonds === 'function') updateDiamonds(newBal);
+            }}
+            onRecharge={() => navigation.navigate('Recharge')}
+            onEmitGameWin={(amount, gameName) => {
+              const sock = getSocket();
+              const roomId = currentRoomId || room?.id || room?.roomId;
+              if (sock && roomId) {
+                sock.emit('voice_room:message', {
+                  roomId,
+                  text: `🎉 Won ${amount.toLocaleString()} coins in ${gameName}!`,
+                  type: 'game_win',
+                });
+              }
+            }}
+          />
+        </View>
+      )}
+
+      {/* 2. Floating Minimized Game Pill (Restore Game) */}
+      {Boolean(activeGame && isGameMinimized) && (
+        <TouchableOpacity
+          accessibilityLabel="Restore Live Game"
+          activeOpacity={0.85}
+          onPress={() => setIsGameMinimized(false)}
+          style={[styles.floatingMiniGamePill, { bottom: bottomSafePadding + 75 }]}
+        >
+          <LinearGradient
+            colors={['#FF007F', '#7928CA']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.floatingMiniGameGradient}
+          >
+            <MaterialCommunityIcons name="gamepad-variant" size={16} color="#FFF" />
+            <Text style={styles.floatingMiniGameText} numberOfLines={1}>
+              {activeGame?.title || 'Game'}
+            </Text>
+            <View style={styles.floatingMiniGameDot} />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+
+      {/* 3. Live Games Catalog Modal */}
+      <LiveGamesModal
+        visible={gamesModalVisible}
+        onClose={() => setGamesModalVisible(false)}
+        onSelectGame={(game) => {
+          setActiveGame(game);
+          setIsGameMinimized(false);
+        }}
+        coinBalance={Number(user?.diamonds || user?.balance || 0)}
+        onRecharge={() => navigation.navigate('Recharge')}
+        bottomPadding={insets.bottom}
       />
 
     </ImageBackground>
@@ -5869,5 +5993,94 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.95)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2.5,
+  },
+  voiceMenuColumn: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    height: 96,
+    marginTop: -52,
+  },
+  voiceGameIconAboveMenu: {
+    alignItems: 'center',
+    marginBottom: 6,
+    zIndex: 25,
+  },
+  voiceGameGradientBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF1493',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  voiceGamePillTag: {
+    position: 'absolute',
+    bottom: -6,
+    backgroundColor: '#FF1493',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FFF',
+  },
+  voiceGamePillText: {
+    color: '#FFF',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  voiceGameAreaContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#0F172A',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    overflow: 'hidden',
+    zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 20,
+  },
+  floatingMiniGamePill: {
+    position: 'absolute',
+    right: 14,
+    zIndex: 90,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+  },
+  floatingMiniGameGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  floatingMiniGameText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    maxWidth: 90,
+  },
+  floatingMiniGameDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#00F0FF',
   },
 });

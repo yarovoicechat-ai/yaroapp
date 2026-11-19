@@ -83,10 +83,17 @@ const Wallet = ({ route } = {}) => {
 
     try {
       const currentPackage = DeviceInfo.getBundleId() || 'yaro.vc.app';
+      const orderId = purchase.orderId || purchase.transactionId || purchase.transactionReceipt?.orderId;
+      const signature = purchase.signatureAndroid || purchase.signature;
+      const transactionReceipt = purchase.transactionReceipt || purchase.originalJson;
+
       const res = await apiUtil.post('/payment/verify-google', {
         productId,
         purchaseToken,
         packageName: currentPackage,
+        orderId,
+        signature,
+        transactionReceipt,
       });
 
       console.log(`[GP-BILLING] VERIFY API RESPONSE STATUS: ${res.status}`);
@@ -347,6 +354,19 @@ const Wallet = ({ route } = {}) => {
     }
   };
 
+  const handleSyncPendingPurchases = async () => {
+    try {
+      setLoading(true);
+      AlertService.show('Syncing Purchases 🔄', 'Checking for completed purchases to credit your coins...', 'info');
+      await BillingService.restorePurchases(verifyPurchaseWithBackend);
+      await fetchUserProfile();
+    } catch (e) {
+      console.warn('[Wallet] Sync purchases error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleExchangeCoin = async (pack) => {
     if ((user?.coins || 0) < pack.coins) {
       AlertService.show('Insufficient Beans', 'You do not have enough Beans to exchange for this package.', 'error');
@@ -497,15 +517,26 @@ const Wallet = ({ route } = {}) => {
                   Use coins to unlock premium features and enjoy exclusive benefits.
                 </Text>
 
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('RechargeHistreoy')}
-                  style={[styles.historyBtn, { backgroundColor: '#FFFFFF', borderColor: '#FDE68A' }]}
-                  activeOpacity={0.7}
-                >
-                  <Icon name="history" size={14} color="#D97706" style={styles.iconMarginRight} />
-                  <Text style={[styles.historyBtnText, { color: '#B45309' }]}>History</Text>
-                  <Icon name="chevron-right" size={12} color="#D97706" />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('RechargeHistreoy')}
+                    style={[styles.historyBtn, { backgroundColor: '#FFFFFF', borderColor: '#FDE68A' }]}
+                    activeOpacity={0.7}
+                  >
+                    <Icon name="history" size={14} color="#D97706" style={styles.iconMarginRight} />
+                    <Text style={[styles.historyBtnText, { color: '#B45309' }]}>History</Text>
+                    <Icon name="chevron-right" size={12} color="#D97706" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleSyncPendingPurchases}
+                    style={[styles.historyBtn, { backgroundColor: 'rgba(255, 255, 255, 0.9)', borderColor: '#FDE68A' }]}
+                    activeOpacity={0.7}
+                  >
+                    <Icon name="sync" size={14} color="#D97706" style={styles.iconMarginRight} />
+                    <Text style={[styles.historyBtnText, { color: '#B45309' }]}>Sync Coins</Text>
+                  </TouchableOpacity>
+                </View>
               </ImageBackground>
             </View>
 

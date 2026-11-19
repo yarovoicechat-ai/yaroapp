@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,8 @@ import {
 import { getUserAvatar } from '../../utils/avatarUtil';
 import CountryPickerModal from '../../components/party/CountryPickerModal';
 import { countries } from '../../constants/countries';
+import { AuthContext } from '../../context/AuthProvider';
+import RoomLockModal from '../../components/room/RoomLockModal';
 
 const POPULAR_COUNTRY_CHIPS = [
   { id: 'all', name: '', label: 'All', flag: '🔥' },
@@ -39,6 +41,7 @@ const POPULAR_COUNTRY_CHIPS = [
 ];
 
 export default function LiveListScreen({ navigation }) {
+  const { user } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [category, setCategory] = useState('Live');
@@ -52,6 +55,33 @@ export default function LiveListScreen({ navigation }) {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedLockedRoom, setSelectedLockedRoom] = useState(null);
+  const [lockModalVisible, setLockModalVisible] = useState(false);
+
+  const handleRoomPress = useCallback((room) => {
+    const isHost = String(room.host?._id || room.host?.userId || room.host) === String(user?._id || user?.userId || user?.id);
+    if (room.isPrivate && !isHost) {
+      setSelectedLockedRoom(room);
+      setLockModalVisible(true);
+      return;
+    }
+    navigation.navigate('LiveStream', {
+      roomId: room._id,
+      room,
+    });
+  }, [navigation, user]);
+
+  const handleUnlockSuccess = useCallback((pin) => {
+    if (!selectedLockedRoom) return;
+    const targetRoom = selectedLockedRoom;
+    setSelectedLockedRoom(null);
+    setLockModalVisible(false);
+    navigation.navigate('LiveStream', {
+      roomId: targetRoom._id,
+      room: targetRoom,
+      pin,
+    });
+  }, [navigation, selectedLockedRoom]);
   const fetchRooms = useCallback(async () => {
     try {
       const params = {};
@@ -275,12 +305,7 @@ export default function LiveListScreen({ navigation }) {
                       styles.card,
                       { width: cardWidth, height: cardWidth * 1.48 },
                     ]}
-                    onPress={() =>
-                      navigation.navigate('LiveStream', {
-                        roomId: room._id,
-                        room,
-                      })
-                    }
+                    onPress={() => handleRoomPress(room)}
                   >
                     <Image
                       source={getUserAvatar(
@@ -296,6 +321,12 @@ export default function LiveListScreen({ navigation }) {
                     <View style={styles.live}>
                       <Text style={styles.liveText}>LIVE</Text>
                     </View>
+                    {Boolean(room.isPrivate) && (
+                      <View style={styles.lockBadge}>
+                        <Icon name="lock-closed" size={10} color="#FFF" />
+                        <Text style={styles.lockBadgeText}>PIN</Text>
+                      </View>
+                    )}
                     <View style={styles.viewers}>
                       <Icon name="eye" size={11} color="#FFF" />
                       <Text style={styles.liveText}>
@@ -339,6 +370,16 @@ export default function LiveListScreen({ navigation }) {
           setSelectedCountry('');
           setCountryPickerVisible(false);
         }}
+      />
+      <RoomLockModal
+        visible={lockModalVisible}
+        mode="enter_pin"
+        roomId={selectedLockedRoom?._id}
+        onClose={() => {
+          setLockModalVisible(false);
+          setSelectedLockedRoom(null);
+        }}
+        onSuccess={handleUnlockSuccess}
       />
     </View>
   );
@@ -435,6 +476,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#E11D48',
   },
   liveText: { color: '#FFF', fontWeight: '800', fontSize: 9 },
+  lockBadge: {
+    position: 'absolute',
+    top: 9,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 5,
+    backgroundColor: '#9333EA',
+  },
+  lockBadgeText: { color: '#FFF', fontWeight: '800', fontSize: 9 },
   viewers: {
     position: 'absolute',
     top: 9,

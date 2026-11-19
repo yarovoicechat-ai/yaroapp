@@ -77,6 +77,10 @@
 -keep class com.android.billingclient.** { *; }
 -dontwarn com.android.billingclient.**
 
+# MediaPipe protobuf schemas resolve generated field names at runtime.
+-keep class com.google.mediapipe.** { *; }
+-keep class com.google.protobuf.** { *; }
+
 # Agora RTC SDK & Iris Native JNI Bindings
 -keep class io.agora.** { *; }
 -keep class io.agora.rtc2.** { *; }
@@ -110,6 +114,8 @@
 -dontwarn io.socket.**
 
 # Fresco & Animated GIF / WebP Playback
+-keep class yaro.vc.app.ar.YaroARModule { *; }
+-keep class yaro.vc.app.ar.YaroARPackage { *; }
 -keep class com.facebook.fresco.** { *; }
 -keep class com.facebook.drawee.** { *; }
 -keep class com.facebook.imagepipeline.** { *; }
@@ -139,3 +145,8 @@
 -dontwarn com.facebook.imagepipeline.animated.**
 -dontwarn com.facebook.animated.**
 -dontwarn com.facebook.fresco.**
+
+# MediaPipe & AutoValue
+-dontwarn com.google.auto.value.extension.memoized.**
+-dontwarn com.google.mediapipe.**
+-dontwarn com.google.auto.value.**

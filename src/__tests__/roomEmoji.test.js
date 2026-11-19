@@ -6,6 +6,7 @@ import VoiceRoomSeatGrid from '../components/room/VoiceRoomSeatGrid';
 import { BUNDLED_EMOJIS } from '../constants/roomEmojis';
 
 jest.setTimeout(30000);
+jest.mock('@dasimems/react-native-svga', () => ({ SvgaPlayer: 'SvgaPlayer' }));
 
 jest.mock('react-native-vector-icons/Ionicons', () => 'Icon');
 jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');

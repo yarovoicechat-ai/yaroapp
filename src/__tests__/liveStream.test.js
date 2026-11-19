@@ -9,9 +9,17 @@ import LiveConnectionSheet from '../components/live/LiveConnectionSheet';
 import LiveBottomControls from '../components/live/LiveBottomControls';
 import LiveChatInputModal from '../components/live/LiveChatInputModal';
 import LiveGiftTrayModal from '../components/live/LiveGiftTrayModal';
+import LiveToolsBottomSheet from '../components/live/LiveToolsBottomSheet';
+import LiveVideoGrid from '../components/live/LiveVideoGrid';
+import LiveChatOverlay from '../components/live/LiveChatOverlay';
+import GiftAnimationEngine from '../components/gift/GiftAnimationEngine';
+import RoomEntryEffectEngine from '../components/room/RoomEntryEffectEngine';
+import { ARManager } from '../features/YaroAR';
 
 jest.mock('../utils/apiUtil', () => ({ apiUtil: { post: jest.fn(), get: jest.fn() } }));
 jest.mock('../sockets', () => ({ getSocket: jest.fn(() => null) }));
+jest.mock('../components/GiftMedia', () => 'GiftMedia');
+jest.mock('../components/SvgaView', () => 'SvgaView');
 jest.mock('../services/BillingService', () => ({ __esModule: true, default: { queryProducts: jest.fn(async () => ({})) } }));
 jest.mock('../context/VoiceRoomContext', () => ({ useVoiceRoom: () => ({ activeRoom: null, leaveRoom: jest.fn() }) }));
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) }));
@@ -20,7 +28,7 @@ jest.mock('react-native-agora', () => ({
   createAgoraRtcEngine: jest.fn(),
   ChannelProfileType: { ChannelProfileLiveBroadcasting: 1 },
   ClientRoleType: { ClientRoleBroadcaster: 1, ClientRoleAudience: 2 },
-  RtcSurfaceView: 'RtcSurfaceView',
+  RtcSurfaceView: 'RtcSurfaceView', RtcTextureView: 'RtcSurfaceView',
 }));
 const room = { _id: 'room', title: 'Live' };
 let engine, events, stateHandler, tree;
@@ -31,7 +39,7 @@ beforeEach(() => {
   apiUtil.get.mockResolvedValue({ data: { data: { diamonds: 500 } } });
   jest.spyOn(AppState, 'addEventListener').mockImplementation((_name, handler) => { stateHandler = handler; return { remove: jest.fn() }; });
   jest.spyOn(PermissionsAndroid, 'requestMultiple').mockResolvedValue({ camera: 'granted', mic: 'granted' });
-  engine = Object.fromEntries(['initialize', 'enableVideo', 'startPreview', 'stopPreview', 'leaveChannel', 'release', 'renewToken', 'setClientRole', 'updateChannelMediaOptions'].map(key => [key, jest.fn()]));
+  engine = Object.fromEntries(['initialize', 'enableVideo', 'startPreview', 'stopPreview', 'leaveChannel', 'release', 'renewToken', 'setClientRole', 'updateChannelMediaOptions', 'muteLocalAudioStream', 'muteLocalVideoStream'].map(key => [key, jest.fn()]));
   engine.joinChannel = jest.fn(() => 0);
   engine.registerEventHandler = jest.fn(handler => { events = handler; });
   createAgoraRtcEngine.mockReturnValue(engine);
@@ -115,4 +123,101 @@ test('chat is delivered through the socket and gifts use the server wallet', asy
   expect(tree.root.findByType(LiveGiftTrayModal).props.coinBalance).toBe(500);
   await act(async () => tree.root.findByType(LiveGiftTrayModal).props.onSendGift({ gift: { id: 'rose', price: 20 }, quantity: 10, receiver: {} }));
   expect(apiUtil.post).toHaveBeenCalledWith('/live/rooms/room/gift', { giftId: 'rose', quantity: 10, target: 'host' });
+});
+
+test('the live menu opens and host tools omit the camera-off control', async () => {
+  await mount(true);
+  await act(async () => tree.root.findByType(LiveBottomControls).props.onOpenTools());
+  const tools = tree.root.findByType(LiveToolsBottomSheet);
+  expect(tools.props.visible).toBe(true);
+  expect(JSON.stringify(tree.toJSON())).toContain('Flip Camera');
+  expect(JSON.stringify(tree.toJSON())).not.toContain('Camera Off');
+});
+
+test('a viewer mounts the host video after joining before the first remote-frame callback', async () => {
+  await mount(false);
+  expect(tree.root.findAllByType('RtcSurfaceView')).toHaveLength(0);
+  await act(async () => events.onJoinChannelSuccess());
+  expect(tree.root.findAllByType('RtcSurfaceView')).toHaveLength(1);
+  expect(tree.root.findByType('RtcSurfaceView').props.canvas.uid).toBe(10);
+  await act(async () => events.onFirstRemoteVideoFrame({}, 10));
+  expect(JSON.stringify(tree.toJSON())).not.toContain('Waiting for the host video');
+});
+
+test('socket initialization after opening live still subscribes for gifts and entries', async () => {
+  await mount(false);
+  const socket = { connected: true, emit: jest.fn(), on: jest.fn(), off: jest.fn() };
+  getSocket.mockReturnValue(socket);
+  await act(async () => jest.advanceTimersByTime(500));
+  expect(socket.emit).toHaveBeenCalledWith('live:join', { roomId: 'room' });
+  expect(socket.on).toHaveBeenCalledWith('live:gift_received', expect.any(Function));
+  expect(socket.on).toHaveBeenCalledWith('entry:effect', expect.any(Function));
+});
+
+test('remote gifts and entries reach the fullscreen players with their real assets', async () => {
+  const handlers = {};
+  getSocket.mockReturnValue({ connected: true, emit: jest.fn(), off: jest.fn(),
+    on: jest.fn((name, handler) => { handlers[name] = handler; }) });
+  await mount(false);
+  const gift = { roomId: 'room', transactionId: 'transaction-1', sender: { name: 'Sender' },
+    gift: { id: 'rose', name: 'Rose', icon: 'https://example.com/rose.gif', animationUrl: 'https://example.com/rose.svga', mediaType: 'svga' }, quantity: 2 };
+  await act(async () => handlers['live:gift_received'](gift));
+  const player = tree.root.findByType(GiftAnimationEngine);
+  expect(player.props.animation.gift.animationUrl).toBe(gift.gift.animationUrl);
+  expect(player.props.fullScreen).toBe(true);
+  expect(tree.root.findByType(LiveChatOverlay).props.recentGift).toMatchObject({
+    giftImage: 'https://example.com/rose.gif', giftEmoji: '🎁', giftName: 'Rose', count: 2,
+  });
+  await act(async () => handlers['live:gift_received'](gift));
+  await act(async () => player.props.onAnimationComplete(player.props.animation.id));
+  expect(tree.root.findByType(GiftAnimationEngine).props.animation).toBe(null);
+  const entry = { roomId: 'room', entryId: 'entry-1', user: { name: 'Arrival' },
+    entry: { animationUrl: 'https://example.com/entry.svga' } };
+  await act(async () => handlers['entry:effect'](entry));
+  expect(tree.root.findByType(RoomEntryEffectEngine).props.activeEntry.entryId).toBe('entry-1');
+});
+
+test('four-box rooms render the host and three guest boxes', async () => {
+  const rtc = { isHost: true, appId: 'app', token: 'issued', channelName: 'live_room', agoraUid: 10, hostUid: 10 };
+  const multiRoom = { ...room, mode: 'multi', seatCount: 4, guests: [] };
+  await act(async () => {
+    tree = renderer.create(<LiveStreamScreen navigation={navigation} route={{ params: {
+      roomId: room._id, room: multiRoom, rtc, permissionsGranted: true,
+    } }} />);
+  });
+  expect(tree.root.findByType(LiveVideoGrid).props.count).toBe(4);
+  expect(tree.root.findAllByType('RtcSurfaceView')).toHaveLength(1);
+  for (const index of [2, 3, 4]) {
+    expect(tree.root.findAllByProps({ accessibilityLabel: `Join video box ${index}` }).length).toBeGreaterThan(0);
+  }
+});
+
+test('REST guest subdocuments match socket user IDs for updates, deduplication and departure', async () => {
+  const handlers = {};
+  getSocket.mockReturnValue({ connected: true, emit: jest.fn(), off: jest.fn(),
+    on: jest.fn((name, handler) => { handlers[name] = handler; }) });
+  const rtc = { isHost: true, appId: 'app', token: 'issued', channelName: 'live_room', agoraUid: 10, hostUid: 10 };
+  const multiRoom = { ...room, mode: 'multi', seatCount: 4,
+    guests: [{ id: 'mongoose-subdocument', user: { _id: 'guest-user', name: 'Guest' }, agoraUid: 30, camera: false }] };
+  await act(async () => {
+    tree = renderer.create(<LiveStreamScreen navigation={navigation} route={{ params: {
+      roomId: room._id, room: multiRoom, rtc, permissionsGranted: true,
+    } }} />);
+  });
+  await act(async () => handlers['live:guest_joined']({ guest: { id: 'guest-user', name: 'Guest', agoraUid: 30 } }));
+  expect(tree.root.findByType(LiveVideoGrid).props.guests).toHaveLength(1);
+  expect(tree.root.findByType(LiveVideoGrid).props.guests[0].camera).toBe(false);
+  await act(async () => handlers['live:guest_media']({ roomId: 'room', userId: 'guest-user', agoraUid: 30, muted: true, camera: true }));
+  expect(tree.root.findByType(LiveVideoGrid).props.guests[0].muted).toBe(true);
+  await act(async () => handlers['live:guest_left']({ roomId: 'different-room', userId: 'guest-user' }));
+  expect(tree.root.findByType(LiveVideoGrid).props.guests).toHaveLength(1);
+  await act(async () => handlers['live:guest_left']({ userId: 'guest-user' }));
+  expect(tree.root.findByType(LiveVideoGrid).props.guests).toHaveLength(0);
+});
+
+test('single-host preview follows the selected camera mirroring state', async () => {
+  await mount(true);
+  expect(tree.root.findByType('RtcSurfaceView').props.canvas.mirrorMode).toBe(1);
+  await act(async () => ARManager.update({ frontCamera: false }));
+  expect(tree.root.findByType('RtcSurfaceView').props.canvas.mirrorMode).toBe(2);
 });

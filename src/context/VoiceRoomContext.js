@@ -931,6 +931,7 @@ export const VoiceRoomProvider = ({ children }) => {
     const roomSessionId = ++roomSessionRef.current;
 
     setActiveRoom(roomData);
+    setLastReaction(null);
     setIsMinimized(false);
     setOnlineUsers([]);
     setOnlineCount(0);
@@ -1178,6 +1179,7 @@ export const VoiceRoomProvider = ({ children }) => {
 
         // 1.1 Reaction received broadcast
         const handleReactionReceived = (data) => {
+          if (!isCurrentRoomEvent(data)) return;
           console.log('📡 [VoiceRoom] Reaction received:', data?.emoji, data?.user, data?.seatIndex);
           if (data?.emoji) {
             const rawUser = data.user;
@@ -1188,6 +1190,7 @@ export const VoiceRoomProvider = ({ children }) => {
               : (typeof rawUser === 'object' && typeof rawUser?.seatIndex === 'number' ? rawUser.seatIndex : undefined);
 
             setLastReaction({
+              roomId: activeRoomIdRef.current,
               id: data.id || ('react-' + Date.now() + Math.random()),
               emoji: data.emoji,
               gifUrl: data.gifUrl || data.emojiData?.gifUrl || null,
@@ -1548,6 +1551,11 @@ export const VoiceRoomProvider = ({ children }) => {
         });
 
         sock.on('voice_room:force_leave', (data) => {
+          if (data?.code === 'OWNER_SWITCHED_ROOM' || /visited another room/i.test(data?.reason || '')) {
+            // Silently release background room session without blocking alert popup
+            leaveRoom(currentUserRef.current);
+            return;
+          }
           AlertService.show('Notice', data?.reason || 'Room session closed', 'warning');
           leaveRoom(currentUserRef.current);
         });
@@ -1963,6 +1971,7 @@ export const VoiceRoomProvider = ({ children }) => {
   // Minimize (Keep in Floating Mode)
   const minimizeRoom = () => {
     setIsMinimized(true);
+    setLastReaction(null);
     setActiveEntryEffect(null);
     try {
       if (navigationRef && typeof navigationRef.isReady === 'function' && navigationRef.isReady()) {
@@ -2102,6 +2111,7 @@ export const VoiceRoomProvider = ({ children }) => {
     hasPlayedSelfEntranceRef.current = false;
     setActiveEntryEffect(null);
     setActiveVipEntry(null);
+    setLastReaction(null);
     recentEntryUsersRef.current?.clear?.();
     seenJoinEventsRef.current?.clear?.();
     recentJoinUsersRef.current?.clear?.();
@@ -2239,7 +2249,7 @@ export const VoiceRoomProvider = ({ children }) => {
     const gifUrl = isEmojiObj ? (emojiOrItem.gifUrl || (typeof emojiOrItem.localGif === 'string' ? emojiOrItem.localGif : null)) : (isObj ? optionsOrName.gifUrl : null);
     const emojiName = isEmojiObj ? emojiOrItem.name : (isObj ? optionsOrName.name : null);
 
-    if (sock && roomId && emojiVal) {
+    if (sock?.connected && roomId && emojiVal) {
       sock.emit('voice_room:reaction', {
         roomId,
         emoji: emojiVal,

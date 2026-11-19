@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -18,7 +18,7 @@ const PREMIUM_TYPES = new Set(['SPECIAL', 'CENTER_STAGE', 'FULL_SCREEN', 'VIP', 
 
 const firstReceiver = (animation) => animation?.receivers?.[0] || animation?.receiver || null;
 
-export default function GiftAnimationEngine({ animation, onAnimationComplete }) {
+export default function GiftAnimationEngine({ animation, onAnimationComplete, fullScreen = true }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.72)).current;
   const translateY = useRef(new Animated.Value(34)).current;
@@ -31,6 +31,7 @@ export default function GiftAnimationEngine({ animation, onAnimationComplete }) 
   const burstScale = useRef(new Animated.Value(0.2)).current;
   const onCompleteRef = useRef(onAnimationComplete);
   onCompleteRef.current = onAnimationComplete;
+  const [loadedMedia, setLoadedMedia] = useState(null);
 
   const nestedGift = animation?.gift && typeof animation.gift === 'object' ? animation.gift : {};
   const gift = {
@@ -57,9 +58,21 @@ export default function GiftAnimationEngine({ animation, onAnimationComplete }) 
   };
   const targetX = Math.max(8, Math.min(width - 60, target.x - 26));
   const targetY = Math.max(24, Math.min(height - 72, target.y - 26));
-  const isFlightAnimation = !PREMIUM_TYPES.has(animationType) && !isSvga;
+  const isFlightAnimation = !fullScreen && !PREMIUM_TYPES.has(animationType) && !isSvga;
   const flightSource = isSvga ? animationUrl : (giftVisual.giftImage || animationUrl);
   const hasAnyVisual = Boolean(visualUrl || flightSource || giftVisual.giftIcon);
+  const mediaSource = isFlightAnimation ? flightSource : visualUrl || flightSource;
+  const mediaKey = `${animationId}:${mediaSource}`;
+  const mediaReady = !mediaSource || loadedMedia === mediaKey;
+  const markMediaReady = useCallback(() => setLoadedMedia(mediaKey), [mediaKey]);
+
+  useEffect(() => {
+    if (!animationId || mediaReady) return undefined;
+    // A failed download must release the queue, while slow downloads retain
+    // their full visible playback duration after the media becomes ready.
+    const loadingTimeout = setTimeout(() => onCompleteRef.current?.(animationId), 12000);
+    return () => clearTimeout(loadingTimeout);
+  }, [animationId, mediaKey, mediaReady]);
 
   useEffect(() => {
     if (!animation || !animationId) return undefined;
@@ -67,6 +80,14 @@ export default function GiftAnimationEngine({ animation, onAnimationComplete }) 
     if (!hasAnyVisual) {
       const noVisualTimer = setTimeout(() => onCompleteRef.current?.(animationId), 0);
       return () => clearTimeout(noVisualTimer);
+    }
+
+    if (!mediaReady) {
+      opacity.setValue(0);
+      ribbonOpacity.setValue(0);
+      flightOpacity.setValue(0);
+      burstOpacity.setValue(0);
+      return undefined;
     }
 
     if (isFlightAnimation) {
@@ -173,6 +194,7 @@ export default function GiftAnimationEngine({ animation, onAnimationComplete }) 
     flightY,
     gift.duration,
     hasAnyVisual,
+    mediaReady,
     isSvga,
     isFlightAnimation,
     opacity,
@@ -203,12 +225,14 @@ export default function GiftAnimationEngine({ animation, onAnimationComplete }) 
         >
           {flightSource ? (
             <GiftMedia
+              key={mediaKey}
               source={flightSource}
               mediaType={gift.mediaType}
               style={styles.flightImage}
               resizeMode="contain"
               repeat
               muted
+              onLoad={markMediaReady}
             />
           ) : giftVisual.giftIcon ? (
             <Text style={styles.flightEmoji}>{giftVisual.giftIcon}</Text>
@@ -238,20 +262,22 @@ export default function GiftAnimationEngine({ animation, onAnimationComplete }) 
     );
   }
 
-  if (!visualUrl) return null;
+  const stageSource = visualUrl || flightSource;
 
   return (
     <View style={styles.overlay} pointerEvents="none">
       <Animated.View style={[styles.mediaStage, { opacity, transform: [{ translateY }, { scale }] }]}>
-        <GiftMedia
-          source={visualUrl}
+        {stageSource ? <GiftMedia
+          key={mediaKey}
+          source={stageSource}
           mediaType={gift.mediaType}
           style={styles.media}
           resizeMode="contain"
           fallbackSource={giftVisual.giftImage ? { uri: giftVisual.giftImage } : undefined}
           repeat
           muted
-        />
+          onLoad={markMediaReady}
+        /> : <Text style={{ fontSize: Math.round(width * 0.5) }}>{giftVisual.giftIcon || '🎁'}</Text>}
       </Animated.View>
       <Animated.View style={[styles.ribbonWrap, { opacity: ribbonOpacity }]}>
         <LinearGradient
@@ -286,12 +312,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: height * 0.16,
-    height: height * 0.67,
+    top: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  media: { width, height: height * 0.67 },
+  media: { width: '100%', height: '100%' },
   flightVisual: {
     position: 'absolute',
     left: 0,

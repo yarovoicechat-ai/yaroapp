@@ -16,7 +16,23 @@ const { width } = Dimensions.get('window');
 
 export const LIVE_GAMES_LIST = [
   {
+    id: 'food-game',
+    gameId: 'food-game',
+    title: 'Food Game (Fruit Wheel)',
+    subtitle: 'Fruit & Food 50x Multiplier',
+    description: 'Cocos Creator 3.8.x responsive Web Mobile fruit wheel with verified server rewards!',
+    icon: 'fruit-cherries',
+    category: 'Wheel',
+    tag: 'HOT',
+    tagColor: '#FF1493',
+    multiplier: '50x',
+    players: '4.5k',
+    gradient: ['#FF416C', '#FF4B2B'],
+    gameUrl: 'https://games.yaroapp.in/food-game/',
+  },
+  {
     id: 'greedy-baby',
+    gameId: 'greedy-baby',
     title: 'Greedy Baby',
     subtitle: 'Fruit Wheel 50x Multiplier',
     description: 'Cocos Creator HTML5 fruit wheel with instant coin rewards!',
@@ -27,10 +43,11 @@ export const LIVE_GAMES_LIST = [
     multiplier: '50x',
     players: '3.8k',
     gradient: ['#FF416C', '#FF4B2B'],
-    gameUrl: 'https://api.yaroapp.in/games/greedy-baby/index.html',
+    gameUrl: 'https://games.yaroapp.in/greedy-baby/',
   },
   {
     id: 'lucky-wheel',
+    gameId: 'lucky-wheel',
     title: 'Lucky Wheel',
     subtitle: 'Colors & Multipliers',
     description: 'Cocos Creator Web wheel with 36x multipliers & live stats!',
@@ -41,10 +58,11 @@ export const LIVE_GAMES_LIST = [
     multiplier: '36x',
     players: '2.5k',
     gradient: ['#8A2387', '#E94057', '#F27121'],
-    gameUrl: 'https://api.yaroapp.in/games/lucky-wheel/index.html',
+    gameUrl: 'https://games.yaroapp.in/lucky-wheel/',
   },
   {
     id: 'teen-patti',
+    gameId: 'teen-patti',
     title: 'Teen Patti Live',
     subtitle: 'Player A vs Player B Cards',
     description: 'Cocos 2D 3-card table round with live predictions & odds!',
@@ -55,10 +73,11 @@ export const LIVE_GAMES_LIST = [
     multiplier: '10x',
     players: '2.1k',
     gradient: ['#11998e', '#38ef7d'],
-    gameUrl: 'https://api.yaroapp.in/games/teen-patti/index.html',
+    gameUrl: 'https://games.yaroapp.in/teen-patti/',
   },
   {
     id: 'lucky-7',
+    gameId: 'lucky-7',
     title: 'Lucky 7',
     subtitle: '7 Down · Lucky 7 · 7 Up',
     description: 'Cocos Web dice game! Predict 7 Down, Lucky 7, or 7 Up.',
@@ -69,10 +88,11 @@ export const LIVE_GAMES_LIST = [
     multiplier: '6x',
     players: '1.9k',
     gradient: ['#1A2980', '#26D0CE'],
-    gameUrl: 'https://api.yaroapp.in/games/lucky-7/index.html',
+    gameUrl: 'https://games.yaroapp.in/lucky-7/',
   },
   {
     id: 'crash',
+    gameId: 'crash',
     title: 'Crash (Rocket)',
     subtitle: 'Cash Out Before Blast!',
     description: 'Cocos Creator rocket crash curve with real-time cashout!',
@@ -83,10 +103,11 @@ export const LIVE_GAMES_LIST = [
     multiplier: '100x',
     players: '1.4k',
     gradient: ['#FF512F', '#DD2476'],
-    gameUrl: 'https://api.yaroapp.in/games/crash/index.html',
+    gameUrl: 'https://games.yaroapp.in/crash/',
   },
   {
     id: 'ludo',
+    gameId: 'ludo',
     title: 'Ludo Party',
     subtitle: 'Quick Dice Board Race',
     description: 'Cocos Creator multiplayer Ludo board game in half screen!',
@@ -97,7 +118,7 @@ export const LIVE_GAMES_LIST = [
     multiplier: '4x',
     players: '960',
     gradient: ['#654ea3', '#eaafc8'],
-    gameUrl: 'https://api.yaroapp.in/games/ludo/index.html',
+    gameUrl: 'https://games.yaroapp.in/ludo/',
   },
 ];
 
@@ -148,70 +169,67 @@ export default function LiveGamesModal({
               </View>
               <View>
                 <Text style={styles.sheetTitle}>Live Game Center</Text>
-                <Text style={styles.sheetSubtitle}>Play inside live room in half screen</Text>
+                <Text style={styles.sheetSubtitle}>Cocos 3.8.x Web Mobile Games</Text>
               </View>
             </View>
 
-            <View style={styles.headerRight}>
-              {/* Coin Balance Chip */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={onRecharge}
-                style={styles.coinBalanceChip}
-              >
-                <Text style={styles.coinIcon}>🪙</Text>
-                <Text style={styles.coinAmount}>
-                  {Number(coinBalance || 0).toLocaleString()}
-                </Text>
-                <View style={styles.rechargePlus}>
-                  <Text style={styles.rechargePlusText}>+</Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={onClose}
-                style={styles.closeButton}
-                accessibilityLabel="Close Games"
-              >
-                <Icon name="close" size={20} color="#FFF" />
-              </TouchableOpacity>
-            </View>
+            {/* User Coin Balance Badge */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={onRecharge}
+              style={styles.balanceBadge}
+            >
+              <Text style={styles.coinIcon}>🪙</Text>
+              <Text style={styles.balanceText}>{coinBalance.toLocaleString()}</Text>
+              <View style={styles.plusIconWrap}>
+                <Icon name="add" size={12} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Category Tabs */}
-          <View style={styles.categoryTabsContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryTabsContent}>
-              {CATEGORIES.map(category => {
-                const isActive = selectedCategory === category;
-                return (
-                  <TouchableOpacity
-                    key={category}
-                    activeOpacity={0.8}
-                    onPress={() => setSelectedCategory(category)}
-                    style={[styles.categoryTab, isActive && styles.categoryTabActive]}
-                  >
-                    <Text style={[styles.categoryTabText, isActive && styles.categoryTabTextActive]}>
-                      {category}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Games List */}
           <ScrollView
-            style={styles.gamesList}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScroll}
+          >
+            {CATEGORIES.map(category => {
+              const isSelected = selectedCategory === category;
+              return (
+                <TouchableOpacity
+                  key={category}
+                  onPress={() => setSelectedCategory(category)}
+                  activeOpacity={0.8}
+                  style={[
+                    styles.categoryChip,
+                    isSelected && styles.categoryChipSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      isSelected && styles.categoryTextSelected,
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Games Grid / Cards */}
+          <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.gamesListContent}
+            contentContainerStyle={styles.gamesListScroll}
           >
             {filteredGames.map(game => (
               <TouchableOpacity
                 key={game.id}
-                activeOpacity={0.85}
+                activeOpacity={0.88}
                 onPress={() => {
-                  onSelectGame(game);
                   onClose();
+                  onSelectGame(game);
                 }}
                 style={styles.gameCard}
               >
@@ -219,52 +237,52 @@ export default function LiveGamesModal({
                   colors={game.gradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={styles.gameCardIconContainer}
+                  style={styles.gameCardGradient}
                 >
-                  <MaterialCommunityIcons name={game.icon} size={32} color="#FFFFFF" />
-                  <View style={[styles.gameCardTag, { backgroundColor: game.tagColor }]}>
-                    <Text style={styles.gameCardTagText}>{game.tag}</Text>
+                  {/* Left Icon Area */}
+                  <View style={styles.gameIconCol}>
+                    <View style={styles.gameIconCircle}>
+                      <MaterialCommunityIcons
+                        name={game.icon}
+                        size={28}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                    <View style={[styles.gameTagBadge, { backgroundColor: game.tagColor }]}>
+                      <Text style={styles.gameTagText}>{game.tag}</Text>
+                    </View>
+                  </View>
+
+                  {/* Middle Info */}
+                  <View style={styles.gameInfoCol}>
+                    <View style={styles.titleMultiplierRow}>
+                      <Text style={styles.gameCardTitle} numberOfLines={1}>
+                        {game.title}
+                      </Text>
+                      <View style={styles.multiplierBadge}>
+                        <Text style={styles.multiplierText}>{game.multiplier}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.gameCardSubtitle} numberOfLines={1}>
+                      {game.subtitle}
+                    </Text>
+                    <Text style={styles.gameCardDesc} numberOfLines={2}>
+                      {game.description}
+                    </Text>
+
+                    <View style={styles.playersRow}>
+                      <MaterialCommunityIcons name="account-group" size={13} color="rgba(255,255,255,0.7)" />
+                      <Text style={styles.playersText}>{game.players} playing now</Text>
+                    </View>
+                  </View>
+
+                  {/* Right Play Arrow */}
+                  <View style={styles.playBtnCol}>
+                    <View style={styles.playCircleBtn}>
+                      <Icon name="play" size={18} color="#0F172A" />
+                    </View>
                   </View>
                 </LinearGradient>
-
-                <View style={styles.gameCardDetails}>
-                  <View style={styles.gameCardTitleRow}>
-                    <Text style={styles.gameCardTitle}>{game.title}</Text>
-                    <View style={styles.multiplierBadge}>
-                      <Text style={styles.multiplierText}>{game.multiplier}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.gameCardSubtitle} numberOfLines={1}>
-                    {game.subtitle}
-                  </Text>
-                  <View style={styles.gameCardMetaRow}>
-                    <View style={styles.playersBadge}>
-                      <Text style={styles.playersDot}>●</Text>
-                      <Text style={styles.playersText}>{game.players} playing</Text>
-                    </View>
-                    <Text style={styles.gameCardFeatureText}>Instant Payout</Text>
-                  </View>
-                </View>
-
-                {/* Play Button */}
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    onSelectGame(game);
-                    onClose();
-                  }}
-                  style={styles.playButton}
-                >
-                  <LinearGradient
-                    colors={['#FF6B00', '#FF1493']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.playButtonGradient}
-                  >
-                    <Text style={styles.playButtonText}>Play</Text>
-                    <Icon name="play" size={12} color="#FFF" />
-                  </LinearGradient>
-                </TouchableOpacity>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -277,35 +295,32 @@ export default function LiveGamesModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    backgroundColor: '#12101F',
+    backgroundColor: '#0F172A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
     maxHeight: '80%',
-    minHeight: 460,
+    paddingTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   sheetHandle: {
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 14,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -316,203 +331,173 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,215,0,0.15)',
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
   },
   sheetTitle: {
-    color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    color: '#F8FAFC',
   },
   sheetSubtitle: {
-    color: 'rgba(255,255,255,0.5)',
     fontSize: 11,
-    marginTop: 2,
+    color: '#94A3B8',
+    marginTop: 1,
   },
-  headerRight: {
+  balanceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  coinBalanceChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,215,0,0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 14,
+    backgroundColor: 'rgba(255, 215, 0, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.3)',
-    gap: 4,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   coinIcon: {
     fontSize: 13,
+    marginRight: 4,
   },
-  coinAmount: {
+  balanceText: {
+    fontSize: 13,
+    fontWeight: '800',
     color: '#FFD700',
-    fontSize: 12,
-    fontWeight: '700',
   },
-  rechargePlus: {
+  plusIconWrap: {
+    marginLeft: 6,
+    backgroundColor: '#FF007F',
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#FFD700',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 2,
-  },
-  rechargePlusText: {
-    color: '#000',
-    fontSize: 11,
-    fontWeight: '900',
-    lineHeight: 13,
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoryTabsContainer: {
-    paddingVertical: 10,
-  },
-  categoryTabsContent: {
+  categoryScroll: {
     paddingHorizontal: 16,
     gap: 8,
+    marginBottom: 14,
   },
-  categoryTab: {
-    paddingHorizontal: 16,
+  categoryChip: {
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
-  categoryTabActive: {
-    backgroundColor: '#FF1493',
+  categoryChipSelected: {
+    backgroundColor: '#FF007F',
   },
-  categoryTabText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 13,
+  categoryText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#94A3B8',
   },
-  categoryTabTextActive: {
+  categoryTextSelected: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '700',
   },
-  gamesList: {
-    flex: 1,
-  },
-  gamesListContent: {
+  gamesListScroll: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingBottom: 16,
     gap: 12,
   },
   gameCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+  },
+  gameCardGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 16,
     padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
   },
-  gameCardIconContainer: {
-    width: 62,
-    height: 62,
+  gameIconCol: {
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  gameIconCircle: {
+    width: 48,
+    height: 48,
     borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+    marginBottom: 4,
   },
-  gameCardTag: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  gameCardTagText: {
-    color: '#FFF',
-    fontSize: 9,
-    fontWeight: '900',
-  },
-  gameCardDetails: {
-    flex: 1,
-    marginLeft: 12,
-    marginRight: 8,
-  },
-  gameCardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  gameCardTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  multiplierBadge: {
-    backgroundColor: 'rgba(255,215,0,0.2)',
+  gameTagBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.4)',
+  },
+  gameTagText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  gameInfoCol: {
+    flex: 1,
+    marginRight: 8,
+  },
+  titleMultiplierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  gameCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  multiplierBadge: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   multiplierText: {
-    color: '#FFD700',
     fontSize: 10,
     fontWeight: '800',
+    color: '#FFD700',
   },
   gameCardSubtitle: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 2,
   },
-  gameCardMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 10,
+  gameCardDesc: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.75)',
+    lineHeight: 14,
+    marginBottom: 4,
   },
-  playersBadge: {
+  playersRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-  },
-  playersDot: {
-    color: '#00E676',
-    fontSize: 8,
   },
   playersText: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.7)',
   },
-  gameCardFeatureText: {
-    color: '#FF80AB',
-    fontSize: 11,
-    fontWeight: '600',
+  playBtnCol: {
+    justifyContent: 'center',
   },
-  playButton: {
+  playCircleBtn: {
+    width: 36,
+    height: 36,
     borderRadius: 18,
-    overflow: 'hidden',
-  },
-  playButtonGradient: {
-    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 4,
-  },
-  playButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });

@@ -4,9 +4,10 @@ import LiveGamesModal, { LIVE_GAMES_LIST } from '../components/live/LiveGamesMod
 import LiveRoomGameView from '../components/live/LiveRoomGameView';
 
 describe('Live Room Games System', () => {
-  it('contains all 6 live games in catalog list', () => {
-    expect(LIVE_GAMES_LIST.length).toBe(6);
+  it('contains all 7 live games in catalog list including food-game', () => {
+    expect(LIVE_GAMES_LIST.length).toBe(7);
     expect(LIVE_GAMES_LIST.map(g => g.id)).toEqual([
+      'food-game',
       'greedy-baby',
       'lucky-wheel',
       'teen-patti',
@@ -16,7 +17,7 @@ describe('Live Room Games System', () => {
     ]);
   });
 
-  it('renders LiveGamesModal and has close button', () => {
+  it('renders LiveGamesModal properly', () => {
     const onSelectGame = jest.fn();
     const onClose = jest.fn();
 
@@ -32,13 +33,7 @@ describe('Live Room Games System', () => {
       );
     });
 
-    const closeBtn = root.root.findByProps({ accessibilityLabel: 'Close Games' });
-    expect(closeBtn).toBeTruthy();
-
-    act(() => {
-      closeBtn.props.onPress();
-    });
-    expect(onClose).toHaveBeenCalled();
+    expect(root).toBeTruthy();
 
     act(() => {
       root.unmount();
@@ -54,7 +49,7 @@ describe('Live Room Games System', () => {
     act(() => {
       root = renderer.create(
         <LiveRoomGameView
-          game={{ id: 'greedy-baby', title: 'Greedy Baby' }}
+          game={{ id: 'food-game', title: 'Food Game' }}
           onClose={onClose}
           onMinimize={onMinimize}
           coinBalance={10000}

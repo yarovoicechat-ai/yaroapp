@@ -92,6 +92,7 @@ import RoomAnnouncementModal from '../../components/room/RoomAnnouncementModal';
 import RoomInboxModal from '../../components/room/RoomInboxModal';
 import LiveGamesModal from '../../components/live/LiveGamesModal';
 import LiveRoomGameView from '../../components/live/LiveRoomGameView';
+import { GameContainer, gameSessionManager, gameBridge } from '../../components/game';
 import useInboxMessages from '../../hooks/useInboxMessages';
 import {
   resolveEntryAssets,
@@ -202,7 +203,7 @@ export default function VoiceRoomScreen() {
   const insets = useSafeAreaInsets();
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomSafePadding = getStackScreenBottomPadding(insets.bottom);
-  const { user, updateDiamonds } = useContext(AuthContext);
+  const { user, updateDiamonds, fetchUserProfile } = useContext(AuthContext);
 
   const {
     activeRoom,
@@ -1097,6 +1098,54 @@ export default function VoiceRoomScreen() {
   const [gamesModalVisible, setGamesModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState(null);
   const [isGameMinimized, setIsGameMinimized] = useState(false);
+  const [activeGameSessionUrl, setActiveGameSessionUrl] = useState('');
+  const [activeGameSessionId, setActiveGameSessionId] = useState('');
+  const [activeGameTicket, setActiveGameTicket] = useState('');
+
+  const handleSelectGame = async (game) => {
+    setGamesModalVisible(false);
+    try {
+      const roomId = currentRoomId || room?.id || room?.roomId || '';
+      const result = await gameSessionManager.launchGame({
+        game,
+        roomId,
+        currentUser: user,
+      });
+      if (result.success && result.sessionUrl) {
+        setActiveGame(game);
+        setActiveGameSessionUrl(result.sessionUrl);
+        setActiveGameSessionId(gameSessionManager.getSessionId());
+        setActiveGameTicket(gameSessionManager.getLaunchTicket());
+        setIsGameMinimized(false);
+      } else {
+        AlertService.show('Game Launch Error', result.error || 'Failed to start game session', 'error');
+      }
+    } catch (err) {
+      AlertService.show('Game Error', err?.message || 'Could not launch game', 'error');
+    }
+  };
+
+  const handleCloseGame = async () => {
+    try {
+      await gameSessionManager.exitGame();
+    } catch {}
+    setActiveGame(null);
+    setActiveGameSessionUrl('');
+    setActiveGameSessionId('');
+    setActiveGameTicket('');
+    setIsGameMinimized(false);
+  };
+
+  useEffect(() => {
+    const unsubWallet = gameBridge.on('WALLET_REFRESH_REQUEST', () => {
+      if (typeof fetchUserProfile === 'function') {
+        fetchUserProfile();
+      }
+    });
+    return () => {
+      unsubWallet();
+    };
+  }, [fetchUserProfile]);
   const topRoomContributors = useMemo(() => {
     const list = Array.isArray(roomContributors) ? roomContributors : [];
     return [...list]
@@ -1808,6 +1857,8 @@ export default function VoiceRoomScreen() {
         style={StyleSheet.absoluteFillObject}
       />
 
+      {/* Voice Room Interactive Area (Upper 50% when game active) */}
+      <View style={Boolean(activeGame && !isGameMinimized) ? styles.voiceRoomTopHalf : styles.voiceRoomFull}>
       {/* Top Header Bar (Matching Image 1 & 2) */}
       <View style={[styles.topHeaderBar, { paddingTop: topSafeInset + 4 }]}>
         {/* Left: Room Avatar & Info */}
@@ -2420,6 +2471,26 @@ export default function VoiceRoomScreen() {
           </>
         )}
       </View>
+      </View>
+
+      {/* Cocos Creator 3.8.x Game View (Lower 50% when game active) */}
+      {Boolean(activeGame && !isGameMinimized) && (
+        <View style={styles.voiceRoomBottomHalf}>
+          <GameContainer
+            game={activeGame}
+            sessionUrl={activeGameSessionUrl}
+            sessionId={activeGameSessionId}
+            ticket={activeGameTicket}
+            coinsBalance={Number(user?.diamonds || user?.balance || 0)}
+            onClose={handleCloseGame}
+            onMinimize={() => setIsGameMinimized(true)}
+            onRecharge={() => navigation.navigate('Recharge')}
+            onRefreshBalance={() => {
+              if (typeof fetchUserProfile === 'function') fetchUserProfile();
+            }}
+          />
+        </View>
+      )}
 
       {/* Backdrop to dismiss room chat composer on outside tap */}
       {isChatBarExpanded && (
@@ -3169,35 +3240,7 @@ export default function VoiceRoomScreen() {
         }}
       />
 
-      {/* 1. Cocos Creator HTML5 Half-Screen Game View */}
-      {Boolean(activeGame && !isGameMinimized) && (
-        <View style={[styles.voiceGameAreaContainer, { height: height * 0.58 }]}>
-          <LiveRoomGameView
-            game={activeGame}
-            onClose={() => {
-              setActiveGame(null);
-              setIsGameMinimized(false);
-            }}
-            onMinimize={() => setIsGameMinimized(true)}
-            coinBalance={Number(user?.diamonds || user?.balance || 0)}
-            onUpdateCoinBalance={(newBal) => {
-              if (typeof updateDiamonds === 'function') updateDiamonds(newBal);
-            }}
-            onRecharge={() => navigation.navigate('Recharge')}
-            onEmitGameWin={(amount, gameName) => {
-              const sock = getSocket();
-              const roomId = currentRoomId || room?.id || room?.roomId;
-              if (sock && roomId) {
-                sock.emit('voice_room:message', {
-                  roomId,
-                  text: `🎉 Won ${amount.toLocaleString()} coins in ${gameName}!`,
-                  type: 'game_win',
-                });
-              }
-            }}
-          />
-        </View>
-      )}
+
 
       {/* 2. Floating Minimized Game Pill (Restore Game) */}
       {Boolean(activeGame && isGameMinimized) && (
@@ -3226,10 +3269,7 @@ export default function VoiceRoomScreen() {
       <LiveGamesModal
         visible={gamesModalVisible}
         onClose={() => setGamesModalVisible(false)}
-        onSelectGame={(game) => {
-          setActiveGame(game);
-          setIsGameMinimized(false);
-        }}
+        onSelectGame={handleSelectGame}
         coinBalance={Number(user?.diamonds || user?.balance || 0)}
         onRecharge={() => navigation.navigate('Recharge')}
         bottomPadding={insets.bottom}
@@ -6034,6 +6074,20 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  voiceRoomTopHalf: {
+    height: '50%',
+    width: '100%',
+    overflow: 'hidden',
+  },
+  voiceRoomBottomHalf: {
+    height: '50%',
+    width: '100%',
+    backgroundColor: '#0F172A',
+  },
+  voiceRoomFull: {
+    flex: 1,
+    width: '100%',
   },
   voiceGameAreaContainer: {
     position: 'absolute',

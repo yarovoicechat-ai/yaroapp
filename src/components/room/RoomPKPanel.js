@@ -5,9 +5,15 @@ import { apiUtil } from '../../utils/apiUtil';
 import { getSocket } from '../../sockets';
 import { normalizePKRoomId, roomPKView } from '../../utils/roomPkState';
 
-export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding = 16 }) {
+export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding = 16, openTrigger = 0 }) {
   const [match, setMatch] = useState(null);
   const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (openTrigger > 0) {
+      setVisible(true);
+    }
+  }, [openTrigger]);
   const [opponents, setOpponents] = useState([]);
   const [history, setHistory] = useState([]);
   const [target, setTarget] = useState('');

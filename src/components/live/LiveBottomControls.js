@@ -36,48 +36,12 @@ export default function LiveBottomControls({
 
       {/* Right Controls Row */}
       <View style={styles.rightButtonsRow}>
-        {/* Menu Column with Game Button directly above */}
-        <View style={styles.menuColumn}>
-          {onOpenGames && (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={onOpenGames}
-              style={styles.gameIconAboveMenu}
-              accessibilityLabel="Games"
-            >
-              <LinearGradient
-                colors={['#FF6B00', '#FF1493', '#7928CA']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gameGradientBadge}
-              >
-                <MaterialCommunityIcons name="gamepad-variant" size={20} color="#FFF" />
-              </LinearGradient>
-              <View style={styles.gamePillTag}>
-                <Text style={styles.gamePillText}>GAME</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity accessibilityLabel="Live menu" onPress={onOpenTools} style={styles.iconCircle}>
-            <MaterialCommunityIcons name="dots-horizontal" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* 2. Link / PK Mic Button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={onOpenPK}
-          style={styles.iconCircle}
-        >
-          <MaterialCommunityIcons name="link-variant" size={22} color="#FFF" />
-        </TouchableOpacity>
-
-        {/* 3. Gift Box Button */}
+        {/* 1. Gift Box Button (Swapped: now in the position where Menu used to be) */}
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={onOpenGift}
           style={styles.giftCircle}
+          accessibilityLabel="Send Gift"
         >
           <LinearGradient
             colors={['#C084FC', '#A855F7', '#EC4899']}
@@ -87,6 +51,25 @@ export default function LiveBottomControls({
           >
             <MaterialCommunityIcons name="gift" size={24} color="#FFF" />
           </LinearGradient>
+        </TouchableOpacity>
+
+        {/* 2. Link / PK Mic Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={onOpenPK}
+          style={styles.iconCircle}
+          accessibilityLabel="PK Battle"
+        >
+          <MaterialCommunityIcons name="link-variant" size={22} color="#FFF" />
+        </TouchableOpacity>
+
+        {/* 3. Menu Button (Swapped: now in the far-right position where Gift used to be) */}
+        <TouchableOpacity
+          accessibilityLabel="Live menu"
+          onPress={onOpenTools}
+          style={styles.iconCircle}
+        >
+          <MaterialCommunityIcons name="dots-horizontal" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
     </View>

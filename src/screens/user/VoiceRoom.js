@@ -92,6 +92,7 @@ import RoomAnnouncementModal from '../../components/room/RoomAnnouncementModal';
 import RoomInboxModal from '../../components/room/RoomInboxModal';
 import LiveGamesModal from '../../components/live/LiveGamesModal';
 import LiveRoomGameView from '../../components/live/LiveRoomGameView';
+import FloatingGameBannerWidget from '../../components/room/FloatingGameBannerWidget';
 import { GameContainer, gameSessionManager, gameBridge } from '../../components/game';
 import useInboxMessages from '../../hooks/useInboxMessages';
 import {
@@ -1095,6 +1096,7 @@ export default function VoiceRoomScreen() {
   const [selfSeatModalVisible, setSelfSeatModalVisible] = useState(false);
   const [wealthModalVisible, setWealthModalVisible] = useState(false);
   const [onlineUsersModalVisible, setOnlineUsersModalVisible] = useState(false);
+  const [pkPanelTrigger, setPkPanelTrigger] = useState(0);
   const [gamesModalVisible, setGamesModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState(null);
   const [isGameMinimized, setIsGameMinimized] = useState(false);
@@ -2085,7 +2087,7 @@ export default function VoiceRoomScreen() {
       />
 
       <RoomPKPanel roomId={currentRoomId || room?.id || room?.roomId}
-        isOwner={isRoomOwner} bottomSafePadding={bottomSafePadding} />
+        isOwner={isRoomOwner} bottomSafePadding={bottomSafePadding} openTrigger={pkPanelTrigger} />
 
       {/* Notice & Announcement & Event Row (Image 2 Model) */}
       <View style={styles.noticeAnnouncementRow}>
@@ -2281,6 +2283,12 @@ export default function VoiceRoomScreen() {
           ]}
           pointerEvents="box-none"
         >
+          {/* Dual Carousel Banner: Event + Direct Game (User Video Specification) */}
+          <FloatingGameBannerWidget
+            onSelectGame={handleSelectGame}
+            style={{ marginBottom: 6 }}
+          />
+
           {/* Rewards Bag Widget */}
           <TouchableOpacity
             style={styles.treasureChestWidget}
@@ -2645,6 +2653,7 @@ export default function VoiceRoomScreen() {
         onBanRoom={handleOfficialBanRoom}
         onOpenRoomTasks={() => setRoomTasksVisible(true)}
         onOpenMedal={() => navigation.navigate('Medal')}
+        onOpenPK={() => setPkPanelTrigger(prev => prev + 1)}
         hasRoomHosting={hasRoomHosting}
         onOpenGames={() => setGamesModalVisible(true)}
         onOpenRoomSupport={() => {

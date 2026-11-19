@@ -33,6 +33,7 @@ import { AlertService } from '../../utils/AlertService';
 import LiveTopHeader from '../../components/live/LiveTopHeader';
 import LiveGiftBanner from '../../components/live/LiveGiftBanner';
 import LivePKBar from '../../components/live/LivePKBar';
+import FloatingGameBannerWidget from '../../components/room/FloatingGameBannerWidget';
 import LiveChatOverlay from '../../components/live/LiveChatOverlay';
 import LiveFloatingSideBadges from '../../components/live/LiveFloatingSideBadges';
 import LiveBottomControls from '../../components/live/LiveBottomControls';
@@ -131,6 +132,10 @@ export default function LiveStreamScreen({ navigation, route }) {
   );
   const [leftScore, setLeftScore] = useState(room.leftScore || room.pk?.leftScore || 0);
   const [rightScore, setRightScore] = useState(room.rightScore || room.pk?.rightScore || 0);
+  const [pkSecondsRemaining, setPkSecondsRemaining] = useState(300);
+  const [pkWinnerInfo, setPkWinnerInfo] = useState(null);
+  const pkTimerIntervalRef = useRef(null);
+  const pkTimeFormatted = `${String(Math.floor(pkSecondsRemaining / 60)).padStart(2, '0')}:${String(pkSecondsRemaining % 60).padStart(2, '0')}`;
 
   // New Modals State: Contribution Ranking & Live Ended Summary
   const [contributionModalVisible, setContributionModalVisible] = useState(false);
@@ -385,19 +390,51 @@ export default function LiveStreamScreen({ navigation, route }) {
       },
       'live:pk_started': data => {
         setIsPK(true);
+        setPkWinnerInfo(null);
         if (data.rivalHost) setRivalUser(data.rivalHost);
         if (data.leftScore !== undefined) setLeftScore(data.leftScore);
         if (data.rightScore !== undefined) setRightScore(data.rightScore);
+        const duration = Number(data.durationSeconds) || 300;
+        setPkSecondsRemaining(duration);
+        if (pkTimerIntervalRef.current) clearInterval(pkTimerIntervalRef.current);
+        pkTimerIntervalRef.current = setInterval(() => {
+          setPkSecondsRemaining(prev => {
+            if (prev <= 1) {
+              clearInterval(pkTimerIntervalRef.current);
+              if (rtcRef.current?.isHost) {
+                socket.emit('live:pk_end', { roomId });
+              }
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
       },
       'live:pk_score_update': data => {
         if (data.leftScore !== undefined) setLeftScore(data.leftScore);
         if (data.rightScore !== undefined) setRightScore(data.rightScore);
       },
-      'live:pk_ended': () => {
+      'live:pk_ended': data => {
+        if (pkTimerIntervalRef.current) clearInterval(pkTimerIntervalRef.current);
         setIsPK(false);
-        setRivalUser(null);
-        setLeftScore(0);
-        setRightScore(0);
+        const outcome = data?.winner === 'left'
+          ? (isHost ? 'VICTORY 🏆' : 'HOST WON 🏆')
+          : data?.winner === 'right'
+          ? (isHost ? 'DEFEAT 💔' : 'RIVAL WON 👑')
+          : 'DRAW MATCH 🤝';
+        setPkWinnerInfo({
+          outcome,
+          winner: data?.winner,
+          leftScore: data?.leftScore ?? leftScore,
+          rightScore: data?.rightScore ?? rightScore,
+        });
+        setTimeout(() => {
+          setPkWinnerInfo(null);
+          setRivalUser(null);
+          setLeftScore(0);
+          setRightScore(0);
+          setPkSecondsRemaining(300);
+        }, 6000);
       },
       'live:pk_invitation_received': data => {
         if (!rtcRef.current?.isHost) return;
@@ -424,6 +461,7 @@ export default function LiveStreamScreen({ navigation, route }) {
     Object.entries(handlers).forEach(([event, handler]) => socket.on(event, handler));
     if (socket.connected) join();
     return () => {
+      if (pkTimerIntervalRef.current) clearInterval(pkTimerIntervalRef.current);
       giftQueue.clearQueue();
       Object.entries(handlers).forEach(([event, handler]) => socket.off(event, handler));
       if (rtcRef.current?.isCoHost) socket.emit('live:leave_guest', { roomId });
@@ -944,8 +982,25 @@ export default function LiveStreamScreen({ navigation, route }) {
             isPKActive={isPK}
             leftScore={leftScore}
             rightScore={rightScore}
-            timeLeft="04:33"
+            timeLeft={pkTimeFormatted}
           />
+        </View>
+      )}
+
+      {/* PK Result Celebration Banner */}
+      {Boolean(pkWinnerInfo) && (
+        <View style={styles.pkResultBannerOverlay} pointerEvents="none">
+          <LinearGradient
+            colors={['#7C3AED', '#EC4899', '#EF4444']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.pkResultBannerCard}
+          >
+            <Text style={styles.pkResultOutcomeText}>{pkWinnerInfo.outcome}</Text>
+            <Text style={styles.pkResultScoresText}>
+              ⭐ {Number(pkWinnerInfo.leftScore || 0).toLocaleString()}  VS  ⭐ {Number(pkWinnerInfo.rightScore || 0).toLocaleString()}
+            </Text>
+          </LinearGradient>
         </View>
       )}
 
@@ -1010,6 +1065,15 @@ export default function LiveStreamScreen({ navigation, route }) {
               comboEmoji={comboEmoji}
               onPressTask={() => AlertService.show('Live tasks', 'Live task rewards are currently unavailable.', 'info')}
               onPressEvent={() => setContributionModalVisible(true)}
+            />
+
+            {/* Dual Carousel Banner: Event + Direct Game (User Video Specification) */}
+            <FloatingGameBannerWidget
+              onSelectGame={game => {
+                setActiveGame(game);
+                setIsGameMinimized(false);
+              }}
+              style={styles.floatingGameBannerLive}
             />
           </View>
 
@@ -1366,5 +1430,45 @@ const styles = StyleSheet.create({
     backgroundColor: '#00E676',
     borderWidth: 1,
     borderColor: '#FFF',
+  },
+  floatingGameBannerLive: {
+    position: 'absolute',
+    right: 8,
+    bottom: 50,
+    zIndex: 25,
+  },
+  pkResultBannerOverlay: {
+    position: 'absolute',
+    top: '32%',
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  pkResultBannerCard: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    elevation: 12,
+    shadowColor: '#FF0080',
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+  },
+  pkResultOutcomeText: {
+    color: '#FFF',
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowRadius: 6,
+  },
+  pkResultScoresText: {
+    color: '#FEF08A',
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 4,
   },
 });

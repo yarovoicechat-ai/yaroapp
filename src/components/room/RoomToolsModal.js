@@ -35,6 +35,7 @@ export default function RoomToolsModal({
   onOpenRoomSupport,
   onOpenMedal,
   onOpenGames,
+  onOpenPK,
   hasRoomHosting = false,
   bottomSafePadding = 16,
 }) {
@@ -140,6 +141,23 @@ export default function RoomToolsModal({
                 <MaterialCommunityIcons name="bullhorn-outline" size={22} color="#8B5CF6" />
               </View>
               <Text style={styles.toolLabel}>Broadcast</Text>
+            </TouchableOpacity>
+
+            {/* PK Battle */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenPK && onOpenPK();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, { borderColor: '#EF4444' }]}>
+                <MaterialCommunityIcons name="sword-cross" size={22} color="#EF4444" />
+              </View>
+              <Text style={styles.toolLabel}>PK Battle</Text>
             </TouchableOpacity>
 
             {/* Seat Layout (if host or official manager) */}

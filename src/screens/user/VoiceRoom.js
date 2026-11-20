@@ -2481,9 +2481,9 @@ export default function VoiceRoomScreen() {
       </View>
       </View>
 
-      {/* Cocos Creator 3.8.x Game View (Overlay occupying lower 55% when game active) */}
+      {/* Cocos Creator 3.8.x Game View (Full Portrait Game Viewport matching reference video) */}
       {Boolean(activeGame && !isGameMinimized) && (
-        <View style={[styles.voiceGameAreaContainer, { height: '55%' }]}>
+        <View style={styles.voiceGameAreaContainer}>
           <GameContainer
             game={activeGame}
             sessionUrl={activeGameSessionUrl}
@@ -6100,19 +6100,14 @@ const styles = StyleSheet.create({
   },
   voiceGameAreaContainer: {
     position: 'absolute',
+    top: 0,
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#0F172A',
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    backgroundColor: '#0B0716',
     overflow: 'hidden',
     zIndex: 100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 20,
+    elevation: 25,
   },
   floatingMiniGamePill: {
     position: 'absolute',

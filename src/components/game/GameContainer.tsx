@@ -113,21 +113,13 @@ export const GameContainer: React.FC<GameContainerProps> = ({
           onClose={onClose}
         />
       </View>
-
-      {/* 3. Bottom Sync / Action Controls (Only rendered in fullscreen mode to maximize half-screen viewport) */}
-      {isFullscreen && (
-        <GameControls
-          onClearBets={handleClearBets}
-          onRefreshBalance={onRefreshBalance}
-        />
-      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B0716',
     overflow: 'hidden',
     zIndex: 100,
     elevation: 20,
@@ -137,10 +129,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   halfScreen: {
-    flex: 1, // When placed inside a flex: 1 row/column alongside the top half
+    flex: 1,
     width: '100%',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
   },
   fullscreen: {
     ...StyleSheet.absoluteFillObject,
@@ -149,6 +139,6 @@ const styles = StyleSheet.create({
   },
   webContainer: {
     flex: 1,
-    backgroundColor: '#0C0A14',
+    backgroundColor: '#0B0716',
   },
 });

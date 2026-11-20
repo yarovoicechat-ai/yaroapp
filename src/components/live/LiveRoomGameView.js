@@ -92,7 +92,7 @@ const generateCocosHtml = (gameId, gameTitle, coinBalance, primaryColor = '#FF00
 <body>
   <div id="GameCanvasContainer">
     <div class="cocos-banner">
-      <span class="cocos-badge">⚡ Cocos 2.x/3.x Web Engine</span>
+      <span style="font-size:12px; font-weight:800; color:#FDE047;">👑 ${gameTitle}</span>
       <span id="playerCoins" style="font-size:12px; font-weight:700; color:#FFD700;">🪙 ${coinBalance}</span>
     </div>
 

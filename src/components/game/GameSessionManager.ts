@@ -244,7 +244,68 @@ export class GameSessionManager {
       }
     });
 
-    this.bridgeUnsubscribers.push(unsubReady, unsubMinimized, unsubExit, unsubError, unsubBet);
+    // WIN_PAYOUT: Authoritative Winning Coins Payout to YARO Wallet (CRITICAL FINANCIAL CREDIT)
+    const unsubWin = gameBridge.on<{
+      spotId: string;
+      multiplier: number;
+      winAmount: number;
+      betAmount?: number;
+      roundNumber?: number;
+      reqId?: string;
+    }>('WIN_PAYOUT', async payload => {
+      if (!payload?.winAmount || !this.sessionId) return;
+      const winAmount = Number(payload.winAmount);
+      const spotId = payload.spotId || 'general';
+      const multiplier = Number(payload.multiplier) || 1;
+      const roundNumber = Number(payload.roundNumber) || 1;
+      const idempotencyKey = payload.reqId || `gk_win_${this.sessionId}_r${roundNumber}_${Date.now()}_${spotId}`;
+
+      try {
+        const res = await apiUtil.post(`/games/session/${this.sessionId}/payout`, {
+          gameId: this.activeGame?.gameId || 'greedy-king',
+          roundNumber,
+          betTarget: spotId,
+          multiplier,
+          winAmount,
+          idempotencyKey,
+        });
+
+        const data = res?.data?.data || res?.data;
+        if (data?.success || res?.status === 200) {
+          const balanceAfter = data?.balanceAfter;
+          const txId = data?.transactionId;
+
+          // Confirm payout to Game WebView
+          gameBridge.sendToCocos('UPDATE_SETTINGS' as any, {
+            action: 'PAYOUT_CONFIRMED',
+            spotId,
+            winAmount,
+            balanceAfter,
+            transactionId: txId,
+          });
+
+          // Refresh wallet balance across VoiceRoom and user profile
+          gameBridge.emit('WALLET_REFRESH_REQUEST', { balanceAfter });
+        }
+      } catch (err: any) {
+        console.error('[GameSessionManager] Payout credit failed:', err?.message);
+      }
+    });
+
+    // RECHARGE_REQUEST: Open in-app recharge flow
+    const unsubRecharge = gameBridge.on('RECHARGE_REQUEST', () => {
+      gameBridge.emit('OPEN_RECHARGE');
+    });
+
+    this.bridgeUnsubscribers.push(
+      unsubReady,
+      unsubMinimized,
+      unsubExit,
+      unsubError,
+      unsubBet,
+      unsubWin,
+      unsubRecharge
+    );
   }
 
   private cleanupBridgeListeners() {

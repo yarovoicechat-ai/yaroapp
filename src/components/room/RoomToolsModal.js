@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
+  Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -276,7 +277,7 @@ export default function RoomToolsModal({
               <Text style={styles.toolLabel}>Medal 🎖️</Text>
             </TouchableOpacity>
 
-            {/* Live Interactive Cocos Games */}
+            {/* Live Interactive Cocos Games: Greedy King */}
             <TouchableOpacity
               style={styles.toolCol}
               onPress={() => {
@@ -287,10 +288,14 @@ export default function RoomToolsModal({
               }}
               activeOpacity={0.8}
             >
-              <View style={[styles.toolCircle, { borderColor: '#EC4899', backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
-                <MaterialCommunityIcons name="gamepad-variant" size={22} color="#EC4899" />
+              <View style={[styles.toolCircle, { borderColor: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.15)', overflow: 'hidden' }]}>
+                <Image
+                  source={require('../../assets/icons/greedy_king_badge.png')}
+                  style={{ width: 28, height: 28, borderRadius: 6 }}
+                  resizeMode="contain"
+                />
               </View>
-              <Text style={styles.toolLabel}>Games 🎮</Text>
+              <Text style={styles.toolLabel}>Greedy King</Text>
             </TouchableOpacity>
 
             {/* Room Support - only visible if user has room hosting */}

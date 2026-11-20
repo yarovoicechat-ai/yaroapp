@@ -1,13 +1,15 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Animated,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { LIVE_GAMES_LIST } from '../live/LiveGamesModal';
+import { apiUtil } from '../../utils/apiUtil';
 
 // Per user specification: Only Greedy King is active. Events and other games removed.
 export const GAME_BANNER_ITEMS = [
@@ -17,9 +19,7 @@ export const GAME_BANNER_ITEMS = [
     title: 'Greedy King',
     multiplier: '50x',
     available: true,
-    bearEmoji: '👑',
-    toolEmoji: '🦁',
-    fruitRow: '👑🍉🍓',
+    badgeImage: require('../../assets/icons/greedy_king_badge.png'),
     bgGradient: ['#B45309', '#78350F', '#451A03'],
     borderGradient: ['#FDE047', '#F59E0B'],
   },
@@ -28,9 +28,67 @@ export const GAME_BANNER_ITEMS = [
 export default function FloatingGameBannerWidget({
   onSelectGame,
   style,
+  roomType = 'voice', // 'voice' | 'live'
 }) {
   const gameScale = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [isVisible, setIsVisible] = useState(true);
   const activeGameItem = GAME_BANNER_ITEMS[0];
+
+  // Optional: check server visibility configuration
+  useEffect(() => {
+    let isMounted = true;
+    const checkVisibility = async () => {
+      try {
+        const res = await apiUtil.get('/api/games/config');
+        const gkConfig = res?.data?.data?.greedyKing;
+        if (gkConfig && isMounted) {
+          if (gkConfig.isHidden) {
+            setIsVisible(false);
+          } else if (roomType === 'voice' && gkConfig.showInVoiceRoom === false) {
+            setIsVisible(false);
+          } else if (roomType === 'live' && gkConfig.showInLiveRoom === false) {
+            setIsVisible(false);
+          } else if (gkConfig.showFloatingBanner === false) {
+            setIsVisible(false);
+          } else {
+            setIsVisible(true);
+          }
+        }
+      } catch {
+        // Fallback: stay visible if server check fails
+      }
+    };
+
+    checkVisibility();
+    return () => {
+      isMounted = false;
+    };
+  }, [roomType]);
+
+  // Subtle breathing animation to attract players
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.04,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
+
+  if (!isVisible) {
+    return null;
+  }
 
   const handleGamePress = () => {
     const fullGame = LIVE_GAMES_LIST.find(g => g.id === activeGameItem.id) || {
@@ -46,41 +104,41 @@ export default function FloatingGameBannerWidget({
 
   return (
     <View style={[styles.container, style]} pointerEvents="box-none">
-      {/* SOLE GAME BANNER CARD: Greedy King (User Specification: No events, only Greedy King) */}
+      {/* SOLE GAME BANNER CARD: Greedy King Badge (User Specification) */}
       <TouchableOpacity
-        activeOpacity={0.85}
+        activeOpacity={0.88}
         onPress={handleGamePress}
         style={styles.gameTouchArea}
         accessibilityLabel="Game Greedy King"
       >
-        <Animated.View style={{ transform: [{ scale: gameScale }] }}>
+        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
           <LinearGradient
-            colors={activeGameItem.bgGradient}
+            colors={['#FFD700', '#F59E0B', '#B45309']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.gameCard}
+            style={styles.badgeGlowBorder}
           >
-            {/* Multiplier Tag */}
-            <View style={styles.multiplierTag}>
-              <Text style={styles.multiplierText}>{activeGameItem.multiplier}</Text>
-            </View>
+            <View style={styles.badgeContainer}>
+              <Image
+                source={require('../../assets/icons/greedy_king_badge.png')}
+                style={styles.badgeImage}
+                resizeMode="cover"
+              />
 
-            {/* King Character & Tool */}
-            <View style={styles.bearRow}>
-              <Text style={styles.bearEmoji}>{activeGameItem.bearEmoji}</Text>
-              <Text style={styles.toolEmoji}>{activeGameItem.toolEmoji}</Text>
-            </View>
+              {/* 50x Multiplier Pill */}
+              <View style={styles.multiplierTag}>
+                <Text style={styles.multiplierText}>{activeGameItem.multiplier}</Text>
+              </View>
 
-            {/* Slot Fruit Row */}
-            <View style={styles.fruitSlotContainer}>
-              <Text style={styles.fruitText}>{activeGameItem.fruitRow}</Text>
-            </View>
-
-            {/* Title Pill */}
-            <View style={styles.gameTitlePill}>
-              <Text style={styles.gameTitlePillText} numberOfLines={1}>
-                {activeGameItem.title}
-              </Text>
+              {/* Glowing Bottom Title Bar */}
+              <LinearGradient
+                colors={['rgba(0,0,0,0.85)', 'rgba(20,10,35,0.95)']}
+                style={styles.titleBar}
+              >
+                <Text style={styles.titleText} numberOfLines={1}>
+                  Greedy King
+                </Text>
+              </LinearGradient>
             </View>
           </LinearGradient>
         </Animated.View>
@@ -99,21 +157,32 @@ const styles = StyleSheet.create({
     width: 66,
     alignItems: 'center',
   },
-  gameCard: {
+  badgeGlowBorder: {
     width: 66,
-    height: 72,
+    height: 74,
+    borderRadius: 16,
+    padding: 2,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.65,
+    shadowRadius: 7,
+    elevation: 9,
+  },
+  badgeContainer: {
+    flex: 1,
     borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#FDE047',
+    overflow: 'hidden',
+    backgroundColor: '#1E1233',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 3,
-    paddingHorizontal: 2,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
-    elevation: 8,
+    position: 'relative',
+  },
+  badgeImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   multiplierTag: {
     position: 'absolute',
@@ -121,54 +190,32 @@ const styles = StyleSheet.create({
     right: 2,
     backgroundColor: '#7C3AED',
     borderRadius: 6,
-    paddingHorizontal: 3,
-    paddingVertical: 0.5,
-    borderWidth: 0.5,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderWidth: 0.8,
     borderColor: '#C084FC',
+    zIndex: 2,
   },
   multiplierText: {
     color: '#FFF',
     fontSize: 7.5,
     fontWeight: '900',
   },
-  bearRow: {
-    flexDirection: 'row',
+  titleBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
-    gap: 1,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255, 215, 0, 0.4)',
   },
-  bearEmoji: {
-    fontSize: 20,
-  },
-  toolEmoji: {
-    fontSize: 12,
-  },
-  fruitSlotContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    borderRadius: 6,
-    paddingHorizontal: 3,
-    paddingVertical: 1,
-    borderWidth: 0.8,
-    borderColor: 'rgba(255, 215, 0, 0.4)',
-    marginVertical: 1,
-  },
-  fruitText: {
-    fontSize: 9,
-    letterSpacing: 0.5,
-  },
-  gameTitlePill: {
-    backgroundColor: '#0284C7',
-    borderRadius: 6,
-    paddingHorizontal: 4,
-    paddingVertical: 1.5,
-    width: '94%',
-    alignItems: 'center',
-  },
-  gameTitlePillText: {
-    color: '#FFF',
-    fontSize: 8,
-    fontWeight: '800',
-    textAlign: 'center',
+  titleText: {
+    color: '#FFD700',
+    fontSize: 7.5,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
 });

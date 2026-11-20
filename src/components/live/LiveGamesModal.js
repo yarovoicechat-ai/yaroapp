@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -20,8 +21,9 @@ export const LIVE_GAMES_LIST = [
     gameId: 'greedy-king',
     title: 'Greedy King',
     subtitle: 'King Fruit Wheel & Royal 50x Multiplier',
-    description: 'Cocos Creator HTML5 Greedy King with instant royal coin rewards & multiplayer live wheel!',
+    description: 'Yaro Greedy King with instant royal coin rewards & multiplayer live wheel!',
     icon: 'crown',
+    badgeImage: require('../../assets/icons/greedy_king_badge.png'),
     category: 'Wheel',
     tag: 'ROYAL',
     tagColor: '#FFD700',
@@ -151,9 +153,10 @@ export default function LiveGamesModal({
 
   if (!visible) return null;
 
-  const filteredGames = LIVE_GAMES_LIST.filter(game => {
-    if (selectedCategory === 'All') return true;
-    if (selectedCategory === 'Hot') return game.tag === 'HOT' || game.tag === 'POPULAR';
+  // User Requirement: Keep ONLY Greedy King active and remove all other games
+  const activeGames = LIVE_GAMES_LIST.filter(game => game.id === 'greedy-king');
+  const filteredGames = activeGames.filter(game => {
+    if (selectedCategory === 'All' || selectedCategory === 'Hot' || selectedCategory === 'Wheel') return true;
     return game.category === selectedCategory;
   });
 
@@ -183,8 +186,8 @@ export default function LiveGamesModal({
                 <MaterialCommunityIcons name="gamepad-variant" size={24} color="#FFD700" />
               </View>
               <View>
-                <Text style={styles.sheetTitle}>Live Game Center</Text>
-                <Text style={styles.sheetSubtitle}>Cocos 3.8.x Web Mobile Games</Text>
+                <Text style={styles.sheetTitle}>Game Center</Text>
+                <Text style={styles.sheetSubtitle}>Play & Win Real Coins!</Text>
               </View>
             </View>
 
@@ -254,14 +257,22 @@ export default function LiveGamesModal({
                   end={{ x: 1, y: 1 }}
                   style={styles.gameCardGradient}
                 >
-                  {/* Left Icon Area */}
+                  {/* Left Icon Area: Shows User's Official Royal Crowned Cat Badge */}
                   <View style={styles.gameIconCol}>
                     <View style={styles.gameIconCircle}>
-                      <MaterialCommunityIcons
-                        name={game.icon}
-                        size={28}
-                        color="#FFFFFF"
-                      />
+                      {game.badgeImage ? (
+                        <Image
+                          source={game.badgeImage}
+                          style={styles.gameBadgeImage}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <MaterialCommunityIcons
+                          name={game.icon}
+                          size={28}
+                          color="#FFFFFF"
+                        />
+                      )}
                     </View>
                     <View style={[styles.gameTagBadge, { backgroundColor: game.tagColor }]}>
                       <Text style={styles.gameTagText}>{game.tag}</Text>
@@ -440,6 +451,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
+    overflow: 'hidden',
+  },
+  gameBadgeImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
   },
   gameTagBadge: {
     paddingHorizontal: 6,

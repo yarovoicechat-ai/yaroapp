@@ -331,10 +331,10 @@ export default function LiveRoomGameView({
     } catch {}
   };
 
-  const gameUrl = game?.gameUrl || game?.url;
+  const gameUrl = game?.gameUrl || (game?.id === 'greedy-king' ? 'https://games.yaroapp.in/greedy-king/' : game?.url);
   const gameSource = gameUrl
     ? { uri: gameUrl }
-    : { html: generateCocosHtml(game?.id || 'greedy-baby', game?.title || 'Cocos Game', coinBalance) };
+    : { html: generateCocosHtml(game?.id || 'greedy-king', game?.title || 'Greedy King', coinBalance) };
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>

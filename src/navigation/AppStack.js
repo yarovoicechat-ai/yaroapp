@@ -76,6 +76,7 @@ import FanClubScreen from "../screens/user/FanClubScreen";
 import VIPScreen from "../screens/user/VIPScreen";
 import DataCenter from "../screens/user/DataCenter";
 import ARFilterStudio from '../features/YaroAR/screens/ARFilterStudio';
+import GreedyKingScreen from '../screens/games/GreedyKingScreen';
 
 const Stack = createStackNavigator();
 
@@ -168,6 +169,7 @@ export default function AppStack() {
       <Stack.Screen name="BeansHistory" component={CoinHistory} />
       <Stack.Screen name="DataCenter" component={DataCenter} />
       <Stack.Screen name="ARFilterStudio" component={ARFilterStudio} />
+      <Stack.Screen name="GreedyKing" component={GreedyKingScreen} />
     </Stack.Navigator>
   );
 }

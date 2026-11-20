@@ -16,6 +16,21 @@ const { width } = Dimensions.get('window');
 
 export const LIVE_GAMES_LIST = [
   {
+    id: 'greedy-king',
+    gameId: 'greedy-king',
+    title: 'Greedy King',
+    subtitle: 'King Fruit Wheel & Royal 50x Multiplier',
+    description: 'Cocos Creator HTML5 Greedy King with instant royal coin rewards & multiplayer live wheel!',
+    icon: 'crown',
+    category: 'Wheel',
+    tag: 'ROYAL',
+    tagColor: '#FFD700',
+    multiplier: '50x',
+    players: '5.2k',
+    gradient: ['#F59E0B', '#EF4444', '#7C3AED'],
+    gameUrl: 'https://games.yaroapp.in/greedy-king/',
+  },
+  {
     id: 'food-game',
     gameId: 'food-game',
     title: 'Food Game (Fruit Wheel)',

@@ -50,8 +50,8 @@ describe('Floating Game Banner and PK System Tests', () => {
         );
       });
 
-      // The initial active game item is 'food-game' which is available: true
-      const gameBtn = root.root.findByProps({ accessibilityLabel: 'Game Food Game' });
+      // The initial active game item is 'greedy-king' which is available: true
+      const gameBtn = root.root.findByProps({ accessibilityLabel: 'Game Greedy King' });
       expect(gameBtn).toBeDefined();
 
       act(() => {
@@ -60,9 +60,9 @@ describe('Floating Game Banner and PK System Tests', () => {
 
       expect(onSelectGame).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: 'food-game',
-          gameId: 'food-game',
-          title: 'Food Game (Fruit Wheel)',
+          id: 'greedy-king',
+          gameId: 'greedy-king',
+          title: 'Greedy King',
         })
       );
 
@@ -80,12 +80,15 @@ describe('Floating Game Banner and PK System Tests', () => {
         );
       });
 
-      // Advance timers to rotate to the 3rd game: lucky-777 (available: false)
+      // Advance timers to rotate to lucky-777 (available: false)
       act(() => {
-        jest.advanceTimersByTime(4000); // 1st rotate -> greedy-baby
+        jest.advanceTimersByTime(4000); // 1st rotate -> food-game
       });
       act(() => {
-        jest.advanceTimersByTime(4000); // 2nd rotate -> lucky-777
+        jest.advanceTimersByTime(4000); // 2nd rotate -> greedy-baby
+      });
+      act(() => {
+        jest.advanceTimersByTime(4000); // 3rd rotate -> lucky-777
       });
 
       const lucky777Btn = root.root.findByProps({ accessibilityLabel: 'Game Lucky 777' });

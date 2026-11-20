@@ -54,6 +54,18 @@ const PROMO_EVENTS = [
 // Game Rotating Banner items (Matching the user video polar bear & slot design)
 const GAME_BANNER_ITEMS = [
   {
+    id: 'greedy-king',
+    gameId: 'greedy-king',
+    title: 'Greedy King',
+    multiplier: '50x',
+    available: true,
+    bearEmoji: '👑',
+    toolEmoji: '🦁',
+    fruitRow: '👑🍉🍓',
+    bgGradient: ['#B45309', '#78350F', '#451A03'],
+    borderGradient: ['#FDE047', '#F59E0B'],
+  },
+  {
     id: 'food-game',
     gameId: 'food-game',
     title: 'Food Game',

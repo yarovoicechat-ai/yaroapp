@@ -7,3 +7,4 @@ export * from './GameLoading';
 export * from './GameError';
 export * from './GameWebView';
 export * from './GameContainer';
+export * from '../games/GreedyKingWebView';

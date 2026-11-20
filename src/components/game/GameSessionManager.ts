@@ -109,11 +109,19 @@ export class GameSessionManager {
 
       const gameId = params.game.gameId || params.game.id;
 
-      // 1. Request launch ticket from backend
-      const response = await apiUtil.post('/games/session', {
-        gameId,
-        roomId: params.roomId,
-      });
+      // 1. Request launch ticket from backend (supports /games/session/ticket or /games/session)
+      let response;
+      try {
+        response = await apiUtil.post('/games/session/ticket', {
+          gameId,
+          roomId: params.roomId,
+        });
+      } catch {
+        response = await apiUtil.post('/games/session', {
+          gameId,
+          roomId: params.roomId,
+        });
+      }
 
       const data = response?.data?.data || response?.data;
       if (!data?.ticket || !data?.sessionId) {

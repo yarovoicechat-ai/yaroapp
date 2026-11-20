@@ -169,13 +169,21 @@ export const GameWebView: React.FC<GameWebViewProps> = ({
   onError,
   onClose,
 }) => {
+  const getNormalizedUrl = (rawUrl: string) => {
+    if (!rawUrl) return '';
+    if (rawUrl.includes('games.yaroapp.in')) {
+      return rawUrl.replace('https://games.yaroapp.in/', 'https://api.yaroapp.in/games/');
+    }
+    return rawUrl;
+  };
+
   const webViewRef = useRef<WebView>(null);
-  const [activeUrl, setActiveUrl] = useState(url);
+  const [activeUrl, setActiveUrl] = useState(() => getNormalizedUrl(url));
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
 
   useEffect(() => {
-    setActiveUrl(url);
+    setActiveUrl(getNormalizedUrl(url));
   }, [url]);
 
   // Bind webViewRef to bridge
@@ -279,7 +287,7 @@ export const GameWebView: React.FC<GameWebViewProps> = ({
         mixedContentMode="compatibility"
         hardwareAccelerationAndroidEnabled={true}
         androidLayerType="hardware"
-        originWhitelist={['https://*', 'http://*']}
+        originWhitelist={['*']}
         style={styles.webView}
       />
 

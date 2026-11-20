@@ -346,7 +346,9 @@ export class GameSessionManager {
 
       // Notify backend that user left session
       if (this.sessionId) {
-        await apiUtil.post(`/games/session/${this.sessionId}/leave`, {}).catch(() => {});
+        try {
+          await apiUtil.post(`/games/session/${this.sessionId}/leave`, {});
+        } catch {}
         const socket = getSocket();
         if (socket) {
           socket.emit('game:leave', { sessionId: this.sessionId });

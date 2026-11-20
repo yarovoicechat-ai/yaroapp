@@ -13,6 +13,7 @@ import { GreedyKingWebView } from '../../components/games/GreedyKingWebView';
 import { GameLoading } from '../../components/game/GameLoading';
 import { GameError } from '../../components/game/GameError';
 import { gameSessionManager } from '../../components/game/GameSessionManager';
+import { gameBridge } from '../../components/game/GameBridge';
 import { AuthContext } from '../../context/AuthProvider';
 
 interface GreedyKingScreenProps {

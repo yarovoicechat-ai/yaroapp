@@ -24,7 +24,7 @@ describe('Floating Game Banner and PK System Tests', () => {
   });
 
   describe('1. FloatingGameBannerWidget', () => {
-    it('renders both event and game banner cards with pagination dots', () => {
+    it('renders Greedy King banner card', () => {
       let root;
       act(() => {
         root = renderer.create(
@@ -50,7 +50,7 @@ describe('Floating Game Banner and PK System Tests', () => {
         );
       });
 
-      // The initial active game item is 'greedy-king' which is available: true
+      // The sole active game item is 'greedy-king' which is available: true
       const gameBtn = root.root.findByProps({ accessibilityLabel: 'Game Greedy King' });
       expect(gameBtn).toBeDefined();
 
@@ -71,7 +71,7 @@ describe('Floating Game Banner and PK System Tests', () => {
       });
     });
 
-    it('shows Coming Soon alert when an upcoming game is tapped', () => {
+    it('retains Greedy King as the sole game without unwanted rotations', () => {
       const onSelectGame = jest.fn();
       let root;
       act(() => {
@@ -80,30 +80,13 @@ describe('Floating Game Banner and PK System Tests', () => {
         );
       });
 
-      // Advance timers to rotate to lucky-777 (available: false)
+      // Advance timers - ensure it remains Greedy King and does not switch to other games
       act(() => {
-        jest.advanceTimersByTime(4000); // 1st rotate -> food-game
-      });
-      act(() => {
-        jest.advanceTimersByTime(4000); // 2nd rotate -> greedy-baby
-      });
-      act(() => {
-        jest.advanceTimersByTime(4000); // 3rd rotate -> lucky-777
+        jest.advanceTimersByTime(10000);
       });
 
-      const lucky777Btn = root.root.findByProps({ accessibilityLabel: 'Game Lucky 777' });
-      expect(lucky777Btn).toBeDefined();
-
-      act(() => {
-        lucky777Btn.props.onPress();
-      });
-
-      expect(onSelectGame).not.toHaveBeenCalled();
-      expect(AlertService.show).toHaveBeenCalledWith(
-        'Coming Soon',
-        expect.stringContaining('is coming soon in the next update'),
-        'info'
-      );
+      const gameBtn = root.root.findByProps({ accessibilityLabel: 'Game Greedy King' });
+      expect(gameBtn).toBeDefined();
 
       act(() => {
         root.unmount();

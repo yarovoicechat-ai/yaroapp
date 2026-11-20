@@ -2358,27 +2358,8 @@ export default function VoiceRoomScreen() {
               badgeText={giftHook.comboCount > 1 ? `x${giftHook.comboCount}` : null}
             />
 
-            {/* Menu Column with Game Trigger Above */}
+            {/* Menu Column */}
             <View style={styles.voiceMenuColumn}>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => setGamesModalVisible(true)}
-                style={styles.voiceGameIconAboveMenu}
-                accessibilityLabel="Games"
-              >
-                <LinearGradient
-                  colors={['#FF6B00', '#FF1493', '#7928CA']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.voiceGameGradientBadge}
-                >
-                  <MaterialCommunityIcons name="gamepad-variant" size={18} color="#FFF" />
-                </LinearGradient>
-                <View style={styles.voiceGamePillTag}>
-                  <Text style={styles.voiceGamePillText}>GAME</Text>
-                </View>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.controlCircleBtn}
                 onPress={() => setRoomMenuModalVisible(true)}
@@ -2446,27 +2427,8 @@ export default function VoiceRoomScreen() {
               badgeText={giftHook.comboCount > 1 ? `x${giftHook.comboCount}` : null}
             />
 
-            {/* Menu Column with Game Trigger Above */}
+            {/* Menu Column */}
             <View style={styles.voiceMenuColumn}>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => setGamesModalVisible(true)}
-                style={styles.voiceGameIconAboveMenu}
-                accessibilityLabel="Games"
-              >
-                <LinearGradient
-                  colors={['#FF6B00', '#FF1493', '#7928CA']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.voiceGameGradientBadge}
-                >
-                  <MaterialCommunityIcons name="gamepad-variant" size={18} color="#FFF" />
-                </LinearGradient>
-                <View style={styles.voiceGamePillTag}>
-                  <Text style={styles.voiceGamePillText}>GAME</Text>
-                </View>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.controlCircleBtn}
                 onPress={() => setRoomMenuModalVisible(true)}

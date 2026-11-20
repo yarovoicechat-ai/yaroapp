@@ -30,7 +30,7 @@ export const GreedyKingScreen: React.FC<GreedyKingScreenProps> = ({
   route,
 }) => {
   const insets = useSafeAreaInsets();
-  const { user, profile } = (useContext(AuthContext) as any) || {};
+  const { user, profile, updateCoins, fetchUserProfile } = (useContext(AuthContext) as any) || {};
 
   const roomId = route.params?.roomId || 'global_room';
   const game = route.params?.game || {
@@ -54,8 +54,34 @@ export const GreedyKingScreen: React.FC<GreedyKingScreenProps> = ({
   });
 
   const coinsBalance = Number(
-    profile?.diamonds || user?.diamonds || user?.balance || 0
+    profile?.coins ?? user?.coins ?? profile?.diamonds ?? user?.diamonds ?? user?.balance ?? 0
   );
+
+  // Real-time synchronization of native wallet with game backend
+  useEffect(() => {
+    const unsubBet = gameBridge.on('BET_ACCEPTED', (payload: any) => {
+      if (typeof payload?.balance === 'number' && updateCoins) {
+        updateCoins(payload.balance);
+      }
+    });
+
+    const unsubWin = gameBridge.on('ROUND_WIN', (payload: any) => {
+      if (typeof payload?.balance === 'number' && updateCoins) {
+        updateCoins(payload.balance);
+      }
+      fetchUserProfile?.();
+    });
+
+    const unsubRefresh = gameBridge.on('WALLET_REFRESH_REQUEST', () => {
+      fetchUserProfile?.();
+    });
+
+    return () => {
+      unsubBet();
+      unsubWin();
+      unsubRefresh();
+    };
+  }, [updateCoins, fetchUserProfile]);
 
   // Initialize game session on mount
   useEffect(() => {

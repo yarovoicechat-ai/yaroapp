@@ -111,16 +111,16 @@ export class GameSessionManager {
 
       // 1. Request launch ticket from backend (supports /games/session/ticket or /games/session)
       let response;
+      const ticketBody = {
+        gameId,
+        roomId: params.roomId,
+        userId: params.currentUser.id,
+        userName: params.currentUser.name,
+      };
       try {
-        response = await apiUtil.post('/games/session/ticket', {
-          gameId,
-          roomId: params.roomId,
-        });
+        response = await apiUtil.post('/games/session/ticket', ticketBody);
       } catch {
-        response = await apiUtil.post('/games/session', {
-          gameId,
-          roomId: params.roomId,
-        });
+        response = await apiUtil.post('/games/session', ticketBody);
       }
 
       const data = response?.data?.data || response?.data;
@@ -138,7 +138,7 @@ export class GameSessionManager {
       // 3. Connect Socket.IO to game session
       const socket = getSocket();
       if (socket) {
-        socket.emit('game:authenticate', { ticket: data.ticket }, (res: any) => {
+        socket.emit('game:authenticate', { ticket: data.ticket, userId: params.currentUser.id }, (res: any) => {
           if (res?.success) {
             console.log('[GameSessionManager] Socket authenticated for game session');
           }
@@ -150,7 +150,11 @@ export class GameSessionManager {
       const separator = data.gameUrl.includes('?') ? '&' : '?';
       const sessionUrl = `${data.gameUrl}${separator}ticket=${encodeURIComponent(
         data.ticket
-      )}&sessionId=${encodeURIComponent(data.sessionId)}&roomId=${encodeURIComponent(params.roomId)}`;
+      )}&sessionId=${encodeURIComponent(data.sessionId)}&roomId=${encodeURIComponent(
+        params.roomId
+      )}&userId=${encodeURIComponent(params.currentUser.id)}&userName=${encodeURIComponent(
+        params.currentUser.name || 'Player'
+      )}`;
 
       return { success: true, sessionUrl };
     } catch (err: any) {

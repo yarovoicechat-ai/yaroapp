@@ -1859,8 +1859,8 @@ export default function VoiceRoomScreen() {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Voice Room Interactive Area (Upper 50% when game active) */}
-      <View style={Boolean(activeGame && !isGameMinimized) ? styles.voiceRoomTopHalf : styles.voiceRoomFull}>
+      {/* Voice Room Interactive Area (Full screen with stable layout) */}
+      <View style={styles.voiceRoomFull}>
       {/* Top Header Bar (Matching Image 1 & 2) */}
       <View style={[styles.topHeaderBar, { paddingTop: topSafeInset + 4 }]}>
         {/* Left: Room Avatar & Info */}
@@ -2481,9 +2481,9 @@ export default function VoiceRoomScreen() {
       </View>
       </View>
 
-      {/* Cocos Creator 3.8.x Game View (Lower 50% when game active) */}
+      {/* Cocos Creator 3.8.x Game View (Overlay occupying lower 55% when game active) */}
       {Boolean(activeGame && !isGameMinimized) && (
-        <View style={styles.voiceRoomBottomHalf}>
+        <View style={[styles.voiceGameAreaContainer, { height: '55%' }]}>
           <GameContainer
             game={activeGame}
             sessionUrl={activeGameSessionUrl}

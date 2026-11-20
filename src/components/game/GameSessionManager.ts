@@ -189,7 +189,58 @@ export class GameSessionManager {
       }
     });
 
-    this.bridgeUnsubscribers.push(unsubReady, unsubMinimized, unsubExit, unsubError);
+    // BET_REQUEST: Authoritative YARO Wallet Debit (MANDATORY FINANCIAL CHECK)
+    const unsubBet = gameBridge.on<{
+      spotId: string;
+      amount: number;
+      playerId?: string;
+      reqId?: string;
+    }>('BET_REQUEST', async payload => {
+      if (!payload?.amount || !this.sessionId) return;
+      const amount = Number(payload.amount);
+      const spotId = payload.spotId || 'general';
+      const idempotencyKey = payload.reqId || `gk_bet_${this.sessionId}_${Date.now()}_${spotId}`;
+
+      try {
+        const res = await apiUtil.post(`/games/session/${this.sessionId}/bet`, {
+          gameId: this.activeGame?.gameId || 'greedy-king',
+          amount,
+          betTarget: spotId,
+          idempotencyKey,
+        });
+
+        const data = res?.data?.data || res?.data;
+        if (data?.success || res?.status === 200) {
+          const balanceAfter = data?.balanceAfter;
+          const txId = data?.transactionId;
+
+          // Notify Cocos WebView of successful authoritative debit
+          gameBridge.sendToCocos('UPDATE_SETTINGS' as any, {
+            action: 'BET_CONFIRMED',
+            spotId,
+            amount,
+            balanceAfter,
+            transactionId: txId,
+          });
+
+          // Trigger balance refresh across VoiceRoom and wallet displays
+          gameBridge.emit('WALLET_REFRESH_REQUEST', { balanceAfter });
+        } else {
+          throw new Error(data?.message || 'Debit failed');
+        }
+      } catch (err: any) {
+        const errMsg = err?.response?.data?.message || err?.message || 'Insufficient Coins';
+        console.warn('[GameSessionManager] Wallet debit rejected:', errMsg);
+        gameBridge.sendToCocos('UPDATE_SETTINGS' as any, {
+          action: 'BET_REJECTED',
+          spotId,
+          amount,
+          error: errMsg,
+        });
+      }
+    });
+
+    this.bridgeUnsubscribers.push(unsubReady, unsubMinimized, unsubExit, unsubError, unsubBet);
   }
 
   private cleanupBridgeListeners() {

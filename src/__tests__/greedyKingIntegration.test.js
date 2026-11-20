@@ -214,4 +214,129 @@ describe('Greedy King Integration Test Suite', () => {
       });
     });
   });
+
+  describe('5. Authoritative Wallet Debit Verification & x2 Prevention', () => {
+    it('executes atomic wallet debit on BET_REQUEST and confirms bet with updated balance', async () => {
+      // Configure session manager with an active session
+      apiUtil.post.mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {
+            sessionId: 'sess_live_123',
+            ticket: 'tk_live_secure',
+            gameUrl: 'https://games.yaroapp.in/greedy-king/',
+            expiresAt: Date.now() + 60000,
+          },
+        },
+      });
+
+      await gameSessionManager.launchGame({
+        game: {
+          id: 'greedy-king',
+          gameId: 'greedy-king',
+          title: 'Greedy King',
+          gameUrl: 'https://games.yaroapp.in/greedy-king/',
+        },
+        roomId: 'room_123',
+        currentUser: { id: 'u_123', diamonds: 5000 },
+      });
+
+      // Mock backend wallet debit response
+      apiUtil.post.mockResolvedValueOnce({
+        status: 200,
+        data: {
+          success: true,
+          data: {
+            balanceAfter: 4900,
+            transactionId: 'tx_bet_001',
+          },
+        },
+      });
+
+      const refreshListener = jest.fn();
+      gameBridge.on('WALLET_REFRESH_REQUEST', refreshListener);
+
+      // Simulate BET_REQUEST from WebView
+      await act(async () => {
+        gameBridge.emit('BET_REQUEST', {
+          spotId: 'burger',
+          amount: 100,
+          reqId: 'req_bet_single_100',
+        });
+      });
+
+      expect(apiUtil.post).toHaveBeenCalledWith(
+        '/games/session/sess_live_123/bet',
+        expect.objectContaining({
+          gameId: 'greedy-king',
+          amount: 100,
+          betTarget: 'burger',
+          idempotencyKey: 'req_bet_single_100',
+        })
+      );
+      expect(refreshListener).toHaveBeenCalledWith(
+        expect.objectContaining({ balanceAfter: 4900 }),
+        expect.anything()
+      );
+    });
+
+    it('rejects bet and prevents round inclusion when wallet debit fails (insufficient coins)', async () => {
+      apiUtil.post.mockRejectedValueOnce({
+        response: {
+          data: {
+            message: 'INSUFFICIENT_DIAMONDS: Current balance is 50, required is 500',
+          },
+        },
+      });
+
+      const refreshListener = jest.fn();
+      gameBridge.on('WALLET_REFRESH_REQUEST', refreshListener);
+
+      await act(async () => {
+        gameBridge.emit('BET_REQUEST', {
+          spotId: 'pizza',
+          amount: 500,
+          reqId: 'req_bet_fail_500',
+        });
+      });
+
+      // Wallet refresh should NOT have been called on failed debit
+      expect(refreshListener).not.toHaveBeenCalled();
+    });
+
+    it('enforces exact chip debit amounts (no x2 multiplication)', async () => {
+      const chipTests = [
+        { chip: 50, expectedDebit: 50 },
+        { chip: 100, expectedDebit: 100 },
+        { chip: 500, expectedDebit: 500 },
+        { chip: 1000, expectedDebit: 1000 },
+        { chip: 5000, expectedDebit: 5000 },
+      ];
+
+      for (const t of chipTests) {
+        apiUtil.post.mockResolvedValueOnce({
+          status: 200,
+          data: {
+            success: true,
+            data: { balanceAfter: 50000 - t.expectedDebit, transactionId: `tx_${t.chip}` },
+          },
+        });
+
+        await act(async () => {
+          gameBridge.emit('BET_REQUEST', {
+            spotId: 'taco',
+            amount: t.chip,
+            reqId: `req_exact_${t.chip}`,
+          });
+        });
+
+        expect(apiUtil.post).toHaveBeenLastCalledWith(
+          '/games/session/sess_live_123/bet',
+          expect.objectContaining({
+            amount: t.expectedDebit,
+          })
+        );
+      }
+    });
+  });
 });

@@ -137,6 +137,27 @@ export class GameBridge {
     }
   }
 
+  public emit<T = any>(eventType: string, payload: T): void {
+    const handlers = this.listeners.get(eventType);
+    if (handlers && handlers.size > 0) {
+      const dummyMsg: BridgeMessage<T> = {
+        version: PROTOCOL_VERSION,
+        type: eventType as any,
+        requestId: `internal_${Date.now()}`,
+        sessionId: this.sessionId,
+        payload,
+        timestamp: Date.now(),
+      };
+      handlers.forEach(fn => {
+        try {
+          fn(payload, dummyMsg);
+        } catch (err) {
+          console.error(`[GameBridge] Error in emit handler for ${eventType}:`, err);
+        }
+      });
+    }
+  }
+
   /**
    * Register listener for Cocos events
    */

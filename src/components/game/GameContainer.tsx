@@ -100,7 +100,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
         onRecharge={onRecharge}
       />
 
-      {/* 2. Reusable Cocos Creator WebView */}
+      {/* 2. Reusable Cocos Creator WebView - Takes full available height without clipping */}
       <View style={styles.webContainer}>
         <GameWebView
           url={sessionUrl}
@@ -114,11 +114,13 @@ export const GameContainer: React.FC<GameContainerProps> = ({
         />
       </View>
 
-      {/* 3. Optional Bottom Sync / Action Controls */}
-      <GameControls
-        onClearBets={handleClearBets}
-        onRefreshBalance={onRefreshBalance}
-      />
+      {/* 3. Bottom Sync / Action Controls (Only rendered in fullscreen mode to maximize half-screen viewport) */}
+      {isFullscreen && (
+        <GameControls
+          onClearBets={handleClearBets}
+          onRefreshBalance={onRefreshBalance}
+        />
+      )}
     </View>
   );
 };

@@ -68,7 +68,6 @@ import {
 import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import { roomGiftRecipients } from '../../utils/giftRecipients';
 import RoomToolsModal from '../../components/room/RoomToolsModal';
-import FloatingGameBannerWidget from '../../components/room/FloatingGameBannerWidget';
 import RoomThreeDotModal from '../../components/room/RoomThreeDotModal';
 import RoomExitModal from '../../components/room/RoomExitModal';
 import RoomEmojiModal from '../../components/room/RoomEmojiModal';

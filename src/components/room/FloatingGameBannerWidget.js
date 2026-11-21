@@ -52,7 +52,7 @@ const PROMO_EVENTS = [
 ];
 
 // Game Rotating Banner items (Matching the user video polar bear & slot design)
-const GAME_BANNER_ITEMS = [
+export const GAME_BANNER_ITEMS = [
   {
     id: 'greedy-king',
     gameId: 'greedy-king',
@@ -66,28 +66,17 @@ const GAME_BANNER_ITEMS = [
     borderGradient: ['#FDE047', '#F59E0B'],
   },
   {
-    id: 'food-game',
-    gameId: 'food-game',
-    title: 'Food Game',
+    id: 'greedy-king',
+    gameId: 'greedy-king',
+    title: 'Greedy King',
     multiplier: '50x',
+    tag: 'ROYAL',
     available: true,
-    bearEmoji: '🐻',
-    toolEmoji: '🍴',
-    fruitRow: '🍋🍓🥭',
-    bgGradient: ['#0284C7', '#0369A1', '#075985'],
-    borderGradient: ['#38BDF8', '#0284C7'],
-  },
-  {
-    id: 'greedy-baby',
-    gameId: 'greedy-baby',
-    title: 'Greedy Baby',
-    multiplier: '50x',
-    available: true,
-    bearEmoji: '🐻',
-    toolEmoji: '🍯',
-    fruitRow: '🍉🍇🍎',
-    bgGradient: ['#D97706', '#B45309', '#92400E'],
-    borderGradient: ['#FBBF24', '#D97706'],
+    bearEmoji: '👑',
+    toolEmoji: '🎰',
+    fruitRow: '👑 🍉 🍓',
+    bgGradient: ['#F59E0B', '#D97706', '#B45309'],
+    borderGradient: ['#FBBF24', '#F59E0B'],
   },
   {
     id: 'lucky-777',

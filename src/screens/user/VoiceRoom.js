@@ -68,6 +68,7 @@ import {
 import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import { roomGiftRecipients } from '../../utils/giftRecipients';
 import RoomToolsModal from '../../components/room/RoomToolsModal';
+import FloatingGameBannerWidget from '../../components/room/FloatingGameBannerWidget';
 import RoomThreeDotModal from '../../components/room/RoomThreeDotModal';
 import RoomExitModal from '../../components/room/RoomExitModal';
 import RoomEmojiModal from '../../components/room/RoomEmojiModal';
@@ -2289,6 +2290,21 @@ export default function VoiceRoomScreen() {
             style={{ marginBottom: 6 }}
           />
 
+          {/* Greedy King Live Game Launcher */}
+          <TouchableOpacity
+            style={[styles.treasureChestWidget, { backgroundColor: 'rgba(245, 158, 11, 0.25)', borderColor: '#F59E0B' }]}
+            onPress={() => handleSelectGame({
+              id: 'greedy-king',
+              gameId: 'greedy-king',
+              title: 'Greedy King',
+              gameUrl: 'https://games.yaroapp.in/greedy-king/',
+            })}
+            activeOpacity={0.85}
+            accessibilityLabel="Greedy King Game"
+          >
+            <Text style={{ fontSize: 24 }}>👑</Text>
+          </TouchableOpacity>
+
           {/* Rewards Bag Widget */}
           <TouchableOpacity
             style={styles.treasureChestWidget}
@@ -2483,7 +2499,7 @@ export default function VoiceRoomScreen() {
 
       {/* Cocos Creator 3.8.x Game View (Overlay occupying lower 55% when game active) */}
       {Boolean(activeGame && !isGameMinimized) && (
-        <View style={[styles.voiceGameAreaContainer, { height: '55%' }]}>
+        <View style={[styles.voiceGameAreaContainer, { height: '76%' }]}>
           <GameContainer
             game={activeGame}
             sessionUrl={activeGameSessionUrl}

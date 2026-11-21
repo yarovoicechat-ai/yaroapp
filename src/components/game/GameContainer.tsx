@@ -5,12 +5,14 @@ import {
   BackHandler,
   Dimensions,
   LayoutChangeEvent,
+  TouchableOpacity,
 } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GameHeader } from './GameHeader';
 import { GameWebView } from './GameWebView';
 import { GameControls } from './GameControls';
-import { GameMetadata, gameSessionManager } from './GameSessionManager';
+import { GameMetadata } from './GameSessionManager';
 import { gameBridge } from './GameBridge';
 
 interface GameContainerProps {
@@ -41,8 +43,10 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   const [isMuted, setIsMuted] = useState(true); // Default game audio to muted so Agora voice is uninterrupted
   const [dimensions, setDimensions] = useState({
     width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height * 0.5,
+    height: Dimensions.get('window').height * 0.76,
   });
+
+  const isGreedyKing = game?.id === 'greedy-king' || game?.gameId === 'greedy-king';
 
   // Handle hardware Back button on Android
   useEffect(() => {
@@ -87,18 +91,42 @@ export const GameContainer: React.FC<GameContainerProps> = ({
         isFullscreen ? [styles.fullscreen, { paddingTop: insets.top }] : styles.halfScreen,
       ]}
     >
-      {/* 1. Game Top Header */}
-      <GameHeader
-        game={game}
-        coinsBalance={coinsBalance}
-        isFullscreen={isFullscreen}
-        isMuted={isMuted}
-        onToggleMute={handleToggleMute}
-        onToggleFullscreen={handleToggleFullscreen}
-        onMinimize={onMinimize}
-        onClose={onClose}
-        onRecharge={onRecharge}
-      />
+      {/* 1. Header: Sleek drag handle for Greedy King to prevent clipping; GameHeader for others */}
+      {isGreedyKing ? (
+        <View style={styles.sleekHeaderBar}>
+          <View style={styles.dragPill} />
+          <View style={styles.rightActions}>
+            <TouchableOpacity
+              onPress={onMinimize}
+              style={styles.circleActionBtn}
+              accessibilityLabel="Minimize Game"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialCommunityIcons name="minus" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.circleActionBtn}
+              accessibilityLabel="Close Game"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialCommunityIcons name="close" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <GameHeader
+          game={game}
+          coinsBalance={coinsBalance}
+          isFullscreen={isFullscreen}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+          onToggleFullscreen={handleToggleFullscreen}
+          onMinimize={onMinimize}
+          onClose={onClose}
+          onRecharge={onRecharge}
+        />
+      )}
 
       {/* 2. Reusable Cocos Creator WebView - Takes full available height without clipping */}
       <View style={styles.webContainer}>
@@ -139,13 +167,45 @@ const styles = StyleSheet.create({
   halfScreen: {
     flex: 1, // When placed inside a flex: 1 row/column alongside the top half
     width: '100%',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   fullscreen: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 999,
     elevation: 50,
+  },
+  sleekHeaderBar: {
+    height: 28,
+    width: '100%',
+    backgroundColor: '#0C0A14',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  dragPill: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  rightActions: {
+    position: 'absolute',
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  circleActionBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   webContainer: {
     flex: 1,

@@ -215,9 +215,9 @@ function GiftCard({ gift, isSelected = false, onSelect }) {
             {gift.name}
           </Text>
 
-          {/* Price with Glowing Diamond */}
+          {/* Price with Glowing Coin */}
           <View style={[styles.priceRow, isSelectedBool && styles.priceRowSelected]}>
-            <Image source={require('../../assets/icons/diamond.png')} style={{ width: 12, height: 12, marginRight: 2 }} resizeMode="contain" />
+            <Image source={require('../../assets/icons/coin.png')} style={{ width: 12, height: 12, marginRight: 2 }} resizeMode="contain" />
             <Text style={[styles.priceText, isSelectedBool && styles.priceTextSelected]}>
               {formatCompactBalance(price)}
             </Text>

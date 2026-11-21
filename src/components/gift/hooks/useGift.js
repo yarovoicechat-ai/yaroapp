@@ -145,11 +145,11 @@ export function useGift({
       const currentBalance = Number(activeBalanceRef.current || 0);
       if (currentBalance < totalCost) {
         AlertService.show(
-          'Insufficient Diamonds',
-          `You need ${totalCost.toLocaleString()} Diamonds. Your balance is ${currentBalance.toLocaleString()}.`,
+          'Insufficient Coins',
+          `You need ${totalCost.toLocaleString()} Coins. Your balance is ${currentBalance.toLocaleString()}.`,
           'warning',
         );
-        return { success: false, reason: 'INSUFFICIENT_DIAMONDS' };
+        return { success: false, reason: 'INSUFFICIENT_COINS' };
       }
 
       // Optimistic instant response: update combo and deduct local balance immediately

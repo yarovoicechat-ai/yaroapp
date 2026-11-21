@@ -388,7 +388,7 @@ export default function GiftPanel({
 
           {/* 7. Bottom Action Bar (💎 Balance | [- 1 +] Quantity Selector | SEND Button) */}
           <View style={styles.bottomBar}>
-            {/* LEFT: Current Diamond Balance */}
+            {/* LEFT: Current Coin Balance */}
             <TouchableOpacity
               style={styles.balancePill}
               onPress={() => {
@@ -397,7 +397,7 @@ export default function GiftPanel({
               }}
               activeOpacity={0.8}
             >
-              <Image source={require('../../assets/icons/diamond.png')} style={{ width: 16, height: 16, marginRight: 5 }} resizeMode="contain" />
+              <Image source={require('../../assets/icons/coin.png')} style={{ width: 16, height: 16, marginRight: 5 }} resizeMode="contain" />
               <Text style={styles.balanceNum}>
                 {formatCompactBalance(activeBalance)}
               </Text>
@@ -473,11 +473,13 @@ export default function GiftPanel({
         </Animated.View>
 
 
-        {/* Insufficient Diamonds Modal */}
+        {/* Insufficient Coins Modal */}
         <InsufficientBalanceModal
           visible={insufficientModalVisible}
           requiredDiamonds={currentCost}
           availableDiamonds={activeBalance}
+          requiredCoins={currentCost}
+          availableCoins={activeBalance}
           onTopUp={() => {
             setInsufficientModalVisible(false);
             onClose();

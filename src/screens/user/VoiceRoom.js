@@ -2503,7 +2503,7 @@ export default function VoiceRoomScreen() {
             <TextInput
               ref={textInputRef}
               style={styles.chatTextInput}
-              placeholder={isBulletMode ? 'Bullet message (1 diamond)...' : 'Type a message...'}
+              placeholder={isBulletMode ? 'Bullet message (1 coin)...' : 'Type a message...'}
               placeholderTextColor="rgba(255, 255, 255, 0.45)"
               value={inputText}
               maxLength={500}

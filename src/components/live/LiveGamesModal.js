@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { apiUtil } from '../../utils/apiUtil';
 
 const { width } = Dimensions.get('window');
 
@@ -148,13 +149,44 @@ export default function LiveGamesModal({
   coinBalance = 0,
   onRecharge,
   bottomPadding = 16,
+  roomType = 'voice', // 'voice' | 'live'
 }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [gameConfig, setGameConfig] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (visible) {
+      apiUtil
+        .get('/games/config')
+        .then((res) => {
+          if (isMounted && res?.data?.data) {
+            setGameConfig(res.data.data);
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [visible]);
 
   if (!visible) return null;
 
-  // User Requirement: Keep ONLY Greedy King active and remove all other games
-  const activeGames = LIVE_GAMES_LIST.filter(game => game.id === 'greedy-king');
+  // Check server configuration for game visibility
+  const gkConfig = gameConfig?.greedyKing;
+  const isGkHidden = gkConfig
+    ? Boolean(
+        gkConfig.isHidden ||
+        gkConfig.isActive === false ||
+        (roomType === 'voice' && gkConfig.showInVoiceRoom === false) ||
+        (roomType === 'live' && gkConfig.showInLiveRoom === false)
+      )
+    : false;
+
+  const activeGames = isGkHidden
+    ? []
+    : LIVE_GAMES_LIST.filter(game => game.id === 'greedy-king');
   const filteredGames = activeGames.filter(game => {
     if (selectedCategory === 'All' || selectedCategory === 'Hot' || selectedCategory === 'Wheel') return true;
     return game.category === selectedCategory;
@@ -241,76 +273,86 @@ export default function LiveGamesModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.gamesListScroll}
           >
-            {filteredGames.map(game => (
-              <TouchableOpacity
-                key={game.id}
-                activeOpacity={0.88}
-                onPress={() => {
-                  onClose();
-                  onSelectGame(game);
-                }}
-                style={styles.gameCard}
-              >
-                <LinearGradient
-                  colors={game.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.gameCardGradient}
+            {filteredGames.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <MaterialCommunityIcons name="gamepad-variant-outline" size={54} color="rgba(255,255,255,0.3)" />
+                <Text style={styles.emptyTitle}>Games Currently Unavailable</Text>
+                <Text style={styles.emptySubtitle}>
+                  Games are temporarily closed by management. Please check back later!
+                </Text>
+              </View>
+            ) : (
+              filteredGames.map(game => (
+                <TouchableOpacity
+                  key={game.id}
+                  activeOpacity={0.88}
+                  onPress={() => {
+                    onClose();
+                    onSelectGame(game);
+                  }}
+                  style={styles.gameCard}
                 >
-                  {/* Left Icon Area: Shows User's Official Royal Crowned Cat Badge */}
-                  <View style={styles.gameIconCol}>
-                    <View style={styles.gameIconCircle}>
-                      {game.badgeImage ? (
-                        <Image
-                          source={game.badgeImage}
-                          style={styles.gameBadgeImage}
-                          resizeMode="contain"
-                        />
-                      ) : (
-                        <MaterialCommunityIcons
-                          name={game.icon}
-                          size={28}
-                          color="#FFFFFF"
-                        />
-                      )}
-                    </View>
-                    <View style={[styles.gameTagBadge, { backgroundColor: game.tagColor }]}>
-                      <Text style={styles.gameTagText}>{game.tag}</Text>
-                    </View>
-                  </View>
-
-                  {/* Middle Info */}
-                  <View style={styles.gameInfoCol}>
-                    <View style={styles.titleMultiplierRow}>
-                      <Text style={styles.gameCardTitle} numberOfLines={1}>
-                        {game.title}
-                      </Text>
-                      <View style={styles.multiplierBadge}>
-                        <Text style={styles.multiplierText}>{game.multiplier}</Text>
+                  <LinearGradient
+                    colors={game.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gameCardGradient}
+                  >
+                    {/* Left Icon Area: Shows User's Official Royal Crowned Cat Badge */}
+                    <View style={styles.gameIconCol}>
+                      <View style={styles.gameIconCircle}>
+                        {game.badgeImage ? (
+                          <Image
+                            source={game.badgeImage}
+                            style={styles.gameBadgeImage}
+                            resizeMode="contain"
+                          />
+                        ) : (
+                          <MaterialCommunityIcons
+                            name={game.icon}
+                            size={28}
+                            color="#FFFFFF"
+                          />
+                        )}
+                      </View>
+                      <View style={[styles.gameTagBadge, { backgroundColor: game.tagColor }]}>
+                        <Text style={styles.gameTagText}>{game.tag}</Text>
                       </View>
                     </View>
-                    <Text style={styles.gameCardSubtitle} numberOfLines={1}>
-                      {game.subtitle}
-                    </Text>
-                    <Text style={styles.gameCardDesc} numberOfLines={2}>
-                      {game.description}
-                    </Text>
 
-                    <View style={styles.playersRow}>
-                      <MaterialCommunityIcons name="account-group" size={13} color="rgba(255,255,255,0.7)" />
-                      <Text style={styles.playersText}>{game.players} playing now</Text>
-                    </View>
-                  </View>
+                    {/* Middle Info */}
+                    <View style={styles.gameInfoCol}>
+                      <View style={styles.titleMultiplierRow}>
+                        <Text style={styles.gameCardTitle} numberOfLines={1}>
+                          {game.title}
+                        </Text>
+                        <View style={styles.multiplierBadge}>
+                          <Text style={styles.multiplierText}>{game.multiplier}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.gameCardSubtitle} numberOfLines={1}>
+                        {game.subtitle}
+                      </Text>
+                      <Text style={styles.gameCardDesc} numberOfLines={2}>
+                        {game.description}
+                      </Text>
 
-                  {/* Right Play Arrow */}
-                  <View style={styles.playBtnCol}>
-                    <View style={styles.playCircleBtn}>
-                      <Icon name="play" size={18} color="#0F172A" />
+                      <View style={styles.playersRow}>
+                        <MaterialCommunityIcons name="account-group" size={13} color="rgba(255,255,255,0.7)" />
+                        <Text style={styles.playersText}>{game.players} playing now</Text>
+                      </View>
                     </View>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
+
+                    {/* Right Play Arrow */}
+                    <View style={styles.playBtnCol}>
+                      <View style={styles.playCircleBtn}>
+                        <Icon name="play" size={18} color="#0F172A" />
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))
+            )}
           </ScrollView>
         </View>
       </View>
@@ -531,5 +573,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginTop: 16,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

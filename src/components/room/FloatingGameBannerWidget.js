@@ -32,10 +32,10 @@ export default function FloatingGameBannerWidget({
     let isMounted = true;
     const checkVisibility = async () => {
       try {
-        const res = await apiUtil.get('/api/games/config');
+        const res = await apiUtil.get('/games/config');
         const gkConfig = res?.data?.data?.greedyKing;
         if (gkConfig && isMounted) {
-          if (gkConfig.isHidden) {
+          if (gkConfig.isHidden || gkConfig.isActive === false) {
             setIsVisible(false);
           } else if (roomType === 'voice' && gkConfig.showInVoiceRoom === false) {
             setIsVisible(false);
@@ -48,7 +48,7 @@ export default function FloatingGameBannerWidget({
           }
         }
       } catch {
-        // Fallback: stay visible if server check fails
+        // Keep prior state or safely hide if unverified
       }
     };
 

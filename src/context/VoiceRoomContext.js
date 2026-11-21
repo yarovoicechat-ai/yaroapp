@@ -929,6 +929,55 @@ export const VoiceRoomProvider = ({ children }) => {
       return false;
     }
 
+    const previousRoomId = activeRoomIdRef.current;
+    if (previousRoomId && previousRoomId === roomId) {
+      // Returning to current active room (e.g. from minimized floating state)
+      setIsMinimized(false);
+      return true;
+    }
+
+    // Clean up previous room completely before entering a new room!
+    // Prevents sticky seats, duplicate room presence, and Agora voice channel cross-room audio leak.
+    if (previousRoomId && previousRoomId !== roomId) {
+      console.log(`[VoiceRoom] Leaving previous room ${previousRoomId} before entering ${roomId}`);
+      const sock = socketRef.current || getSocket();
+      if (sock?.connected) {
+        if (currentSeatIndexRef.current !== null) {
+          sock.emit('voice_room:leave_seat', {
+            roomId: previousRoomId,
+            seatIndex: currentSeatIndexRef.current,
+            user: currentUserRef.current || currentUser,
+          });
+        }
+        sock.emit('voice_room:leave', {
+          roomId: previousRoomId,
+          user: {
+            userId: currentUserId,
+            name: currentUserRef.current?.name || currentUser?.name || 'User',
+          },
+        });
+      }
+      currentSeatIndexRef.current = null;
+      desiredLocalAudioRef.current = { isOnSeat: false, isMuted: true };
+      isMutedRef.current = true;
+      setIsMuted(true);
+
+      const oldEngine = agoraEngineRef.current;
+      agoraEngineRef.current = null;
+      if (oldEngine) {
+        try { oldEngine.muteLocalAudioStream(true); } catch (_) {}
+        try { oldEngine.enableLocalAudio(false); } catch (_) {}
+        try { oldEngine.leaveChannel(); } catch (_) {}
+        try { AgoraClientService.releaseEngine(oldEngine); } catch (_) {}
+      }
+      setAgoraStatus('disconnected');
+      agoraPublisherAuthorizedRef.current = false;
+      agoraCredentialsRef.current = null;
+      agoraInitSessionRef.current = null;
+      setSeats([]);
+      setSpeakingSeatIndices(new Set());
+    }
+
     const roomSessionId = ++roomSessionRef.current;
 
     setActiveRoom(roomData);

@@ -3225,6 +3225,7 @@ export default function VoiceRoomScreen() {
         coinBalance={Number(user?.diamonds || user?.balance || 0)}
         onRecharge={() => navigation.navigate('Recharge')}
         bottomPadding={insets.bottom}
+        roomType="voice"
       />
 
     </ImageBackground>

@@ -1147,6 +1147,7 @@ export default function LiveStreamScreen({ navigation, route }) {
         coinBalance={coinBalance}
         onRecharge={openRecharge}
         bottomPadding={insets.bottom}
+        roomType="live"
       />
 
       <LiveGuestRequestsSheet

@@ -4,7 +4,7 @@ import { resolveMediaUrl } from '../utils/assetUrl';
 
 // Retry the requested asset itself. Never replace a failed custom asset with
 // an unrelated default avatar or seat.
-export default function AssetImage({ source, style, onError, onLoad, ...props }) {
+export default function AssetImage({ source, fallbackSource, style, onError, onLoad, ...props }) {
   const uri = resolveMediaUrl(source);
   const [state, setState] = useState({ uri, attempt: 0, status: 'loading' });
   const current = state.uri === uri ? state : { uri, attempt: 0, status: 'loading' };
@@ -25,7 +25,9 @@ export default function AssetImage({ source, style, onError, onLoad, ...props })
           setState(previous => previous.uri === uri ? { ...previous, status: previous.attempt < 2 ? 'retry' : 'error' } : previous);
           onError?.(event);
         }} />
-      {current.status === 'error' ? (
+      {current.status === 'error' && fallbackSource ? (
+        <Image {...props} source={fallbackSource} style={[StyleSheet.absoluteFillObject, { borderRadius: StyleSheet.flatten(style)?.borderRadius }]} fadeDuration={0} />
+      ) : current.status === 'error' ? (
         <Pressable accessibilityLabel="Retry image loading" style={styles.overlay}
           onPress={() => setState({ uri, attempt: 0, status: 'loading' })}>
           <Text style={styles.retry}>↻</Text>

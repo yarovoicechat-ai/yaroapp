@@ -68,7 +68,7 @@ export default function VoiceRoomSeatGrid({
                       >
                         <AvatarWithFrame
                           user={seat.user}
-                          frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame) : null)}
+                          frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || seat.user?.effectiveIdentity?.avatarFrame || seat.user?.avatarFrame || seat.user?.frameAsset || seat.user?.frame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame || user?.effectiveIdentity?.avatarFrame || user?.avatarFrame) : null)}
                           size={54}
                           showOnlineDot={false}
                         />
@@ -180,7 +180,7 @@ export default function VoiceRoomSeatGrid({
                         >
                           <AvatarWithFrame
                             user={seat.user}
-                            frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame) : null)}
+                            frame={seat.user?.equippedFrameAsset || seat.user?.equippedFrame || seat.user?.effectiveIdentity?.avatarFrame || seat.user?.avatarFrame || seat.user?.frameAsset || seat.user?.frame || (seat.user?.isCurrentUser ? (user?.equippedFrameAsset || user?.equippedFrame || user?.effectiveIdentity?.avatarFrame || user?.avatarFrame) : null)}
                             size={avatarSize}
                             showOnlineDot={false}
                           />

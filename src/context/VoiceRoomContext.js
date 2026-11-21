@@ -1,5 +1,6 @@
 import { getRoomSeatConfig } from '../utils/roomSeats';
 import { resolveRoomMicMute } from '../utils/roomMicState';
+import { mergeCanonicalUser } from '../utils/cosmeticResolver';
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { AppState, NativeModules } from 'react-native';
 import { navigationRef, navigate, navigateToVoiceRoom } from '../utils/navigationRef';
@@ -1023,22 +1024,42 @@ export const VoiceRoomProvider = ({ children }) => {
     hasRoomMemberSnapshotRef.current = false;
     hasPlayedSelfEntranceRef.current = false;
 
-    // Helper to tag current user's seat
+    // Helper to tag current user's seat and preserve occupant identity & cosmetics across partial updates
     const mapSeatsWithCurrentUser = (rawSeats, myUserId) => {
       if (!Array.isArray(rawSeats)) return [];
-      return rawSeats.map((s) => ({
-        ...s,
-        user: s.user
-          ? {
-              ...s.user,
-              isCurrentUser: Boolean(
-                myUserId &&
-                (String(s.user.userId) === String(myUserId) ||
-                 (s.user.id && String(s.user.id) === String(myUserId)))
-              ),
-            }
-          : null,
-      }));
+      const prevSeats = currentSeatsRef.current || [];
+      return rawSeats.map((s) => {
+        if (!s) return s;
+        const prevSeat = prevSeats.find((p) => p && p.seatIndex === s.seatIndex);
+        const prevUser = prevSeat?.user && String(prevSeat.user.userId || prevSeat.user.id || prevSeat.user._id || '') === String(s.user?.userId || s.user?.id || s.user?._id || '')
+          ? prevSeat.user
+          : null;
+
+        let mergedUser = s.user;
+        if (s.user && prevUser) {
+          mergedUser = mergeCanonicalUser(prevUser, s.user);
+          if (!mergedUser.avatar && prevUser.avatar) mergedUser.avatar = prevUser.avatar;
+          if (!mergedUser.image && prevUser.image) mergedUser.image = prevUser.image;
+          if (!mergedUser.profilePic && prevUser.profilePic) mergedUser.profilePic = prevUser.profilePic;
+          if (!mergedUser.equippedFrame && prevUser.equippedFrame) mergedUser.equippedFrame = prevUser.equippedFrame;
+          if (!mergedUser.equippedFrameAsset && prevUser.equippedFrameAsset) mergedUser.equippedFrameAsset = prevUser.equippedFrameAsset;
+          if (!mergedUser.effectiveIdentity && prevUser.effectiveIdentity) mergedUser.effectiveIdentity = prevUser.effectiveIdentity;
+        }
+
+        return {
+          ...s,
+          user: mergedUser
+            ? {
+                ...mergedUser,
+                isCurrentUser: Boolean(
+                  myUserId &&
+                  (String(mergedUser.userId) === String(myUserId) ||
+                   (mergedUser.id && String(mergedUser.id) === String(myUserId)))
+                ),
+              }
+            : null,
+        };
+      });
     };
     const isCurrentRoomEvent = (payload) => {
       if (!payload?.roomId) return true;

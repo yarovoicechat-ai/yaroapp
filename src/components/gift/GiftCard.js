@@ -20,7 +20,7 @@ const GAP = 7;
 // Exactly 4 columns per row
 export const CARD_WIDTH = Math.floor((width - H_PADDING * 2 - GAP * 3) / 4);
 
-export default function GiftCard({ gift, isSelected = false, onSelect }) {
+function GiftCard({ gift, isSelected = false, onSelect }) {
   const isSelectedBool = Boolean(isSelected);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const imageBounce = useRef(new Animated.Value(1)).current;
@@ -92,6 +92,14 @@ export default function GiftCard({ gift, isSelected = false, onSelect }) {
   // Dynamic Neon Accent per category / rarity
   const isLuxury = gift.category === 'Luxury' || gift.isVip || badgeText === 'VIP';
   const isRomantic = gift.category === 'Romantic' || badgeText === 'HOT';
+
+  // For grid thumbnails, prioritize static images (PNG/WebP/JPG) to prevent mounting dozens of SVGA players simultaneously.
+  const staticCandidate = giftVisual.giftImage && !giftVisual.giftImage.toLowerCase().endsWith('.svga')
+    ? giftVisual.giftImage
+    : (gift.image || gift.thumbnail || gift.iconUrl || gift.previewUrl);
+  const hasStaticCandidate = Boolean(staticCandidate && !String(staticCandidate).toLowerCase().endsWith('.svga'));
+  const mediaSource = hasStaticCandidate ? staticCandidate : (giftVisual.giftImage || gift.animationUrl);
+  const isSvgaMedia = String(mediaSource || '').toLowerCase().endsWith('.svga');
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -185,10 +193,11 @@ export default function GiftCard({ gift, isSelected = false, onSelect }) {
                 { transform: [{ scale: imageBounce }] },
               ]}
             >
-              {gift.animationUrl || giftVisual.giftImage ? (
+              {mediaSource ? (
                 <GiftMedia
-                  source={gift.animationUrl || giftVisual.giftImage}
-                  mediaType={gift.mediaType || 'image'}
+                  source={mediaSource}
+                  mediaType={isSvgaMedia ? 'svga' : 'image'}
+                  repeat={false}
                   style={styles.media}
                   resizeMode="contain"
                 />
@@ -386,4 +395,16 @@ const styles = StyleSheet.create({
     color: '#FEF08A',
     fontWeight: '900',
   },
+});
+
+export default React.memo(GiftCard, (prevProps, nextProps) => {
+  const prevId = prevProps.gift?._id || prevProps.gift?.id;
+  const nextId = nextProps.gift?._id || nextProps.gift?.id;
+  return (
+    prevId === nextId &&
+    Boolean(prevProps.isSelected) === Boolean(nextProps.isSelected) &&
+    prevProps.gift?.price === nextProps.gift?.price &&
+    prevProps.gift?.cost === nextProps.gift?.cost &&
+    prevProps.gift?.name === nextProps.gift?.name
+  );
 });

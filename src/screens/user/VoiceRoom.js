@@ -1014,6 +1014,7 @@ export default function VoiceRoomScreen() {
   useGiftSocket({
     roomId: currentRoomId,
     currentUserId: user?.userId || user?._id || user?.id,
+    currentUser: user,
     onGiftReceived: (payload) => {
       if (payload.sender && payload.gift) {
         const myId = user?.userId || user?._id || user?.id;

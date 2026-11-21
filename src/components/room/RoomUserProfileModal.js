@@ -341,21 +341,60 @@ export default function RoomUserProfileModal({
                 </View>
               )}
 
-              {/* Official Staff Tag */}
-              {Boolean(
-                displayData.role === 'admin' ||
-                resolvedProfile?.role === 'admin' ||
-                displayData.role === 'superAdmin' ||
-                resolvedProfile?.role === 'superAdmin' ||
-                displayData.isGlobalRoomManager ||
-                resolvedProfile?.isGlobalRoomManager ||
-                displayData.isStaff ||
-                resolvedProfile?.isStaff
-              ) && (
-                <View style={[styles.ownerBadgePill, { backgroundColor: '#DC2626' }]}>
-                  <Text style={styles.roleBadgeText}>🛡️ Staff</Text>
-                </View>
-              )}
+              {/* Official Designation Tag */}
+              {(() => {
+                const role = String(displayData.role || resolvedProfile?.role || '').toLowerCase();
+                if (role === 'owner') {
+                  return (
+                    <View style={[styles.ownerBadgePill, { backgroundColor: '#F59E0B' }]}>
+                      <Text style={styles.roleBadgeText}>👑 Owner</Text>
+                    </View>
+                  );
+                }
+                if (role === 'operator') {
+                  return (
+                    <View style={[styles.ownerBadgePill, { backgroundColor: '#3B82F6' }]}>
+                      <Text style={styles.roleBadgeText}>⚙️ Operator</Text>
+                    </View>
+                  );
+                }
+                if (role === 'countrymanager' || role === 'country-manager') {
+                  return (
+                    <View style={[styles.ownerBadgePill, { backgroundColor: '#10B981' }]}>
+                      <Text style={styles.roleBadgeText}>🌐 Country Mgr</Text>
+                    </View>
+                  );
+                }
+                if (role === 'statemanager' || role === 'state-manager') {
+                  return (
+                    <View style={[styles.ownerBadgePill, { backgroundColor: '#8B5CF6' }]}>
+                      <Text style={styles.roleBadgeText}>🏛️ State Mgr</Text>
+                    </View>
+                  );
+                }
+                if (role === 'official') {
+                  return (
+                    <View style={[styles.ownerBadgePill, { backgroundColor: '#EC4899' }]}>
+                      <Text style={styles.roleBadgeText}>⚡ Official</Text>
+                    </View>
+                  );
+                }
+                if (
+                  role === 'admin' ||
+                  role === 'superadmin' ||
+                  displayData.isGlobalRoomManager ||
+                  resolvedProfile?.isGlobalRoomManager ||
+                  displayData.isStaff ||
+                  resolvedProfile?.isStaff
+                ) {
+                  return (
+                    <View style={[styles.ownerBadgePill, { backgroundColor: '#DC2626' }]}>
+                      <Text style={styles.roleBadgeText}>🛡️ Staff</Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Equipped Tag (Animation File / Theme Asset .svga, .gif, .webp, .png, or Text Pill) */}
               {(() => {

@@ -270,12 +270,53 @@ export default function ProfileScreen() {
                 </View>
               )}
 
-              {/* Staff Tag */}
-              {Boolean(user?.role === 'admin' || user?.role === 'superAdmin' || user?.isGlobalRoomManager || user?.isBd || user?.isAgency) && (
-                <View style={[styles.svipTag, { backgroundColor: '#DC2626' }]}>
-                  <Text style={styles.svipTagText}>🛡️ Staff</Text>
-                </View>
-              )}
+              {/* Staff / Designation Tag */}
+              {(() => {
+                const role = String(user?.role || '').toLowerCase();
+                if (role === 'owner') {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#F59E0B' }]}>
+                      <Text style={styles.svipTagText}>👑 Owner</Text>
+                    </View>
+                  );
+                }
+                if (role === 'operator') {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#3B82F6' }]}>
+                      <Text style={styles.svipTagText}>⚙️ Operator</Text>
+                    </View>
+                  );
+                }
+                if (role === 'countrymanager' || role === 'country-manager') {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#10B981' }]}>
+                      <Text style={styles.svipTagText}>🌐 Country Mgr</Text>
+                    </View>
+                  );
+                }
+                if (role === 'statemanager' || role === 'state-manager') {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#8B5CF6' }]}>
+                      <Text style={styles.svipTagText}>🏛️ State Mgr</Text>
+                    </View>
+                  );
+                }
+                if (role === 'official') {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#EC4899' }]}>
+                      <Text style={styles.svipTagText}>⚡ Official</Text>
+                    </View>
+                  );
+                }
+                if (role === 'admin' || role === 'superadmin' || user?.isGlobalRoomManager || user?.isBd || user?.isAgency) {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#DC2626' }]}>
+                      <Text style={styles.svipTagText}>🛡️ Staff</Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Equipped Tag (Animation File / Theme Asset .svga, .gif, .webp, .png, or Text Pill) */}
               {(() => {

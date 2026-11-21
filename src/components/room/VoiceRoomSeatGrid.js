@@ -1,6 +1,7 @@
 import AnimatedSeatReaction from './SeatReaction';
 import React from 'react';
 import { Dimensions, Image, Text, TouchableOpacity, View } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import VipMicWave from './VipMicWave';
@@ -13,6 +14,58 @@ const { width } = Dimensions.get('window');
 const seatNameEffect = user => user?.nameEffect || user?.effectiveIdentity?.nameEffect ||
   ((user?.equippedVipId || user?.equippedSvipId)
     ? { colors: ['#FFE890', '#FFF8D6', '#E9B74D'], animationType: 'shimmer' } : undefined);
+
+const renderSeatPostTag = (seatUser) => {
+  if (!seatUser) return null;
+  const tagAsset = seatUser.equippedTagAsset;
+  const tagMedia = tagAsset?.imageUrl || tagAsset?.animationUrl || tagAsset?.icon || null;
+  const tagName = tagAsset?.metadata?.tagText || tagAsset?.name || seatUser.equippedTag || null;
+  const role = String(seatUser.role || '').toLowerCase();
+
+  const roleTagText =
+    role === 'owner' ? '👑 Owner' :
+    role === 'operator' ? '⚙️ Operator' :
+    (role === 'countrymanager' || role === 'country-manager') ? '🌐 Country Mgr' :
+    (role === 'statemanager' || role === 'state-manager') ? '🏛️ State Mgr' :
+    role === 'superadmin' ? '👑 Super Admin' :
+    role === 'admin' ? '🛡️ Admin' :
+    role === 'official' ? '⚡ Official' : null;
+
+  if (tagMedia) {
+    return (
+      <Image
+        source={{ uri: tagMedia }}
+        style={{ width: 44, height: 13, marginTop: 2 }}
+        resizeMode="contain"
+      />
+    );
+  }
+
+  const displayText = tagName || roleTagText;
+  if (!displayText) return null;
+
+  const isHighPost = role === 'owner' || role === 'countrymanager' || role === 'country-manager' || role === 'statemanager' || role === 'state-manager' || role === 'operator';
+  return (
+    <LinearGradient
+      colors={isHighPost ? ['#F59E0B', '#D97706'] : ['#8B5CF6', '#6D28D9']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={{
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        borderRadius: 5,
+        marginTop: 2,
+        maxWidth: 58,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ color: '#FFF', fontSize: 7.5, fontWeight: '800' }} numberOfLines={1}>
+        {displayText}
+      </Text>
+    </LinearGradient>
+  );
+};
 
 export default function VoiceRoomSeatGrid({
   topTwoSeats,
@@ -91,6 +144,7 @@ export default function VoiceRoomSeatGrid({
                       </View>
                     </VipMicWave>
                     <IdentityDisplayName name={seat.user.name} effect={seatNameEffect(seat.user)} style={styles.topSeatUserName} />
+                    {renderSeatPostTag(seat.user)}
                     {showSeatCharm && (
                       <View style={styles.charmPill}>
                         <Text style={styles.charmFlower}>🌸</Text>
@@ -203,6 +257,7 @@ export default function VoiceRoomSeatGrid({
                         </View>
                       </VipMicWave>
                       <IdentityDisplayName name={seat.user.name} effect={seatNameEffect(seat.user)} isCrowded={isCompactLayout} style={[styles.seatUserName, isCompactLayout && { fontSize: 9.5, maxWidth: 66 }]} />
+                      {renderSeatPostTag(seat.user)}
                       {showSeatCharm && (
                         <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
                           <Text style={styles.charmFlower}>🌸</Text>

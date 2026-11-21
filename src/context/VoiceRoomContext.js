@@ -1863,6 +1863,11 @@ export const VoiceRoomProvider = ({ children }) => {
           level: currentUser?.level,
           equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
           equippedFrameAsset: currentUser?.equippedFrameAsset || null,
+          equippedTag: currentUser?.equippedTag || null,
+          equippedTagAsset: currentUser?.equippedTagAsset || null,
+          role: currentUser?.role || null,
+          isSvip: Boolean(currentUser?.isSvip || currentUser?.equippedSvipId),
+          svipLevel: currentUser?.svipLevel || (currentUser?.equippedSvipId ? 1 : null),
         },
       });
 

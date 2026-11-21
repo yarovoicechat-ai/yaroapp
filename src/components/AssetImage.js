@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { resolveMediaUrl } from '../utils/assetUrl';
 
 // Retry the requested asset itself. Never replace a failed custom asset with
@@ -25,9 +25,7 @@ export default function AssetImage({ source, style, onError, onLoad, ...props })
           setState(previous => previous.uri === uri ? { ...previous, status: previous.attempt < 2 ? 'retry' : 'error' } : previous);
           onError?.(event);
         }} />
-      {current.status === 'loading' || current.status === 'retry' ? (
-        <View pointerEvents="none" style={styles.overlay}><ActivityIndicator size="small" color="#94A3B8" /></View>
-      ) : current.status === 'error' ? (
+      {current.status === 'error' ? (
         <Pressable accessibilityLabel="Retry image loading" style={styles.overlay}
           onPress={() => setState({ uri, attempt: 0, status: 'loading' })}>
           <Text style={styles.retry}>↻</Text>

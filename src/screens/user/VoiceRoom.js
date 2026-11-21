@@ -2283,12 +2283,6 @@ export default function VoiceRoomScreen() {
           ]}
           pointerEvents="box-none"
         >
-          {/* Dual Carousel Banner: Event + Direct Game (User Video Specification) */}
-          <FloatingGameBannerWidget
-            onSelectGame={handleSelectGame}
-            style={{ marginBottom: 6 }}
-          />
-
           {/* Rewards Bag Widget */}
           <TouchableOpacity
             style={styles.treasureChestWidget}
@@ -2360,6 +2354,10 @@ export default function VoiceRoomScreen() {
 
             {/* Menu Column */}
             <View style={styles.voiceMenuColumn}>
+              <FloatingGameBannerWidget
+                onSelectGame={handleSelectGame}
+                style={{ marginBottom: 4 }}
+              />
               <TouchableOpacity
                 style={styles.controlCircleBtn}
                 onPress={() => setRoomMenuModalVisible(true)}
@@ -2429,6 +2427,10 @@ export default function VoiceRoomScreen() {
 
             {/* Menu Column */}
             <View style={styles.voiceMenuColumn}>
+              <FloatingGameBannerWidget
+                onSelectGame={handleSelectGame}
+                style={{ marginBottom: 4 }}
+              />
               <TouchableOpacity
                 style={styles.controlCircleBtn}
                 onPress={() => setRoomMenuModalVisible(true)}
@@ -2453,7 +2455,7 @@ export default function VoiceRoomScreen() {
             ticket={activeGameTicket}
             coinsBalance={Number(user?.diamonds || user?.balance || 0)}
             onClose={handleCloseGame}
-            onMinimize={() => setIsGameMinimized(true)}
+            onMinimize={handleCloseGame}
             onRecharge={() => navigation.navigate('Recharge')}
             onRefreshBalance={() => {
               if (typeof fetchUserProfile === 'function') fetchUserProfile();
@@ -3213,28 +3215,7 @@ export default function VoiceRoomScreen() {
 
 
 
-      {/* 2. Floating Minimized Game Pill (Restore Game) */}
-      {Boolean(activeGame && isGameMinimized) && (
-        <TouchableOpacity
-          accessibilityLabel="Restore Live Game"
-          activeOpacity={0.85}
-          onPress={() => setIsGameMinimized(false)}
-          style={[styles.floatingMiniGamePill, { bottom: bottomSafePadding + 75 }]}
-        >
-          <LinearGradient
-            colors={['#FF007F', '#7928CA']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.floatingMiniGameGradient}
-          >
-            <MaterialCommunityIcons name="gamepad-variant" size={16} color="#FFF" />
-            <Text style={styles.floatingMiniGameText} numberOfLines={1}>
-              {activeGame?.title || 'Game'}
-            </Text>
-            <View style={styles.floatingMiniGameDot} />
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
+
 
       {/* 3. Live Games Catalog Modal */}
       <LiveGamesModal

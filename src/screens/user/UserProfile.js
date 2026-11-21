@@ -34,19 +34,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_PADDING = 12;
 const CARD_INNER_WIDTH = SCREEN_WIDTH - (CARD_PADDING * 2) - 24;
 
-// 1. Honor Medals in Hero
-const HONOR_MEDALS = [
-  { id: 'm1', name: 'Globe Star', icon: 'earth', color1: '#FBBF24', color2: '#B45309' },
-  { id: 'm2', name: 'Cowboy VIP', icon: 'shield-account', color1: '#F59E0B', color2: '#78350F' },
-  { id: 'm3', name: 'Rosette Honor', icon: 'medal', color1: '#FCD34D', color2: '#D97706' },
-  { id: 'm4', name: 'Gold Seal', icon: 'verified', type: 'mat', color: '#F59E0B' },
-  { id: 'm5', name: 'Silver Seal', icon: 'verified', type: 'mat', color: '#9CA3AF' },
-  { id: 'm6', name: 'Purple Seal', icon: 'verified', type: 'mat', color: '#A855F7' },
-  { id: 'm7', name: 'Blue Seal', icon: 'verified', type: 'mat', color: '#3B82F6' },
-  { id: 'm8', name: 'Red Seal', icon: 'verified', type: 'mat', color: '#EF4444' },
-];
-
-// 2. Built-in Assets & Tiers for Medal Stage Modal
+// 1. Built-in Assets & Tiers for Medal Stage Modal
 const MEDAL_ASSETS = {
   tier10m: require('../../assets/medals/medal_tier_10m.png'),
   tier40m: require('../../assets/medals/medal_tier_40m.png'),
@@ -62,10 +50,10 @@ const MEDAL_STAGE_TIERS = [
     tierId: '10m',
     title: 'Received Gifts',
     badgeLabel: '10M Received',
-    subTitle: '10000000 diamonds of gifts received',
+    subTitle: '10,000,000 coins of gifts received',
     current: 0,
     target: 10000000,
-    need: 'Need: 10000000',
+    need: 'Need: 10,000,000',
     bigImage: MEDAL_ASSETS.tier10m,
     milestoneIcon: MEDAL_ASSETS.tierIcon10m,
   },
@@ -73,10 +61,10 @@ const MEDAL_STAGE_TIERS = [
     tierId: '40m',
     title: '40M Received',
     badgeLabel: '40M Received',
-    subTitle: '40000000 diamonds of gifts received',
+    subTitle: '40,000,000 coins of gifts received',
     current: 0,
     target: 40000000,
-    need: 'Need: 40000000',
+    need: 'Need: 40,000,000',
     bigImage: MEDAL_ASSETS.tier40m,
     milestoneIcon: MEDAL_ASSETS.tierIcon40m,
   },
@@ -84,103 +72,13 @@ const MEDAL_STAGE_TIERS = [
     tierId: '200m',
     title: '200M Received',
     badgeLabel: '200M Received',
-    subTitle: '200000000 diamonds of gifts received (Sabse Bada Target)',
+    subTitle: '200,000,000 coins of gifts received',
     current: 0,
     target: 200000000,
-    need: 'Need: 200000000',
+    need: 'Need: 200,000,000',
     bigImage: MEDAL_ASSETS.tier200m,
     milestoneIcon: MEDAL_ASSETS.tierIcon200m,
   },
-];
-
-// 3. 16 Individual Badges (5-column Grid)
-const BADGES_GRID = [
-  { id: 'b1', name: 'Lion Throne', icon: 'shield-crown', label: 'LION', color1: '#F59E0B', color2: '#B45309' },
-  { id: 'b2', name: 'Royal Crown', icon: 'crown', label: 'KING', color1: '#FBBF24', color2: '#D97706' },
-  { id: 'b3', name: 'Purple Star', icon: 'diamond-stone', label: 'STAR', color1: '#C084FC', color2: '#7E22CE' },
-  { id: 'b4', name: 'Gold Trophy', icon: 'trophy', label: 'TOP', color1: '#FCD34D', color2: '#F59E0B' },
-  { id: 'b5', name: 'Winged Heart', icon: 'heart-pulse', label: 'LOVE', color1: '#FB7185', color2: '#BE123C' },
-  { id: 'b6', name: 'Knight Shield', icon: 'shield-star', label: 'ROYAL', color1: '#60A5FA', color2: '#1D4ED8' },
-  { id: 'b7', name: 'Blue Star', icon: 'star-four-points', label: 'STAR', color1: '#38BDF8', color2: '#0369A1' },
-  { id: 'b8', name: 'PK Champion', icon: 'sword-cross', label: 'PK', color1: '#EF4444', color2: '#991B1B' },
-  { id: 'b9', name: 'Red Star Heart', icon: 'heart-multiple', label: 'HEART', color1: '#F43F5E', color2: '#881337' },
-  { id: 'b10', name: 'Level 5 Master', icon: 'star-circle', label: 'LV.5', color1: '#F59E0B', color2: '#DC2626' },
-  { id: 'b11', name: 'Purple Hex', icon: 'hexagon-slice-6', label: 'HEX', color1: '#A855F7', color2: '#581C87' },
-  { id: 'b12', name: '30 Green', icon: 'decagram', label: '30', color1: '#34D399', color2: '#059669' },
-  { id: 'b13', name: '30 Emerald', icon: 'seal', label: '30', color1: '#10B981', color2: '#047857' },
-  { id: 'b14', name: 'Green Emerald', icon: 'diamond', label: 'GEM', color1: '#6EE7B7', color2: '#065F46' },
-  { id: 'b15', name: 'Imperial Crown', icon: 'crown-outline', label: 'VIP', color1: '#FDE047', color2: '#CA8A04' },
-  { id: 'b16', name: 'Winged Tiara', icon: 'feather', label: 'TIARA', color1: '#E879F9', color2: '#86198F' },
-];
-
-// 4. 14 Individual Vehicles (4-column Grid)
-const VEHICLES_GRID = [
-  { id: 'v1', name: 'Flame Sport', icon: 'car-sports', color: '#F59E0B', bg: '#FEF3C7', tag: 'Hyper' },
-  { id: 'v2', name: 'Purple Phantom', icon: 'car-estate', color: '#8B5CF6', bg: '#EDE9FE', tag: 'V12' },
-  { id: 'v3', name: 'Gold Fortune', icon: 'sack', color: '#D97706', bg: '#FFFBEB', tag: 'Luxury' },
-  { id: 'v4', name: 'Royal Chariot', icon: 'horse-variant', color: '#EAB308', bg: '#FEFCE8', tag: 'Royal' },
-  { id: 'v5', name: 'Red Fortune Bag', icon: 'wallet-giftcard', color: '#DC2626', bg: '#FEE2E2', tag: 'Lucky' },
-  { id: 'v6', name: 'Gold Trophy Car', icon: 'trophy-award', color: '#F59E0B', bg: '#FEF3C7', tag: 'Champ' },
-  { id: 'v7', name: 'Heart Balloons', icon: 'balloon', color: '#F43F5E', bg: '#FFE4E6', tag: 'Romance' },
-  { id: 'v8', name: 'Treasure Ship', icon: 'sail-boat', color: '#0284C7', bg: '#E0F2FE', tag: 'Ocean' },
-  { id: 'v9', name: 'Silver Beast', icon: 'car-convertible', color: '#64748B', bg: '#F1F5F9', tag: 'Turbo' },
-  { id: 'v10', name: 'Blue Whale', icon: 'water', color: '#0EA5E9', bg: '#E0F2FE', tag: 'Aqua' },
-  { id: 'v11', name: 'Vintage Bike', icon: 'motorbike', color: '#EF4444', bg: '#FEE2E2', tag: 'Classic' },
-  { id: 'v12', name: 'Neon Superbike', icon: 'racing-helmet', color: '#8B5CF6', bg: '#EDE9FE', tag: 'Speed' },
-  { id: 'v13', name: 'Racing Blue', icon: 'car-speed-limiter', color: '#2563EB', bg: '#DBEAFE', tag: 'GT' },
-  { id: 'v14', name: 'No.2 Combat', icon: 'tank', color: '#475569', bg: '#F1F5F9', tag: 'Agency' },
-];
-
-// 5. 12 Individual Frames (4-column Grid)
-const FRAMES_GRID = [
-  { id: 'fr1', name: 'SVIP Gold Tiara', border: '#F59E0B', jewel: '👑', color1: '#FEF08A', color2: '#CA8A04' },
-  { id: 'fr2', name: 'Sapphire Ring', border: '#3B82F6', jewel: '💎', color1: '#BFDBFE', color2: '#1D4ED8' },
-  { id: 'fr3', name: 'Blossom Wreath', border: '#EC4899', jewel: '🌸', color1: '#FBCFE8', color2: '#BE185D' },
-  { id: 'fr4', name: 'Ruby Tiara', border: '#F43F5E', jewel: '💖', color1: '#FECDD3', color2: '#9F1239' },
-  { id: 'fr5', name: 'Golden Laurel', border: '#EAB308', jewel: '🌿', color1: '#FEF08A', color2: '#A16207' },
-  { id: 'fr6', name: 'Emerald Garland', border: '#10B981', jewel: '🍃', color1: '#A7F3D0', color2: '#047857' },
-  { id: 'fr7', name: 'Imperial Crown', border: '#F59E0B', jewel: '⭐', color1: '#FDE68A', color2: '#B45309' },
-  { id: 'fr8', name: 'Romance Ribbon', border: '#FB7185', jewel: '🎀', color1: '#FFE4E6', color2: '#E11D48' },
-  { id: 'fr9', name: 'Ruby Fire Arch', border: '#DC2626', jewel: '🔥', color1: '#FEE2E2', color2: '#991B1B' },
-  { id: 'fr10', name: 'Crystal Palace', border: '#A855F7', jewel: '✨', color1: '#E9D5FF', color2: '#6B21A8' },
-  { id: 'fr11', name: 'Celestial Ring', border: '#0284C7', jewel: '🌟', color1: '#BAE6FD', color2: '#0369A1' },
-  { id: 'fr12', name: 'Tiger King Frame', border: '#D97706', jewel: '🐯', color1: '#FDE68A', color2: '#78350F' },
-];
-
-// 6. 32 Individual Gifts (4-column Grid with count badge pills)
-const GIFTS_GRID = [
-  { id: 'g1', emoji: '💑', name: 'Love Couple', count: 'x191', color: '#EC4899', bg: '#FDF2F8' },
-  { id: 'g2', emoji: '👩‍❤️‍💋‍👨', name: 'Sweet Kiss', count: 'x18', color: '#F43F5E', bg: '#FFF1F2' },
-  { id: 'g3', emoji: '🧚‍♀️', name: 'Love Fairy', count: 'x6', color: '#8B5CF6', bg: '#F5F3FF' },
-  { id: 'g4', emoji: '👰', name: 'White Wedding', count: 'x6', color: '#0EA5E9', bg: '#F0F9FF' },
-  { id: 'g5', emoji: '🎭', name: 'Royal Opera', count: 'x16', color: '#F59E0B', bg: '#FFFBEB' },
-  { id: 'g6', emoji: '💖', name: 'Embrace', count: 'x21', color: '#FB7185', bg: '#FFF1F2' },
-  { id: 'g7', emoji: '🏰', name: 'Red Castle', count: 'x1', color: '#DC2626', bg: '#FEF2F2' },
-  { id: 'g8', emoji: '🤴', name: 'Gold Emperor', count: 'x4', color: '#D97706', bg: '#FFFBEB' },
-  { id: 'g9', emoji: '💃', name: 'Dancing Diva', count: 'x8', color: '#E11D48', bg: '#FFF1F2' },
-  { id: 'g10', emoji: '🌹', name: '999 Roses', count: 'x17', color: '#DC2626', bg: '#FEF2F2' },
-  { id: 'g11', emoji: '👁️', name: 'Love Eyes', count: 'x17', color: '#475569', bg: '#F1F5F9' },
-  { id: 'g12', emoji: '💎', name: 'Crystal Heart', count: 'x44', color: '#38BDF8', bg: '#F0F9FF' },
-  { id: 'g13', emoji: '🧸', name: 'Teddy Hugs', count: 'x1', color: '#B45309', bg: '#FFFBEB' },
-  { id: 'g14', emoji: '💋', name: 'Passionate', count: 'x2', color: '#EC4899', bg: '#FDF2F8' },
-  { id: 'g15', emoji: '🎆', name: 'Independence', count: 'x1', color: '#F97316', bg: '#FFF7ED' },
-  { id: 'g16', emoji: '👩‍❤️‍👨', name: 'Soulmates', count: 'x1', color: '#FB7185', bg: '#FFF1F2' },
-  { id: 'g17', emoji: '🎂', name: 'Grand Cake', count: 'x50', color: '#D97706', bg: '#FFFBEB' },
-  { id: 'g18', emoji: '💍', name: 'Diamond Ring', count: 'x14', color: '#2563EB', bg: '#EFF6FF' },
-  { id: 'g19', emoji: '🚶‍♂️', name: 'Gentleman', count: 'x7', color: '#1E293B', bg: '#F8FAFC' },
-  { id: 'g20', emoji: '🥰', name: 'Love Birds', count: 'x13', color: '#F43F5E', bg: '#FFF1F2' },
-  { id: 'g21', emoji: '💓', name: 'Pink Heart', count: 'x13149', color: '#EC4899', bg: '#FDF2F8' },
-  { id: 'g22', emoji: '🧔', name: 'VIP Friend', count: 'x5', color: '#0284C7', bg: '#F0F9FF' },
-  { id: 'g23', emoji: '👗', name: 'Princess Gown', count: 'x2', color: '#FBBF24', bg: '#FEFCE8' },
-  { id: 'g24', emoji: '🤵', name: 'Prince Charming', count: 'x2', color: '#475569', bg: '#F1F5F9' },
-  { id: 'g25', emoji: '👸', name: 'Beauty Queen', count: 'x2', color: '#F472B6', bg: '#FDF2F8' },
-  { id: 'g26', emoji: '🪔', name: 'Golden Diya', count: 'x32510', color: '#EA580C', bg: '#FFF7ED' },
-  { id: 'g27', emoji: '👩‍❤️‍💋‍👨', name: 'True Love', count: 'x8', color: '#BE123C', bg: '#FFF1F2' },
-  { id: 'g28', emoji: '👑', name: 'Imperial Crown', count: 'x111124', color: '#EAB308', bg: '#FEFCE8' },
-  { id: 'g29', emoji: '💐', name: 'Flower Garland', count: 'x2', color: '#DC2626', bg: '#FEF2F2' },
-  { id: 'g30', emoji: '🧙‍♂️', name: 'Magical Lamp', count: 'x1', color: '#D97706', bg: '#FFFBEB' },
-  { id: 'g31', emoji: '🦅', name: 'Golden Falcon', count: 'x1', color: '#B45309', bg: '#FFFBEB' },
-  { id: 'g32', emoji: '🕶️', name: 'Dark Knight', count: 'x1', color: '#0F172A', bg: '#F8FAFC' },
 ];
 
 export default function UserProfileScreen() {
@@ -588,34 +486,38 @@ export default function UserProfileScreen() {
             </View>
           </View>
 
-          {/* 8 Honor Medals (Tapping opens the Target & Milestone preview modal) */}
-          <View style={styles.honorMedalsRow}>
-            {HONOR_MEDALS.map((medal, mIdx) => (
-              <React.Fragment key={medal.id}>
-                {mIdx === 3 && <View style={styles.medalDividerLine} />}
-                <TouchableOpacity
-                  style={styles.honorMedalItem}
-                  onPress={() => handleOpenMedalModal(mIdx % 3)}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient
-                    colors={
-                      medal.color1
-                        ? [medal.color1, medal.color2 || medal.color1]
-                        : ['#F59E0B', '#B45309']
-                    }
-                    style={styles.honorMedalCircle}
+          {/* Real Honor Medals (Shown only if user actually has earned badges/medals) */}
+          {Boolean(targetUser.showcase?.badges && targetUser.showcase.badges.length > 0) && (
+            <View style={styles.honorMedalsRow}>
+              {targetUser.showcase.badges.slice(0, 8).map((medal, mIdx) => (
+                <React.Fragment key={medal.id || medal._id || mIdx}>
+                  {mIdx === 4 && <View style={styles.medalDividerLine} />}
+                  <TouchableOpacity
+                    style={styles.honorMedalItem}
+                    onPress={() => handleOpenMedalModal(mIdx % 3)}
+                    activeOpacity={0.8}
                   >
-                    {medal.type === 'mat' ? (
-                      <MaterialIcons name={medal.icon} size={15} color="#FFFFFF" />
-                    ) : (
-                      <MaterialCommunityIcons name={medal.icon} size={15} color="#FFFFFF" />
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-              </React.Fragment>
-            ))}
-          </View>
+                    <LinearGradient
+                      colors={
+                        medal.color1
+                          ? [medal.color1, medal.color2 || medal.color1]
+                          : medal.colors || ['#F59E0B', '#B45309']
+                      }
+                      style={styles.honorMedalCircle}
+                    >
+                      {medal.imageUrl ? (
+                        <Image source={{ uri: medal.imageUrl }} style={{ width: 16, height: 16 }} resizeMode="contain" />
+                      ) : medal.type === 'mat' ? (
+                        <MaterialIcons name={medal.icon || 'verified'} size={15} color="#FFFFFF" />
+                      ) : (
+                        <MaterialCommunityIcons name={medal.icon || 'shield-star'} size={15} color="#FFFFFF" />
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </View>
+          )}
 
           {/* Stats Row: Followers | Followings | Visitors */}
           <View style={styles.statsRow}>
@@ -1020,7 +922,7 @@ export default function UserProfileScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Card 7: Badge (Clicking opens Medal Target modal) */}
+          {/* Card 7: Badge */}
           <View style={styles.luxuryContentCard}>
             <TouchableOpacity
               style={styles.cardHeaderRow}
@@ -1028,33 +930,43 @@ export default function UserProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.cardHeaderText}>
-                Badge ({targetUser.showcase?.badgesCount ?? targetUser.showcase?.badges?.length ?? 16})
+                Badge ({targetUser.showcase?.badges?.length || 0})
               </Text>
               <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </TouchableOpacity>
 
-            <View style={styles.badgesGridWrap}>
-              {(targetUser.showcase?.badges?.length > 0 ? targetUser.showcase.badges : BADGES_GRID).map((badge, bIdx) => (
-                <TouchableOpacity
-                  key={badge.id || badge._id || bIdx}
-                  style={styles.badgeGridItem}
-                  onPress={() => handleOpenMedalModal(bIdx % 3)}
-                  activeOpacity={0.75}
-                >
-                  <LinearGradient
-                    colors={[badge.color1 || '#F59E0B', badge.color2 || '#B45309']}
-                    style={styles.badgeCircleShape}
+            {targetUser.showcase?.badges && targetUser.showcase.badges.length > 0 ? (
+              <View style={styles.badgesGridWrap}>
+                {targetUser.showcase.badges.map((badge, bIdx) => (
+                  <TouchableOpacity
+                    key={badge.id || badge._id || bIdx}
+                    style={styles.badgeGridItem}
+                    onPress={() => handleOpenMedalModal(bIdx % 3)}
+                    activeOpacity={0.75}
                   >
-                    <MaterialCommunityIcons name={badge.icon || 'shield-star'} size={22} color="#FFFFFF" />
-                  </LinearGradient>
-                  <View style={styles.badgeLabelPill}>
-                    <Text style={styles.badgeLabelText} numberOfLines={1}>
-                      {badge.label || badge.name || 'MEDAL'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <LinearGradient
+                      colors={[badge.color1 || badge.colors?.[0] || '#F59E0B', badge.color2 || badge.colors?.[1] || '#B45309']}
+                      style={styles.badgeCircleShape}
+                    >
+                      {badge.imageUrl ? (
+                        <Image source={{ uri: badge.imageUrl }} style={{ width: 22, height: 22 }} resizeMode="contain" />
+                      ) : (
+                        <MaterialCommunityIcons name={badge.icon || 'shield-star'} size={22} color="#FFFFFF" />
+                      )}
+                    </LinearGradient>
+                    <View style={styles.badgeLabelPill}>
+                      <Text style={styles.badgeLabelText} numberOfLines={1}>
+                        {badge.label || badge.name || 'MEDAL'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyShowcaseBox}>
+                <Text style={styles.emptyShowcaseNotice}>No badges earned yet</Text>
+              </View>
+            )}
           </View>
 
           {/* Card 8: Vehicle */}
@@ -1065,31 +977,41 @@ export default function UserProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.cardHeaderText}>
-                Vehicle ({targetUser.showcase?.vehiclesCount ?? targetUser.showcase?.vehicles?.length ?? 14})
+                Vehicle ({targetUser.showcase?.vehicles?.length || 0})
               </Text>
               <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </TouchableOpacity>
 
-            <View style={styles.vehiclesGridWrap}>
-              {(targetUser.showcase?.vehicles?.length > 0 ? targetUser.showcase.vehicles : VEHICLES_GRID).map((veh, vIdx) => (
-                <TouchableOpacity
-                  key={veh.id || veh._id || vIdx}
-                  style={styles.vehicleGridItem}
-                  onPress={() => navigation.navigate('Store', { category: 'Vehicle' })}
-                  activeOpacity={0.75}
-                >
-                  <View style={[styles.vehicleThumbBox, { backgroundColor: veh.bg || '#FEF3C7' }]}>
-                    <MaterialCommunityIcons name={veh.icon || 'car-sports'} size={28} color={veh.color || '#F59E0B'} />
-                    <View style={styles.vehicleTagPill}>
-                      <Text style={styles.vehicleTagText}>{veh.tag || 'Speed'}</Text>
+            {targetUser.showcase?.vehicles && targetUser.showcase.vehicles.length > 0 ? (
+              <View style={styles.vehiclesGridWrap}>
+                {targetUser.showcase.vehicles.map((veh, vIdx) => (
+                  <TouchableOpacity
+                    key={veh.id || veh._id || vIdx}
+                    style={styles.vehicleGridItem}
+                    onPress={() => navigation.navigate('Store', { category: 'Vehicle' })}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[styles.vehicleThumbBox, { backgroundColor: veh.bg || '#FEF3C7' }]}>
+                      {veh.image ? (
+                        <Image source={{ uri: veh.image }} style={{ width: 36, height: 36 }} resizeMode="contain" />
+                      ) : (
+                        <MaterialCommunityIcons name={veh.icon || 'car-sports'} size={28} color={veh.color || '#F59E0B'} />
+                      )}
+                      <View style={styles.vehicleTagPill}>
+                        <Text style={styles.vehicleTagText}>{veh.tag || 'Owned'}</Text>
+                      </View>
                     </View>
-                  </View>
-                  <Text style={styles.vehicleTitleText} numberOfLines={1}>
-                    {veh.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <Text style={styles.vehicleTitleText} numberOfLines={1}>
+                      {veh.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyShowcaseBox}>
+                <Text style={styles.emptyShowcaseNotice}>No vehicles owned yet</Text>
+              </View>
+            )}
           </View>
 
           {/* Card 9: Frame */}
@@ -1100,33 +1022,43 @@ export default function UserProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.cardHeaderText}>
-                Frame ({targetUser.showcase?.framesCount ?? targetUser.showcase?.frames?.length ?? 12})
+                Frame ({targetUser.showcase?.frames?.length || 0})
               </Text>
               <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </TouchableOpacity>
 
-            <View style={styles.framesGridWrap}>
-              {(targetUser.showcase?.frames?.length > 0 ? targetUser.showcase.frames : FRAMES_GRID).map((fr, fIdx) => (
-                <TouchableOpacity
-                  key={fr.id || fr._id || fIdx}
-                  style={styles.frameGridItem}
-                  onPress={() => navigation.navigate('Store', { category: 'Frames' })}
-                  activeOpacity={0.75}
-                >
-                  <View style={[styles.frameCircleOuter, { borderColor: fr.border || '#F59E0B' }]}>
-                    <LinearGradient
-                      colors={[fr.color1 || '#FEF08A', fr.color2 || '#CA8A04']}
-                      style={styles.frameCircleInner}
-                    >
-                      <Text style={{ fontSize: 20 }}>{fr.jewel || '👑'}</Text>
-                    </LinearGradient>
-                  </View>
-                  <Text style={styles.frameTitleText} numberOfLines={1}>
-                    {fr.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {targetUser.showcase?.frames && targetUser.showcase.frames.length > 0 ? (
+              <View style={styles.framesGridWrap}>
+                {targetUser.showcase.frames.map((fr, fIdx) => (
+                  <TouchableOpacity
+                    key={fr.id || fr._id || fIdx}
+                    style={styles.frameGridItem}
+                    onPress={() => navigation.navigate('Store', { category: 'Frames' })}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[styles.frameCircleOuter, { borderColor: fr.border || '#F59E0B' }]}>
+                      {fr.image ? (
+                        <Image source={{ uri: fr.image }} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                      ) : (
+                        <LinearGradient
+                          colors={[fr.color1 || '#FEF08A', fr.color2 || '#CA8A04']}
+                          style={styles.frameCircleInner}
+                        >
+                          <Text style={{ fontSize: 20 }}>{fr.jewel || '👑'}</Text>
+                        </LinearGradient>
+                      )}
+                    </View>
+                    <Text style={styles.frameTitleText} numberOfLines={1}>
+                      {fr.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyShowcaseBox}>
+                <Text style={styles.emptyShowcaseNotice}>No frames owned yet</Text>
+              </View>
+            )}
           </View>
 
           {/* Card 10: Gift */}
@@ -1137,32 +1069,38 @@ export default function UserProfileScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.cardHeaderText}>
-                Gift ({targetUser.showcase?.giftsCount ?? targetUser.showcase?.gifts?.length ?? 32})
+                Gift ({targetUser.showcase?.gifts?.length || 0})
               </Text>
               <Icon name="chevron-forward" size={17} color="#94A3B8" />
             </TouchableOpacity>
 
-            <View style={styles.giftsGridWrap}>
-              {(targetUser.showcase?.gifts?.length > 0 ? targetUser.showcase.gifts : GIFTS_GRID).map((gift, gIdx) => (
-                <TouchableOpacity
-                  key={gift.id || gift._id || gIdx}
-                  style={styles.giftGridItem}
-                  onPress={() => navigation.navigate('GiftsScreen')}
-                  activeOpacity={0.75}
-                >
-                  <View style={[styles.giftThumbBox, { backgroundColor: gift.bg || '#FDF2F8' }]}>
-                    {gift.imageUrl || gift.image ? (
-                      <Image source={{ uri: gift.imageUrl || gift.image }} style={{ width: 36, height: 36 }} resizeMode="contain" />
-                    ) : (
-                      <Text style={{ fontSize: 28 }}>{gift.emoji || '🎁'}</Text>
-                    )}
-                  </View>
-                  <View style={styles.giftCountPill}>
-                    <Text style={styles.giftCountText}>{gift.count ? (typeof gift.count === 'number' ? `x${gift.count}` : gift.count) : 'x1'}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {targetUser.showcase?.gifts && targetUser.showcase.gifts.length > 0 ? (
+              <View style={styles.giftsGridWrap}>
+                {targetUser.showcase.gifts.map((gift, gIdx) => (
+                  <TouchableOpacity
+                    key={gift.id || gift._id || gIdx}
+                    style={styles.giftGridItem}
+                    onPress={() => navigation.navigate('GiftsScreen')}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[styles.giftThumbBox, { backgroundColor: gift.bg || '#FDF2F8' }]}>
+                      {gift.imageUrl || gift.image ? (
+                        <Image source={{ uri: gift.imageUrl || gift.image }} style={{ width: 36, height: 36 }} resizeMode="contain" />
+                      ) : (
+                        <Text style={{ fontSize: 28 }}>{gift.emoji || '🎁'}</Text>
+                      )}
+                    </View>
+                    <View style={styles.giftCountPill}>
+                      <Text style={styles.giftCountText}>{gift.count ? (typeof gift.count === 'number' ? `x${gift.count}` : gift.count) : 'x1'}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyShowcaseBox}>
+                <Text style={styles.emptyShowcaseNotice}>No gifts received yet</Text>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -1655,6 +1593,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 2,
+  },
+  emptyShowcaseBox: {
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyShowcaseNotice: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
   cardHeaderRow: {
     flexDirection: 'row',

@@ -234,39 +234,25 @@ export default function ProfileScreen() {
 
             {/* Tag Badges */}
             <View style={styles.tagsRow}>
-              <View style={styles.genderTag}>
-                <Text style={styles.genderTagText}>
-                  {user?.gender ? (user.gender === 'female' ? '♀' : '♂') : ''} {user?.age ?? ''}
-                </Text>
-              </View>
+              {Boolean(user?.gender || user?.age != null) && (
+                <View style={styles.genderTag}>
+                  <Text style={styles.genderTagText}>
+                    {user?.gender ? (user.gender === 'female' ? '♀' : '♂') : ''}{user?.age != null ? ` ${user.age}` : ''}
+                  </Text>
+                </View>
+              )}
 
-              <View style={styles.countryTag}>
-                <Text style={styles.countryTagText}>
-                  🌍 {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() : (user?.country || '')}
-                </Text>
-              </View>
-
-              {/* Wealth Level */}
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Level', { initialTab: 'wealth' })}
-                style={[styles.svipTag, { backgroundColor: '#0284C7' }]}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.svipTagText}>Lv.{user?.wealthLevel ?? user?.level ?? 1}</Text>
-              </TouchableOpacity>
-
-              {/* Charm Level */}
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Level', { initialTab: 'charm' })}
-                style={[styles.svipTag, { backgroundColor: '#7C3AED' }]}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.svipTagText}>🌸 Lv.{user?.charmLevel ?? 1}</Text>
-              </TouchableOpacity>
+              {Boolean(user?.country) && (
+                <View style={styles.countryTag}>
+                  <Text style={styles.countryTagText}>
+                    🌍 {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() : (user?.country || '')}
+                  </Text>
+                </View>
+              )}
 
               {(user?.isSvip || Number(user?.svipLevel) > 0) && (
                 <View style={styles.svipTag}>
-                  <Text style={styles.svipTagText}>👑 VIP{user?.svipLevel || ''}</Text>
+                  <Text style={styles.svipTagText}>👑 SVIP{user?.svipLevel ? ` ${user.svipLevel}` : ''}</Text>
                 </View>
               )}
 
@@ -604,7 +590,7 @@ export default function ProfileScreen() {
                       <Text style={styles.equippedBadgeText}>EQUIPPED</Text>
                     </View>
                     <View style={styles.decorFramePreviewWrapper}>
-                      <Text style={{ fontSize: 32 }}>🌸</Text>
+                      <MaterialCommunityIcons name="image-frame" size={32} color="#F59E0B" />
                     </View>
                     <Text style={styles.decorCardName} numberOfLines={1}>{equippedFrameName}</Text>
                   </TouchableOpacity>

@@ -49,7 +49,7 @@ const ExchangeCoins = () => {
   const [calcBeans, setCalcBeans] = useState('20000');
 
   const handleExchange = async (pack) => {
-    if ((user?.coins || 0) < pack.coins) {
+    if ((user?.beans || 0) < pack.coins) {
       AlertService.show('Insufficient Beans', 'You do not have enough Beans to exchange for this package.', 'error');
       return;
     }
@@ -107,9 +107,9 @@ const ExchangeCoins = () => {
             <View style={styles.balanceHeaderRow}>
               <View style={styles.balanceLabelCol}>
                 <Text style={styles.balanceLabel}>My Beans</Text>
-                <Text style={styles.balanceCount}>{formatCompactBalance(user?.coins || 0)}</Text>
+                <Text style={styles.balanceCount}>{formatCompactBalance(user?.beans || 0)}</Text>
                 <Text style={{ color: '#FEF08A', fontSize: 13, fontWeight: '700', marginTop: 2 }}>
-                  ≈ ₹{formatCompactBalance((user?.coins || 0) / 200)}
+                  ≈ ₹{formatCompactBalance((user?.beans || 0) / 200)}
                 </Text>
               </View>
               <View style={styles.logoWrapper}>
@@ -208,7 +208,7 @@ const ExchangeCoins = () => {
               <View style={styles.calcResultBox}>
                 <Text style={styles.calcResultLabel}>Coins Receive</Text>
                 <View style={styles.calcResultRow}>
-                  <Icon name="diamond" size={16} color="#38BDF8" style={{ marginRight: 4 }} />
+                  <Image source={require('../../assets/icons/coin.png')} style={{ width: 16, height: 16, marginRight: 4 }} resizeMode="contain" />
                   <Text style={styles.calcResultCoinsText}>
                     {Math.floor((Number(calcBeans) || 0) / 2).toLocaleString()}
                   </Text>
@@ -235,7 +235,7 @@ const ExchangeCoins = () => {
         {/* Packages Grid */}
         <View style={styles.packsGrid}>
           {ExchangePackages.map((pack) => {
-            const hasEnough = (user?.coins || 0) >= pack.coins;
+            const hasEnough = (user?.beans || 0) >= pack.coins;
             const isBestValue = pack.badge === 'BEST VALUE';
             const isPopular = pack.badge === 'POPULAR';
 
@@ -264,9 +264,9 @@ const ExchangeCoins = () => {
                 {/* Down Arrow */}
                 <Icon name="arrow-downward" size={14} color="rgba(255,255,255,0.4)" style={styles.arrowIcon} />
 
-                {/* Diamond item count */}
+                {/* Coin item count */}
                 <View style={styles.valueRow}>
-                  <Icon name="diamond" size={12} color="#03dcfe" style={styles.itemIcon} />
+                  <Image source={require('../../assets/icons/coin.png')} style={{ width: 13, height: 13, marginRight: 3 }} resizeMode="contain" />
                   <Text style={styles.valueTextCyan} numberOfLines={1}>
                     {formatCompactBalance(pack.diamonds)}
                   </Text>

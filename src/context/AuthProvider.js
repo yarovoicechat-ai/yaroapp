@@ -283,6 +283,7 @@ export const AuthProvider = ({ children }) => {
         fetchUserProfile,
         updateCoins: (coins) => updateUserLocally({ coins }),
         updateDiamonds: (diamonds) => updateUserLocally({ diamonds }),
+        updateBeans: (beans) => updateUserLocally({ beans }),
         equipCosmetic,
         equippedFrame,
         setEquippedFrame,

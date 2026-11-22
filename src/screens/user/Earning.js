@@ -70,8 +70,8 @@ const Earning = () => {
   };
 
   const getEstimatedINR = () => {
-    const coins = user?.coins || 0;
-    return (coins / COIN_TO_INR_RATIO).toFixed(2);
+    const beans = user?.beans || 0;
+    return (beans / COIN_TO_INR_RATIO).toFixed(2);
   };
 
   const renderEarningItem = ({ item }) => {
@@ -177,11 +177,11 @@ const Earning = () => {
                   style={styles.largeCoinIcon}
                   resizeMode="contain"
                 />
-                <Text style={styles.coinBalance}>{formatCompactBalance(user?.coins || 0)}</Text>
+                <Text style={styles.coinBalance}>{formatCompactBalance(user?.beans || 0)}</Text>
               </View>
               <View style={styles.conversionRow}>
                 <Text style={styles.conversionLabel}>Estimated Value:</Text>
-                <Text style={styles.conversionValue}>₹ {formatCompactBalance((user?.coins || 0) / COIN_TO_INR_RATIO)}</Text>
+                <Text style={styles.conversionValue}>₹ {formatCompactBalance((user?.beans || 0) / COIN_TO_INR_RATIO)}</Text>
               </View>
             </View>
           </LinearGradient>

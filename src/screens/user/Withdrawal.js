@@ -56,7 +56,7 @@ const Withdrawal = () => {
   const topSafeInset = getAppTopSafeInset(insets.top);
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 42);
   const { user, fetchUserProfile } = useContext(AuthContext);
-  const payoutBalance = economyBucket ? economyBucket.earnedBeans : (user?.coins || 0);
+  const payoutBalance = economyBucket ? economyBucket.earnedBeans : (user?.beans || 0);
   const [loading, setLoading] = useState(false);
   const [platformFeePercent, setPlatformFeePercent] = useState(economyBucket ? economyBucket.feeBps / 100 : DEFAULT_PLATFORM_FEE_PERCENT);
   const { t } = useTranslation();

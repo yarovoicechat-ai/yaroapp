@@ -142,8 +142,8 @@ export const GameContainer: React.FC<GameContainerProps> = ({
         />
       </View>
 
-      {/* 3. Bottom Sync / Action Controls (Only rendered in fullscreen mode to maximize half-screen viewport) */}
-      {isFullscreen && (
+      {/* 3. Bottom Sync / Action Controls (Never rendered for Greedy King; Cocos renders complete game UI) */}
+      {!isGreedyKing && isFullscreen && (
         <GameControls
           onClearBets={handleClearBets}
           onRefreshBalance={onRefreshBalance}
@@ -210,5 +210,6 @@ const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
     backgroundColor: '#0C0A14',
+    paddingBottom: 8,
   },
 });

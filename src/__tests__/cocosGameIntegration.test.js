@@ -9,10 +9,9 @@ describe('Cocos Creator 3.8.x Game Integration & Strict Economy Tests', () => {
   });
 
   describe('1. Game Catalog & Configuration', () => {
-    it('contains all required Cocos games including food-game', () => {
+    it('contains all required Cocos games including greedy-king', () => {
       const ids = LIVE_GAMES_LIST.map(g => g.id);
-      expect(ids).toContain('food-game');
-      expect(ids).toContain('greedy-baby');
+      expect(ids).toContain('greedy-king');
       expect(ids).toContain('lucky-wheel');
       expect(ids).toContain('teen-patti');
       expect(ids).toContain('lucky-7');

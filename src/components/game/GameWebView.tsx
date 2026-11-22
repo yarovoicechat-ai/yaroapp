@@ -42,22 +42,17 @@ const INJECTED_INIT_SCRIPT = `
     if (canvas) {
       canvas.style.width = '100%';
       canvas.style.height = '100%';
-      canvas.style.objectFit = 'contain';
     }
     var container = document.getElementById('Cocos3dGameContainer') || document.getElementById('GameDiv');
     if (container) {
       container.style.width = '100%';
       container.style.height = '100%';
-      container.style.display = 'flex';
-      container.style.justifyContent = 'center';
-      container.style.alignItems = 'center';
       container.style.overflow = 'hidden';
     }
     if (window.cc && window.cc.view) {
       try {
-        // Policy: 3 is SHOW_ALL (ensures full 720x1280 scene and bottom chips fit in viewport)
-        // 4 is FIXED_WIDTH (used in full-screen)
-        window.cc.view.setDesignResolutionSize(720, 1280, isHalf ? 3 : 4);
+        // Policy: 1 is FIXED_WIDTH (full width edge-to-edge, zero black bars, accurate 1:1 touch coordinate mapping)
+        window.cc.view.setDesignResolutionSize(720, 1280, 1);
       } catch (e) {}
     }
     window.dispatchEvent(new Event('resize'));
@@ -67,7 +62,7 @@ const INJECTED_INIT_SCRIPT = `
   var ccPollTimer = setInterval(function() {
     if (window.cc && window.cc.view) {
       try {
-        window.cc.view.setDesignResolutionSize(720, 1280, 3);
+        window.cc.view.setDesignResolutionSize(720, 1280, 1);
         clearInterval(ccPollTimer);
       } catch (e) {}
     }
@@ -79,7 +74,7 @@ const INJECTED_INIT_SCRIPT = `
     audios.forEach(function(a) { a.muted = muted; });
   };
 
-  // 4. Spot Click Debouncing (Fixes Chip Amount x2 Bug)
+  // 4. Spot Click Debouncing (Smoothed to 150ms for natural rapid betting)
   var lastSpotClickTimes = {};
   var mgrPollTimer = setInterval(function() {
     if (window.gameManager && typeof window.gameManager._onSpotClicked === 'function') {
@@ -87,8 +82,7 @@ const INJECTED_INIT_SCRIPT = `
       window.gameManager._onSpotClicked = function(spot) {
         var now = Date.now();
         var key = spot && spot.spotId ? spot.spotId : 'general';
-        if (lastSpotClickTimes[key] && (now - lastSpotClickTimes[key] < 450)) {
-          console.warn('[YARO] Dropped duplicate spot click:', key);
+        if (lastSpotClickTimes[key] && (now - lastSpotClickTimes[key] < 150)) {
           return;
         }
         lastSpotClickTimes[key] = now;
@@ -274,6 +268,7 @@ export const GameWebView: React.FC<GameWebViewProps> = ({
         }}
         javaScriptEnabled={true}
         domStorageEnabled={true}
+        webviewDebuggingEnabled={true}
         allowsInlineMediaPlayback={true}
         mediaPlaybackRequiresUserAction={false}
         mixedContentMode="compatibility"

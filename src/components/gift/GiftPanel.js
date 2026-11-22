@@ -194,6 +194,19 @@ export default function GiftPanel({
   );
 
   const sendBtnScale = useRef(new Animated.Value(1)).current;
+  const lastSendTimeRef = useRef(0);
+
+  const handleSelectGift = useCallback((gift) => {
+    if (!gift) return;
+    const tappedKey = gift?._id ? String(gift._id) : (gift?.id ? String(gift.id) : null);
+    setSelectedGift?.((current) => {
+      const currentKey = current?._id ? String(current._id) : (current?.id ? String(current.id) : null);
+      if (currentKey && tappedKey && currentKey === tappedKey) {
+        return null;
+      }
+      return gift;
+    });
+  }, [setSelectedGift]);
 
   const handlePressSend = () => {
     if (!selectedGift) {
@@ -209,6 +222,12 @@ export default function GiftPanel({
       return;
     }
 
+    const now = Date.now();
+    if (now - lastSendTimeRef.current < 90) {
+      return; // Fast debounce against accidental micro-jitters
+    }
+    lastSendTimeRef.current = now;
+
     // Instant tactile bounce on every tap
     sendBtnScale.setValue(0.88);
     Animated.spring(sendBtnScale, {
@@ -218,7 +237,7 @@ export default function GiftPanel({
       useNativeDriver: true,
     }).start();
 
-    // Panel remains open when sending! Continuous tap sends consecutively
+    // Continuous tap sends consecutively without UI freezing
     handleInitiateSend();
   };
 
@@ -332,15 +351,7 @@ export default function GiftPanel({
                       key={itemKey || item?.name || Math.random().toString()}
                       gift={item}
                       isSelected={isItemSelected}
-                      onSelect={(gift) => {
-                        if (!gift) return;
-                        const tappedKey = gift?._id ? String(gift._id) : (gift?.id ? String(gift.id) : null);
-                        if (selectedKey && tappedKey && selectedKey === tappedKey) {
-                          setSelectedGift?.(null);
-                        } else {
-                          setSelectedGift?.(gift);
-                        }
-                      }}
+                      onSelect={handleSelectGift}
                     />
                   );
                 })}
@@ -377,7 +388,7 @@ export default function GiftPanel({
 
           {/* 7. Bottom Action Bar (💎 Balance | [- 1 +] Quantity Selector | SEND Button) */}
           <View style={styles.bottomBar}>
-            {/* LEFT: Current Diamond Balance */}
+            {/* LEFT: Current Coin Balance */}
             <TouchableOpacity
               style={styles.balancePill}
               onPress={() => {
@@ -386,7 +397,7 @@ export default function GiftPanel({
               }}
               activeOpacity={0.8}
             >
-              <Image source={require('../../assets/icons/diamond.png')} style={{ width: 16, height: 16, marginRight: 5 }} resizeMode="contain" />
+              <Image source={require('../../assets/icons/coin.png')} style={{ width: 16, height: 16, marginRight: 5 }} resizeMode="contain" />
               <Text style={styles.balanceNum}>
                 {formatCompactBalance(activeBalance)}
               </Text>
@@ -433,7 +444,7 @@ export default function GiftPanel({
                   !isAffordable && styles.sendButtonDisabled,
                 ]}
                 onPress={handlePressSend}
-                disabled={!selectedGift || sending}
+                disabled={!selectedGift || !isAffordable}
                 activeOpacity={0.85}
               >
                 <LinearGradient
@@ -462,11 +473,13 @@ export default function GiftPanel({
         </Animated.View>
 
 
-        {/* Insufficient Diamonds Modal */}
+        {/* Insufficient Coins Modal */}
         <InsufficientBalanceModal
           visible={insufficientModalVisible}
           requiredDiamonds={currentCost}
           availableDiamonds={activeBalance}
+          requiredCoins={currentCost}
+          availableCoins={activeBalance}
           onTopUp={() => {
             setInsufficientModalVisible(false);
             onClose();

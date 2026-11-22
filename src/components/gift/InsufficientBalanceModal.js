@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { formatCompactBalance } from '../../utils/numberUtil';
@@ -13,13 +14,15 @@ export default function InsufficientBalanceModal({
   visible,
   requiredDiamonds = 0,
   availableDiamonds = 0,
+  requiredCoins = 0,
+  availableCoins = 0,
   onTopUp,
   onCancel,
 }) {
   if (!visible) return null;
 
-  const req = Number(requiredDiamonds || 0);
-  const avail = Number(availableDiamonds || 0);
+  const req = Number(requiredCoins || requiredDiamonds || 0);
+  const avail = Number(availableCoins || availableDiamonds || 0);
   const shortage = Math.max(0, req - avail);
 
   return (
@@ -37,12 +40,12 @@ export default function InsufficientBalanceModal({
             style={styles.cardGradient}
           >
             <View style={styles.iconCircle}>
-              <Text style={{ fontSize: 32 }}>🪙</Text>
+              <Image source={require('../../assets/icons/coin.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
             </View>
 
-            <Text style={styles.title}>Not Enough Diamonds</Text>
+            <Text style={styles.title}>Not Enough Coins</Text>
             <Text style={styles.subtitle}>
-              You need {formatCompactBalance(shortage)} more Diamonds to send this gift.
+              You need {formatCompactBalance(shortage)} more Coins to send this gift.
             </Text>
 
             <View style={styles.statsCard}>

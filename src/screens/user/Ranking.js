@@ -34,22 +34,22 @@ const THEMES = {
     gradient: ['#047857', '#059669', '#10B981'],
     accent: '#34D399',
     unitIcon: '🪙',
-    unitName: 'Beans',
+    unitName: 'Coins',
     desc: 'Top Gifters & Wealth Nobles Leaderboard',
   },
   Charm: {
     name: 'Charm',
     gradient: ['#4C1D95', '#6D28D9', '#8B5CF6'],
     accent: '#C084FC',
-    unitIcon: '🪙',
-    unitName: 'Charm',
+    unitIcon: '🫘',
+    unitName: 'Beans',
     desc: 'Celebrity Hosts & Most Popular Voices',
   },
   Room: {
     name: 'Room',
     gradient: ['#92400E', '#B45309', '#F59E0B'],
     accent: '#FDE047',
-    unitIcon: '🪙',
+    unitIcon: '🔥',
     unitName: 'Room Heat',
     desc: 'Top Party Lounges & Active Voice Clubs',
   },
@@ -129,17 +129,19 @@ const PurpleCrystalSvg = () => (
 );
 
 // Level Badge Component (Matches hexagon badge from screenshot e.g. Lv.5 gold, Lv.14 green, Lv.27 cyan)
-const LevelBadge = ({ level = '—', type = 'wealth' }) => {
+const LevelBadge = ({ level = 1, type = 'wealth' }) => {
   const isCharm = type === 'charm';
+  const numericLevel = Number(level);
+  const displayLevel = isNaN(numericLevel) || numericLevel <= 0 ? (level === '—' ? 1 : (level || 1)) : numericLevel;
   const colors = isCharm
-    ? level >= 20
+    ? displayLevel >= 20
       ? ['#701A75', '#A21CAF', '#E879F9']
-      : level >= 10
+      : displayLevel >= 10
         ? ['#831843', '#BE185D', '#F472B6']
         : ['#9D174D', '#DB2777', '#FBCFE8']
-    : level >= 50
+    : displayLevel >= 50
       ? ['#7C2D12', '#D97706', '#FDE047']
-      : level >= 20
+      : displayLevel >= 20
         ? ['#1E3A8A', '#2563EB', '#60A5FA']
         : ['#78350F', '#B45309', '#F59E0B'];
 
@@ -151,8 +153,66 @@ const LevelBadge = ({ level = '—', type = 'wealth' }) => {
         color="#FFF"
         style={{ marginRight: 2 }}
       />
-      <Text style={styles.levelBadgeText}>Lv.{level}</Text>
+      <Text style={styles.levelBadgeText}>Lv.{displayLevel}</Text>
     </LinearGradient>
+  );
+};
+
+// Reusable Post / Designation Tag Component
+const renderUserPostTag = (userItem) => {
+  if (!userItem) return null;
+  const tagAsset = userItem.equippedTagAsset;
+  const tagMedia = tagAsset?.imageUrl || tagAsset?.animationUrl || tagAsset?.icon || null;
+  const tagName = tagAsset?.metadata?.tagText || tagAsset?.name || userItem.equippedTag || null;
+  const role = String(userItem.role || '').toLowerCase();
+
+  const roleTagText =
+    role === 'owner' ? '👑 Owner' :
+    role === 'operator' ? '⚙️ Operator' :
+    (role === 'countrymanager' || role === 'country-manager') ? '🌐 Country Mgr' :
+    (role === 'statemanager' || role === 'state-manager') ? '🏛️ State Mgr' :
+    role === 'superadmin' ? '👑 Super Admin' :
+    role === 'admin' ? '🛡️ Admin' :
+    role === 'official' ? '⚡ Official' :
+    role === 'agency' ? '🏢 Agency' : null;
+
+  if (tagMedia) {
+    return (
+      <Image
+        source={{ uri: tagMedia }}
+        style={{ width: 56, height: 16, marginLeft: 3 }}
+        resizeMode="contain"
+      />
+    );
+  }
+
+  const displayText = tagName || roleTagText;
+  if (!displayText) return null;
+
+  const isHighPost = role === 'owner' || role === 'countrymanager' || role === 'country-manager' || role === 'statemanager' || role === 'state-manager' || role === 'operator';
+  return (
+    <LinearGradient
+      colors={isHighPost ? ['#F59E0B', '#D97706'] : ['#8B5CF6', '#6D28D9']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={styles.postTagPill}
+    >
+      <Text style={styles.postTagText} numberOfLines={1}>{displayText}</Text>
+    </LinearGradient>
+  );
+};
+
+// Reusable SVIP Badge Component
+const renderSvipBadge = (userItem) => {
+  if (!userItem) return null;
+  const svipLevel = Number(userItem.svipLevel || userItem.svip || (userItem.isSvip ? 1 : 0));
+  if (svipLevel <= 0 && !userItem.isSvip) return null;
+
+  return (
+    <View style={styles.svipMiniPill}>
+      <MaterialCommunityIcons name="crown" size={10} color="#FDE047" style={{ marginRight: 2 }} />
+      <Text style={styles.svipMiniText}>SVIP{svipLevel > 0 ? ` ${svipLevel}` : ''}</Text>
+    </View>
   );
 };
 
@@ -180,15 +240,30 @@ export default function Ranking() {
       const res = await apiUtil.get('/live/ranking', { params: { type: metric, range } });
 
       if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
-        const mapped = res.data.data.map((item, index) => ({
-          id: String(item.id || item._id || index + 1),
-          rank: index + 1,
-          name: item.name || 'Yaro User',
-          level: activeCategory === 'Charm' ? (item.charmLevel ?? item.level ?? null) : (item.wealthLevel ?? item.level ?? null),
-          score: item[metric] || item.coins || item.diamonds || 0,
-          scoreText: formatScore(item[metric] || item.coins || item.diamonds || 0),
-          avatar: item.image || item.avatar || null,
-        }));
+        const mapped = res.data.data.map((item, index) => {
+          const wLvl = Number(item.wealthLevel ?? item.level ?? 1);
+          const cLvl = Number(item.charmLevel ?? item.level ?? 1);
+          const userLevel = activeCategory === 'Charm' ? cLvl : wLvl;
+          const svipNum = Number(item.svipLevel || item.svip || (item.isSvip ? 1 : 0));
+          const hasSvip = Boolean(item.isSvip || svipNum > 0);
+
+          return {
+            id: String(item.id || item._id || index + 1),
+            rank: index + 1,
+            name: item.name || 'Yaro User',
+            level: userLevel,
+            wealthLevel: wLvl,
+            charmLevel: cLvl,
+            isSvip: hasSvip,
+            svipLevel: svipNum,
+            equippedTag: item.equippedTag || null,
+            equippedTagAsset: item.equippedTagAsset || null,
+            role: item.role || 'user',
+            score: item[metric] || item.coins || item.diamonds || 0,
+            scoreText: formatScore(item[metric] || item.coins || item.diamonds || 0),
+            avatar: item.image || item.avatar || null,
+          };
+        });
         setRankingData(mapped);
       } else {
         setRankingData([]);
@@ -348,7 +423,11 @@ export default function Ranking() {
                 />
               </View>
               <Text style={styles.podiumUserName} numberOfLines={1}>{rank2.name}</Text>
-              <LevelBadge level={rank2.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+              <View style={styles.podiumBadgesRow}>
+                <LevelBadge level={rank2.level ?? 1} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+                {renderSvipBadge(rank2)}
+                {renderUserPostTag(rank2)}
+              </View>
               <View style={styles.podiumScorePill}>
                 <Text style={styles.coinIcon}>{currentTheme.unitIcon}</Text>
                 <Text style={styles.podiumScoreText}>{rank2.scoreText}</Text>
@@ -368,7 +447,11 @@ export default function Ranking() {
                 />
               </View>
               <Text style={styles.podiumUserNameCenter} numberOfLines={1}>{rank1.name}</Text>
-              <LevelBadge level={rank1.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+              <View style={styles.podiumBadgesRow}>
+                <LevelBadge level={rank1.level ?? 1} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+                {renderSvipBadge(rank1)}
+                {renderUserPostTag(rank1)}
+              </View>
               <View style={styles.podiumScorePillCenter}>
                 <Text style={styles.coinIcon}>{currentTheme.unitIcon}</Text>
                 <Text style={styles.podiumScoreTextCenter}>{rank1.scoreText}</Text>
@@ -388,7 +471,11 @@ export default function Ranking() {
                 />
               </View>
               <Text style={styles.podiumUserName} numberOfLines={1}>{rank3.name}</Text>
-              <LevelBadge level={rank3.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+              <View style={styles.podiumBadgesRow}>
+                <LevelBadge level={rank3.level ?? 1} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+                {renderSvipBadge(rank3)}
+                {renderUserPostTag(rank3)}
+              </View>
               <View style={styles.podiumScorePill}>
                 <Text style={styles.coinIcon}>{currentTheme.unitIcon}</Text>
                 <Text style={styles.podiumScoreText}>{rank3.scoreText}</Text>
@@ -470,20 +557,17 @@ export default function Ranking() {
                     <Image source={getUserAvatar(item)} style={styles.rowAvatarImg} />
                   )}
 
-                  {/* Details (Name + Level Badge) */}
-                  <View style={styles.rowDetailsCol}>
-                    <Text style={styles.rowUserName} numberOfLines={1}>
-                      {item.name || 'Yaro User'}
-                    </Text>
-                    <View style={styles.rowBadgeRow}>
-                      <LevelBadge level={item.level ?? '—'} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
-                      {(item.isSvip || item.svipLevel || item.svip) && (
-                        <View style={styles.svipMiniPill}>
-                          <Text style={styles.svipMiniText}>SVIP{item.svipLevel || item.svip ? ` ${item.svipLevel || item.svip}` : ''}</Text>
-                        </View>
-                      )}
+                    {/* Details (Name + Level Badge + SVIP + Post Tag) */}
+                    <View style={styles.rowDetailsCol}>
+                      <Text style={styles.rowUserName} numberOfLines={1}>
+                        {item.name || 'Yaro User'}
+                      </Text>
+                      <View style={styles.rowBadgeRow}>
+                        <LevelBadge level={item.level ?? 1} type={activeCategory === 'Charm' ? 'charm' : 'wealth'} />
+                        {renderSvipBadge(item)}
+                        {renderUserPostTag(item)}
+                      </View>
                     </View>
-                  </View>
 
                   {/* Score Pill */}
                   <View style={styles.rowScoreWrap}>
@@ -539,10 +623,12 @@ export default function Ranking() {
               <View style={styles.selfMeTag}>
                 <Text style={styles.selfMeTagText}>ME</Text>
               </View>
+              {renderSvipBadge(selfUserRank || user)}
+              {renderUserPostTag(selfUserRank || user)}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <LevelBadge
-                level={activeCategory === 'Charm' ? (user?.charmLevel ?? '—') : (user?.wealthLevel ?? user?.level ?? '—')}
+                level={selfUserRank?.level ?? (activeCategory === 'Charm' ? (user?.charmLevel ?? 1) : (user?.wealthLevel ?? user?.level ?? 1))}
                 type={activeCategory === 'Charm' ? 'charm' : 'wealth'}
               />
               <Text style={styles.selfDistanceHint}>
@@ -980,16 +1066,38 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '800',
   },
+  podiumBadgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 4,
+  },
+  postTagPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  postTagText: {
+    color: '#FFF',
+    fontSize: 8.5,
+    fontWeight: '800',
+  },
   svipMiniPill: {
-    backgroundColor: '#064E3B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
     paddingHorizontal: 6,
     paddingVertical: 1.5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#10B981',
+    borderColor: '#F59E0B',
   },
   svipMiniText: {
-    color: '#34D399',
+    color: '#FDE047',
     fontSize: 9,
     fontWeight: '900',
   },

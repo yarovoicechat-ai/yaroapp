@@ -252,9 +252,28 @@ function AvatarWithFrame({
     : 1.75;
   const frameSize = Math.max(1, Math.round(size * frameScale));
 
+  const defaultAvatar = getUserAvatar(null, user?.gender);
+
+  const staticFallbackFrame = useMemo(() => {
+    if (typeof frameOverlaySource === 'string' && !/\.svga(?:[?#]|$)/i.test(frameOverlaySource)) {
+      return frameOverlaySource;
+    }
+    if (uploadedFrame?.imageUrl && typeof uploadedFrame.imageUrl === 'string' && !/\.svga(?:[?#]|$)/i.test(uploadedFrame.imageUrl)) {
+      return uploadedFrame.imageUrl;
+    }
+    if (uploadedFrame?.frameImageUrl && typeof uploadedFrame.frameImageUrl === 'string' && !/\.svga(?:[?#]|$)/i.test(uploadedFrame.frameImageUrl)) {
+      return uploadedFrame.frameImageUrl;
+    }
+    const animUrl = uploadedFrame?.animationUrl || (typeof frameOverlaySource === 'string' ? frameOverlaySource : '');
+    if (typeof animUrl === 'string' && /\.svga(?:[?#]|$)/i.test(animUrl)) {
+      return animUrl.replace(/\.svga([?#]|$)/i, '.png$1');
+    }
+    return undefined;
+  }, [uploadedFrame, frameOverlaySource]);
+
   return (
     <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }, style]}>
-      {/* Inner Avatar Image - Pure Borderless Circle */}
+      {/* Inner Avatar Image - Pure Borderless Circle with Solid Underlay */}
       <View
         style={[
           styles.avatarCircleMask,
@@ -265,12 +284,27 @@ function AvatarWithFrame({
           },
         ]}
       >
+        <Image
+          source={defaultAvatar}
+          style={[
+            styles.avatarImage,
+            StyleSheet.absoluteFillObject,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+            },
+          ]}
+          resizeMode="cover"
+        />
         <AssetImage
           source={avatar}
+          fallbackSource={defaultAvatar}
           resizeMethod="resize"
           fadeDuration={0}
           style={[
             styles.avatarImage,
+            StyleSheet.absoluteFillObject,
             {
               width: size,
               height: size,
@@ -319,7 +353,7 @@ function AvatarWithFrame({
         >
           <SvgaView
             source={uploadedFrame?.animationUrl || frameOverlaySource}
-            fallbackImage={typeof frameOverlaySource === 'string' && !/\.svga(?:[?#]|$)/i.test(frameOverlaySource) ? frameOverlaySource : undefined}
+            fallbackImage={staticFallbackFrame}
             style={StyleSheet.absoluteFillObject}
             loops={0}
             resizeMode="contain"

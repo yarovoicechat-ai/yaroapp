@@ -7,6 +7,7 @@ export function useGiftSocket({
   roomId,
   callId,
   currentUserId,
+  currentUser,
   onGiftReceived,
   onGiftAnimation,
   onGiftSent,
@@ -66,12 +67,22 @@ export function useGiftSocket({
       }
 
     const isSelfUser = (sender) => {
-      if (!currentUserId || !sender) return false;
-      const myId = String(currentUserId).trim();
-      const sUserId = sender.userId ? String(sender.userId).trim() : '';
-      const sId = sender.id ? String(sender.id).trim() : '';
-      const s_id = sender._id ? String(sender._id).trim() : '';
-      return (sUserId && sUserId === myId) || (sId && sId === myId) || (s_id && s_id === myId);
+      if (!sender) return false;
+      const candidates = [
+        currentUserId,
+        typeof currentUser === 'object' ? currentUser?._id : null,
+        typeof currentUser === 'object' ? currentUser?.userId : null,
+        typeof currentUser === 'object' ? currentUser?.id : null,
+      ].filter(Boolean).map(String);
+
+      const senderCandidates = [
+        sender._id,
+        sender.userId,
+        sender.id,
+        sender.user_id,
+      ].filter(Boolean).map(String);
+
+      return candidates.some((c) => senderCandidates.includes(c));
     };
 
     const handleGiftAnimation = (payload) => {

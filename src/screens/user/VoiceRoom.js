@@ -1014,6 +1014,7 @@ export default function VoiceRoomScreen() {
   useGiftSocket({
     roomId: currentRoomId,
     currentUserId: user?.userId || user?._id || user?.id,
+    currentUser: user,
     onGiftReceived: (payload) => {
       if (payload.sender && payload.gift) {
         const myId = user?.userId || user?._id || user?.id;
@@ -2283,27 +2284,6 @@ export default function VoiceRoomScreen() {
           ]}
           pointerEvents="box-none"
         >
-          {/* Dual Carousel Banner: Event + Direct Game (User Video Specification) */}
-          <FloatingGameBannerWidget
-            onSelectGame={handleSelectGame}
-            style={{ marginBottom: 6 }}
-          />
-
-          {/* Greedy King Live Game Launcher */}
-          <TouchableOpacity
-            style={[styles.treasureChestWidget, { backgroundColor: 'rgba(245, 158, 11, 0.25)', borderColor: '#F59E0B' }]}
-            onPress={() => handleSelectGame({
-              id: 'greedy-king',
-              gameId: 'greedy-king',
-              title: 'Greedy King',
-              gameUrl: 'https://games.yaroapp.in/greedy-king/',
-            })}
-            activeOpacity={0.85}
-            accessibilityLabel="Greedy King Game"
-          >
-            <Text style={{ fontSize: 24 }}>👑</Text>
-          </TouchableOpacity>
-
           {/* Rewards Bag Widget */}
           <TouchableOpacity
             style={styles.treasureChestWidget}
@@ -2373,27 +2353,12 @@ export default function VoiceRoomScreen() {
               badgeText={giftHook.comboCount > 1 ? `x${giftHook.comboCount}` : null}
             />
 
-            {/* Menu Column with Game Trigger Above */}
+            {/* Menu Column */}
             <View style={styles.voiceMenuColumn}>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => setGamesModalVisible(true)}
-                style={styles.voiceGameIconAboveMenu}
-                accessibilityLabel="Games"
-              >
-                <LinearGradient
-                  colors={['#FF6B00', '#FF1493', '#7928CA']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.voiceGameGradientBadge}
-                >
-                  <MaterialCommunityIcons name="gamepad-variant" size={18} color="#FFF" />
-                </LinearGradient>
-                <View style={styles.voiceGamePillTag}>
-                  <Text style={styles.voiceGamePillText}>GAME</Text>
-                </View>
-              </TouchableOpacity>
-
+              <FloatingGameBannerWidget
+                onSelectGame={handleSelectGame}
+                style={{ marginBottom: 4 }}
+              />
               <TouchableOpacity
                 style={styles.controlCircleBtn}
                 onPress={() => setRoomMenuModalVisible(true)}
@@ -2461,27 +2426,12 @@ export default function VoiceRoomScreen() {
               badgeText={giftHook.comboCount > 1 ? `x${giftHook.comboCount}` : null}
             />
 
-            {/* Menu Column with Game Trigger Above */}
+            {/* Menu Column */}
             <View style={styles.voiceMenuColumn}>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => setGamesModalVisible(true)}
-                style={styles.voiceGameIconAboveMenu}
-                accessibilityLabel="Games"
-              >
-                <LinearGradient
-                  colors={['#FF6B00', '#FF1493', '#7928CA']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.voiceGameGradientBadge}
-                >
-                  <MaterialCommunityIcons name="gamepad-variant" size={18} color="#FFF" />
-                </LinearGradient>
-                <View style={styles.voiceGamePillTag}>
-                  <Text style={styles.voiceGamePillText}>GAME</Text>
-                </View>
-              </TouchableOpacity>
-
+              <FloatingGameBannerWidget
+                onSelectGame={handleSelectGame}
+                style={{ marginBottom: 4 }}
+              />
               <TouchableOpacity
                 style={styles.controlCircleBtn}
                 onPress={() => setRoomMenuModalVisible(true)}
@@ -2496,9 +2446,9 @@ export default function VoiceRoomScreen() {
       </View>
       </View>
 
-      {/* Cocos Creator 3.8.x Game View (Overlay occupying lower 55% when game active) */}
+      {/* Cocos Creator 3.8.x Game View (Full Portrait Game Viewport matching reference video) */}
       {Boolean(activeGame && !isGameMinimized) && (
-        <View style={[styles.voiceGameAreaContainer, { height: '76%' }]}>
+        <View style={styles.voiceGameAreaContainer}>
           <GameContainer
             game={activeGame}
             sessionUrl={activeGameSessionUrl}
@@ -2506,7 +2456,7 @@ export default function VoiceRoomScreen() {
             ticket={activeGameTicket}
             coinsBalance={Number(user?.diamonds || user?.balance || 0)}
             onClose={handleCloseGame}
-            onMinimize={() => setIsGameMinimized(true)}
+            onMinimize={handleCloseGame}
             onRecharge={() => navigation.navigate('Recharge')}
             onRefreshBalance={() => {
               if (typeof fetchUserProfile === 'function') fetchUserProfile();
@@ -2553,7 +2503,7 @@ export default function VoiceRoomScreen() {
             <TextInput
               ref={textInputRef}
               style={styles.chatTextInput}
-              placeholder={isBulletMode ? 'Bullet message (1 diamond)...' : 'Type a message...'}
+              placeholder={isBulletMode ? 'Bullet message (1 coin)...' : 'Type a message...'}
               placeholderTextColor="rgba(255, 255, 255, 0.45)"
               value={inputText}
               maxLength={500}
@@ -3266,28 +3216,7 @@ export default function VoiceRoomScreen() {
 
 
 
-      {/* 2. Floating Minimized Game Pill (Restore Game) */}
-      {Boolean(activeGame && isGameMinimized) && (
-        <TouchableOpacity
-          accessibilityLabel="Restore Live Game"
-          activeOpacity={0.85}
-          onPress={() => setIsGameMinimized(false)}
-          style={[styles.floatingMiniGamePill, { bottom: bottomSafePadding + 75 }]}
-        >
-          <LinearGradient
-            colors={['#FF007F', '#7928CA']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.floatingMiniGameGradient}
-          >
-            <MaterialCommunityIcons name="gamepad-variant" size={16} color="#FFF" />
-            <Text style={styles.floatingMiniGameText} numberOfLines={1}>
-              {activeGame?.title || 'Game'}
-            </Text>
-            <View style={styles.floatingMiniGameDot} />
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
+
 
       {/* 3. Live Games Catalog Modal */}
       <LiveGamesModal
@@ -3297,6 +3226,7 @@ export default function VoiceRoomScreen() {
         coinBalance={Number(user?.diamonds || user?.balance || 0)}
         onRecharge={() => navigation.navigate('Recharge')}
         bottomPadding={insets.bottom}
+        roomType="voice"
       />
 
     </ImageBackground>
@@ -6115,19 +6045,14 @@ const styles = StyleSheet.create({
   },
   voiceGameAreaContainer: {
     position: 'absolute',
+    top: 0,
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#0F172A',
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    backgroundColor: '#0B0716',
     overflow: 'hidden',
     zIndex: 100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 20,
+    elevation: 25,
   },
   floatingMiniGamePill: {
     position: 'absolute',

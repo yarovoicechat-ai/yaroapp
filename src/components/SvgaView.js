@@ -62,8 +62,9 @@ export default function SvgaView({
     setAttempt(0);
   }, [src]);
   React.useEffect(() => {
-    if (!failed || attempt >= 2) return undefined;
-    const timer = setTimeout(() => { setAttempt(value => value + 1); setFailed(false); }, 1000 * (attempt + 1));
+    if (!failed) return undefined;
+    const delay = attempt < 3 ? 1000 * (attempt + 1) : 5000;
+    const timer = setTimeout(() => { setAttempt(value => (value >= 10 ? 1 : value + 1)); setFailed(false); }, delay);
     return () => clearTimeout(timer);
   }, [failed, attempt]);
 
@@ -73,8 +74,7 @@ export default function SvgaView({
     if (normalizedFallback) {
       return <AssetImage source={{ uri: normalizedFallback }} style={style} resizeMode={resizeMode} />;
     }
-    return src ? <Pressable style={[style, { alignItems: 'center', justifyContent: 'center' }]} accessibilityLabel="Retry animation loading"
-      onPress={() => { setAttempt(value => value + 1); setFailed(false); }}><Text style={{ color: '#94A3B8', fontSize: 22 }}>↻</Text></Pressable> : null;
+    return null;
   }
 
   const isSvga = /\.svga(?:[?#]|$)/i.test(src);

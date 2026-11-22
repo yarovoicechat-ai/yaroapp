@@ -234,48 +234,75 @@ export default function ProfileScreen() {
 
             {/* Tag Badges */}
             <View style={styles.tagsRow}>
-              <View style={styles.genderTag}>
-                <Text style={styles.genderTagText}>
-                  {user?.gender ? (user.gender === 'female' ? '♀' : '♂') : ''} {user?.age ?? ''}
-                </Text>
-              </View>
+              {Boolean(user?.gender || user?.age != null) && (
+                <View style={styles.genderTag}>
+                  <Text style={styles.genderTagText}>
+                    {user?.gender ? (user.gender === 'female' ? '♀' : '♂') : ''}{user?.age != null ? ` ${user.age}` : ''}
+                  </Text>
+                </View>
+              )}
 
-              <View style={styles.countryTag}>
-                <Text style={styles.countryTagText}>
-                  🌍 {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() : (user?.country || '')}
-                </Text>
-              </View>
-
-              {/* Wealth Level */}
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Level', { initialTab: 'wealth' })}
-                style={[styles.svipTag, { backgroundColor: '#0284C7' }]}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.svipTagText}>Lv.{user?.wealthLevel ?? user?.level ?? 1}</Text>
-              </TouchableOpacity>
-
-              {/* Charm Level */}
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Level', { initialTab: 'charm' })}
-                style={[styles.svipTag, { backgroundColor: '#7C3AED' }]}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.svipTagText}>🌸 Lv.{user?.charmLevel ?? 1}</Text>
-              </TouchableOpacity>
+              {Boolean(user?.country) && (
+                <View style={styles.countryTag}>
+                  <Text style={styles.countryTagText}>
+                    🌍 {typeof user?.country === 'object' ? `${user?.country?.name || ''} ${user?.country?.flag || ''}`.trim() : (user?.country || '')}
+                  </Text>
+                </View>
+              )}
 
               {(user?.isSvip || Number(user?.svipLevel) > 0) && (
                 <View style={styles.svipTag}>
-                  <Text style={styles.svipTagText}>👑 VIP{user?.svipLevel || ''}</Text>
+                  <Text style={styles.svipTagText}>👑 SVIP{user?.svipLevel ? ` ${user.svipLevel}` : ''}</Text>
                 </View>
               )}
 
-              {/* Staff Tag */}
-              {Boolean(user?.role === 'admin' || user?.role === 'superAdmin' || user?.isGlobalRoomManager || user?.isBd || user?.isAgency) && (
-                <View style={[styles.svipTag, { backgroundColor: '#DC2626' }]}>
-                  <Text style={styles.svipTagText}>🛡️ Staff</Text>
-                </View>
-              )}
+              {/* Staff / Designation Tag */}
+              {(() => {
+                const role = String(user?.role || '').toLowerCase();
+                if (role === 'owner') {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#F59E0B' }]}>
+                      <Text style={styles.svipTagText}>👑 Owner</Text>
+                    </View>
+                  );
+                }
+                if (role === 'operator') {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#3B82F6' }]}>
+                      <Text style={styles.svipTagText}>⚙️ Operator</Text>
+                    </View>
+                  );
+                }
+                if (role === 'countrymanager' || role === 'country-manager') {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#10B981' }]}>
+                      <Text style={styles.svipTagText}>🌐 Country Mgr</Text>
+                    </View>
+                  );
+                }
+                if (role === 'statemanager' || role === 'state-manager') {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#8B5CF6' }]}>
+                      <Text style={styles.svipTagText}>🏛️ State Mgr</Text>
+                    </View>
+                  );
+                }
+                if (role === 'official') {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#EC4899' }]}>
+                      <Text style={styles.svipTagText}>⚡ Official</Text>
+                    </View>
+                  );
+                }
+                if (role === 'admin' || role === 'superadmin' || user?.isGlobalRoomManager || user?.isBd || user?.isAgency) {
+                  return (
+                    <View style={[styles.svipTag, { backgroundColor: '#DC2626' }]}>
+                      <Text style={styles.svipTagText}>🛡️ Staff</Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Equipped Tag (Animation File / Theme Asset .svga, .gif, .webp, .png, or Text Pill) */}
               {(() => {
@@ -563,7 +590,7 @@ export default function ProfileScreen() {
                       <Text style={styles.equippedBadgeText}>EQUIPPED</Text>
                     </View>
                     <View style={styles.decorFramePreviewWrapper}>
-                      <Text style={{ fontSize: 32 }}>🌸</Text>
+                      <MaterialCommunityIcons name="image-frame" size={32} color="#F59E0B" />
                     </View>
                     <Text style={styles.decorCardName} numberOfLines={1}>{equippedFrameName}</Text>
                   </TouchableOpacity>

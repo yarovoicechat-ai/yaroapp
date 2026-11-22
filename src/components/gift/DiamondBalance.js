@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -44,11 +45,11 @@ export default function DiamondBalance({
     <View style={styles.container}>
       <View style={styles.balanceCol}>
         <View style={styles.balanceRow}>
-          <Text style={styles.diamondIcon}>💎</Text>
+          <Image source={require('../../assets/icons/coin.png')} style={{ width: 15, height: 15, marginRight: 4 }} resizeMode="contain" />
           <Text style={styles.balanceValue}>{formatCompactBalance(balance)}</Text>
           <Text style={styles.balanceLabel}>Coins</Text>
 
-          {/* Floating -X Diamonds indicator */}
+          {/* Floating -X Coins indicator */}
           {lastDeduction > 0 && (
             <Animated.View
               style={[
@@ -68,7 +69,7 @@ export default function DiamondBalance({
           <View style={styles.insufficientRow}>
             <Icon name="alert-circle" size={11} color="#EF4444" />
             <Text style={styles.insufficientText}>
-              Need {formatCompactBalance(requiredAmount)} Diamonds
+              Need {formatCompactBalance(requiredAmount)} Coins
             </Text>
           </View>
         )}

@@ -155,3 +155,50 @@ test('gift listeners preserve other subscribers and match legacy room aliases', 
     ),
   ).toBe(true);
 });
+
+test('useGiftSocket ignores self gifts across all user ID formats (_id, userId, id, currentUser)', async () => {
+  const listeners = new Map();
+  const socket = {
+    connected: true,
+    emit: jest.fn(),
+    on: jest.fn((event, callback) => {
+      if (!listeners.has(event)) listeners.set(event, new Set());
+      listeners.get(event).add(callback);
+    }),
+    off: jest.fn((event, callback) => listeners.get(event)?.delete(callback)),
+  };
+  getSocket.mockReturnValue(socket);
+  const onReceived = jest.fn();
+  const onAnim = jest.fn();
+
+  await act(async () => {
+    tree = renderer.create(
+      <GiftListener
+        roomId="room_1"
+        currentUserId="numeric_123"
+        currentUser={{ _id: 'mongo_456', userId: 'numeric_123' }}
+        onGiftReceived={onReceived}
+        onGiftAnimation={onAnim}
+      />,
+    );
+  });
+
+  const deliverAnim = (payload) => listeners.get('gift:animation')?.forEach((cb) => cb(payload));
+  const deliverRecv = (payload) => listeners.get('gift:received')?.forEach((cb) => cb(payload));
+
+  // Self send by mongo ObjectId
+  await act(async () => {
+    deliverAnim({ roomId: 'room_1', animationId: 'a1', sender: { _id: 'mongo_456' } });
+    deliverRecv({ roomId: 'room_1', transactionId: 't1', sender: { _id: 'mongo_456' } });
+  });
+  expect(onAnim).not.toHaveBeenCalled();
+  expect(onReceived).not.toHaveBeenCalled();
+
+  // Another user send
+  await act(async () => {
+    deliverAnim({ roomId: 'room_1', animationId: 'a2', sender: { _id: 'other_user' } });
+    deliverRecv({ roomId: 'room_1', transactionId: 't2', sender: { _id: 'other_user' } });
+  });
+  expect(onAnim).toHaveBeenCalledTimes(1);
+  expect(onReceived).toHaveBeenCalledTimes(1);
+});

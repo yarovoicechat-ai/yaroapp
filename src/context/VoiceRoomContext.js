@@ -1,5 +1,6 @@
 import { getRoomSeatConfig } from '../utils/roomSeats';
 import { resolveRoomMicMute } from '../utils/roomMicState';
+import { mergeCanonicalUser } from '../utils/cosmeticResolver';
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { AppState, NativeModules } from 'react-native';
 import { navigationRef, navigate, navigateToVoiceRoom } from '../utils/navigationRef';
@@ -928,6 +929,55 @@ export const VoiceRoomProvider = ({ children }) => {
       return false;
     }
 
+    const previousRoomId = activeRoomIdRef.current;
+    if (previousRoomId && previousRoomId === roomId) {
+      // Returning to current active room (e.g. from minimized floating state)
+      setIsMinimized(false);
+      return true;
+    }
+
+    // Clean up previous room completely before entering a new room!
+    // Prevents sticky seats, duplicate room presence, and Agora voice channel cross-room audio leak.
+    if (previousRoomId && previousRoomId !== roomId) {
+      console.log(`[VoiceRoom] Leaving previous room ${previousRoomId} before entering ${roomId}`);
+      const sock = socketRef.current || getSocket();
+      if (sock?.connected) {
+        if (currentSeatIndexRef.current !== null) {
+          sock.emit('voice_room:leave_seat', {
+            roomId: previousRoomId,
+            seatIndex: currentSeatIndexRef.current,
+            user: currentUserRef.current || currentUser,
+          });
+        }
+        sock.emit('voice_room:leave', {
+          roomId: previousRoomId,
+          user: {
+            userId: currentUserId,
+            name: currentUserRef.current?.name || currentUser?.name || 'User',
+          },
+        });
+      }
+      currentSeatIndexRef.current = null;
+      desiredLocalAudioRef.current = { isOnSeat: false, isMuted: true };
+      isMutedRef.current = true;
+      setIsMuted(true);
+
+      const oldEngine = agoraEngineRef.current;
+      agoraEngineRef.current = null;
+      if (oldEngine) {
+        try { oldEngine.muteLocalAudioStream(true); } catch (_) {}
+        try { oldEngine.enableLocalAudio(false); } catch (_) {}
+        try { oldEngine.leaveChannel(); } catch (_) {}
+        try { AgoraClientService.releaseEngine(oldEngine); } catch (_) {}
+      }
+      setAgoraStatus('disconnected');
+      agoraPublisherAuthorizedRef.current = false;
+      agoraCredentialsRef.current = null;
+      agoraInitSessionRef.current = null;
+      setSeats([]);
+      setSpeakingSeatIndices(new Set());
+    }
+
     const roomSessionId = ++roomSessionRef.current;
 
     setActiveRoom(roomData);
@@ -1023,22 +1073,42 @@ export const VoiceRoomProvider = ({ children }) => {
     hasRoomMemberSnapshotRef.current = false;
     hasPlayedSelfEntranceRef.current = false;
 
-    // Helper to tag current user's seat
+    // Helper to tag current user's seat and preserve occupant identity & cosmetics across partial updates
     const mapSeatsWithCurrentUser = (rawSeats, myUserId) => {
       if (!Array.isArray(rawSeats)) return [];
-      return rawSeats.map((s) => ({
-        ...s,
-        user: s.user
-          ? {
-              ...s.user,
-              isCurrentUser: Boolean(
-                myUserId &&
-                (String(s.user.userId) === String(myUserId) ||
-                 (s.user.id && String(s.user.id) === String(myUserId)))
-              ),
-            }
-          : null,
-      }));
+      const prevSeats = currentSeatsRef.current || [];
+      return rawSeats.map((s) => {
+        if (!s) return s;
+        const prevSeat = prevSeats.find((p) => p && p.seatIndex === s.seatIndex);
+        const prevUser = prevSeat?.user && String(prevSeat.user.userId || prevSeat.user.id || prevSeat.user._id || '') === String(s.user?.userId || s.user?.id || s.user?._id || '')
+          ? prevSeat.user
+          : null;
+
+        let mergedUser = s.user;
+        if (s.user && prevUser) {
+          mergedUser = mergeCanonicalUser(prevUser, s.user);
+          if (!mergedUser.avatar && prevUser.avatar) mergedUser.avatar = prevUser.avatar;
+          if (!mergedUser.image && prevUser.image) mergedUser.image = prevUser.image;
+          if (!mergedUser.profilePic && prevUser.profilePic) mergedUser.profilePic = prevUser.profilePic;
+          if (!mergedUser.equippedFrame && prevUser.equippedFrame) mergedUser.equippedFrame = prevUser.equippedFrame;
+          if (!mergedUser.equippedFrameAsset && prevUser.equippedFrameAsset) mergedUser.equippedFrameAsset = prevUser.equippedFrameAsset;
+          if (!mergedUser.effectiveIdentity && prevUser.effectiveIdentity) mergedUser.effectiveIdentity = prevUser.effectiveIdentity;
+        }
+
+        return {
+          ...s,
+          user: mergedUser
+            ? {
+                ...mergedUser,
+                isCurrentUser: Boolean(
+                  myUserId &&
+                  (String(mergedUser.userId) === String(myUserId) ||
+                   (mergedUser.id && String(mergedUser.id) === String(myUserId)))
+                ),
+              }
+            : null,
+        };
+      });
     };
     const isCurrentRoomEvent = (payload) => {
       if (!payload?.roomId) return true;
@@ -1793,6 +1863,11 @@ export const VoiceRoomProvider = ({ children }) => {
           level: currentUser?.level,
           equippedFrame: currentUser?.equippedFrameAsset || currentUser?.equippedFrame || null,
           equippedFrameAsset: currentUser?.equippedFrameAsset || null,
+          equippedTag: currentUser?.equippedTag || null,
+          equippedTagAsset: currentUser?.equippedTagAsset || null,
+          role: currentUser?.role || null,
+          isSvip: Boolean(currentUser?.isSvip || currentUser?.equippedSvipId),
+          svipLevel: currentUser?.svipLevel || (currentUser?.equippedSvipId ? 1 : null),
         },
       });
 

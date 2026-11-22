@@ -1026,7 +1026,10 @@ export default function LiveStreamScreen({ navigation, route }) {
               setActiveGame(null);
               setIsGameMinimized(false);
             }}
-            onMinimize={() => setIsGameMinimized(true)}
+            onMinimize={() => {
+              setActiveGame(null);
+              setIsGameMinimized(false);
+            }}
             coinBalance={coinBalance}
             onUpdateCoinBalance={newBal => setCoinBalance(newBal)}
             onRecharge={openRecharge}
@@ -1089,26 +1092,6 @@ export default function LiveStreamScreen({ navigation, route }) {
         </>
       )}
 
-      {/* Floating Mini-Game Bubble (when minimized) */}
-      {activeGame && isGameMinimized && (
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => setIsGameMinimized(false)}
-          style={[styles.floatingMiniGamePill, { bottom: insets.bottom + 70 }]}
-          accessibilityLabel="Restore Live Game"
-        >
-          <LinearGradient
-            colors={['#FF6B00', '#FF1493']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.miniGameGradient}
-          >
-            <MaterialCommunityIcons name="gamepad-variant" size={20} color="#FFF" />
-            <Text style={styles.miniGameText}>{activeGame.title}</Text>
-            <View style={styles.miniGameLiveDot} />
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
 
       {/* 8. Modals: Gift Tray, Basic Tools, Live Chat Input */}
       <LiveGiftTrayModal
@@ -1164,6 +1147,7 @@ export default function LiveStreamScreen({ navigation, route }) {
         coinBalance={coinBalance}
         onRecharge={openRecharge}
         bottomPadding={insets.bottom}
+        roomType="live"
       />
 
       <LiveGuestRequestsSheet

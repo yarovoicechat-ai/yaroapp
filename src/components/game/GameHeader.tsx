@@ -17,103 +17,10 @@ interface GameHeaderProps {
   onRecharge?: () => void;
 }
 
-export const GameHeader: React.FC<GameHeaderProps> = ({
-  game,
-  coinsBalance,
-  isFullscreen,
-  isMuted,
-  onToggleMute,
-  onToggleFullscreen,
-  onMinimize,
-  onClose,
-  onRecharge,
-}) => {
-  return (
-    <View style={styles.headerContainer}>
-      {/* Left: Game Icon + Title */}
-      <View style={styles.leftSection}>
-        <LinearGradient
-          colors={game?.gradient || ['#FF007F', '#7928CA']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.iconBadge}
-        >
-          <MaterialCommunityIcons
-            name={game?.icon || 'gamepad-variant'}
-            size={16}
-            color="#FFFFFF"
-          />
-        </LinearGradient>
-        <View style={styles.titleWrap}>
-          <Text style={styles.gameTitle} numberOfLines={1}>
-            {game?.title || 'Live Game'}
-          </Text>
-          <View style={styles.badgeRow}>
-            <Text style={styles.engineTag}>Cocos 3.8.x</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Center: Coins Balance Badge (Spending Currency) */}
-      <TouchableOpacity
-        onPress={onRecharge}
-        activeOpacity={0.8}
-        style={styles.balanceBadge}
-        accessibilityLabel="Coins Balance"
-      >
-        <Text style={styles.coinIcon}>🪙</Text>
-        <Text style={styles.balanceAmount}>{coinsBalance.toLocaleString()}</Text>
-        {Boolean(onRecharge) && (
-          <View style={styles.addIconWrap}>
-            <Icon name="add" size={11} color="#FFFFFF" />
-          </View>
-        )}
-      </TouchableOpacity>
-
-      {/* Right Actions: Mute Audio, Minimize, Fullscreen, Close */}
-      <View style={styles.actionsSection}>
-        <TouchableOpacity
-          onPress={onToggleMute}
-          style={styles.actionBtn}
-          accessibilityLabel={isMuted ? 'Unmute Game' : 'Mute Game'}
-        >
-          <MaterialCommunityIcons
-            name={isMuted ? 'volume-variant-off' : 'volume-high'}
-            size={18}
-            color={isMuted ? '#94A3B8' : '#38BDF8'}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={onToggleFullscreen}
-          style={styles.actionBtn}
-          accessibilityLabel={isFullscreen ? 'Restore Half Screen' : 'Fullscreen'}
-        >
-          <MaterialCommunityIcons
-            name={isFullscreen ? 'arrow-collapse' : 'arrow-expand'}
-            size={17}
-            color="#E2E8F0"
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={onMinimize}
-          style={styles.actionBtn}
-          accessibilityLabel="Minimize Game"
-        >
-          <Icon name="remove-outline" size={18} color="#E2E8F0" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={onClose}
-          style={[styles.actionBtn, styles.closeBtn]}
-          accessibilityLabel="Close Game"
-        >
-          <Icon name="close" size={18} color="#EF4444" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+export const GameHeader: React.FC<GameHeaderProps> = () => {
+  // Redundant React Native toolbar removed to match authentic reference video.
+  // The Cocos/HTML5 game renders its own top balance, audio mute, and close controls.
+  return null;
 };
 
 const styles = StyleSheet.create({

@@ -78,7 +78,17 @@ export default function ResponsiveChatBubble({
 
   // Equipped Tag & Tag Animation File (uploaded in panel)
   const equippedTagAsset = message?.equippedTagAsset || sender?.equippedTagAsset || null;
-  const equippedTag = message?.equippedTag || sender?.equippedTag || equippedTagAsset?.name || null;
+  const rawRole = String(message?.role || sender?.role || message?.userRole || '').toLowerCase();
+  const roleTagText =
+    rawRole === 'owner' ? '👑 Owner' :
+    rawRole === 'operator' ? '⚙️ Operator' :
+    (rawRole === 'countrymanager' || rawRole === 'country-manager') ? '🌐 Country Mgr' :
+    (rawRole === 'statemanager' || rawRole === 'state-manager') ? '🏛️ State Mgr' :
+    rawRole === 'superadmin' ? '👑 Super Admin' :
+    rawRole === 'admin' ? '🛡️ Admin' :
+    rawRole === 'official' ? '⚡ Official' : null;
+
+  const equippedTag = message?.equippedTag || sender?.equippedTag || equippedTagAsset?.name || roleTagText || null;
   const tagMedia = equippedTagAsset?.animationUrl || equippedTagAsset?.imageUrl || null;
   const isTagSvga = Boolean(tagMedia && /\.svga(?:[?#]|$)/i.test(tagMedia));
 

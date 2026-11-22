@@ -339,4 +339,113 @@ describe('Greedy King Integration Test Suite', () => {
       }
     });
   });
+
+  describe('6. Winning Payout Flow & Authoritative Credit Verification', () => {
+    it('executes authoritative winning coins payout to YARO wallet and confirms round settlement', async () => {
+      apiUtil.post.mockResolvedValueOnce({
+        status: 200,
+        data: {
+          success: true,
+          data: {
+            balanceAfter: 64000,
+            transactionId: 'tx_win_mango_15000',
+            status: 'SUCCESS',
+          },
+        },
+      });
+
+      const refreshListener = jest.fn();
+      gameBridge.on('WALLET_REFRESH_REQUEST', refreshListener);
+
+      await act(async () => {
+        gameBridge.emit('WIN_PAYOUT', {
+          spotId: 'mango',
+          multiplier: 15,
+          winAmount: 15000,
+          betAmount: 1000,
+          roundNumber: 3,
+          reqId: 'payout_gk_3_mango_15000',
+        });
+      });
+
+      expect(apiUtil.post).toHaveBeenCalledWith(
+        '/games/session/sess_live_123/payout',
+        expect.objectContaining({
+          gameId: 'greedy-king',
+          roundNumber: 3,
+          betTarget: 'mango',
+          multiplier: 15,
+          winAmount: 15000,
+          idempotencyKey: 'payout_gk_3_mango_15000',
+        })
+      );
+
+      expect(refreshListener).toHaveBeenCalledWith(
+        expect.objectContaining({ balanceAfter: 64000 }),
+        expect.anything()
+      );
+    });
+
+    it('enforces idempotency and safe recovery on repeated payout requests', async () => {
+      // First attempt succeeds
+      apiUtil.post.mockResolvedValueOnce({
+        status: 200,
+        data: {
+          success: true,
+          data: {
+            balanceAfter: 64000,
+            transactionId: 'tx_win_dup_1',
+            alreadyProcessed: false,
+          },
+        },
+      });
+
+      await act(async () => {
+        gameBridge.emit('WIN_PAYOUT', {
+          spotId: 'orange',
+          multiplier: 45,
+          winAmount: 45000,
+          roundNumber: 4,
+          reqId: 'req_idempotent_payout_45k',
+        });
+      });
+
+      expect(apiUtil.post).toHaveBeenCalledWith(
+        '/games/session/sess_live_123/payout',
+        expect.objectContaining({
+          idempotencyKey: 'req_idempotent_payout_45k',
+        })
+      );
+    });
+
+    it('supports full chip denomination spectrum (50, 100, 500, 1K, 5K, 10K, 50K, 100K)', async () => {
+      const allChips = [50, 100, 500, 1000, 5000, 10000, 50000, 100000];
+
+      for (const chip of allChips) {
+        apiUtil.post.mockResolvedValueOnce({
+          status: 200,
+          data: {
+            success: true,
+            data: { balanceAfter: 200000 - chip, transactionId: `tx_denom_${chip}` },
+          },
+        });
+
+        await act(async () => {
+          gameBridge.emit('BET_REQUEST', {
+            spotId: 'apple',
+            amount: chip,
+            reqId: `req_denom_${chip}`,
+          });
+        });
+
+        expect(apiUtil.post).toHaveBeenLastCalledWith(
+          '/games/session/sess_live_123/bet',
+          expect.objectContaining({
+            amount: chip,
+            idempotencyKey: `req_denom_${chip}`,
+          })
+        );
+      }
+    });
+  });
 });

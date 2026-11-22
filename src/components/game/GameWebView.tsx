@@ -163,13 +163,21 @@ export const GameWebView: React.FC<GameWebViewProps> = ({
   onError,
   onClose,
 }) => {
+  const getNormalizedUrl = (rawUrl: string) => {
+    if (!rawUrl) return '';
+    if (rawUrl.includes('games.yaroapp.in')) {
+      return rawUrl.replace('https://games.yaroapp.in/', 'https://api.yaroapp.in/games/');
+    }
+    return rawUrl;
+  };
+
   const webViewRef = useRef<WebView>(null);
-  const [activeUrl, setActiveUrl] = useState(url);
+  const [activeUrl, setActiveUrl] = useState(() => getNormalizedUrl(url));
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
 
   useEffect(() => {
-    setActiveUrl(url);
+    setActiveUrl(getNormalizedUrl(url));
   }, [url]);
 
   // Bind webViewRef to bridge
@@ -255,8 +263,15 @@ export const GameWebView: React.FC<GameWebViewProps> = ({
         }}
         onHttpError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
+          const reqUrl = nativeEvent.url || '';
+          // Ignore subresource 404s (e.g. favicon.ico, telemetry, font-awesome webfonts) so main game is never blocked
+          const isMainDoc = reqUrl.includes('/greedy-king') && !reqUrl.includes('.png') && !reqUrl.includes('.jpg') && !reqUrl.includes('.jpeg') && !reqUrl.includes('.ico') && !reqUrl.includes('.css') && !reqUrl.includes('.woff');
+          if (!isMainDoc && !reqUrl.endsWith('/greedy-king/')) {
+            console.warn('[GameWebView] Ignored subresource HTTP error:', nativeEvent.statusCode, reqUrl);
+            return;
+          }
           if (nativeEvent.statusCode >= 400) {
-            console.warn('[GameWebView] HTTP error:', nativeEvent.statusCode);
+            console.warn('[GameWebView] HTTP error:', nativeEvent.statusCode, reqUrl);
             if (activeUrl.includes('games.yaroapp.in') && !activeUrl.includes('api.yaroapp.in')) {
               const fallback = activeUrl.replace('https://games.yaroapp.in/', 'https://api.yaroapp.in/games/');
               setActiveUrl(fallback);
@@ -274,7 +289,7 @@ export const GameWebView: React.FC<GameWebViewProps> = ({
         mixedContentMode="compatibility"
         hardwareAccelerationAndroidEnabled={true}
         androidLayerType="hardware"
-        originWhitelist={['https://*', 'http://*']}
+        originWhitelist={['*']}
         style={styles.webView}
       />
 

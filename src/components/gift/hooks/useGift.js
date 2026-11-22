@@ -145,15 +145,35 @@ export function useGift({
       const currentBalance = Number(activeBalanceRef.current || 0);
       if (currentBalance < totalCost) {
         AlertService.show(
-          'Insufficient Diamonds',
-          `You need ${totalCost.toLocaleString()} Diamonds. Your balance is ${currentBalance.toLocaleString()}.`,
+          'Insufficient Coins',
+          `You need ${totalCost.toLocaleString()} Coins. Your balance is ${currentBalance.toLocaleString()}.`,
           'warning',
         );
-        return { success: false, reason: 'INSUFFICIENT_DIAMONDS' };
+        return { success: false, reason: 'INSUFFICIENT_COINS' };
       }
 
+      // Optimistic instant response: update combo and deduct local balance immediately
+      const prevBalance = currentBalance;
+      const optimisticBalance = Math.max(0, currentBalance - totalCost);
+      activeBalanceRef.current = optimisticBalance;
+      deductLocalBalance?.(totalCost);
+
+      if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+      comboCountRef.current = Math.max(1, (comboCountRef.current || 0) + 1);
+      const nextCombo = comboCountRef.current;
+      setComboCount(nextCombo);
+      setLastSentGift({
+        id: giftToSend.id || giftToSend._id,
+        receiverId: receivers[0]?.id || receivers[0]?._id,
+        gift: giftToSend,
+      });
+      comboTimerRef.current = setTimeout(() => {
+        comboCountRef.current = 1;
+        setComboCount(1);
+        setLastSentGift(null);
+      }, 3500);
+
       const requestId = `gift_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-      const nextCombo = comboCountRef.current || 1;
       setSending(true);
       try {
         const response = await apiUtil.post('/gifts/send', {
@@ -177,21 +197,23 @@ export function useGift({
         }
 
         const exactBalance = Number(
-          result?.newBalance ?? payload.senderBalance ?? currentBalance - totalCost,
+          result?.newBalance ?? payload.senderBalance ?? activeBalanceRef.current,
         );
         activeBalanceRef.current = exactBalance;
-        deductLocalBalance?.(Math.max(0, currentBalance - exactBalance));
-        registerCombo(payload.gift || giftToSend, payload.receivers?.[0] || receivers[0]);
         triggerQuickSend();
         onGiftSentSuccess?.({
           ...payload,
           gift: payload.gift || giftToSend,
           receivers: payload.receivers || receivers,
           quantity: payload.quantity || quantity,
+          comboCount: nextCombo,
           transactionId: payload.transactionId,
         });
         return { success: true, data: payload };
       } catch (error) {
+        // Rollback balance on network/server error
+        activeBalanceRef.current = prevBalance;
+        deductLocalBalance?.(-totalCost);
         AlertService.show(
           'Gift Failed',
           error?.response?.data?.message || error?.message || 'Please try again.',

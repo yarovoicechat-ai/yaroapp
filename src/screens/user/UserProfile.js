@@ -28,6 +28,7 @@ import { AlertService } from '../../utils/AlertService';
 import { apiUtil } from '../../utils/apiUtil';
 import { formatCompactBalance } from '../../utils/numberUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
+import AvatarWithFrame from '../../components/AvatarWithFrame';
 import { buildProfileShare } from '../../utils/shareLinks';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -452,35 +453,14 @@ export default function UserProfileScreen() {
             </View>
           </View>
 
-          {/* Big Avatar with Crown and Laurel Wreath in pure React Native */}
+          {/* Big Avatar with Animated SVGA Frame */}
           <View style={styles.avatarWrap}>
-            {/* Top Golden Crown */}
-            <View style={styles.avatarCrownBadge}>
-              <MaterialCommunityIcons name="crown" size={32} color="#FBBF24" />
-            </View>
-
-            {/* Avatar Circle with Wreath Laurel Leaves */}
-            <View style={styles.avatarOuterFrame}>
-              <View style={styles.avatarInnerCircle}>
-                <Image
-                  source={getUserAvatar(targetUser)}
-                  style={styles.avatarImg}
-                  resizeMode="cover"
-                />
-              </View>
-              {/* Left and Right Wreath Badges */}
-              <View style={styles.wreathWingLeft}>
-                <MaterialCommunityIcons name="leaf" size={20} color="#F59E0B" />
-              </View>
-              <View style={styles.wreathWingRight}>
-                <MaterialCommunityIcons
-                  name="leaf"
-                  size={20}
-                  color="#F59E0B"
-                  style={{ transform: [{ scaleX: -1 }] }}
-                />
-              </View>
-            </View>
+            <AvatarWithFrame
+              user={targetUser}
+              frame={targetUser.equippedFrameAsset || targetUser.equippedFrame || null}
+              size={84}
+              showOnlineDot={false}
+            />
           </View>
 
           {/* User Name + Flag + Gold Verified Badge */}

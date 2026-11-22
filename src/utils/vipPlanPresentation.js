@@ -5,8 +5,20 @@ export const presentVipTier = plan => {
   const media = (animationUrl, imageUrl) => ({
     animationUrl: resolveAssetUrl(animationUrl), imageUrl: resolveAssetUrl(imageUrl),
   });
-  const frame = plan.features?.enableAvatarFrame !== false && plan.avatarFrameUrl
-    ? media(plan.avatarFrameUrl, plan.avatarFramePreviewUrl) : null;
+  const defaultFrameAnim = Number.isInteger(level) && level >= 1 && level <= 5
+    ? `asset://animations/vip_frame_${level}.svga`
+    : '';
+  const defaultFrameImg = Number.isInteger(level) && level >= 1 && level <= 5
+    ? `asset://vip/frame/vip_frame_${level}.png`
+    : '';
+
+  const rawFrameAnim = plan.avatarFrameUrl && plan.avatarFrameUrl.toLowerCase().endsWith('.svga')
+    ? plan.avatarFrameUrl
+    : (defaultFrameAnim || plan.avatarFrameUrl);
+  const rawFrameImg = plan.avatarFramePreviewUrl || defaultFrameImg || plan.avatarFrameUrl;
+
+  const frame = plan.features?.enableAvatarFrame !== false && (rawFrameAnim || rawFrameImg)
+    ? media(rawFrameAnim, rawFrameImg) : null;
   const entry = plan.features?.enableEntryEffect !== false && plan.entryAnimationUrl
     ? media(plan.entryAnimationUrl, plan.entryPreviewUrl) : null;
 

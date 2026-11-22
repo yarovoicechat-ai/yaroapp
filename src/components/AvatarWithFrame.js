@@ -254,6 +254,37 @@ function AvatarWithFrame({
 
   const defaultAvatar = getUserAvatar(null, user?.gender);
 
+  const animFrameSource = useMemo(() => {
+    if (uploadedFrame?.animationUrl && /\.svga(?:[?#]|$)/i.test(uploadedFrame.animationUrl)) {
+      return uploadedFrame.animationUrl;
+    }
+    if (typeof frameOverlaySource === 'string' && /\.svga(?:[?#]|$)/i.test(frameOverlaySource)) {
+      return frameOverlaySource;
+    }
+    const combinedStr = `${frameName} ${uploadedFrame?.id || ''} ${uploadedFrame?.imageUrl || ''} ${typeof frameOverlaySource === 'string' ? frameOverlaySource : ''}`.toLowerCase();
+    const vipMatch = combinedStr.match(/vip[_\s-]?frame[_\s-]?([1-5])|vip[_\s-]?([1-5])/i);
+    if (vipMatch) {
+      const lvl = vipMatch[1] || vipMatch[2];
+      return `asset://animations/vip_frame_${lvl}.svga`;
+    }
+    if (combinedStr.includes('rose') || combinedStr.includes('blossom') || combinedStr.includes('starter')) {
+      return 'asset://animations/vip_frame_1.svga';
+    }
+    if (combinedStr.includes('wing') || combinedStr.includes('angel') || combinedStr.includes('graceful') || combinedStr.includes('phoenix')) {
+      return 'asset://animations/vip_frame_2.svga';
+    }
+    if (combinedStr.includes('neon') || combinedStr.includes('crystal') || combinedStr.includes('rockstar') || combinedStr.includes('tiara')) {
+      return 'asset://animations/vip_frame_3.svga';
+    }
+    if (combinedStr.includes('dragon') || combinedStr.includes('fire') || combinedStr.includes('ruby')) {
+      return 'asset://animations/vip_frame_4.svga';
+    }
+    if (combinedStr.includes('crown') || combinedStr.includes('imperial') || combinedStr.includes('gold') || combinedStr.includes('king') || combinedStr.includes('sovereign')) {
+      return 'asset://animations/vip_frame_5.svga';
+    }
+    return uploadedFrame?.animationUrl || null;
+  }, [uploadedFrame, frameOverlaySource, frameName]);
+
   const staticFallbackFrame = useMemo(() => {
     if (typeof frameOverlaySource === 'string' && !/\.svga(?:[?#]|$)/i.test(frameOverlaySource)) {
       return frameOverlaySource;
@@ -337,7 +368,7 @@ function AvatarWithFrame({
             />
           );
         })()
-      ) : (uploadedFrame?.animationUrl || (typeof frameOverlaySource === 'string' && frameOverlaySource.toLowerCase().includes('.svga'))) ? (
+      ) : animFrameSource ? (
         <View
           style={{
             position: 'absolute',
@@ -352,7 +383,7 @@ function AvatarWithFrame({
           pointerEvents="none"
         >
           <SvgaView
-            source={uploadedFrame?.animationUrl || frameOverlaySource}
+            source={animFrameSource}
             fallbackImage={staticFallbackFrame}
             style={StyleSheet.absoluteFillObject}
             loops={0}

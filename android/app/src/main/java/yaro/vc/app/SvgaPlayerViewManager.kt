@@ -26,12 +26,10 @@ class ResumableSVGAImageView(context: Context) : SVGAImageView(context) {
       val item = lastVideoItem
       if (item != null) {
         if (drawable == null) {
-          setVideoItem(item)
+          setImageDrawable(SVGADrawable(item))
         }
-        if (!isAnimating) {
-          startAnimation()
-        }
-      } else if (drawable != null && !isAnimating) {
+        startAnimation()
+      } else if (drawable != null) {
         startAnimation()
       }
     }
@@ -174,8 +172,8 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
           if (sources[view] != source) return@post
           loadingSources.remove(view)
           rView?.lastVideoItem = videoItem
-          view.setVideoItem(videoItem)
-          view.stepToFrame(0, false)
+          val drawable = SVGADrawable(videoItem)
+          view.setImageDrawable(drawable)
           emit(view, "topPlaybackReady")
           if (rView?.isAutoPlaying != false) {
             view.startAnimation()

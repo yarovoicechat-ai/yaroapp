@@ -22,6 +22,9 @@ const normalizeUrl = (url) => {
   if (/^(?:https?:\/\/|file:\/\/|content:\/\/|data:|asset:\/\/)/i.test(trimmed)) {
     return trimmed;
   }
+  if (/^(?:animations\/|assets\/)/i.test(trimmed)) {
+    return `asset://${trimmed.replace(/^assets\//i, '')}`;
+  }
   return resolveMediaUrl(trimmed);
 };
 
@@ -46,14 +49,22 @@ export default function SvgaView({
   const [failed, setFailed] = React.useState(false);
   const [attempt, setAttempt] = React.useState(0);
   const navigation = React.useContext(NavigationContext);
-  const subscribeToFocus = React.useCallback(callback => {
-    if (!navigation) return () => {};
-    const focus = navigation.addListener('focus', callback);
-    const blur = navigation.addListener('blur', callback);
-    return () => { focus(); blur(); };
+  const [isFocused, setIsFocused] = React.useState(() => (navigation?.isFocused ? navigation.isFocused() : true));
+
+  React.useEffect(() => {
+    if (!navigation?.addListener) {
+      setIsFocused(true);
+      return;
+    }
+    setIsFocused(navigation.isFocused ? navigation.isFocused() : true);
+    const unsubFocus = navigation.addListener('focus', () => setIsFocused(true));
+    const unsubBlur = navigation.addListener('blur', () => setIsFocused(false));
+    return () => {
+      unsubFocus?.();
+      unsubBlur?.();
+    };
   }, [navigation]);
-  const readFocus = React.useCallback(() => navigation?.isFocused() ?? true, [navigation]);
-  const isFocused = React.useSyncExternalStore(subscribeToFocus, readFocus, readFocus);
+
   const src = normalizeUrl(source);
   const normalizedFallback = normalizeUrl(fallbackImage);
 
@@ -61,12 +72,6 @@ export default function SvgaView({
     setFailed(false);
     setAttempt(0);
   }, [src]);
-  React.useEffect(() => {
-    if (!failed) return undefined;
-    const delay = attempt < 3 ? 1000 * (attempt + 1) : 5000;
-    const timer = setTimeout(() => { setAttempt(value => (value >= 10 ? 1 : value + 1)); setFailed(false); }, delay);
-    return () => clearTimeout(timer);
-  }, [failed, attempt]);
 
   if (typeof source === 'number') return <Image source={source} style={style} resizeMode={resizeMode} />;
 
@@ -90,21 +95,24 @@ export default function SvgaView({
           />
         ) : null}
         <NativeSvga
-            key={`${src}:${attempt}`}
-            source={src}
-            loops={loops}
-            autoPlay={autoPlay && isFocused}
-            scaleMode={scaleMode || (resizeMode === 'cover' ? 'aspectFill' : resizeMode === 'stretch' ? 'fill' : 'aspectFit')}
-            resizeMode={resizeMode}
-            muteBuiltInAudio={muteBuiltInAudio}
-            onPlaybackFinished={onFinish}
-            onPlaybackError={(error) => {
+          key={`${src}:${attempt}`}
+          source={src}
+          loops={loops}
+          autoPlay={autoPlay && isFocused}
+          scaleMode={scaleMode || (resizeMode === 'cover' ? 'aspectFill' : resizeMode === 'stretch' ? 'fill' : 'aspectFit')}
+          resizeMode={resizeMode}
+          muteBuiltInAudio={muteBuiltInAudio}
+          onPlaybackFinished={onFinish}
+          onPlaybackError={(error) => {
+            if (attempt < 2) {
+              setAttempt(prev => prev + 1);
+            } else {
               setFailed(true);
               onError?.(error);
-            }}
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'transparent' }]}
-          />
-
+            }
+          }}
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: 'transparent' }]}
+        />
       </View>
     );
   }

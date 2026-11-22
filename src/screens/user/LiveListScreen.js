@@ -77,7 +77,7 @@ export default function LiveListScreen({ navigation }) {
     setSelectedLockedRoom(null);
     setLockModalVisible(false);
     navigation.navigate('LiveStream', {
-      roomId: targetRoom._id,
+      roomId: targetRoom._id || targetRoom.id || targetRoom.roomId,
       room: targetRoom,
       pin,
     });
@@ -374,7 +374,9 @@ export default function LiveListScreen({ navigation }) {
       <RoomLockModal
         visible={lockModalVisible}
         mode="enter_pin"
-        roomId={selectedLockedRoom?._id}
+        isLive={true}
+        title="Private Live"
+        roomId={selectedLockedRoom?._id || selectedLockedRoom?.id || selectedLockedRoom?.roomId || selectedLockedRoom?.channelName}
         onClose={() => {
           setLockModalVisible(false);
           setSelectedLockedRoom(null);

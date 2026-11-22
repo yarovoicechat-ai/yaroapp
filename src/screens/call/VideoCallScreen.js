@@ -249,7 +249,7 @@ export default function VideoCallScreen() {
     }
     const costPerUnit = Number(selectedGift.price ?? selectedGift.cost ?? selectedGift.priceCoins ?? selectedGift.priceDiamonds ?? 0);
     const totalCost = costPerUnit * selectedQuantity;
-    const balance = Number(user?.coins ?? user?.diamonds ?? 0);
+    const balance = Number(user?.coins || 0);
 
     if (balance < totalCost) {
       Alert.alert(
@@ -282,7 +282,7 @@ export default function VideoCallScreen() {
         receiverId: partnerId,
         receiverIds: partnerId ? [partnerId] : [],
         callId: transactionId,
-        currency: 'DIAMONDS',
+        currency: 'COINS',
       });
 
       if (res.data?.success) {

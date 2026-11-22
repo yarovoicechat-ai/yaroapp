@@ -38,7 +38,7 @@ export default function LiveToolsBottomSheet({
   const tools = isHost
     ? [
         { id: 'games', name: 'Live Games', icon: 'game-controller-outline', action: onGames },
-        { id: 'lock', name: isLocked ? 'Unlock Live' : 'Lock Live', icon: isLocked ? 'lock-open-outline' : 'lock-closed-outline', action: onLockRoom },
+        { id: 'lock', name: isLocked ? 'Make Public' : 'Private Live', icon: isLocked ? 'lock-open-outline' : 'lock-closed-outline', action: onLockRoom },
         { id: 'flip', name: 'Flip Camera', icon: 'camera-reverse-outline', action: onSwitchCamera },
         { id: 'mute', name: muted ? 'Unmute' : 'Mute', icon: muted ? 'mic-off-outline' : 'mic-outline', action: onToggleMute },
         { id: 'share', name: 'Share', icon: 'share-social-outline', action: onShare },

@@ -41,20 +41,12 @@ export default function StoreItemPreviewModal({ visible, onClose, onRecharge, it
             <View style={styles.previewShowcaseBox}>
               {activeCategory === 'Frames' ? (
                 <View style={styles.popupFrameWrap}>
-                  {(item?.animationUrl || !(item?.coverImageUrl || item?.imageUrl || item?.image)) ? (
-                    <AvatarWithFrame
-                      user={user}
-                      frame={item}
-                      size={110}
-                      showOnlineDot={false}
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: item.coverImageUrl || item.imageUrl || item.image }}
-                      style={styles.popupGenericAsset}
-                      resizeMode="contain"
-                    />
-                  )}
+                  <AvatarWithFrame
+                    user={user}
+                    frame={item}
+                    size={110}
+                    showOnlineDot={false}
+                  />
                 </View>
               ) : activeCategory === 'Entry' ? (
                 <LinearGradient
@@ -119,7 +111,7 @@ export default function StoreItemPreviewModal({ visible, onClose, onRecharge, it
               <View style={styles.previewPriceCol}>
                 <Text style={styles.previewPriceLabel}>Cost:</Text>
                 <View style={styles.previewPriceValueWrap}>
-                  <Icon name="diamond" size={14} color="#06B6D4" style={{ marginRight: 4 }} />
+                  <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
                   <Text style={styles.previewPriceValueText}>
                     {price === 0 ? 'FREE' : `${formatCompactBalance(price)} Coins`}
                   </Text>

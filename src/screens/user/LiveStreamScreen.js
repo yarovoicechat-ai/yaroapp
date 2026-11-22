@@ -78,7 +78,7 @@ export default function LiveStreamScreen({ navigation, route }) {
   };
   const insets = useSafeAreaInsets();
   const { activeRoom, leaveRoom } = useVoiceRoom();
-  const roomId = route.params?.roomId;
+  const roomId = route.params?.roomId || route.params?.room?._id || route.params?.room?.id;
   const [room, setRoom] = useState(route.params?.room || {});
   const [rtc, setRtc] = useState(route.params?.rtc || null);
   const [previewReady, setPreviewReady] = useState(false);
@@ -132,6 +132,8 @@ export default function LiveStreamScreen({ navigation, route }) {
   );
   const [leftScore, setLeftScore] = useState(room.leftScore || room.pk?.leftScore || 0);
   const [rightScore, setRightScore] = useState(room.rightScore || room.pk?.rightScore || 0);
+  const [leftContributors, setLeftContributors] = useState(room.pk?.leftContributors || []);
+  const [rightContributors, setRightContributors] = useState(room.pk?.rightContributors || []);
   const [pkSecondsRemaining, setPkSecondsRemaining] = useState(300);
   const [pkWinnerInfo, setPkWinnerInfo] = useState(null);
   const pkTimerIntervalRef = useRef(null);
@@ -157,25 +159,16 @@ export default function LiveStreamScreen({ navigation, route }) {
 
   const handleToggleLiveLock = async () => {
     setToolsModalVisible(false);
-    const isAllowed = user?.canPrivateLive === true || ['owner', 'superAdmin', 'admin'].includes(String(user?.role));
-    if (!isAllowed) {
-      AlertService.show(
-        'Permission Required 🔒',
-        'Private live option is not enabled for your account. Please contact admin to activate Private Live for your ID.',
-        'info'
-      );
-      return;
-    }
 
     if (room?.isPrivate) {
       try {
         const res = await apiUtil.post(`/live/rooms/${roomId}/lock`, { isLocked: false });
         if (res.data?.success) {
           setRoom(prev => ({ ...prev, isPrivate: false }));
-          AlertService.show('Live Unlocked', 'Your live stream is now public.', 'success');
+          AlertService.show('Public Live', 'Your live stream is now public.', 'success');
         }
       } catch (err) {
-        AlertService.show('Error', err.response?.data?.message || 'Failed to unlock room', 'error');
+        AlertService.show('Error', err.response?.data?.message || 'Failed to make live public', 'error');
       }
     } else {
       setLiveLockModalVisible(true);
@@ -188,10 +181,10 @@ export default function LiveStreamScreen({ navigation, route }) {
       if (res.data?.success) {
         setRoom(prev => ({ ...prev, isPrivate: true }));
         setLiveLockModalVisible(false);
-        AlertService.show('Live Locked 🔒', 'Your live stream is now private. Viewers must enter the password to join.', 'success');
+        AlertService.show('Private Live 🔒', 'Your live stream is now private. Viewers must enter the password to join.', 'success');
       }
     } catch (err) {
-      AlertService.show('Error', err.response?.data?.message || 'Failed to lock room', 'error');
+      AlertService.show('Error', err.response?.data?.message || 'Failed to make live private', 'error');
     }
   };
 
@@ -216,7 +209,7 @@ export default function LiveStreamScreen({ navigation, route }) {
     try {
       const response = await apiUtil.get('/user/profile');
       const profile = response.data?.data?.user || response.data?.data;
-      setCoinBalance(Number(profile?.diamonds || 0));
+      setCoinBalance(Number(profile?.coins ?? profile?.diamonds ?? 0));
     } catch (_) { /* Keep the last confirmed balance while offline. */ }
   };
   const openRecharge = () => {
@@ -394,6 +387,8 @@ export default function LiveStreamScreen({ navigation, route }) {
         if (data.rivalHost) setRivalUser(data.rivalHost);
         if (data.leftScore !== undefined) setLeftScore(data.leftScore);
         if (data.rightScore !== undefined) setRightScore(data.rightScore);
+        if (data.leftContributors) setLeftContributors(data.leftContributors);
+        if (data.rightContributors) setRightContributors(data.rightContributors);
         const duration = Number(data.durationSeconds) || 300;
         setPkSecondsRemaining(duration);
         if (pkTimerIntervalRef.current) clearInterval(pkTimerIntervalRef.current);
@@ -413,10 +408,14 @@ export default function LiveStreamScreen({ navigation, route }) {
       'live:pk_score_update': data => {
         if (data.leftScore !== undefined) setLeftScore(data.leftScore);
         if (data.rightScore !== undefined) setRightScore(data.rightScore);
+        if (data.leftContributors !== undefined) setLeftContributors(data.leftContributors);
+        if (data.rightContributors !== undefined) setRightContributors(data.rightContributors);
       },
       'live:pk_ended': data => {
         if (pkTimerIntervalRef.current) clearInterval(pkTimerIntervalRef.current);
         setIsPK(false);
+        setLeftContributors([]);
+        setRightContributors([]);
         const outcome = data?.winner === 'left'
           ? (isHost ? 'VICTORY 🏆' : 'HOST WON 🏆')
           : data?.winner === 'right'
@@ -438,9 +437,10 @@ export default function LiveStreamScreen({ navigation, route }) {
       },
       'live:pk_invitation_received': data => {
         if (!rtcRef.current?.isHost) return;
+        const durText = data.durationSeconds ? `${Math.round(data.durationSeconds / 60)} min` : '5 min';
         Alert.alert(
           '⚔️ PK Battle Challenge',
-          `${data.fromHost?.name || 'A Broadcaster'} challenged you to a PK Battle!`,
+          `${data.fromHost?.name || 'A Broadcaster'} challenged you to a ${durText} PK Battle!`,
           [
             { text: 'Decline', style: 'cancel' },
             {
@@ -450,6 +450,7 @@ export default function LiveStreamScreen({ navigation, route }) {
                 socket.emit('live:pk_accept', {
                   roomId,
                   inviterRoomId: data.fromRoomId,
+                  durationSeconds: data.durationSeconds || 300,
                 });
                 setIsPK(true);
               },
@@ -507,9 +508,10 @@ export default function LiveStreamScreen({ navigation, route }) {
         // Create already returns the authenticated host's RTC credentials.
         // Viewers still join through the server to validate access/register a lease.
         const supplied = route.params?.rtc;
-        const data = supplied?.isHost && supplied?.token && route.params?.room?._id === roomId
+        const targetRoomId = roomId || route.params?.room?._id || route.params?.room?.id;
+        const data = supplied?.isHost && supplied?.token && (route.params?.room?._id === targetRoomId || !targetRoomId)
           ? { room: route.params.room, rtc: supplied }
-          : (await apiUtil.post(`/live/rooms/${roomId}/join`, { pin: route.params?.pin })).data.data;
+          : (await apiUtil.post(`/live/rooms/${targetRoomId}/join`, { pin: route.params?.pin })).data.data;
         rtcRef.current = data.rtc;
         if (disposed || closing.current) {
           await close();
@@ -811,8 +813,16 @@ export default function LiveStreamScreen({ navigation, route }) {
         const otherRooms = activeRooms.filter(r => r._id !== roomId && r.status === 'live');
         if (otherRooms.length > 0) {
           const target = otherRooms[0];
-          socket.emit('live:pk_invite', { roomId, targetRoomId: target._id });
-          AlertService.show('PK Match', `Challenged ${target.host?.name || 'Broadcaster'} to PK Battle!`, 'info');
+          Alert.alert(
+            '⚔️ PK Battle Duration',
+            `Select duration to challenge ${target.host?.name || 'Broadcaster'}:`,
+            [
+              { text: '5 min', onPress: () => sendLivePKInvite(target._id, 300) },
+              { text: '15 min', onPress: () => sendLivePKInvite(target._id, 900) },
+              { text: '30 min', onPress: () => sendLivePKInvite(target._id, 1800) },
+              { text: 'Cancel', style: 'cancel' },
+            ]
+          );
         } else {
           AlertService.show('PK Battle', 'No other broadcaster is available for a PK invitation.', 'info');
         }
@@ -821,6 +831,14 @@ export default function LiveStreamScreen({ navigation, route }) {
       }
     }
     setRequestsVisible(false);
+  };
+
+  const sendLivePKInvite = (targetRoomId, durationSeconds) => {
+    const socket = getSocket();
+    if (socket?.connected) {
+      socket.emit('live:pk_invite', { roomId, targetRoomId, durationSeconds, pkType: 'room' });
+      AlertService.show('PK Match', `Challenged to ${Math.round(durationSeconds / 60)}-min PK Battle!`, 'info');
+    }
   };
 
   const isHalfScreenGame = Boolean(activeGame && !isGameMinimized);
@@ -936,13 +954,13 @@ export default function LiveStreamScreen({ navigation, route }) {
         </View>
       </TouchableWithoutFeedback>
 
-      {/* 2. Top Header Bar (Host Capsule, Diamonds, Supporters, Close) */}
+      {/* 2. Top Header Bar (Host Capsule, Coins, Supporters, Close) */}
       <View style={{ paddingTop: insets.top + 8 }}>
         <LiveTopHeader
           room={room}
           isHost={isHost}
           viewerCount={room.viewerCount || 0}
-          diamonds={room.totalDiamonds || 0}
+          diamonds={room.totalDiamonds || room.totalCoins || 0}
           hourlyRank={room.hourlyRank || 0}
           level={room.host?.level || 1}
           topSupporters={room.topSupporters || []}
@@ -983,6 +1001,8 @@ export default function LiveStreamScreen({ navigation, route }) {
             leftScore={leftScore}
             rightScore={rightScore}
             timeLeft={pkTimeFormatted}
+            leftContributors={leftContributors}
+            rightContributors={rightContributors}
           />
         </View>
       )}
@@ -1132,8 +1152,13 @@ export default function LiveStreamScreen({ navigation, route }) {
       <RoomLockModal
         visible={liveLockModalVisible}
         mode="set_pin"
+        roomId={roomId || room?._id || room?.id || room?.roomId || room?.channelName}
+        isRoomLocked={Boolean(room?.isPrivate)}
+        isLive={true}
+        title="Private Live"
         onClose={() => setLiveLockModalVisible(false)}
         onSuccess={handleLiveLockSuccess}
+        onUnlockRoom={handleToggleLiveLock}
       />
 
       {/* Live Games Selection Modal */}
@@ -1223,7 +1248,7 @@ export default function LiveStreamScreen({ navigation, route }) {
         }}
         host={room.host || { name: room.title || 'Host' }}
         durationText={formatDuration(Date.now() - liveStartTime.current)}
-        income={room.totalDiamonds || 0}
+        income={room.totalDiamonds || room.totalCoins || 0}
         viewerCount={room.viewerCount || 0}
       />
     </View>

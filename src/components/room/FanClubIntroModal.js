@@ -107,7 +107,7 @@ export default function FanClubIntroModal({ visible, onClose, topSafeInset = 35 
           <Text style={styles.itemHeading}>Group privilege</Text>
           <Text style={styles.itemBody}>
             Different Exp will achieve different badge. Exp increases with gift sending (1
-            Diamond = 1 Exp) and staying in the room (1 Min = 10 Exp).
+            Coin = 1 Exp) and staying in the room (1 Min = 10 Exp).
           </Text>
 
           {/* Badge Table Container (Exact Layout from screenshot) */}

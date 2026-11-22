@@ -1674,7 +1674,7 @@ export default function VoiceRoomScreen() {
       setSendingBullet(true);
       try {
         const result = await broadcastChatMessage(newMsg);
-        updateDiamonds?.(result.diamonds);
+        updateDiamonds?.(result.coins ?? result.diamonds);
         pendingBulletRef.current = null;
         setInputText(current => current.trim() === trimmed ? '' : current);
       } catch (error) {
@@ -2454,7 +2454,7 @@ export default function VoiceRoomScreen() {
             sessionUrl={activeGameSessionUrl}
             sessionId={activeGameSessionId}
             ticket={activeGameTicket}
-            coinsBalance={Number(user?.diamonds || user?.balance || 0)}
+            coinsBalance={Number(user?.coins || 0)}
             onClose={handleCloseGame}
             onMinimize={handleCloseGame}
             onRecharge={() => navigation.navigate('Recharge')}
@@ -2743,7 +2743,7 @@ export default function VoiceRoomScreen() {
           }
         }}
         mode={roomLockModalMode}
-        roomId={room?.id || room?.roomId || route?.params?.roomId}
+        roomId={room?._id || room?.id || room?.roomId || room?.channelName || route?.params?.roomId}
         isRoomLocked={currentRoomLocked}
         onUnlockRoom={handleUnlockRoom}
         onSuccess={(pin) => {
@@ -3223,7 +3223,7 @@ export default function VoiceRoomScreen() {
         visible={gamesModalVisible}
         onClose={() => setGamesModalVisible(false)}
         onSelectGame={handleSelectGame}
-        coinBalance={Number(user?.diamonds || user?.balance || 0)}
+        coinBalance={Number(user?.coins || 0)}
         onRecharge={() => navigation.navigate('Recharge')}
         bottomPadding={insets.bottom}
         roomType="voice"

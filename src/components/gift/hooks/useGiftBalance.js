@@ -5,9 +5,9 @@ import { apiUtil } from '../../../utils/apiUtil';
 
 export function useGiftBalance() {
   const { user } = useContext(AuthContext);
-  const initialDiamonds = Number(user?.diamonds ?? 0);
+  const initialCoins = Number(user?.coins ?? 0);
 
-  const [diamondBalance, setDiamondBalance] = useState(initialDiamonds);
+  const [coinBalance, setCoinBalance] = useState(initialCoins);
   const [loading, setLoading] = useState(false);
 
   const fetchBalance = useCallback(async () => {
@@ -16,8 +16,8 @@ export function useGiftBalance() {
       const res = await apiUtil.get('/user/profile');
       const profile = res.data?.data || res.data;
       if (profile) {
-        const diamonds = Number(profile.diamonds ?? 0);
-        setDiamondBalance(diamonds);
+        const coins = Number(profile.coins ?? profile.diamonds ?? 0);
+        setCoinBalance(coins);
       }
     } catch (err) {
       console.log('[useGiftBalance] Error fetching balance:', err.message);
@@ -35,9 +35,9 @@ export function useGiftBalance() {
     if (!socket) return;
 
     const handleBalanceUpdated = (data) => {
-      if (data && (data.diamonds !== undefined || data.totalBalance !== undefined)) {
-        const newBal = Number(data.diamonds !== undefined ? data.diamonds : data.totalBalance);
-        setDiamondBalance(newBal);
+      if (data && (data.coins !== undefined || data.diamonds !== undefined || data.totalBalance !== undefined)) {
+        const newBal = Number(data.coins ?? data.diamonds ?? data.totalBalance ?? 0);
+        setCoinBalance(newBal);
       }
     };
 
@@ -48,15 +48,16 @@ export function useGiftBalance() {
   }, []);
 
   const deductLocalBalance = useCallback((amount) => {
-    setDiamondBalance((prev) => Math.max(0, prev - amount));
+    setCoinBalance((prev) => Math.max(0, prev - amount));
   }, []);
 
   return {
-    diamondBalance,
-    setDiamondBalance,
+    coinBalance,
+    diamondBalance: coinBalance, // Alias for backward compatibility
+    setCoinBalance,
+    setDiamondBalance: setCoinBalance,
     fetchBalance,
     deductLocalBalance,
     loading,
   };
 }
-

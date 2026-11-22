@@ -81,7 +81,7 @@ export default function SVIPScreen() {
   const [isPurchasing, setIsPurchasing] = useState(false);
 
   const currentTier = tiers.find(tier => tier.id === activeTierId) || tiers[0];
-  const userCoins = Number(user?.coins ?? user?.diamonds ?? 0);
+  const userCoins = Number(user?.coins || 0);
   const tierPrivileges = currentTier?.privileges || [];
 
   if (!currentTier) return (

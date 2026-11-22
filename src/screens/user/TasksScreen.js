@@ -72,12 +72,12 @@ const TasksScreen = () => {
         {/* Currency balances in header */}
         <View style={styles.headerCurrencies}>
           <View style={styles.currencyPill}>
-            <Image source={require('../../assets/icons/diamond.png')} style={{ width: 14, height: 14, resizeMode: 'contain', marginRight: 3 }} />
-            <Text style={styles.currencyText}>{user?.diamonds ?? 0}</Text>
+            <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, resizeMode: 'contain', marginRight: 3 }} />
+            <Text style={styles.currencyText}>{user?.coins || 0}</Text>
           </View>
           <View style={[styles.currencyPill, styles.beansPill]}>
             <Image source={require('../../assets/icons/beans.png')} style={{ width: 14, height: 14, resizeMode: 'contain' }} />
-            <Text style={[styles.currencyText, { color: '#047857' }]}>{user?.coins ?? 0}</Text>
+            <Text style={[styles.currencyText, { color: '#047857' }]}>{user?.beans || 0}</Text>
           </View>
         </View>
       </View>
@@ -134,11 +134,11 @@ const TasksScreen = () => {
               <View key={task.id} style={styles.taskCard}>
                 <View style={styles.taskTopRow}>
                   <View style={styles.taskIconCircle}>
-                    {task.type === 'diamonds' ? (
+                    {task.type === 'coins' || task.type === 'diamonds' ? (
                       <MaterialCommunityIcons
-                        name="diamond-stone"
+                        name="circle-multiple"
                         size={22}
-                        color="#0284C7"
+                        color="#EAB308"
                       />
                     ) : (
                       <Text style={{ fontSize: 18 }}>🌰</Text>
@@ -151,7 +151,7 @@ const TasksScreen = () => {
                       <View
                         style={[
                           styles.rewardTag,
-                          task.type === 'diamonds'
+                          task.type === 'coins' || task.type === 'diamonds'
                             ? styles.rewardTagDiamond
                             : styles.rewardTagBeans,
                         ]}
@@ -159,7 +159,7 @@ const TasksScreen = () => {
                         <Text
                           style={[
                             styles.rewardTagText,
-                            task.type === 'diamonds'
+                            task.type === 'coins' || task.type === 'diamonds'
                               ? { color: '#0369A1' }
                               : { color: '#047857' },
                           ]}

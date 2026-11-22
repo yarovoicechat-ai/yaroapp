@@ -117,12 +117,12 @@ const VIPScreen = () => {
   const pkgData = PACKAGES.find((p) => p.id === selectedPackage) || PACKAGES[1];
 
   const handleActivate = async () => {
-    const diamonds = user?.diamonds || 0;
-    if (diamonds < pkgData.diamonds) {
+    const coins = user?.coins || 0;
+    if (coins < pkgData.diamonds) {
       setShowConfirmModal(false);
       AlertService.show(
-        'Insufficient Diamonds',
-        `You need ${pkgData.diamonds} Diamonds to activate VIP. Please recharge.`,
+        'Insufficient Coins',
+        `You need ${pkgData.diamonds} Coins to activate VIP. Please recharge.`,
         'error'
       );
       navigation.navigate('Wallet');
@@ -162,8 +162,8 @@ const VIPScreen = () => {
           onPress={() => navigation.navigate('Wallet')}
           activeOpacity={0.8}
         >
-          <MaterialCommunityIcons name="diamond-stone" size={14} color="#0284C7" />
-          <Text style={styles.diamondText}>{user?.diamonds ?? 0}</Text>
+          <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
+          <Text style={styles.diamondText}>{user?.coins || 0}</Text>
           <Ionicons name="add-circle" size={14} color="#0284C7" />
         </TouchableOpacity>
       </View>
@@ -281,7 +281,7 @@ const VIPScreen = () => {
                   )}
                   <Text style={styles.pkgTitle}>{pkg.title}</Text>
                   <View style={styles.pkgPriceRow}>
-                    <MaterialCommunityIcons name="diamond-stone" size={16} color="#0284C7" />
+                    <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
                     <Text style={styles.pkgPriceText}>{formatCompactBalance(pkg.diamonds)}</Text>
                   </View>
                 </TouchableOpacity>

@@ -122,13 +122,13 @@ export default function RoomDetailsModal({
 
             {/* Stats Row: Total Diamonds | Members */}
             <View style={styles.statsRow}>
-              {/* Total Diamonds */}
+              {/* Total Coins */}
               <View style={styles.statCol}>
                 <View style={styles.statTopItem}>
-                  <MaterialCommunityIcons name="diamond" size={19} color="#A855F7" style={{ marginRight: 4 }} />
+                  <MaterialCommunityIcons name="circle-multiple" size={19} color="#F59E0B" style={{ marginRight: 4 }} />
                   <Text style={styles.statNumber}>{totalDiamonds}</Text>
                 </View>
-                <Text style={styles.statLabel}>Total Diamonds</Text>
+                <Text style={styles.statLabel}>Total Coins</Text>
               </View>
 
               {/* Vertical Divider */}

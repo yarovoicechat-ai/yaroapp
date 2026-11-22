@@ -156,14 +156,14 @@ const MEDAL_CATALOG = {
       name: '10M Gifts Received',
       category: 'Achievement',
       image: MEDAL_ASSETS.gifts10m,
-      description: 'Overflowing diamond chest awarded for receiving 10,000,000 diamonds in room gifts.',
+      description: 'Overflowing diamond chest awarded for receiving 10,000,000 coins in room gifts.',
       howToGet: 'Receive 10M gifts in live audio rooms.',
-      requirement: '10,000,000 Diamonds Received',
+      requirement: '10,000,000 Coins Received',
       tiers: [
         {
           tierId: '10m',
           name: 'Received Gifts',
-          subtitle: '10000000 diamonds of gifts received',
+          subtitle: '10000000 coins of gifts received',
           badgeName: '10M Received',
           target: 10000000,
           image: MEDAL_ASSETS.tier10m,
@@ -172,7 +172,7 @@ const MEDAL_CATALOG = {
         {
           tierId: '40m',
           name: '40M Received',
-          subtitle: '40000000 diamonds of gifts received',
+          subtitle: '40000000 coins of gifts received',
           badgeName: '40M Received',
           target: 40000000,
           image: MEDAL_ASSETS.tier40m,
@@ -181,7 +181,7 @@ const MEDAL_CATALOG = {
         {
           tierId: '200m',
           name: '200M Received',
-          subtitle: '200000000 diamonds of gifts received (Sabse Bada Target)',
+          subtitle: '200000000 coins of gifts received (Sabse Bada Target)',
           badgeName: '200M Received',
           target: 200000000,
           image: MEDAL_ASSETS.tier200m,
@@ -201,7 +201,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich1',
           name: 'Rich Man (Silver)',
-          subtitle: 'Send 1,000,000 diamonds in live audio rooms',
+          subtitle: 'Send 1,000,000 coins in live audio rooms',
           badgeName: '1M Sent',
           target: 1000000,
           image: MEDAL_ASSETS.richMan,
@@ -209,7 +209,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich2',
           name: 'Rich Man (Gold)',
-          subtitle: 'Send 5,000,000 diamonds in live audio rooms',
+          subtitle: 'Send 5,000,000 coins in live audio rooms',
           badgeName: '5M Sent',
           target: 5000000,
           image: MEDAL_ASSETS.richMan,
@@ -217,7 +217,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich3',
           name: 'Supreme Tycoon',
-          subtitle: 'Send 20,000,000 diamonds in live audio rooms (Sabse Bada Target)',
+          subtitle: 'Send 20,000,000 coins in live audio rooms (Sabse Bada Target)',
           badgeName: '20M Sent',
           target: 20000000,
           image: MEDAL_ASSETS.richMan,
@@ -397,7 +397,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich1',
           name: 'Rich Man (Silver)',
-          subtitle: 'Send 1,000,000 diamonds in live audio rooms',
+          subtitle: 'Send 1,000,000 coins in live audio rooms',
           badgeName: '1M Sent',
           target: 1000000,
           image: MEDAL_ASSETS.richMan,
@@ -405,7 +405,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich2',
           name: 'Rich Man (Gold)',
-          subtitle: 'Send 5,000,000 diamonds in live audio rooms',
+          subtitle: 'Send 5,000,000 coins in live audio rooms',
           badgeName: '5M Sent',
           target: 5000000,
           image: MEDAL_ASSETS.richMan,
@@ -413,7 +413,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich3',
           name: 'Supreme Tycoon',
-          subtitle: 'Send 20,000,000 diamonds in live audio rooms (Sabse Bada Target)',
+          subtitle: 'Send 20,000,000 coins in live audio rooms (Sabse Bada Target)',
           badgeName: '20M Sent',
           target: 20000000,
           image: MEDAL_ASSETS.richMan,
@@ -463,13 +463,13 @@ const MEDAL_CATALOG = {
       category: 'Gift',
       image: MEDAL_ASSETS.gifts10m,
       description: 'Awarded to legendary hosts who have received over 10,000,000 gifts.',
-      howToGet: 'Receive 10,000,000 diamonds in room gifts.',
-      requirement: '10M Diamonds Received',
+      howToGet: 'Receive 10,000,000 coins in room gifts.',
+      requirement: '10M Coins Received',
       tiers: [
         {
           tierId: '10m',
           name: 'Received Gifts',
-          subtitle: '10000000 diamonds of gifts received',
+          subtitle: '10000000 coins of gifts received',
           badgeName: '10M Received',
           target: 10000000,
           image: MEDAL_ASSETS.tier10m,
@@ -478,7 +478,7 @@ const MEDAL_CATALOG = {
         {
           tierId: '40m',
           name: '40M Received',
-          subtitle: '40000000 diamonds of gifts received',
+          subtitle: '40000000 coins of gifts received',
           badgeName: '40M Received',
           target: 40000000,
           image: MEDAL_ASSETS.tier40m,
@@ -487,7 +487,7 @@ const MEDAL_CATALOG = {
         {
           tierId: '200m',
           name: '200M Received',
-          subtitle: '200000000 diamonds of gifts received (Sabse Bada Target)',
+          subtitle: '200000000 coins of gifts received (Sabse Bada Target)',
           badgeName: '200M Received',
           target: 200000000,
           image: MEDAL_ASSETS.tier200m,
@@ -501,13 +501,13 @@ const MEDAL_CATALOG = {
       category: 'Gift',
       image: MEDAL_ASSETS.richMan,
       description: 'A symbol of immense generosity and high gifting rank.',
-      howToGet: 'Reach 1,000,000 diamonds sent in live rooms.',
-      requirement: '1M Diamonds Sent',
+      howToGet: 'Reach 1,000,000 coins sent in live rooms.',
+      requirement: '1M Coins Sent',
       tiers: [
         {
           tierId: 'rich1',
           name: 'Rich Man (Silver)',
-          subtitle: 'Send 1,000,000 diamonds in live audio rooms',
+          subtitle: 'Send 1,000,000 coins in live audio rooms',
           badgeName: '1M Sent',
           target: 1000000,
           image: MEDAL_ASSETS.richMan,
@@ -515,7 +515,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich2',
           name: 'Rich Man (Gold)',
-          subtitle: 'Send 5,000,000 diamonds in live audio rooms',
+          subtitle: 'Send 5,000,000 coins in live audio rooms',
           badgeName: '5M Sent',
           target: 5000000,
           image: MEDAL_ASSETS.richMan,
@@ -523,7 +523,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich3',
           name: 'Supreme Tycoon',
-          subtitle: 'Send 20,000,000 diamonds in live audio rooms (Sabse Bada Target)',
+          subtitle: 'Send 20,000,000 coins in live audio rooms (Sabse Bada Target)',
           badgeName: '20M Sent',
           target: 20000000,
           image: MEDAL_ASSETS.richMan,
@@ -719,7 +719,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich1',
           name: 'Rich Man (Silver)',
-          subtitle: 'Send 1,000,000 diamonds in live audio rooms',
+          subtitle: 'Send 1,000,000 coins in live audio rooms',
           badgeName: '1M Sent',
           target: 1000000,
           image: MEDAL_ASSETS.richMan,
@@ -727,7 +727,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich2',
           name: 'Rich Man (Gold)',
-          subtitle: 'Send 5,000,000 diamonds in live audio rooms',
+          subtitle: 'Send 5,000,000 coins in live audio rooms',
           badgeName: '5M Sent',
           target: 5000000,
           image: MEDAL_ASSETS.richMan,
@@ -735,7 +735,7 @@ const MEDAL_CATALOG = {
         {
           tierId: 'rich3',
           name: 'Supreme Tycoon',
-          subtitle: 'Send 20,000,000 diamonds in live audio rooms (Sabse Bada Target)',
+          subtitle: 'Send 20,000,000 coins in live audio rooms (Sabse Bada Target)',
           badgeName: '20M Sent',
           target: 20000000,
           image: MEDAL_ASSETS.richMan,
@@ -801,7 +801,7 @@ export default function Medal() {
           isOwned: Boolean(entry.catalogItem || entry.isOwned),
           isEquipped: user?.equippedBadge === itemName,
           price: costPrice,
-          cost: `${costPrice} diamonds`,
+          cost: `${costPrice} coins`,
           progress: item.validity || '30 Days',
         };
       };
@@ -871,7 +871,7 @@ export default function Medal() {
     if (!targetMedal) return;
     AlertService.show(
       'Purchase Badge',
-      `Unlock ${targetMedal.name} for ${targetMedal.cost || `${targetMedal.price || 15} diamonds`}?`,
+      `Unlock ${targetMedal.name} for ${targetMedal.cost || `${targetMedal.price || 15} coins`}?`,
       'info',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -882,7 +882,7 @@ export default function Medal() {
             try {
               const response = await apiUtil.post('/store/buy', { itemId: targetMedal.id, durationDays: 30 });
               if (response.data?.data?.remainingDiamonds !== undefined) {
-                setUser(prev => ({ ...prev, diamonds: response.data.data.remainingDiamonds }));
+                setUser(prev => ({ ...prev, coins: response.data.data.remainingDiamonds }));
               }
               await loadMedals();
               setShowDetailModal(false);
@@ -1552,7 +1552,7 @@ export default function Medal() {
                       activeOpacity={0.8}
                     >
                       <Text style={s.buyActionBtnText}>
-                        Buy for {selectedMedal.cost || `${selectedMedal.price || 15} diamonds`}
+                        Buy for {selectedMedal.cost || `${selectedMedal.price || 15} coins`}
                       </Text>
                     </TouchableOpacity>
                   ) : (
@@ -1609,7 +1609,7 @@ export default function Medal() {
 
               <View style={s.ruleSection}>
                 <Text style={s.ruleSectionTitle}>💎 Gift Medals</Text>
-                <Text style={s.ruleSectionText}>Prestigious treasures unlocked by reaching landmark diamond volumes sent or received in live audio rooms.</Text>
+                <Text style={s.ruleSectionText}>Prestigious treasures unlocked by reaching landmark coin volumes sent or received in live audio rooms.</Text>
               </View>
 
               <View style={s.ruleSection}>

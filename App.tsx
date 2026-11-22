@@ -108,9 +108,9 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <UIProvider>
-            <VoiceRoomProvider>
-              <AppWrapper />
-            </VoiceRoomProvider>
+          <VoiceRoomProvider>
+            <AppWrapper />
+          </VoiceRoomProvider>
         </UIProvider>
       </AuthProvider>
     </SafeAreaProvider>

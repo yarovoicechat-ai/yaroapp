@@ -32,6 +32,9 @@ import AgoraClientService from '../../services/agoraService';
 import { useVoiceRoom } from '../../context/VoiceRoomContext';
 import LiveVideoGrid from '../../components/live/LiveVideoGrid';
 import RoomLockModal from '../../components/room/RoomLockModal';
+import AvatarSourceModal from '../../components/profile/AvatarSourceModal';
+import { requestCameraAndCapture, requestGalleryAndSelect } from '../../utils/verificationMedia';
+import { uploadToCloudinary } from '../../utils/cloudinaryUtil';
 import { AlertService } from '../../utils/AlertService';
 
 export default function CreateLiveScreen({ navigation, route }) {
@@ -51,6 +54,7 @@ export default function CreateLiveScreen({ navigation, route }) {
   const [isPrivateLive, setIsPrivateLive] = useState(false);
   const [livePin, setLivePin] = useState('');
   const [lockModalVisible, setLockModalVisible] = useState(false);
+  const [coverPickerVisible, setCoverPickerVisible] = useState(false);
   const [coverImage, setCoverImage] = useState(
     /^https:\/\//i.test(user?.avatar || user?.image || '')
       ? user.avatar || user.image
@@ -164,22 +168,49 @@ export default function CreateLiveScreen({ navigation, route }) {
   };
 
   const handleTogglePrivateLive = () => {
-    const isAllowed = user?.canPrivateLive === true || ['owner', 'superAdmin', 'admin'].includes(String(user?.role));
-    if (!isAllowed) {
-      AlertService.show(
-        'Permission Required 🔒',
-        'Private live option is not enabled for your account. Please contact admin to activate Private Live for your ID.',
-        'info'
-      );
-      return;
-    }
-
     if (isPrivateLive) {
       setIsPrivateLive(false);
       setLivePin('');
       AlertService.show('Notice', 'Private live lock turned off. Your live room is now public.', 'info');
     } else {
       setLockModalVisible(true);
+    }
+  };
+
+  const handleSelectCover = async (source) => {
+    setCoverPickerVisible(false);
+    try {
+      const captured = source === 'camera'
+        ? await requestCameraAndCapture('front')
+        : await requestGalleryAndSelect();
+      if (!captured?.uri) return;
+
+      setCoverImage(captured.uri);
+
+      try {
+        const cloudUrl = await uploadToCloudinary(captured, 'live_cover');
+        if (cloudUrl) {
+          setCoverImage(cloudUrl);
+          return;
+        }
+      } catch (_) {}
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: captured.uri,
+        type: captured.type || 'image/jpeg',
+        name: captured.name || `cover_${Date.now()}.jpg`,
+      });
+      const res = await apiUtil.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (res.data?.url || res.data?.data?.url) {
+        setCoverImage(res.data.url || res.data.data.url);
+      }
+    } catch (err) {
+      if (err?.message && !err.message.includes('cancel')) {
+        AlertService.show('Cover Photo', err.message || 'Could not select cover image', 'error');
+      }
     }
   };
 
@@ -346,10 +377,7 @@ export default function CreateLiveScreen({ navigation, route }) {
         onLayout={({ nativeEvent: { layout } }) => setInfoBottom(layout.y + layout.height + 12)}>
         {/* Cover Box */}
         <TouchableOpacity
-          onPress={() => {
-            // Toggle cover or profile photo
-            setCoverImage(user?.avatar || user?.image || '');
-          }}
+          onPress={() => setCoverPickerVisible(true)}
           activeOpacity={0.8}
           style={styles.coverBox}
         >
@@ -596,7 +624,7 @@ export default function CreateLiveScreen({ navigation, route }) {
               </View>
               <View style={styles.roomTypeInfo}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.roomTypeOptionTitle}>Private Live (Lock Room)</Text>
+                  <Text style={styles.roomTypeOptionTitle}>Private Live</Text>
                   {user?.canPrivateLive ? (
                     <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
                       <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '700' }}>ENABLED</Text>
@@ -627,6 +655,8 @@ export default function CreateLiveScreen({ navigation, route }) {
       <RoomLockModal
         visible={lockModalVisible}
         mode="set_pin"
+        isLive={true}
+        title="Private Live"
         onClose={() => setLockModalVisible(false)}
         onSuccess={(pin) => {
           setIsPrivateLive(true);
@@ -642,11 +672,98 @@ export default function CreateLiveScreen({ navigation, route }) {
         selectedChannel={channel}
         onSelectChannel={c => setChannel(c)}
       />
+
+      {/* 6. Live Cover Source Modal */}
+      <AvatarSourceModal
+        visible={coverPickerVisible}
+        onClose={() => setCoverPickerVisible(false)}
+        onSelectSource={handleSelectCover}
+        styles={styles}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContentCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 28,
+    alignItems: 'center',
+  },
+  modalHandleBar: {
+    width: 44,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#CBD5E1',
+    marginBottom: 16,
+  },
+  modalHeading: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  modalSubheading: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 20,
+  },
+  modalOptionsGrid: {
+    width: '100%',
+    gap: 12,
+  },
+  modalTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalTileIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  modalTileTextWrap: {
+    flex: 1,
+  },
+  modalTileTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  modalTileDesc: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  modalCancelButton: {
+    marginTop: 16,
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#64748B',
+  },
   multiPreview: { position: 'absolute', left: 8, right: 8 },
   featureTabs: { flexDirection: 'row', paddingVertical: 10, justifyContent: 'space-around' },
   featureTab: { paddingHorizontal: 5, paddingVertical: 8, alignItems: 'center' },

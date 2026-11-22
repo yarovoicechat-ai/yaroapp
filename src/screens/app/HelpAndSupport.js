@@ -131,7 +131,7 @@ const HelpAndSupport = () => {
   const [loading, setLoading] = useState(false);
 
   const reasons = [
-    'Add Diamonds / Beans Issue',
+    'Add Coins / Beans Issue',
     'Call Issue',
     'OTP / Login Issue',
     'Face Verification Issue',
@@ -147,8 +147,8 @@ const HelpAndSupport = () => {
   const faqBotData = {
     'How to use Yaro Voice Chat?':
       'Open the Home screen, select an online host and tap Call. Calls use the rate shown when you start the call. Each started minute is billable. Keep a stable internet connection and allow microphone permission.',
-    'How to earn coins and diamonds?':
-      'Users purchase diamonds for gifts. Hosts earn Beans from eligible gifts under the applicable economy version.',
+    'How to earn coins and beans?':
+      'Users purchase Coins for gifts and gameplay. Hosts earn Beans from eligible gifts and can withdraw them via UPI or Bank Transfer.',
     'How to withdraw my earnings?':
       'Go to Profile > Withdrawal, enter coins and choose Bank or UPI. You will see 5% platform fee and final net payout.',
     'Account & Verification':
@@ -156,14 +156,14 @@ const HelpAndSupport = () => {
     'Calls & Connectivity Issues':
       'Ensure high speed 4G/5G or Wi-Fi with microphone permissions enabled.',
     'Gifts & Transactions':
-      'Purchase diamonds via wallet. For missing transactions, provide transaction ID in a ticket.',
+      'Purchase Coins via wallet. For missing transactions, provide transaction ID in a ticket.',
     'Report a User or Problem':
       'Submit a ticket with reason, detailed message, and screenshot.',
   };
 
   const botQuestions = [
     'How to use Yaro Voice Chat?',
-    'How to earn coins and diamonds?',
+    'How to earn coins and beans?',
     'How to withdraw my earnings?',
     'Account & Verification',
     'Calls & Connectivity Issues',
@@ -369,7 +369,7 @@ const HelpAndSupport = () => {
   const renderLandingView = () => {
     const faqs = [
       { q: 'How to use Yaro Voice Chat?', icon: 'mic-outline', color: '#8B5CF6' },
-      { q: 'How to earn coins and diamonds?', icon: 'diamond-outline', color: '#06B6D4' },
+      { q: 'How to earn coins and beans?', icon: 'cash-outline', color: '#06B6D4' },
       { q: 'How to withdraw my earnings?', icon: 'wallet-outline', color: '#10B981' },
       { q: 'Account & Verification', icon: 'shield-checkmark-outline', color: '#EC4899' },
       { q: 'Calls & Connectivity Issues', icon: 'wifi-outline', color: '#F59E0B' },

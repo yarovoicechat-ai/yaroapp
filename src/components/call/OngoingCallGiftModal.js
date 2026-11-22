@@ -46,8 +46,8 @@ export default function OngoingCallGiftModal({
             <View style={styles.modalHeaderTitleRow}>
               <Text style={styles.modalTitle}>Choose a Gift</Text>
               <View style={styles.modalCoinBadge}>
-                <Icon name="bitcoin" size={14} color="#FFD700" />
-                <Text style={styles.modalCoinBadgeText}>{Number(user?.diamonds || 0).toLocaleString()}</Text>
+                <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
+                <Text style={styles.modalCoinBadgeText}>{Number(user?.coins ?? 0).toLocaleString()} Coins</Text>
               </View>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>

@@ -17,7 +17,7 @@ import {
 
 const diamondCardBg = require('../../assets/card/diamond_gold_card_bg.jpg');
 const beansCardBg = require('../../assets/card/beans_back_card.png');
-const diamondIcon = require('../../assets/icons/diamond.png');
+const diamondIcon = require('../../assets/icons/coin.png');
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -368,14 +368,16 @@ const Wallet = ({ route } = {}) => {
   };
 
   const handleExchangeCoin = async (pack) => {
-    if ((user?.coins || 0) < pack.coins) {
+    const requiredBeans = pack.beans ?? pack.coins;
+    const coinsReceived = pack.coinsReceived ?? pack.diamonds;
+    if ((user?.beans || 0) < requiredBeans) {
       AlertService.show('Insufficient Beans', 'You do not have enough Beans to exchange for this package.', 'error');
       return;
     }
 
     AlertService.show(
       'Confirm Conversion',
-      `Are you sure you want to convert ${pack.coins.toLocaleString()} Beans into ${pack.diamonds.toLocaleString()} Coins?`,
+      `Are you sure you want to convert ${requiredBeans.toLocaleString()} Beans into ${coinsReceived.toLocaleString()} Coins?`,
       'info',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -384,12 +386,12 @@ const Wallet = ({ route } = {}) => {
           onPress: async () => {
             setLoading(true);
             try {
-              const res = await exchangeCoins(pack.coins);
+              const res = await exchangeCoins(requiredBeans);
 
               if (res.data.success) {
                 AlertService.show(
                   'Conversion Successful 🎉',
-                  `Converted ${pack.coins.toLocaleString()} Beans to ${pack.diamonds.toLocaleString()} Coins!`,
+                  `Converted ${requiredBeans.toLocaleString()} Beans to ${coinsReceived.toLocaleString()} Coins!`,
                   'success'
                 );
                 fetchUserProfile();
@@ -507,7 +509,7 @@ const Wallet = ({ route } = {}) => {
                   <View style={styles.balanceLabelCol}>
                     <Text style={[styles.balanceLabel, { color: '#FEF3C7', textShadowColor: 'rgba(0,0,0,0.65)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>My Coins</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={[styles.balanceCount, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }]}>{formatCompactBalance(user?.diamonds ?? 0)}</Text>
+                      <Text style={[styles.balanceCount, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }]}>{formatCompactBalance(user?.coins || 0)}</Text>
                       <Image source={diamondIcon} style={{ width: 24, height: 24, marginLeft: 6 }} resizeMode="contain" />
                     </View>
                   </View>
@@ -633,7 +635,7 @@ const Wallet = ({ route } = {}) => {
                   <View style={styles.balanceLabelCol}>
                     <Text style={[styles.balanceLabel, { color: '#E0E7FF', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>My Beans</Text>
                     <View style={styles.balanceCountRow}>
-                      <Text style={[styles.balanceCount, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }]}>{formatCompactBalance(user?.coins || 0)}</Text>
+                      <Text style={[styles.balanceCount, { color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }]}>{formatCompactBalance(user?.beans || 0)}</Text>
                       <Image
                         source={require('../../assets/icons/beans.png')}
                         style={{ width: 22, height: 22, marginLeft: 6 }}
@@ -641,8 +643,8 @@ const Wallet = ({ route } = {}) => {
                       />
                     </View>
                     <Text style={[styles.balanceValue, { color: '#FEF08A', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3, fontWeight: '800' }]}>
-                      ≈ ₹{formatCompactBalance((user?.coins || 0) / 200)}
-                      {Number(user?.coins || 0) >= 1000000 ? ` (${(user?.coins || 0).toLocaleString()} 🌟)` : ''}
+                      ≈ ₹{formatCompactBalance((user?.beans || 0) / 200)}
+                      {Number(user?.beans || 0) >= 1000000 ? ` (${(user?.beans || 0).toLocaleString()} 🌟)` : ''}
                     </Text>
                   </View>
                 </View>

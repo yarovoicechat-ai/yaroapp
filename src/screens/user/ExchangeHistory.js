@@ -93,8 +93,8 @@ const ExchangeHistory = ({ navigation }) => {
           <Text style={styles.filterText}>Beans</Text>
         </View>
         <View style={styles.filterCell}>
-          <Icon name="diamond" size={14} color="#0284C7" style={{ marginRight: 4 }} />
-          <Text style={styles.filterText}>Diamonds</Text>
+          <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
+          <Text style={styles.filterText}>Coins</Text>
         </View>
         <View style={styles.filterCell}>
           <Icon name="access-time" size={14} color="#7C3AED" style={{ marginRight: 4 }} />
@@ -124,7 +124,7 @@ const ExchangeHistory = ({ navigation }) => {
             </View>
             <Text style={styles.emptyTitle}>No Exchange History</Text>
             <Text style={styles.emptySubtitle}>
-              Your bean to diamond exchange transactions will appear here.
+              Your bean to coin exchange transactions will appear here.
             </Text>
           </View>
         ) : (
@@ -138,9 +138,9 @@ const ExchangeHistory = ({ navigation }) => {
                 </Text>
               </View>
 
-              {/* Diamonds Received */}
+              {/* Coins Received */}
               <View style={styles.cardCell}>
-                <Icon name="diamond" size={16} color="#0284C7" style={{ marginRight: 4 }} />
+                <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
                 <Text style={styles.diamondsText}>
                   +{item.diamonds ? item.diamonds.toLocaleString() : '0'}
                 </Text>

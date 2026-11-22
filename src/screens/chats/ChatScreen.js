@@ -387,13 +387,13 @@ const Massage = ({ route }) => {
       return;
     }
 
-    const userBalance = Number(user?.diamonds || 0);
+    const userBalance = Number(user?.coins || 0);
     const isSenderExempt = ['admin', 'superadmin', 'root'].includes(String(user?.role || '').toLowerCase());
     const paidChat = isPaidChatHost && !isSenderExempt;
     if (paidChat && userBalance < 2) {
       AlertService.show(
-        'Insufficient Diamonds',
-        'A message to a host costs 2 Diamonds. Please recharge your wallet.',
+        'Insufficient Coins',
+        'A message to a host costs 2 Coins. Please recharge your wallet.',
         'error',
         [
           { text: 'Cancel', style: 'cancel' },
@@ -530,11 +530,11 @@ const Massage = ({ route }) => {
     }
 
     const cost = Number(giftItem.price ?? giftItem.cost ?? giftItem.priceDiamonds ?? 0) * qty;
-    const userBalance = Number(user?.diamonds || 0);
+    const userBalance = Number(user?.coins || 0);
     if (userBalance < cost) {
       AlertService.show(
-        'Insufficient Diamonds',
-        `You need ${cost} Diamonds to send ${qty}x ${giftItem.name}. Please recharge your wallet.`,
+        'Insufficient Coins',
+        `You need ${cost} Coins to send ${qty}x ${giftItem.name}. Please recharge your wallet.`,
         'error',
         [
           { text: 'Cancel', style: 'cancel' },
@@ -551,7 +551,7 @@ const Massage = ({ route }) => {
         giftId: giftItem._id,
         quantity: qty,
         comboCount: 1,
-        currency: 'DIAMONDS',
+        currency: 'COINS',
         receiverIds: [targetUserId],
         receiverId: targetUserId,
       });

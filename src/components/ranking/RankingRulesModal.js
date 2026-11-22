@@ -12,10 +12,10 @@ export default function RankingRulesModal({ visible, onClose, styles }) {
             <Text style={styles.infoModalTitle}>Ranking Rules & Rewards</Text>
           </View>
           <Text style={styles.infoModalDesc}>
-            • <Text style={{ fontWeight: '700' }}>Honor:</Text> Points calculated from diamonds gifted in voice rooms & calls.{ '\n\n' }
+            • <Text style={{ fontWeight: '700' }}>Honor:</Text> Points calculated from coins gifted in voice rooms & calls.{ '\n\n' }
             • <Text style={{ fontWeight: '700' }}>Charm:</Text> Beans received from fans & listeners.{ '\n\n' }
             • <Text style={{ fontWeight: '700' }}>Room:</Text> Total party room heat & active listener gifts.{ '\n\n' }
-            • Top 3 champions receive exclusive Avatar Frames, Sovereign SVIP badges, and diamond bonuses at 23:59pm!
+            • Top 3 champions receive exclusive Avatar Frames, Sovereign SVIP badges, and coin bonuses at 23:59pm!
           </Text>
           <TouchableOpacity style={styles.infoModalCloseBtn} onPress={onClose} activeOpacity={0.85}>
             <Text style={styles.infoModalCloseText}>Got It!</Text>

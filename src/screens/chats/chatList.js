@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import {
   View,
   Text,
@@ -163,8 +163,6 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
 
   const handleSubTabPress = (tabId) => {
     setActiveSubTab(tabId);
-    if (tabId === 'calls' && calls.length === 0) {
-      }
     if (tabId === 'gifts') fetchGiftHistory();
     if (tabId === 'system') fetchSystemNotices();
   };
@@ -322,7 +320,15 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
     );
   };
 
-  const listData = [LUCKY_REWARD_BAG_ENTRY, SYSTEM_NOTICE_ENTRY, ...conversations];
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) => {
+      const timeA = new Date(a.lastMessage?.createdAt || a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.lastMessage?.createdAt || b.updatedAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+  }, [conversations]);
+
+  const listData = [LUCKY_REWARD_BAG_ENTRY, SYSTEM_NOTICE_ENTRY, ...sortedConversations];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>

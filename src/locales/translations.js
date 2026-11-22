@@ -101,7 +101,7 @@ export const resources = {
             },
             "about_us": {
                 "title": "About Us – Yaro",
-                "content": "Welcome to Yaro – A Private 1-on-1 Voice Calling and Friendship App!\n\nYaro is a social voice platform that helps users connect through real-time 1-on-1 voice calls. Whether you're looking to talk, make new friends, or just pass the time, Yaro offers a safe and engaging space for meaningful voice conversations.\n\n🎯 Key Features:\n\n• 1-on-1 Real-Time Voice Calling\n• Diamond & Bean Social System (with easy recharge)\n• Profile Customization (avatars, bios)\n• Smart Matchmaking to Meet New People\n• Full Privacy Controls – Block, Report, etc.\n\n🔒 Safe and Respectful Environment\n\nWe prioritize user safety. Our platform includes strict moderation tools, reporting features, and user controls to maintain a respectful and abuse-free experience.\n\n🌍 Who We Are\n\nYaro is developed by an India-based team passionate about building secure and voice-focused social experiences.\n\n📱 App Availability:\n\nAvailable on the Google Play Store\nhttps://play.google.com/store/apps/details?id=yaro.vc.app\n\n📬 Contact Us:\n\nEmail: support@yaroapp.in\nIn-App: Go to Profile → Help & Support"
+                "content": "Welcome to Yaro – A Private 1-on-1 Voice Calling and Friendship App!\n\nYaro is a social voice platform that helps users connect through real-time 1-on-1 voice calls. Whether you're looking to talk, make new friends, or just pass the time, Yaro offers a safe and engaging space for meaningful voice conversations.\n\n🎯 Key Features:\n\n• 1-on-1 Real-Time Voice Calling\n• Coin & Bean Social System (with easy recharge)\n• Profile Customization (avatars, bios)\n• Smart Matchmaking to Meet New People\n• Full Privacy Controls – Block, Report, etc.\n\n🔒 Safe and Respectful Environment\n\nWe prioritize user safety. Our platform includes strict moderation tools, reporting features, and user controls to maintain a respectful and abuse-free experience.\n\n🌍 Who We Are\n\nYaro is developed by an India-based team passionate about building secure and voice-focused social experiences.\n\n📱 App Availability:\n\nAvailable on the Google Play Store\nhttps://play.google.com/store/apps/details?id=yaro.vc.app\n\n📬 Contact Us:\n\nEmail: support@yaroapp.in\nIn-App: Go to Profile → Help & Support"
             },
             "contact_us": {
                 "title": "Contact Us",
@@ -138,7 +138,7 @@ export const resources = {
                 "processing": "Processing Purchase...",
                 "history": "Recharge History",
                 "no_history": "No recharge history found.",
-                "success": "Diamonds added to your wallet!",
+                "success": "Coins added to your wallet!",
                 "verification_failed": "Verification Failed",
                 "server_error": "Payment verification failed on server.",
                 "purchase_failed": "Purchase failed.",
@@ -213,7 +213,7 @@ export const resources = {
                 "failed_submit": "Failed to submit request",
                 "error_submit": "Something went wrong. Please try again.",
                 "reasons": {
-                    "add_coin_issue": "Recharge / Diamond Issue",
+                    "add_coin_issue": "Recharge / Coin Issue",
                     "user_report": "User Report",
                     "host_report": "Host Report",
                     "withdraw_issue": "Withdraw Issue",

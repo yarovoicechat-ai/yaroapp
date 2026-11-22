@@ -122,7 +122,7 @@ export default function OneToOne() {
   const startCall = async (host, isVideo = true) => {
     if (!host) return;
     if (callingId) return;
-    const userCoins = Number(user?.coins ?? user?.diamonds ?? 0);
+    const userCoins = Number(user?.coins || 0);
     const requiredCoins = isVideo ? 1200 : 600;
     if (userCoins < requiredCoins) {
       Alert.alert('Insufficient Coins', 'Please recharge your Coins to start this call.', [
@@ -185,7 +185,7 @@ export default function OneToOne() {
         <View style={styles.actions}>
           <TouchableOpacity style={styles.coins} onPress={() => navigation.navigate('Recharge')} activeOpacity={0.8}>
             <Image source={diamondIcon} style={styles.coinIcon} resizeMode="contain" />
-            <Text style={styles.coinText}>{formatCompactBalance(user?.coins ?? user?.diamonds ?? 0)}</Text>
+            <Text style={styles.coinText}>{formatCompactBalance(user?.coins || 0)}</Text>
             <View style={styles.plus}><Icon name="add" size={17} color="#fff" /></View>
           </TouchableOpacity>
           <TouchableOpacity

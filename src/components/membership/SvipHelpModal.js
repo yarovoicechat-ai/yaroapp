@@ -3,7 +3,7 @@ import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const RULES = [
-  'VIP tiers are purchased using diamonds and remain active for the configured validity period.',
+  'VIP tiers are purchased using coins and remain active for the configured validity period.',
   'Your permanent account numeric ID is never overwritten or affected by temporary VIP display tags.',
   'When your VIP expires, benefits automatically stop and your profile safely reverts to default styling.',
   'VIP grants immunity from public room kicks, high-priority entry notifications, and exclusive privileges.',

@@ -56,13 +56,13 @@ const FAN_PERKS = [
     id: 'perk_5',
     icon: 'gift-outline',
     title: 'Intimacy Multiplier',
-    desc: 'Earn 1.5x Intimacy points for every Diamond gift sent to the host.',
+    desc: 'Earn 1.5x Intimacy points for every Coin gift sent to the host.',
     color: '#10B981',
   },
 ];
 
 const INTIMACY_WAYS = [
-  { action: 'Send 1 Diamond in Room', points: '+1 Exp', icon: 'card-giftcard' },
+  { action: 'Send 1 Coin in Room', points: '+1 Exp', icon: 'card-giftcard' },
   { action: 'Stay in Room for 1 Min', points: '+10 Exp', icon: 'time-outline' },
   { action: 'Daily Sign-in to Room', points: '+100 Exp', icon: 'login' },
   { action: 'Stay on Seat for 10 Mins', points: '+150 Exp', icon: 'mic-none' },
@@ -89,13 +89,13 @@ const FanClubScreen = () => {
 
   const handleJoinClub = () => {
     const cost = selectedPlan === '1_month' ? 99 : 249;
-    const diamonds = user?.diamonds || 0;
+    const coins = user?.coins || 0;
 
-    if (diamonds < cost) {
+    if (coins < cost) {
       setShowJoinModal(false);
       AlertService.show(
-        'Insufficient Diamonds',
-        `You need ${cost} Diamonds to join Fan Club. Please recharge your wallet.`,
+        'Insufficient Coins',
+        `You need ${cost} Coins to join Fan Club. Please recharge your wallet.`,
         'error'
       );
       navigation.navigate('Wallet');
@@ -128,8 +128,8 @@ const FanClubScreen = () => {
           onPress={() => navigation.navigate('Wallet')}
           activeOpacity={0.8}
         >
-          <MaterialCommunityIcons name="diamond-stone" size={14} color="#0284C7" />
-          <Text style={styles.diamondText}>{user?.diamonds ?? 0}</Text>
+          <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
+          <Text style={styles.diamondText}>{user?.coins || 0}</Text>
           <Ionicons name="add-circle" size={14} color="#0284C7" />
         </TouchableOpacity>
       </View>
@@ -295,7 +295,7 @@ const FanClubScreen = () => {
               >
                 <Text style={styles.planDuration}>1 Month</Text>
                 <View style={styles.planPriceRow}>
-                  <MaterialCommunityIcons name="diamond-stone" size={16} color="#0284C7" />
+                  <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
                   <Text style={styles.planPriceText}>99</Text>
                 </View>
               </TouchableOpacity>
@@ -310,7 +310,7 @@ const FanClubScreen = () => {
                 </View>
                 <Text style={styles.planDuration}>3 Months</Text>
                 <View style={styles.planPriceRow}>
-                  <MaterialCommunityIcons name="diamond-stone" size={16} color="#0284C7" />
+                  <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
                   <Text style={styles.planPriceText}>249</Text>
                 </View>
               </TouchableOpacity>

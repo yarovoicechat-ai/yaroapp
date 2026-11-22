@@ -55,7 +55,7 @@ export const GreedyKingScreen: React.FC<GreedyKingScreenProps> = ({
   });
 
   const coinsBalance = Number(
-    profile?.coins ?? user?.coins ?? profile?.diamonds ?? user?.diamonds ?? user?.balance ?? 0
+    profile?.coins ?? user?.coins ?? 0
   );
 
   // Real-time synchronization of native wallet with game backend

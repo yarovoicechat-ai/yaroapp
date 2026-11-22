@@ -28,7 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getStackScreenBottomPadding } from '../../utils/safeAreaUtils';
 
 const coinIcon = require('../../assets/coin.webp');
-const diamondIcon = require('../../assets/icons/diamond.png');
+const diamondIcon = require('../../assets/icons/coin.png');
 
 const { width } = Dimensions.get('window');
 
@@ -113,14 +113,14 @@ const InviteEarn = () => {
   const getShareMessage = () => {
     const code = referralData.referralCode || user?.referralCode || `YR${user?.userId || ''}`;
     const link = referralData.referralLink || `https://yaroapp.in/refer/${code}`;
-    return `✨ *YAROAPP — SPECIAL INVITATION* ✨\n\n🎉 Join me on YaroApp, the #1 Live Video & Voice Social App!\n\n🎁 *Exclusive Bonus:* Use my Referral Code *${code}* during sign-up to claim *5 FREE Welcome Diamonds*!\n\n👇 *Download App & Claim Bonus:* \n${link}\n\n🔥 Install now & let's connect!`;
+    return `✨ *YAROAPP — SPECIAL INVITATION* ✨\n\n🎉 Join me on YaroApp, the #1 Live Video & Voice Social App!\n\n🎁 *Exclusive Bonus:* Use my Referral Code *${code}* during sign-up to claim *5 FREE Welcome Coins*!\n\n👇 *Download App & Claim Bonus:* \n${link}\n\n🔥 Install now & let's connect!`;
   };
 
   const handleNativeShare = async () => {
     try {
       await Share.share({
         message: getShareMessage(),
-        title: 'Invite Friends & Earn Diamonds on YaroApp',
+        title: 'Invite Friends & Earn Coins on YaroApp',
       });
     } catch (err) {
       console.log('Share error:', err.message);
@@ -195,12 +195,12 @@ const InviteEarn = () => {
 
           <View style={styles.coinPillHeader}>
             <Image source={diamondIcon} style={styles.headerAssetIcon} resizeMode="contain" />
-            <Text style={styles.coinPillText}>{user?.diamonds || 0}</Text>
+            <Text style={styles.coinPillText}>{user?.coins || 0}</Text>
           </View>
 
           <View style={[styles.coinPillHeader, { borderColor: '#FDE68A', backgroundColor: '#FEF3C7' }]}>
             <Image source={coinIcon} style={styles.headerAssetIcon} resizeMode="contain" />
-            <Text style={[styles.coinPillText, { color: '#B45309' }]}>{user?.coins || 0}</Text>
+            <Text style={[styles.coinPillText, { color: '#B45309' }]}>{user?.beans || 0}</Text>
           </View>
         </View>
       </View>
@@ -233,9 +233,9 @@ const InviteEarn = () => {
                 </View>
               </View>
 
-              <Text style={styles.heroTitle}>Invite Friends & Earn Diamonds</Text>
+              <Text style={styles.heroTitle}>Invite Friends & Earn Coins</Text>
               <Text style={styles.heroSub}>
-                New friends get <Text style={styles.highlightCyan}>5 Diamonds</Text>. You get <Text style={styles.highlightGold}>3 Diamonds</Text> on sign-up + <Text style={styles.highlightGold}>2 Diamonds</Text> on their recharge!
+                New friends get <Text style={styles.highlightCyan}>5 Coins</Text>. You get <Text style={styles.highlightGold}>3 Coins</Text> on sign-up + <Text style={styles.highlightGold}>2 Coins</Text> on their recharge!
               </Text>
 
               {/* Dynamic Reward Exchange Display */}
@@ -244,7 +244,7 @@ const InviteEarn = () => {
                   <Text style={styles.exchangeBoxLabel}>NEW FRIEND GETS</Text>
                   <View style={styles.exchangeBoxValRow}>
                     <Image source={diamondIcon} style={styles.assetIconMd} resizeMode="contain" />
-                    <Text style={[styles.exchangeBoxVal, { color: '#38BDF8' }]}>+5 DIAMONDS</Text>
+                    <Text style={[styles.exchangeBoxVal, { color: '#38BDF8' }]}>+5 COINS</Text>
                   </View>
                 </View>
 
@@ -256,7 +256,7 @@ const InviteEarn = () => {
                   <Text style={styles.exchangeBoxLabel}>YOU RECEIVE</Text>
                   <View style={styles.exchangeBoxValRow}>
                     <Image source={diamondIcon} style={styles.assetIconMd} resizeMode="contain" />
-                    <Text style={[styles.exchangeBoxVal, { color: '#FDE68A' }]}>+5 DIAMONDS</Text>
+                    <Text style={[styles.exchangeBoxVal, { color: '#FDE68A' }]}>+5 COINS</Text>
                   </View>
                 </View>
               </View>
@@ -352,7 +352,7 @@ const InviteEarn = () => {
                 <Image source={diamondIcon} style={styles.statAssetIcon} resizeMode="contain" />
               </View>
               <Text style={styles.statNumber}>{referralData.totalEarnedDiamonds ?? referralData.totalEarnedCoins ?? 0}</Text>
-              <Text style={styles.statLabel}>Earned Diamonds</Text>
+              <Text style={styles.statLabel}>Earned Coins</Text>
             </LinearGradient>
           </View>
         </View>
@@ -419,16 +419,16 @@ const InviteEarn = () => {
             <View style={styles.flowStepItem}>
               <View style={styles.flowStepBadge}><Text style={styles.flowStepNum}>2</Text></View>
               <View style={styles.flowStepTextWrap}>
-                <Text style={styles.flowStepTitle}>New User Bonus (+5 Diamonds) & Signup (+3 Diamonds)</Text>
-                <Text style={styles.flowStepDesc}>Friend installs YaroApp & enters your code. Friend receives +5 Welcome Diamonds instantly, and you get +3 Diamonds!</Text>
+                <Text style={styles.flowStepTitle}>New User Bonus (+5 Coins) & Signup (+3 Coins)</Text>
+                <Text style={styles.flowStepDesc}>Friend installs YaroApp & enters your code. Friend receives +5 Welcome Coins instantly, and you get +3 Coins!</Text>
               </View>
             </View>
 
             <View style={styles.flowStepItem}>
               <View style={styles.flowStepBadge}><Text style={styles.flowStepNum}>3</Text></View>
               <View style={styles.flowStepTextWrap}>
-                <Text style={styles.flowStepTitle}>Step 2 Reward: Friend Recharge (+2 Diamonds)</Text>
-                <Text style={styles.flowStepDesc}>When your friend completes their recharge, you get an extra +2 Diamonds bonus!</Text>
+                <Text style={styles.flowStepTitle}>Step 2 Reward: Friend Recharge (+2 Coins)</Text>
+                <Text style={styles.flowStepDesc}>When your friend completes their recharge, you get an extra +2 Coins bonus!</Text>
               </View>
             </View>
           </View>
@@ -462,7 +462,7 @@ const InviteEarn = () => {
                     </View>
                     <View style={styles.totalCoinsPill}>
                       <Image source={diamondIcon} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
-                      <Text style={styles.totalCoinsText}>+{item.totalDiamondsEarned || item.diamonds || (isStep2Done ? 5 : 3)} Diamonds</Text>
+                      <Text style={styles.totalCoinsText}>+{item.totalDiamondsEarned || item.diamonds || (isStep2Done ? 5 : 3)} Coins</Text>
                     </View>
                   </View>
 
@@ -471,7 +471,7 @@ const InviteEarn = () => {
                     <View style={styles.stepProgressRow}>
                       <View style={styles.stepBadgeDone}>
                         <Icon name="check-circle" size={14} color="#10b981" style={{ marginRight: 4 }} />
-                        <Text style={styles.stepBadgeDoneText}>Step 1: Registered (+3 Diamonds)</Text>
+                        <Text style={styles.stepBadgeDoneText}>Step 1: Registered (+3 Coins)</Text>
                       </View>
                     </View>
 
@@ -479,13 +479,13 @@ const InviteEarn = () => {
                       {isStep2Done ? (
                         <View style={styles.stepBadgeDone}>
                           <Icon name="check-circle" size={14} color="#10b981" style={{ marginRight: 4 }} />
-                          <Text style={styles.stepBadgeDoneText}>Step 2: Recharged (+2 Diamonds)</Text>
+                          <Text style={styles.stepBadgeDoneText}>Step 2: Recharged (+2 Coins)</Text>
                         </View>
                       ) : (
                         <View style={styles.stepBadgePending}>
                           <Icon name="lock" size={12} color="#fbbf24" style={{ marginRight: 4 }} />
                           <Text style={styles.stepBadgePendingText}>
-                            Step 2: Awaiting Recharge (+2 Diamonds)
+                            Step 2: Awaiting Recharge (+2 Coins)
                           </Text>
                         </View>
                       )}
@@ -499,7 +499,7 @@ const InviteEarn = () => {
               <Icon name="person-add-disabled" size={40} color="rgba(255,255,255,0.25)" />
               <Text style={styles.emptyTitle}>No Friends Invited Yet</Text>
               <Text style={styles.emptySub}>
-                Share your referral link above to start earning 3 Diamonds on signup + 2 Diamonds on recharge!
+                Share your referral link above to start earning 3 Coins on signup + 2 Coins on recharge!
               </Text>
             </View>
           )}

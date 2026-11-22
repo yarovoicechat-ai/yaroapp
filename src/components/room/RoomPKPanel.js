@@ -17,6 +17,8 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
   const [opponents, setOpponents] = useState([]);
   const [history, setHistory] = useState([]);
   const [target, setTarget] = useState('');
+  const [selectedDuration, setSelectedDuration] = useState(300);
+  const [selectedType, setSelectedType] = useState('room');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -117,8 +119,13 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
   };
 
   const sendInvite = value => {
-    if (!String(value || '').trim()) { setError('Enter the other room ID or select a live room.'); return; }
-    action('/invite', { targetRoomId: String(value).trim() });
+    const rawVal = String(value || '').trim();
+    if (!rawVal) { setError('Enter User ID or select an active user.'); return; }
+    action('/invite', {
+      targetRoomId: rawVal,
+      durationSeconds: selectedDuration,
+      pkType: selectedType,
+    });
   };
   const respond = decision => action(`/${match.id}/respond`, { decision });
   const inProgress = match && ['invited', 'active'].includes(match.status);
@@ -127,6 +134,9 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
   const scoreCard = compact => {
     if (!match) return null;
     const scoreTotal = Math.max(1, Number(match.scores?.[0] || 0) + Number(match.scores?.[1] || 0));
+    const durationMin = Math.round((match.durationSeconds || 300) / 60);
+    const pkTypeLabel = match.pkType === 'user' ? 'User PK' : 'Room PK';
+
     return <View testID="pk-scoreboard" style={[styles.scoreCard, compact && styles.compactCard]}>
       <View style={styles.scoreTeams}>
         {[0, 1].map(side => <View key={side} style={styles.team}>
@@ -141,11 +151,55 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
         <View style={{ flex: Math.max(0.01, Number(match.scores?.[0] || 0) / scoreTotal), backgroundColor: '#F43F5E' }} />
         <View style={{ flex: Math.max(0.01, Number(match.scores?.[1] || 0) / scoreTotal), backgroundColor: '#06B6D4' }} />
       </View>
+
+      {/* Top 1, Top 2, Top 3 Contributors - ONLY Avatars, NO Names */}
+      <View style={styles.contributorsRow}>
+        <View style={styles.sideContributors}>
+          {(match.leftContributors && match.leftContributors.length > 0
+            ? match.leftContributors
+            : [{ avatar: null }, { avatar: null }, { avatar: null }]
+          ).slice(0, 3).map((item, idx) => (
+            <View key={idx} style={[styles.contribAvatarWrap, styles.contribLeftWrap]}>
+              {item.avatar ? (
+                <Image source={{ uri: item.avatar }} style={styles.contribAvatar} />
+              ) : (
+                <View style={[styles.contribAvatar, styles.contribPlaceholder]}>
+                  <Text style={styles.contribRankNum}>{idx + 1}</Text>
+                </View>
+              )}
+              <View style={[styles.rankBadge, idx === 0 ? styles.rank1 : idx === 1 ? styles.rank2 : styles.rank3]}>
+                <Text style={styles.rankBadgeText}>{idx + 1}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <View style={[styles.sideContributors, { justifyContent: 'flex-end' }]}>
+          {(match.rightContributors && match.rightContributors.length > 0
+            ? match.rightContributors
+            : [{ avatar: null }, { avatar: null }, { avatar: null }]
+          ).slice(0, 3).map((item, idx) => (
+            <View key={idx} style={[styles.contribAvatarWrap, styles.contribRightWrap]}>
+              {item.avatar ? (
+                <Image source={{ uri: item.avatar }} style={styles.contribAvatar} />
+              ) : (
+                <View style={[styles.contribAvatar, styles.contribPlaceholder]}>
+                  <Text style={styles.contribRankNum}>{idx + 1}</Text>
+                </View>
+              )}
+              <View style={[styles.rankBadge, idx === 0 ? styles.rank1 : idx === 1 ? styles.rank2 : styles.rank3]}>
+                <Text style={styles.rankBadgeText}>{idx + 1}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+
       <Text testID="pk-timer" style={styles.timer}>
         {view.result ? `${view.result === 'WINNER' ? '🏆 ' : ''}${view.result}` : match.status === 'invited'
           ? `Invitation • ${view.timer}` : view.remaining ? `PK • ${view.timer}` : 'Calculating result…'}
       </Text>
-      {!compact && <Text style={styles.caption}>Gift Coins determine the score • 5-minute PK</Text>}
+      {!compact && <Text style={styles.caption}>Gift Coins determine the score • {durationMin}-min {pkTypeLabel}</Text>}
     </View>;
   };
 
@@ -159,13 +213,13 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
         <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => setVisible(false)} accessibilityLabel="Close PK" />
         <View style={[styles.sheet, { paddingBottom: bottomSafePadding + 16 }]}>
           <View style={styles.header}>
-            <View><Text style={styles.title}>ROOM PK</Text><Text style={styles.caption}>Room vs room • 5 minutes</Text></View>
+            <View><Text style={styles.title}>PK BATTLE</Text><Text style={styles.caption}>Room PK & User PK</Text></View>
             <TouchableOpacity onPress={() => setVisible(false)} accessibilityLabel="Close PK panel"><Icon name="close" color="#CBD5E1" size={26} /></TouchableOpacity>
           </View>
           <ScrollView showsVerticalScrollIndicator={false}>
             {scoreCard(false)}
             {match?.status === 'invited' && <View style={styles.inviteCard}>
-              <Text style={styles.body}>{view.side === 1 ? `${match.rooms?.[0]?.title} challenged your room!` : 'Waiting for the other room owner to accept…'}</Text>
+              <Text style={styles.body}>{view.side === 1 ? `${match.rooms?.[0]?.title} challenged you to ${Math.round((match.durationSeconds || 300) / 60)}-min ${match.pkType === 'user' ? 'User PK' : 'Room PK'}!` : 'Waiting for the other room owner to accept…'}</Text>
               {isOwner && view.remaining > 0 && <View style={styles.actions}>
                 {view.side === 1 ? <>
                   <TouchableOpacity testID="pk-decline" disabled={busy} style={styles.secondary} onPress={() => respond('decline')}><Text style={styles.body}>Decline</Text></TouchableOpacity>
@@ -173,26 +227,85 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
                 </> : <TouchableOpacity testID="pk-cancel" disabled={busy} style={styles.secondary} onPress={() => respond('cancel')}><Text style={styles.body}>Cancel invitation</Text></TouchableOpacity>}
               </View>}
             </View>}
-            {match?.status === 'active' && <Text style={styles.hint}>Send gifts to your room's seated speakers to support your team. The server closes scoring after 5 minutes.</Text>}
+            {match?.status === 'active' && <Text style={styles.hint}>Send gifts to your team to support your side. Top 3 senders are ranked above.</Text>}
             {['declined', 'cancelled', 'expired'].includes(match?.status) && <Text style={styles.hint}>PK invitation {match.status}.</Text>}
             {Boolean(error) && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
             {busy && <ActivityIndicator color="#38BDF8" style={styles.loader} />}
             {!inProgress && <>
-              <Text style={styles.sectionTitle}>Challenge a live room</Text>
-              {!isOwner && <Text style={styles.hint}>Only the room owner can send or accept PK invitations.</Text>}
+              <Text style={styles.sectionTitle}>PK Battle Settings</Text>
+
+              {/* PK Mode Options: Room PK vs User PK */}
+              <View style={styles.selectorGroup}>
+                <Text style={styles.selectorLabel}>Battle Mode</Text>
+                <View style={styles.pillRow}>
+                  <TouchableOpacity
+                    style={[styles.optionPill, selectedType === 'room' && styles.optionPillActive]}
+                    onPress={() => setSelectedType('room')}
+                  >
+                    <Icon name="people" size={14} color={selectedType === 'room' ? '#FFF' : '#94A3B8'} style={{ marginRight: 4 }} />
+                    <Text style={[styles.optionPillText, selectedType === 'room' && styles.optionPillTextActive]}>Room PK</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.optionPill, selectedType === 'user' && styles.optionPillActive]}
+                    onPress={() => setSelectedType('user')}
+                  >
+                    <Icon name="person" size={14} color={selectedType === 'user' ? '#FFF' : '#94A3B8'} style={{ marginRight: 4 }} />
+                    <Text style={[styles.optionPillText, selectedType === 'user' && styles.optionPillTextActive]}>User PK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* PK Duration Options: 5 min, 15 min, 30 min */}
+              <View style={styles.selectorGroup}>
+                <Text style={styles.selectorLabel}>PK Duration</Text>
+                <View style={styles.pillRow}>
+                  {[
+                    { label: '5 min', seconds: 300 },
+                    { label: '15 min', seconds: 900 },
+                    { label: '30 min', seconds: 1800 },
+                  ].map(opt => (
+                    <TouchableOpacity
+                      key={opt.seconds}
+                      style={[styles.optionPill, selectedDuration === opt.seconds && styles.optionPillActive]}
+                      onPress={() => setSelectedDuration(opt.seconds)}
+                    >
+                      <Icon name="time-outline" size={14} color={selectedDuration === opt.seconds ? '#FFF' : '#94A3B8'} style={{ marginRight: 4 }} />
+                      <Text style={[styles.optionPillText, selectedDuration === opt.seconds && styles.optionPillTextActive]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <Text style={styles.sectionTitle}>Challenge Opponent (User ID)</Text>
+              {!isOwner && <Text style={styles.hint}>Only the host can send or accept PK invitations.</Text>}
               {isOwner && <View style={styles.idRow}>
-                <TextInput testID="pk-room-id" value={target} onChangeText={setTarget} placeholder="Other room ID" placeholderTextColor="#64748B"
-                  autoCapitalize="none" style={styles.input} editable={!busy} />
+                <TextInput testID="pk-room-id" value={target} onChangeText={setTarget} placeholder="Enter User ID" placeholderTextColor="#64748B"
+                  autoCapitalize="none" keyboardType="numeric" style={styles.input} editable={!busy} />
                 <TouchableOpacity testID="pk-send-invite" disabled={busy} style={styles.primary} onPress={() => sendInvite(target)}><Text style={styles.primaryText}>Invite</Text></TouchableOpacity>
               </View>}
               {loading && <ActivityIndicator color="#38BDF8" style={styles.loader} />}
-              {!loading && !opponents.length && <Text style={styles.hint}>No available live rooms right now. Ask another room owner to come online.</Text>}
-              {opponents.map(opponent => <TouchableOpacity key={opponent.id} disabled={!isOwner || busy} style={styles.opponent}
-                onPress={() => sendInvite(opponent.id)}>
-                {Boolean(opponent.coverImage) && <Image source={{ uri: opponent.coverImage }} style={styles.avatar} />}
-                <View style={styles.teamCopy}><Text style={styles.teamName}>{opponent.title}</Text><Text style={styles.caption}>{opponent.hostName} • {opponent.id}</Text></View>
-                {isOwner && <Text style={styles.inviteLink}>Invite</Text>}
-              </TouchableOpacity>)}
+              {!loading && !opponents.length && <Text style={styles.hint}>No active opponents available right now. Invite another user to start a live session.</Text>}
+              {opponents.map(opponent => {
+                const opponentUserId = opponent.userId || String(opponent.id || '').replace(/^room_/, '');
+                return (
+                  <TouchableOpacity
+                    key={opponent.id}
+                    disabled={!isOwner || busy}
+                    style={styles.opponent}
+                    onPress={() => {
+                      setTarget(opponentUserId);
+                      sendInvite(opponentUserId || opponent.id);
+                    }}
+                  >
+                    {Boolean(opponent.coverImage) && <Image source={{ uri: opponent.coverImage }} style={styles.avatar} />}
+                    <View style={styles.teamCopy}>
+                      <Text style={styles.teamName}>{opponent.title || opponent.hostName}</Text>
+                      <Text style={styles.caption}>{opponent.hostName} • User ID: {opponentUserId}</Text>
+                    </View>
+                    {isOwner && <Text style={styles.inviteLink}>Invite</Text>}
+                  </TouchableOpacity>
+                );
+              })}
             </>}
             {history.length > 0 && <><Text style={styles.sectionTitle}>Recent results</Text>
               {history.map(record => {
@@ -245,4 +358,26 @@ const styles = StyleSheet.create({
   historyRow: { borderTopWidth: 1, borderColor: '#334155', paddingVertical: 10 },
   historyTitle: { color: '#E2E8F0', fontSize: 12 },
   historyResult: { fontSize: 12, marginTop: 4, fontWeight: '700' },
+  // Contributors Row (Top 1, Top 2, Top 3 - Only Avatars)
+  contributorsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingHorizontal: 4 },
+  sideContributors: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
+  contribAvatarWrap: { position: 'relative', width: 28, height: 28 },
+  contribLeftWrap: {},
+  contribRightWrap: {},
+  contribAvatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, borderColor: '#38BDF8' },
+  contribPlaceholder: { backgroundColor: '#1E293B', alignItems: 'center', justifyContent: 'center', borderColor: '#475569' },
+  contribRankNum: { color: '#64748B', fontSize: 10, fontWeight: '800' },
+  rankBadge: { position: 'absolute', bottom: -2, right: -2, width: 13, height: 13, borderRadius: 6.5, alignItems: 'center', justifyContent: 'center' },
+  rankBadgeText: { color: '#FFF', fontSize: 8, fontWeight: '900' },
+  rank1: { backgroundColor: '#EAB308' },
+  rank2: { backgroundColor: '#94A3B8' },
+  rank3: { backgroundColor: '#B45309' },
+  // Selectors for Mode & Duration
+  selectorGroup: { marginBottom: 14 },
+  selectorLabel: { color: '#94A3B8', fontSize: 12, fontWeight: '700', marginBottom: 6 },
+  pillRow: { flexDirection: 'row', gap: 8 },
+  optionPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1E293B', borderWidth: 1, borderColor: '#334155', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+  optionPillActive: { backgroundColor: '#0284C7', borderColor: '#38BDF8' },
+  optionPillText: { color: '#94A3B8', fontSize: 12, fontWeight: '700' },
+  optionPillTextActive: { color: '#FFF', fontWeight: '900' },
 });

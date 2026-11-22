@@ -168,7 +168,7 @@ export default function MeScreen() {
     (user?.hasAppOption && (user?.appRole === 'bd' || user?.appRole === 'bdLeader' || user?.appRole === 'bd-leader' || user?.appFeatures?.bdCenter))
   );
 
-  const [appConfig, setAppConfig] = useState({ isFamilyEnabled: false, isCpEnabled: false, isInviteEarnEnabled: false });
+  const [appConfig, setAppConfig] = useState({ isFamilyEnabled: true, isCpEnabled: true, isInviteEarnEnabled: false });
 
   useFocusEffect(
     useCallback(() => {
@@ -704,7 +704,7 @@ export default function MeScreen() {
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.diamondCardValue} numberOfLines={1}>
-                    {formatCompactBalance(user?.diamonds ?? user?.diamondBalance ?? 0)}
+                    {formatCompactBalance(user?.coins || 0)}
                   </Text>
                   <Text style={styles.diamondCardLabel} numberOfLines={1}>
                     Coins
@@ -737,7 +737,7 @@ export default function MeScreen() {
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.beansCardValue} numberOfLines={1}>
-                    {formatCompactBalance(user?.coins ?? user?.beans ?? user?.beanBalance ?? 0)}
+                    {formatCompactBalance(user?.beans || 0)}
                   </Text>
                   <Text style={styles.beansCardLabel} numberOfLines={1}>
                     My Beans

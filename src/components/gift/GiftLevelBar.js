@@ -30,7 +30,7 @@ export default function GiftLevelBar({
       {/* Text Info */}
       <View style={styles.infoRow}>
         <Text style={styles.infoText} numberOfLines={1}>
-          Need {needed.toLocaleString()} more diamonds to achieve Level {level + 1}.
+          Need {needed.toLocaleString()} more coins to achieve Level {level + 1}.
         </Text>
         <MaterialCommunityIcons name="chevron-right" size={14} color="#EAB308" />
       </View>

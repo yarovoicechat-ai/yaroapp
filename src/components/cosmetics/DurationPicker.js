@@ -1,6 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Text, TouchableOpacity, View, StyleSheet, Image } from 'react-native';
 import { formatCompactBalance } from '../../utils/numberUtil';
 
 export default function DurationPicker({
@@ -13,9 +12,10 @@ export default function DurationPicker({
     <View style={styles.optionsRow}>
       {options.map((option) => {
         const active = selectedDays === option.days;
+        const rawPrice = option.coins ?? option.diamonds;
         const price = compactPrices
-          ? formatCompactBalance(option.diamonds)
-          : Number(option.diamonds || 0).toLocaleString();
+          ? formatCompactBalance(rawPrice)
+          : Number(rawPrice || 0).toLocaleString();
 
         return (
           <TouchableOpacity
@@ -28,7 +28,7 @@ export default function DurationPicker({
               {option.days} Days
             </Text>
             <View style={styles.priceRow}>
-              <Icon name="diamond" size={11} color={active ? '#FFFFFF' : '#0891B2'} />
+              <Image source={require('../../assets/icons/coin.png')} style={{ width: 11, height: 11, marginRight: 2 }} resizeMode="contain" />
               <Text style={[styles.priceText, active && styles.activeText]}>{price}</Text>
             </View>
           </TouchableOpacity>

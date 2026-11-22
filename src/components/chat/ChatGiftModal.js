@@ -45,8 +45,8 @@ export default function ChatGiftModal({
 
           <View style={styles.giftBalanceRow}>
             <View style={styles.giftBalancePill}>
-              <Image source={require('../../assets/icons/diamond.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
-              <Text style={styles.giftBalanceText}>{user?.diamonds || 0} Diamonds</Text>
+              <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
+              <Text style={styles.giftBalanceText}>{user?.coins ?? 0} Coins</Text>
               <TouchableOpacity style={styles.rechargePlusBtn} onPress={onRecharge}>
                 <Icon name="add-circle" size={18} color="#03dcfe" />
               </TouchableOpacity>
@@ -95,7 +95,7 @@ export default function ChatGiftModal({
                     )}
                     <Text style={styles.giftCardName} numberOfLines={1}>{gift.name}</Text>
                     <View style={styles.giftCostTag}>
-                      <Image source={require('../../assets/icons/diamond.png')} style={{ width: 10, height: 10, marginRight: 2 }} resizeMode="contain" />
+                      <Image source={require('../../assets/icons/coin.png')} style={{ width: 10, height: 10, marginRight: 2 }} resizeMode="contain" />
                       <Text style={styles.giftCostTagText}>{gift.cost}</Text>
                     </View>
                   </LinearGradient>
@@ -119,7 +119,7 @@ export default function ChatGiftModal({
               <TouchableOpacity style={styles.sendGiftActionBtn} onPress={onSend} disabled={sending}>
                 <LinearGradient colors={['#2911fe', '#03dcfe']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.sendGiftGradient}>
                   <Text style={styles.sendGiftBtnText}>
-                    Send ({Number(selectedGift.price ?? selectedGift.cost ?? selectedGift.priceDiamonds ?? 0) * selectedQuantity} diamonds)
+                    Send ({Number(selectedGift.price ?? selectedGift.cost ?? selectedGift.priceDiamonds ?? 0) * selectedQuantity} Coins)
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>

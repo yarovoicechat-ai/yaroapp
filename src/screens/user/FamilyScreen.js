@@ -191,7 +191,7 @@ export default function FamilyScreen() {
     setCheckingIn(true);
     try {
       const res = await apiUtil.post('/family/checkin', {}, { suppressGlobalError: true });
-      AlertService.show('Roll Call Complete! 🌟', res?.data?.message || '+50 EXP & +10 Diamonds earned!', 'success');
+      AlertService.show('Roll Call Complete! 🌟', res?.data?.message || '+50 EXP & +10 Coins earned!', 'success');
       setIsCheckedInToday(true);
       loadData();
     } catch (err) {
@@ -212,14 +212,14 @@ export default function FamilyScreen() {
       return;
     }
 
-    const currentDiamonds = Number(user?.diamonds || 0);
+    const currentDiamonds = Number(user?.coins || 0);
     if (currentDiamonds < 10000) {
       Alert.alert(
-        'Insufficient Diamonds',
-        `Clan creation requires 10,000 Diamonds. Your current balance is ${currentDiamonds.toLocaleString()} Diamonds. Would you like to recharge?`,
+        'Insufficient Coins',
+        `Clan creation requires 10,000 Coins. Your current balance is ${currentDiamonds.toLocaleString()} Coins. Would you like to recharge?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Recharge 💎', onPress: () => navigation.navigate('Wallet') },
+          { text: 'Recharge 🪙', onPress: () => navigation.navigate('Wallet') },
         ]
       );
       return;
@@ -243,7 +243,7 @@ export default function FamilyScreen() {
       Alert.alert(
         'Application Submitted! 👑',
         res?.data?.message ||
-          'Your clan creation request with 10,000 Diamonds has been submitted to the Admin Panel. It will be activated once approved by the Admin team.',
+          'Your clan creation request with 10,000 Coins has been submitted to the Admin Panel. It will be activated once approved by the Admin team.',
         [{ text: 'OK', onPress: () => loadData() }]
       );
     } catch (err) {
@@ -486,7 +486,7 @@ export default function FamilyScreen() {
                   <View style={{ marginLeft: 12, flex: 1 }}>
                     <Text style={styles.pendingAdminTitle}>Clan Application Under Admin Review ⏳</Text>
                     <Text style={styles.pendingAdminSub}>
-                      Your clan request with 10,000 Diamonds has been submitted. It will become active and visible in the Hall of Fame once approved by the Admin team!
+                      Your clan request with 10,000 Coins has been submitted. It will become active and visible in the Hall of Fame once approved by the Admin team!
                     </Text>
                   </View>
                 </View>
@@ -527,7 +527,7 @@ export default function FamilyScreen() {
                       </TouchableOpacity>
                       <View style={[styles.heroPill, { backgroundColor: 'rgba(236, 72, 153, 0.2)' }]}>
                         <MaterialCommunityIcons name="diamond-stone" size={13} color="#F472B6" />
-                        <Text style={styles.heroPillText}>{(myFamilyData.diamondsEarned || 0).toLocaleString()} 💎</Text>
+                        <Text style={styles.heroPillText}>{(myFamilyData.diamondsEarned || myFamilyData.coinsEarned || 0).toLocaleString()} 🪙</Text>
                       </View>
                     </View>
                   </View>
@@ -604,7 +604,7 @@ export default function FamilyScreen() {
                   <View style={{ marginLeft: 12, flex: 1 }}>
                     <Text style={styles.checkinHeading}>Daily Clan Roll Call</Text>
                     <Text style={styles.checkinSub}>
-                      Earn +50 Guild EXP & +10 Clan Diamonds daily!
+                      Earn +50 Guild EXP & +10 Clan Coins daily!
                     </Text>
                   </View>
                 </View>
@@ -825,7 +825,7 @@ export default function FamilyScreen() {
               </LinearGradient>
               <Text style={styles.emptyTitle}>You Haven't Joined a Clan Yet</Text>
               <Text style={styles.emptySub}>
-                Join a top dynasty from the Hall of Fame to earn clan diamonds, wear shared badges, and dominate voice room battles.
+                Join a top dynasty from the Hall of Fame to earn clan coins, wear shared badges, and dominate voice room battles.
               </Text>
               <View style={styles.emptyActionsRow}>
                 <TouchableOpacity
@@ -858,7 +858,7 @@ export default function FamilyScreen() {
                     </View>
                   </View>
                   <Text style={styles.podiumName} numberOfLines={1}>{top3[1]?.name}</Text>
-                  <Text style={styles.podiumScore}>{(top3[1]?.diamondsEarned || 0).toLocaleString()} 💎</Text>
+                  <Text style={styles.podiumScore}>{(top3[1]?.diamondsEarned || top3[1]?.coinsEarned || 0).toLocaleString()} 🪙</Text>
                 </View>
 
                 {/* #1 Gold */}
@@ -873,7 +873,7 @@ export default function FamilyScreen() {
                   <Text style={[styles.podiumName, { fontWeight: '700', color: '#FDE047' }]} numberOfLines={1}>
                     {top3[0]?.name}
                   </Text>
-                  <Text style={styles.podiumScore}>{(top3[0]?.diamondsEarned || 0).toLocaleString()} 💎</Text>
+                  <Text style={styles.podiumScore}>{(top3[0]?.diamondsEarned || top3[0]?.coinsEarned || 0).toLocaleString()} 🪙</Text>
                 </View>
 
                 {/* #3 Bronze */}
@@ -885,7 +885,7 @@ export default function FamilyScreen() {
                     </View>
                   </View>
                   <Text style={styles.podiumName} numberOfLines={1}>{top3[2]?.name}</Text>
-                  <Text style={styles.podiumScore}>{(top3[2]?.diamondsEarned || 0).toLocaleString()} 💎</Text>
+                  <Text style={styles.podiumScore}>{(top3[2]?.diamondsEarned || top3[2]?.coinsEarned || 0).toLocaleString()} 🪙</Text>
                 </View>
               </View>
             )}
@@ -934,7 +934,7 @@ export default function FamilyScreen() {
                           👥 {fam.memberCount || 1}/{fam.maxMembers || 20} (Lv.{fam.level || 1})
                         </Text>
                         <Text style={styles.famDiamonds}>
-                          💎 {(fam.diamondsEarned || 0).toLocaleString()}
+                          🪙 {(fam.diamondsEarned || fam.coinsEarned || 0).toLocaleString()}
                         </Text>
                       </View>
                     </View>
@@ -986,11 +986,11 @@ export default function FamilyScreen() {
                 colors={['#831843', '#BE185D']}
                 style={styles.feeBanner}
               >
-                <MaterialCommunityIcons name="diamond-stone" size={20} color="#FBBF24" />
+                <Text style={{ fontSize: 20, marginRight: 4 }}>🪙</Text>
                 <View style={{ marginLeft: 8, flex: 1 }}>
-                  <Text style={styles.feeBannerTitle}>Creation Fee: 10,000 Diamonds</Text>
+                  <Text style={styles.feeBannerTitle}>Creation Fee: 10,000 Coins</Text>
                   <Text style={styles.feeBannerSub}>
-                    Your balance: {(user?.diamonds || 0).toLocaleString()} 💎
+                    Your balance: {(user?.coins || 0).toLocaleString()} 🪙
                   </Text>
                 </View>
               </LinearGradient>
@@ -1044,7 +1044,7 @@ export default function FamilyScreen() {
               <View style={styles.nicheTipsBox}>
                 <Text style={styles.nicheTipsHeading}>📌 Clan Creation Guidelines & Tips:</Text>
                 <Text style={styles.nicheTipItem}>
-                  • <Text style={{ fontWeight: '700', color: '#FBBF24' }}>10,000 Diamonds</Text> will be deducted upon submission.
+                  • <Text style={{ fontWeight: '700', color: '#FBBF24' }}>10,000 Coins</Text> will be deducted upon submission.
                 </Text>
                 <Text style={styles.nicheTipItem}>
                   • Your request will be sent to the <Text style={{ fontWeight: '700', color: '#A855F7' }}>Admin Panel for Approval</Text>. The clan will be active once approved.
@@ -1115,7 +1115,7 @@ export default function FamilyScreen() {
                   1. <Text style={{ fontWeight: '700', color: '#FBBF24' }}>Daily Member Roll Call:</Text> Each member check-in adds +50 Guild EXP daily.
                 </Text>
                 <Text style={styles.howToEarnItem}>
-                  2. <Text style={{ fontWeight: '700', color: '#EC4899' }}>Voice Room Gifting:</Text> 10% of diamond gifts sent in live rooms converts to Clan EXP & Clan Diamonds.
+                  2. <Text style={{ fontWeight: '700', color: '#EC4899' }}>Voice Room Gifting:</Text> 10% of coin gifts sent in live rooms converts to Clan EXP & Clan Coins.
                 </Text>
               </View>
             </ScrollView>

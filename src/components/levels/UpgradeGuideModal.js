@@ -65,16 +65,16 @@ export default function UpgradeGuideModal({ visible, onClose, isWealth, currentL
               {isWealth ? (
                 /* WEALTH UPGRADE RULES (Matching 1st Image) */
                 <View style={styles.guideContentList}>
-                  {/* 1. Give a diamond gift */}
+                  {/* 1. Give a coin gift */}
                   <View style={styles.guideRuleItem}>
                     <View style={styles.guideRuleHeader}>
                       <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
                       <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
-                        Give a diamond gift
+                        Give a coin gift
                       </Text>
                     </View>
                     <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
-                      1 Diamond = 1 EXP
+                      1 Coin = 1 EXP
                     </Text>
 
                     {/* SVIP Privilege Boxes */}
@@ -88,7 +88,7 @@ export default function UpgradeGuideModal({ visible, onClose, isWealth, currentL
                       ].map((item) => (
                         <View key={item.svip} style={styles.svipPrivilegePill}>
                           <Text style={styles.svipPrivilegeText}>
-                            {item.svip} privilege: 1 Diamond = {item.exp} EXP
+                            {item.svip} privilege: 1 Coin = {item.exp} EXP
                           </Text>
                         </View>
                       ))}
@@ -97,16 +97,16 @@ export default function UpgradeGuideModal({ visible, onClose, isWealth, currentL
 
                   <View style={styles.guideDivider} />
 
-                  {/* 2. Shop for diamond items */}
+                  {/* 2. Shop for coin items */}
                   <View style={styles.guideRuleItem}>
                     <View style={styles.guideRuleHeader}>
                       <View style={[styles.guideBulletDot, { backgroundColor: '#78350F' }]} />
                       <Text style={[styles.guideRuleTitle, { color: '#78350F' }]}>
-                        Shop for diamond items
+                        Shop for coin items
                       </Text>
                     </View>
                     <Text style={[styles.guideRuleSub, { color: '#92400E' }]}>
-                      1 Diamond = 1 EXP
+                      1 Coin = 1 EXP
                     </Text>
                   </View>
 
@@ -188,16 +188,16 @@ export default function UpgradeGuideModal({ visible, onClose, isWealth, currentL
               ) : (
                 /* CHARM UPGRADE RULES (Matching 2nd Image) */
                 <View style={styles.guideContentList}>
-                  {/* 1. Receive Diamond Gifts */}
+                  {/* 1. Receive Coin Gifts */}
                   <View style={styles.guideRuleItem}>
                     <View style={styles.guideRuleHeader}>
                       <View style={[styles.guideBulletDot, { backgroundColor: '#6B21A8' }]} />
                       <Text style={[styles.guideRuleTitle, { color: '#3B0764' }]}>
-                        Receive Diamond Gifts
+                        Receive Coin Gifts
                       </Text>
                     </View>
                     <Text style={[styles.guideRuleSub, { color: '#6B21A8' }]}>
-                      1 Diamond = 1 EXP
+                      1 Coin = 1 EXP
                     </Text>
                   </View>
 
@@ -212,7 +212,7 @@ export default function UpgradeGuideModal({ visible, onClose, isWealth, currentL
                       </Text>
                     </View>
                     <Text style={[styles.guideRuleSub, { color: '#6B21A8' }]}>
-                      10 Diamond = 2 EXP
+                      10 Coins = 2 EXP
                     </Text>
                   </View>
 

@@ -10,6 +10,7 @@ import { SvgUri } from 'react-native-svg';
 import Video from 'react-native-video';
 import { SvgaPlayer } from '@dasimems/react-native-svga';
 import AssetImage from './AssetImage';
+import { resolveMediaUrl } from '../utils/assetUrl';
 
 export const NativeSvgaPlayer = Platform.OS === 'android'
   ? requireNativeComponent('SvgaPlayerView')
@@ -47,12 +48,26 @@ const GiftMedia = ({
     return () => clearTimeout(timer);
   }, [failed, attempt]);
   const fail = useCallback(error => { setFailed(true); onError?.(error); }, [onError]);
-  const type = useMemo(() => inferType(source, mediaType), [source, mediaType]);
+  const resolvedSource = useMemo(() => {
+    if (!source) return '';
+    const raw = typeof source === 'object' ? source?.uri : source;
+    if (typeof raw !== 'string') return '';
+    const trimmed = raw.trim();
+    if (!trimmed) return '';
+    if (/^(?:https?:\/\/|file:\/\/|content:\/\/|data:|asset:\/\/)/i.test(trimmed)) {
+      return trimmed;
+    }
+    if (/^(?:animations\/|assets\/)/i.test(trimmed)) {
+      return `asset://${trimmed.replace(/^assets\//i, '')}`;
+    }
+    return resolveMediaUrl(trimmed);
+  }, [source]);
+  const type = useMemo(() => inferType(resolvedSource || source, mediaType), [resolvedSource, source, mediaType]);
   const flattenedStyle = StyleSheet.flatten(style) || {};
   const width = flattenedStyle.width || '100%';
   const height = flattenedStyle.height || '100%';
 
-  if (!source || failed) {
+  if (!resolvedSource || failed) {
     if (fallbackSource) {
       return <AssetImage source={fallbackSource} style={style} resizeMode={resizeMode} onLoad={onLoad} />;
     }
@@ -68,8 +83,8 @@ const GiftMedia = ({
     if (NativeSvgaPlayer) {
       return (
         <NativeSvgaPlayer
-          key={`${source}:${attempt}`}
-          source={source}
+          key={`${resolvedSource}:${attempt}`}
+          source={resolvedSource}
           style={style}
           loops={repeat ? 0 : 1}
           autoPlay
@@ -82,8 +97,8 @@ const GiftMedia = ({
     }
     return (
       <SvgaPlayer
-        key={`${source}:${attempt}`}
-        source={source}
+        key={`${resolvedSource}:${attempt}`}
+        source={resolvedSource}
         style={style}
         loops={repeat ? 0 : 1}
         autoPlay

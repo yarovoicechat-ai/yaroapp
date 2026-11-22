@@ -538,8 +538,8 @@ export default function RoomSettingsModal({
                     <Text style={styles.liveRecordSubVal}>18</Text>
                   </View>
                   <View>
-                    <Text style={styles.liveRecordSubLabel}>Diamonds Received</Text>
-                    <Text style={styles.liveRecordSubVal}>420 💎</Text>
+                    <Text style={styles.liveRecordSubLabel}>Coins Received</Text>
+                    <Text style={styles.liveRecordSubVal}>420 🪙</Text>
                   </View>
                   <View>
                     <Text style={styles.liveRecordSubLabel}>New Followers</Text>

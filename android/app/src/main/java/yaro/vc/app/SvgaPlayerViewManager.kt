@@ -26,7 +26,7 @@ class ResumableSVGAImageView(context: Context) : SVGAImageView(context) {
       val item = lastVideoItem
       if (item != null) {
         if (drawable == null) {
-          setImageDrawable(SVGADrawable(item))
+          setVideoItem(item)
         }
         if (!isAnimating) {
           startAnimation()
@@ -174,8 +174,8 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
           if (sources[view] != source) return@post
           loadingSources.remove(view)
           rView?.lastVideoItem = videoItem
-          val drawable = SVGADrawable(videoItem)
-          view.setImageDrawable(drawable)
+          view.setVideoItem(videoItem)
+          view.stepToFrame(0, false)
           emit(view, "topPlaybackReady")
           if (rView?.isAutoPlaying != false) {
             view.startAnimation()
@@ -199,10 +199,43 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
       } catch (_: Exception) {}
 
       val cleanSource = source.trim().replace(" ", "%20")
-      if (cleanSource.startsWith("http://", ignoreCase = true) || cleanSource.startsWith("https://", ignoreCase = true)) {
-        SVGAParser.shareParser().decodeFromURL(URL(cleanSource), callback)
-      } else if (cleanSource.startsWith("file://", ignoreCase = true) || cleanSource.startsWith("/")) {
-        val filePath = if (cleanSource.startsWith("file://")) cleanSource.substring(7) else cleanSource
+      val finalUrl = when {
+        cleanSource.startsWith("http://", ignoreCase = true) || cleanSource.startsWith("https://", ignoreCase = true) -> cleanSource
+        cleanSource.startsWith("/uploads/", ignoreCase = true) || cleanSource.startsWith("uploads/", ignoreCase = true) ||
+        cleanSource.startsWith("/api/", ignoreCase = true) || cleanSource.startsWith("api/", ignoreCase = true) -> {
+          "https://api.yaroapp.in/" + cleanSource.removePrefix("/")
+        }
+        else -> cleanSource
+      }
+
+      if (finalUrl.startsWith("http://", ignoreCase = true) || finalUrl.startsWith("https://", ignoreCase = true)) {
+        val urlCallback = object : SVGAParser.ParseCompletion {
+          override fun onComplete(videoItem: SVGAVideoEntity) {
+            callback.onComplete(videoItem)
+          }
+
+          override fun onError() {
+            val filename = finalUrl.substringAfterLast("/")
+            val assetCandidates = listOf(
+              "animations/$filename",
+              "vip/frame/$filename",
+              filename,
+              finalUrl.substringAfter("api.yaroapp.in/").removePrefix("/")
+            )
+            for (p in assetCandidates) {
+              try {
+                view.context.assets.open(p).use {
+                  SVGAParser.shareParser().decodeFromAssets(p, callback)
+                  return
+                }
+              } catch (_: Exception) {}
+            }
+            callback.onError()
+          }
+        }
+        SVGAParser.shareParser().decodeFromURL(URL(finalUrl), urlCallback)
+      } else if (finalUrl.startsWith("file://", ignoreCase = true) || (finalUrl.startsWith("/") && !finalUrl.startsWith("/assets/"))) {
+        val filePath = if (finalUrl.startsWith("file://")) finalUrl.substring(7) else finalUrl
         val file = java.io.File(filePath)
         if (file.exists()) {
           SVGAParser.shareParser().decodeFromInputStream(java.io.FileInputStream(file), file.name, callback, true)
@@ -211,7 +244,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
           emit(view, "topPlaybackError")
         }
       } else {
-        var assetPath = cleanSource
+        var assetPath = finalUrl
         while (assetPath.startsWith("asset:/", ignoreCase = true)) {
           assetPath = assetPath.substring("asset:/".length)
         }
@@ -221,7 +254,26 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
         while (assetPath.startsWith("/")) {
           assetPath = assetPath.substring(1)
         }
-        SVGAParser.shareParser().decodeFromAssets(assetPath, callback)
+        val filename = assetPath.substringAfterLast("/")
+        val candidates = listOf(
+          assetPath,
+          "animations/$filename",
+          "vip/frame/$filename",
+          filename
+        ).distinct()
+        var found = false
+        for (c in candidates) {
+          try {
+            view.context.assets.open(c).use {
+              SVGAParser.shareParser().decodeFromAssets(c, callback)
+              found = true
+              return
+            }
+          } catch (_: Exception) {}
+        }
+        if (!found) {
+          SVGAParser.shareParser().decodeFromAssets(assetPath, callback)
+        }
       }
     } catch (e: Exception) {
       loadingSources.remove(view)

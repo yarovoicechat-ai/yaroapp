@@ -135,7 +135,7 @@ export default function RoomGroupPrivilegeModal({
       }
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Could not join Fan Club';
-      AlertService.show('Insufficient Diamonds', msg, 'error');
+      AlertService.show('Insufficient Coins', msg, 'error');
     } finally {
       setJoining(false);
     }

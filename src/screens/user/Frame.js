@@ -30,8 +30,16 @@ const Frame = () => {
   const bottomPadding = getStackScreenBottomPadding(insets.bottom, 42);
   const { user, equippedFrame, setEquippedFrame } = useContext(AuthContext);
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(true);
-  const [frameInventory, setFrameInventory] = useState([]);
+  const initialFrames = useMemo(() => {
+    const list = Array.isArray(user?.storeInventory) ? user.storeInventory
+      : Array.isArray(user?.inventory) ? user.inventory : [];
+    return list.filter((item) => ['frame', 'frames'].includes(
+      String(item.catalogItem?.category || item.category || '').trim().toLowerCase()
+    ));
+  }, [user?.storeInventory, user?.inventory]);
+
+  const [loading, setLoading] = useState(initialFrames.length === 0);
+  const [frameInventory, setFrameInventory] = useState(initialFrames);
   const [inventoryError, setInventoryError] = useState(false);
   const [equipping, setEquipping] = useState(false);
   const selectedFrame = user?.equippedFrame || equippedFrame || 'Default Frame';
@@ -42,27 +50,31 @@ const Frame = () => {
 
   useEffect(() => {
     let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 2500);
+
     apiUtil.get('/store/inventory')
       .then((response) => {
         const items = response?.data?.data?.items;
         if (!isMounted) return;
-        setFrameInventory(Array.isArray(items)
-          ? items.filter((item) => ['frame', 'frames'].includes(
-              String(item.catalogItem?.category || item.category || '').trim().toLowerCase(),
-            ))
-          : []);
+        if (Array.isArray(items)) {
+          setFrameInventory(items.filter((item) => ['frame', 'frames'].includes(
+            String(item.catalogItem?.category || item.category || '').trim().toLowerCase(),
+          )));
+        }
       })
       .catch((error) => {
         if (isMounted) {
-          setFrameInventory([]);
           setInventoryError(true);
         }
         console.log('Could not load owned frames:', error?.message || error);
       })
       .finally(() => {
+        clearTimeout(safetyTimer);
         if (isMounted) setLoading(false);
       });
-    return () => { isMounted = false; };
+    return () => { isMounted = false; clearTimeout(safetyTimer); };
   }, []);
 
   const renderFrameBadge = (item) => (

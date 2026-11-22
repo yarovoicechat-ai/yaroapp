@@ -40,7 +40,7 @@ export default function StorePurchaseConfirmModal({
           <View style={styles.modalPriceRow}>
             <Text style={styles.modalPriceLabel}>Cost:</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Icon name="diamond" size={16} color="#06B6D4" style={{ marginRight: 4 }} />
+              <Image source={require('../../assets/icons/coin.png')} style={{ width: 15, height: 15, marginRight: 4 }} resizeMode="contain" />
               <Text style={styles.modalPriceValue}>{price === 0 ? 'FREE' : `${price.toLocaleString()} Coins`}</Text>
             </View>
           </View>

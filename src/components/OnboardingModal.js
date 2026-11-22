@@ -24,7 +24,7 @@ import { getAppTopSafeInset, getStackScreenBottomPadding } from '../utils/safeAr
 
 const { width, height } = Dimensions.get('window');
 
-const diamondIcon = require('../assets/icons/diamond.png');
+const diamondIcon = require('../assets/icons/coin.png');
 
 const OnboardingModal = ({ visible }) => {
   return null;

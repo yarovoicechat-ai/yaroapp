@@ -22,7 +22,7 @@ import EmptyStateView from '../../components/EmptyStateView';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 
-const coinIcon = require('../../assets/icons/diamond.png');
+const coinIcon = require('../../assets/icons/coin.png');
 
 const GIFT_FILTER_TABS = [
   { id: 'all_gifts', label: 'All Gifts' },
@@ -191,7 +191,7 @@ export default function GiftsScreen() {
             activeOpacity={0.8}
           >
             <Image source={coinIcon} style={styles.coinIconImg} resizeMode="contain" />
-            <Text style={styles.coinValText}>{Number(user?.diamonds || 0).toLocaleString()}</Text>
+            <Text style={styles.coinValText}>{Number(user?.coins || 0).toLocaleString()}</Text>
             <View style={styles.plusIconBadgeCircle}>
               <Icon name="add" size={10} color="#FFFFFF" />
             </View>

@@ -28,6 +28,8 @@ export default function RoomLockModal({
   mode = 'set_pin',
   roomId,
   isRoomLocked = false,
+  isLive = false,
+  title,
   onSuccess,
   onUnlockRoom,
   onBuyLock,
@@ -35,6 +37,7 @@ export default function RoomLockModal({
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
+  const displayTitle = title || (isLive ? 'Private Live' : (mode === 'not_purchased' ? 'Room Lock' : 'Room lock'));
 
   useEffect(() => {
     if (visible) {
@@ -60,27 +63,80 @@ export default function RoomLockModal({
       return;
     }
 
+    // If caller provided custom onSuccess in set_pin mode (e.g. CreateLiveScreen before room is created),
+    // delegate immediately without requiring a pre-existing roomId
+    if (mode === 'set_pin' && onSuccess) {
+      setLoading(true);
+      try {
+        await onSuccess(pin);
+        onClose(true);
+      } catch (err) {
+        AlertService.show('Notice', err?.message || 'Failed to set password', 'info');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    const effectiveRoomId = typeof roomId === 'object' && roomId !== null
+      ? (roomId._id || roomId.id || roomId.roomId || roomId.channelName || '')
+      : String(roomId || '').trim();
+
+    if (!effectiveRoomId) {
+      AlertService.show('Notice', 'Room identifier missing.', 'info');
+      return;
+    }
+
     setLoading(true);
     try {
       if (mode === 'set_pin') {
-        const res = await apiUtil.post(`/voice-club/rooms/${roomId}/lock`, {
+        const endpoint = isLive ? `/live/rooms/${effectiveRoomId}/lock` : `/voice-club/rooms/${effectiveRoomId}/lock`;
+        const res = await apiUtil.post(endpoint, {
           isLocked: true,
           pin,
         });
         if (res.data?.success) {
-          AlertService.show('Room Locked', '4-digit password set successfully!', 'success');
-          if (onSuccess) onSuccess(pin);
+          AlertService.show(isLive ? 'Private Live' : 'Room Locked', '4-digit password set successfully!', 'success');
           onClose(true);
         } else {
-          AlertService.show('Notice', res.data?.message || 'Failed to set room lock', 'info');
+          AlertService.show('Notice', res.data?.message || (isLive ? 'Failed to set private live password' : 'Failed to set room lock'), 'info');
         }
       } else if (mode === 'enter_pin') {
-        const res = await apiUtil.post(`/voice-club/rooms/${roomId}/verify-pin`, { pin });
-        if (res.data?.success && res.data?.valid) {
-          if (onSuccess) onSuccess(pin);
+        let verified = false;
+        let responseData = null;
+        let lastError = null;
+
+        const primaryEndpoint = isLive ? `/live/rooms/${effectiveRoomId}/verify-pin` : `/voice-club/rooms/${effectiveRoomId}/verify-pin`;
+        const secondaryEndpoint = isLive ? `/voice-club/rooms/${effectiveRoomId}/verify-pin` : `/live/rooms/${effectiveRoomId}/verify-pin`;
+
+        try {
+          const res = await apiUtil.post(primaryEndpoint, { pin });
+          if (res.data?.success && res.data?.valid) {
+            verified = true;
+            responseData = res.data;
+          }
+        } catch (err) {
+          lastError = err;
+          if (err?.response?.status === 404 || err?.response?.data?.message?.toLowerCase().includes('not found')) {
+            try {
+              const res2 = await apiUtil.post(secondaryEndpoint, { pin });
+              if (res2.data?.success && res2.data?.valid) {
+                verified = true;
+                responseData = res2.data;
+                lastError = null;
+              }
+            } catch (err2) {
+              lastError = err2;
+            }
+          }
+        }
+
+        if (verified) {
+          if (onSuccess) await onSuccess(pin);
           onClose(true);
         } else {
-          AlertService.show('Access Denied', res.data?.message || 'Incorrect password', 'info');
+          const msg = lastError?.response?.data?.message || lastError?.message || 'Incorrect password';
+          AlertService.show('Access Denied', msg, 'info');
           setPin('');
         }
       }
@@ -94,19 +150,28 @@ export default function RoomLockModal({
 
   const handleUnlock = async () => {
     setLoading(true);
+    const effectiveRoomId = typeof roomId === 'object' && roomId !== null
+      ? (roomId._id || roomId.id || roomId.roomId || roomId.channelName || '')
+      : String(roomId || '').trim();
+
     try {
-      const res = await apiUtil.post(`/voice-club/rooms/${roomId}/lock`, {
+      if (onUnlockRoom) {
+        await onUnlockRoom({ alreadyUnlocked: true });
+        onClose();
+        return;
+      }
+      const endpoint = isLive ? `/live/rooms/${effectiveRoomId}/lock` : `/voice-club/rooms/${effectiveRoomId}/lock`;
+      const res = await apiUtil.post(endpoint, {
         isLocked: false,
       });
       if (res.data?.success) {
-        AlertService.show('Room Unlocked', 'Room is now public and unlocked', 'success');
-        if (onUnlockRoom) onUnlockRoom({ alreadyUnlocked: true });
+        AlertService.show(isLive ? 'Public Live' : 'Room Unlocked', isLive ? 'Live is now public' : 'Room is now public and unlocked', 'success');
         onClose();
       } else {
-        AlertService.show('Notice', res.data?.message || 'Failed to unlock room', 'info');
+        AlertService.show('Notice', res.data?.message || (isLive ? 'Failed to make live public' : 'Failed to unlock room'), 'info');
       }
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to unlock room';
+      const msg = err?.response?.data?.message || err?.message || (isLive ? 'Failed to make live public' : 'Failed to unlock room');
       AlertService.show('Notice', msg, 'info');
     } finally {
       setLoading(false);
@@ -139,14 +204,14 @@ export default function RoomLockModal({
 
           {/* Title */}
           <Text style={styles.dialogTitle}>
-            {mode === 'not_purchased' ? 'Room Lock' : 'Room lock'}
+            {displayTitle}
           </Text>
 
           {mode === 'not_purchased' ? (
             /* Not Purchased View */
             <View style={styles.bodyWrap}>
               <Text style={styles.notPurchasedText}>
-                {"You haven't purchased Room Lock yet.\nConfirm to buy?"}
+                {isLive ? "You haven't unlocked Private Live yet.\nConfirm to unlock?" : "You haven't purchased Room Lock yet.\nConfirm to buy?"}
               </Text>
 
               <TouchableOpacity
@@ -216,8 +281,8 @@ export default function RoomLockModal({
               {/* Subtitle */}
               <Text style={styles.subPromptText}>
                 {mode === 'set_pin'
-                  ? 'Please set 4 digits password'
-                  : 'Please enter 4 digits password'}
+                  ? (isLive ? 'Please set 4 digits password for Private Live' : 'Please set 4 digits password')
+                  : (isLive ? 'Enter 4 digits password to join Private Live' : 'Please enter 4 digits password')}
               </Text>
 
               {/* Confirm Button */}
@@ -249,7 +314,7 @@ export default function RoomLockModal({
                   disabled={loading}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.unlockDirectText}>🔓 Unlock Room (Remove Password)</Text>
+                  <Text style={styles.unlockDirectText}>{isLive ? '🔓 Make Public (Remove Password)' : '🔓 Unlock Room (Remove Password)'}</Text>
                 </TouchableOpacity>
               )}
 

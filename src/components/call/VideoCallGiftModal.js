@@ -43,8 +43,8 @@ export default function VideoCallGiftModal({
             <View style={styles.giftHeaderLeft}>
               <Text style={styles.giftModalTitle}>Send Gift to {name}</Text>
               <View style={styles.diamondBadge}>
-                <Image source={require('../../assets/icons/diamond.png')} style={styles.diamondIconSmall} resizeMode="contain" />
-                <Text style={styles.diamondBadgeText}>{Number(user?.diamonds || 0).toLocaleString()}</Text>
+                <Image source={require('../../assets/icons/coin.png')} style={styles.diamondIconSmall} resizeMode="contain" />
+                <Text style={styles.diamondBadgeText}>{Number(user?.coins ?? 0).toLocaleString()} Coins</Text>
               </View>
             </View>
             <View style={styles.giftHeaderRight}>

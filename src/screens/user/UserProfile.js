@@ -128,6 +128,7 @@ export default function UserProfileScreen() {
   const [fetchedUser, setFetchedUser] = useState(incomingUser);
   const [isFollowing, setIsFollowing] = useState(Boolean(incomingUser?.isFollowing));
   const [followLoading, setFollowLoading] = useState(false);
+  const [callingInProgress, setCallingInProgress] = useState(false);
 
   // Medal Target & Milestone Modal State
   const [showMedalModal, setShowMedalModal] = useState(false);
@@ -312,6 +313,82 @@ export default function UserProfileScreen() {
       });
     } else {
       AlertService.show('Room Notice', `${targetUser.name} is not currently in a room.`, 'info');
+    }
+  };
+
+  const handleStartAudioCall = async () => {
+    if (callingInProgress) return;
+    const userCoins = Number(currentUser?.coins || 0);
+    const rate = Number(targetUser.callRate || 600);
+    if (userCoins < rate) {
+      Alert.alert('Insufficient Coins', `You need at least ${rate} Coins to call this host. Please recharge your wallet.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Recharge', onPress: () => navigation.navigate('Wallet') },
+      ]);
+      return;
+    }
+
+    try {
+      setCallingInProgress(true);
+      const res = await apiUtil.post('/call/start', {
+        hostId: targetUser._id || targetUser.userId || targetUser.id,
+        isVideo: false,
+        callType: 'audio',
+      });
+      if (res.data?.success && res.data?.data) {
+        navigation.navigate('OutGoing', {
+          ...res.data.data,
+          name: targetUser.name,
+          hostId: targetUser._id || targetUser.userId || targetUser.id,
+          image: targetUser.avatar,
+          isCaller: true,
+          isVideo: false,
+        });
+      } else {
+        AlertService.show('Call Unavailable', res.data?.message || 'Unable to connect call.', 'error');
+      }
+    } catch (err) {
+      AlertService.show('Call Error', err.response?.data?.message || err.message, 'error');
+    } finally {
+      setCallingInProgress(false);
+    }
+  };
+
+  const handleStartVideoCall = async () => {
+    if (callingInProgress) return;
+    const userCoins = Number(currentUser?.coins || 0);
+    const rate = Number(targetUser.videoCallRate || 1200);
+    if (userCoins < rate) {
+      Alert.alert('Insufficient Coins', `You need at least ${rate} Coins for a video call. Please recharge your wallet.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Recharge', onPress: () => navigation.navigate('Wallet') },
+      ]);
+      return;
+    }
+
+    try {
+      setCallingInProgress(true);
+      const res = await apiUtil.post('/call/start', {
+        hostId: targetUser._id || targetUser.userId || targetUser.id,
+        isVideo: true,
+        callType: 'video',
+      });
+      if (res.data?.success && res.data?.data) {
+        navigation.navigate('OutGoing', {
+          ...res.data.data,
+          name: targetUser.name,
+          hostId: targetUser._id || targetUser.userId || targetUser.id,
+          image: targetUser.avatar,
+          isCaller: true,
+          isVideo: true,
+        });
+      } else {
+        AlertService.show('Call Unavailable', res.data?.message || 'Unable to connect video call.', 'error');
+      }
+    } catch (err) {
+      AlertService.show('Call Error', err.response?.data?.message || err.message, 'error');
+    } finally {
+      setCallingInProgress(false);
     }
   };
 
@@ -1127,7 +1204,6 @@ export default function UserProfileScreen() {
             <Icon name="chatbubble-ellipses-outline" size={19} color="#7C3AED" />
             <Text style={styles.chatActionText}>Chat</Text>
           </TouchableOpacity>
-
 
           <TouchableOpacity
             style={[styles.followActionBtn, isFollowing && styles.followingActionBtn]}

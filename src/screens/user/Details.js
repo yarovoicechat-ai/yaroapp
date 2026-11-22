@@ -62,7 +62,7 @@ export default function Details() {
           </View>
 
           <Text style={styles.statusText}>{tx.status || 'Transaction details unavailable'}</Text>
-          <Text style={styles.amountDisplay}>{tx.amount || (tx.diamonds != null || tx.coins != null ? `${tx.diamonds ?? tx.coins} Units` : 'Amount unavailable')}</Text>
+          <Text style={styles.amountDisplay}>{tx.amount || (tx.coins != null ? `${tx.coins} Coins` : (tx.diamonds != null ? `${tx.diamonds} Coins` : 'Amount unavailable'))}</Text>
           <Text style={styles.titleText}>{tx.title || 'Wallet Transaction'}</Text>
 
           <View style={styles.dashedDivider} />

@@ -149,7 +149,7 @@ export default function StoreScreen() {
     };
   }, []));
 
-  const currentDiamonds = Number(user?.diamonds || 0);
+  const currentDiamonds = Number(user?.coins || 0);
   const items = catalog[activeCategory] || [];
   const selectedPriceOptions = getPriceOptions(selectedItem);
   const selectedPrice = selectedPriceOptions.find(option => option.days === selectedDurationDays)?.diamonds
@@ -176,12 +176,12 @@ export default function StoreScreen() {
       setConfirmModalVisible(false);
       setPreviewModalVisible(false);
       AlertService.show(
-        'Insufficient Diamonds',
-        `You have ${currentDiamonds.toLocaleString()} Diamonds, but this ${selectedDurationDays}-day option costs ${selectedPrice.toLocaleString()} Diamonds. Please recharge to continue.`,
+        'Insufficient Coins',
+        `You have ${currentDiamonds.toLocaleString()} Coins, but this ${selectedDurationDays}-day option costs ${selectedPrice.toLocaleString()} Coins. Please recharge to continue.`,
         'error',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Recharge Diamonds', onPress: () => navigation.navigate('Recharge') },
+          { text: 'Recharge Coins', onPress: () => navigation.navigate('Recharge') },
         ]
       );
       return;
@@ -464,20 +464,12 @@ export default function StoreScreen() {
         >
           <View style={styles.framePreviewRow}>
             <View style={styles.previewAvatarWrap}>
-              {item?.animationUrl || !coverImage ? (
-                <AvatarWithFrame
-                  user={user}
-                  frame={item || 'Rose frame'}
-                  size={66}
-                  showOnlineDot={false}
-                />
-              ) : (
-                <Image
-                  source={{ uri: coverImage }}
-                  style={styles.gridItemAsset}
-                  resizeMode="contain"
-                />
-              )}
+              <AvatarWithFrame
+                user={user}
+                frame={item || 'Rose frame'}
+                size={66}
+                showOnlineDot={false}
+              />
             </View>
 
             <View style={styles.previewTextCol}>
@@ -559,13 +551,13 @@ export default function StoreScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Yaro Store</Text>
 
-        {/* Diamond Balance Pill */}
+        {/* Coin Balance Pill */}
         <TouchableOpacity
           style={styles.balancePill}
           onPress={() => navigation.navigate('Recharge')}
           activeOpacity={0.8}
         >
-          <Icon name="diamond" size={14} color="#06B6D4" />
+          <Image source={require('../../assets/icons/coin.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
           <Text style={styles.balanceText}>{formatCompactBalance(currentDiamonds)}</Text>
           <View style={styles.addIconWrap}>
             <Icon name="add" size={10} color="#FFFFFF" />
@@ -664,20 +656,12 @@ export default function StoreScreen() {
                   </View>
                 ) : activeCategory === 'Frames' ? (
                   <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor}12` }]}>
-                    {(item.coverImageUrl || item.imageUrl || item.image) ? (
-                      <AssetImage
-                        source={{ uri: item.coverImageUrl || item.imageUrl || item.image }}
-                        style={styles.gridItemAsset}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <AvatarWithFrame
-                        user={user}
-                        frame={item}
-                        size={54}
-                        showOnlineDot={false}
-                      />
-                    )}
+                    <AvatarWithFrame
+                      user={user}
+                      frame={item}
+                      size={54}
+                      showOnlineDot={false}
+                    />
                   </View>
                 ) : activeCategory === 'Entry' && (item.coverImageUrl || item.imageUrl || item.image || item.animationUrl) ? (
                   <View style={[styles.itemVisualCircle, { backgroundColor: `${item.previewColor}18` }]}>
@@ -730,7 +714,7 @@ export default function StoreScreen() {
                   }}
                   activeOpacity={0.8}
                 >
-                  {!isFreeStoreItem(item) && <Icon name="diamond" size={12} color="#06B6D4" style={{ marginRight: 4 }} />}
+                  {!isFreeStoreItem(item) && <Image source={require('../../assets/icons/coin.png')} style={{ width: 12, height: 12, marginRight: 4 }} resizeMode="contain" />}
                   <Text style={styles.buyBtnText}>
                     {isFreeStoreItem(item)
                       ? 'FREE'

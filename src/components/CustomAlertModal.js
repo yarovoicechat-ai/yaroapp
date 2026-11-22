@@ -60,8 +60,10 @@ const CustomAlertModal = forwardRef((props, ref) => {
 
   if (!visible) return null;
 
-  const isDiamondAlert =
+  const isCoinAlert =
+    title.toLowerCase().includes('coin') ||
     title.toLowerCase().includes('diamond') ||
+    message.toLowerCase().includes('coin') ||
     message.toLowerCase().includes('diamond') ||
     title.toLowerCase().includes('recharge');
 
@@ -85,7 +87,7 @@ const CustomAlertModal = forwardRef((props, ref) => {
             <View style={styles.iconContainer}>
               <LinearGradient
                 colors={
-                  isDiamondAlert
+                  isCoinAlert
                     ? ['#f43f5e', '#a855f7', '#6366f1']
                     : type === 'success'
                     ? ['#10b981', '#059669']
@@ -95,9 +97,9 @@ const CustomAlertModal = forwardRef((props, ref) => {
                 end={{ x: 1, y: 1 }}
                 style={styles.iconBadge}
               >
-                {isDiamondAlert ? (
+                {isCoinAlert ? (
                   <Image
-                    source={require('../assets/icons/diamond.png')}
+                    source={require('../assets/icons/coin.png')}
                     style={styles.diamondIcon}
                     resizeMode="contain"
                   />

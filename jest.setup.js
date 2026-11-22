@@ -45,3 +45,7 @@ jest.mock('react-native-webview', () => {
     default: MockWebView,
   };
 });
+jest.mock('react-native-image-picker', () => ({
+  launchCamera: jest.fn(),
+  launchImageLibrary: jest.fn(),
+}));

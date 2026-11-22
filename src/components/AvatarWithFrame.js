@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarImage: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'transparent',
   },
   decorBadge: {
     position: 'absolute',

@@ -324,7 +324,7 @@ export default function PartyScreen() {
             onPress={() => navigation.navigate('Ranking')}
           >
             <SvgaView
-              source="animations/game_ranking_enter.svga"
+              source="asset://animations/game_ranking_enter.svga"
               style={styles.trophyIconImg}
               resizeMode="contain"
             />
@@ -622,7 +622,7 @@ export default function PartyScreen() {
         visible={Boolean(lockedRoomTarget)}
         onClose={() => setLockedRoomTarget(null)}
         mode="enter_pin"
-        roomId={lockedRoomTarget?.id || lockedRoomTarget?.roomId || lockedRoomTarget?.channelName}
+        roomId={lockedRoomTarget?._id || lockedRoomTarget?.id || lockedRoomTarget?.roomId || lockedRoomTarget?.channelName}
         onSuccess={() => {
           const target = lockedRoomTarget;
           setLockedRoomTarget(null);

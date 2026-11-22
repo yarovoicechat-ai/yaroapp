@@ -148,7 +148,7 @@ const LevelBadge = ({ level = 1, type = 'wealth' }) => {
   return (
     <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.levelBadgePill}>
       <MaterialCommunityIcons
-        name={isCharm ? 'flower' : 'diamond-stone'}
+        name={isCharm ? 'flower' : 'circle-multiple'}
         size={11}
         color="#FFF"
         style={{ marginRight: 2 }}
@@ -235,7 +235,7 @@ export default function Ranking() {
   const fetchRanking = useCallback(async () => {
     try {
       setLoading(true);
-      const metric = activeCategory === 'Honor' ? 'diamonds' : activeCategory === 'Charm' ? 'coins' : 'rooms';
+      const metric = activeCategory === 'Honor' ? 'coins' : activeCategory === 'Charm' ? 'beans' : 'rooms';
       const range = activePeriod.toLowerCase();
       const res = await apiUtil.get('/live/ranking', { params: { type: metric, range } });
 
@@ -259,8 +259,8 @@ export default function Ranking() {
             equippedTag: item.equippedTag || null,
             equippedTagAsset: item.equippedTagAsset || null,
             role: item.role || 'user',
-            score: item[metric] || item.coins || item.diamonds || 0,
-            scoreText: formatScore(item[metric] || item.coins || item.diamonds || 0),
+            score: item[metric] || item.coins || item.beans || item.diamonds || 0,
+            scoreText: formatScore(item[metric] || item.coins || item.beans || item.diamonds || 0),
             avatar: item.image || item.avatar || null,
           };
         });

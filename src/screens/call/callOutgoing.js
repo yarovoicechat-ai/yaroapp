@@ -59,10 +59,8 @@ const OutGoing = () => {
   const [speakerOn, setSpeakerOn] = useState(false);
   const [balance, setBalance] = useState(() => {
     if (route.params?.coins !== undefined) return route.params.coins;
-    if (route.params?.diamonds !== undefined) return route.params.diamonds;
     if (route.params?.balance !== undefined) return route.params.balance;
     if (user?.coins !== undefined) return user.coins;
-    if (user?.diamonds !== undefined) return user.diamonds;
     return 0;
   });
 

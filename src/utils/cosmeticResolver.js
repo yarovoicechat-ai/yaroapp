@@ -45,7 +45,7 @@ export const resolveAssetUrl = (url) => {
 };
 
 const isRemoteAssetUrl = (value) =>
-  typeof value === 'string' && /^(?:https?:\/\/|file:\/\/|content:\/\/|data:|\/|uploads\/)/i.test(value.trim());
+  typeof value === 'string' && /^(?:https?:\/\/|file:\/\/|content:\/\/|data:|asset:\/\/|\/|uploads\/|assets\/|animations\/|vip\/|api\/)/i.test(value.trim());
 
 const isAnimatedAssetUrl = (value) =>
   typeof value === 'string' && /\.(?:svga|gif|webp|mp4|m4v|mov)(?:[?#]|$)/i.test(value.trim());

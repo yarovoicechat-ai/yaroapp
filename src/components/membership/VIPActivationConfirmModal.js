@@ -23,8 +23,8 @@ export default function VIPActivationConfirmModal({ visible, onClose, tier, pack
           <View style={styles.modalCostRow}>
             <Text style={styles.modalCostLabel}>Total Price:</Text>
             <View style={styles.modalCostVal}>
-              <MaterialCommunityIcons name="diamond-stone" size={18} color="#0284C7" />
-              <Text style={styles.modalCostText}>{formatCompactBalance(packageOption.diamonds)} Diamonds</Text>
+              <Text style={{ fontSize: 16, marginRight: 4 }}>🪙</Text>
+              <Text style={styles.modalCostText}>{formatCompactBalance(packageOption.coins || packageOption.diamonds)} Coins</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.modalConfirmBtn} onPress={onConfirm} activeOpacity={0.88}>

@@ -22,6 +22,8 @@ import Me from "../screens/user/Me";
 import { AuthContext } from "../context/AuthProvider";
 import { apiUtil } from "../utils/apiUtil";
 import { getSocket } from "../sockets";
+import { navigationRef } from "../utils/navigationRef";
+import { showMessageNotification } from "../utils/MessageNotificationService";
 
 import {
   TAB_BAR_HORIZONTAL_MARGIN,
@@ -274,10 +276,24 @@ export default function BottomTabsNavigator() {
     const socket = getSocket();
     if (!socket || !user) return;
 
-    const handleNewMessage = ({ message }) => {
-      const msg = message._doc || message;
-      if (msg.sender !== user._id) {
+    const handleNewMessage = ({ conversationId: convId, message }) => {
+      const msg = message?._doc || message;
+      const senderId = String(msg?.sender?._id || msg?.sender || '');
+      const currentUserId = String(user?._id || user?.id || user?.userId || '');
+      if (senderId && senderId !== currentUserId) {
         setTotalUnread((prev) => prev + 1);
+        const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
+        if (currentRoute?.name !== 'Chat' || String(currentRoute?.params?.conversationId) !== String(convId)) {
+          showMessageNotification({
+            type: 'message',
+            conversationId: convId,
+            senderId,
+            senderName: msg?.senderName || msg?.sender?.name || 'New message',
+            senderImage: msg?.senderImage || msg?.sender?.image || '',
+            body: msg?.content || 'Sent you a message',
+            title: msg?.senderName || msg?.sender?.name || 'New message',
+          });
+        }
       }
     };
 

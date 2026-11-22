@@ -32,6 +32,7 @@ class MainActivity : ReactActivity() {
 
   override fun onResume() {
     super.onResume()
+    ResumableSVGAImageView.ensureDurationScale()
     window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
   }
 

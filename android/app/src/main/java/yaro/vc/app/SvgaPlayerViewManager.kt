@@ -20,13 +20,27 @@ class ResumableSVGAImageView(context: Context) : SVGAImageView(context) {
   var lastVideoItem: SVGAVideoEntity? = null
   var isAutoPlaying: Boolean = true
 
+  companion object {
+    fun ensureDurationScale() {
+      try {
+        val method = android.animation.ValueAnimator::class.java.getDeclaredMethod(
+          "setDurationScale",
+          Float::class.javaPrimitiveType
+        )
+        method.isAccessible = true
+        method.invoke(null, 1.0f)
+      } catch (_: Exception) {}
+    }
+  }
+
   fun resumeIfNeeded() {
     if (!isAutoPlaying) return
     post {
+      ensureDurationScale()
       val item = lastVideoItem
       if (item != null) {
         if (drawable == null) {
-          setImageDrawable(SVGADrawable(item))
+          setVideoItem(item)
         }
         startAnimation()
       } else if (drawable != null) {
@@ -172,10 +186,10 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
           if (sources[view] != source) return@post
           loadingSources.remove(view)
           rView?.lastVideoItem = videoItem
-          val drawable = SVGADrawable(videoItem)
-          view.setImageDrawable(drawable)
+          view.setVideoItem(videoItem)
           emit(view, "topPlaybackReady")
           if (rView?.isAutoPlaying != false) {
+            ResumableSVGAImageView.ensureDurationScale()
             view.startAnimation()
           }
         }
@@ -222,10 +236,9 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
             )
             for (p in assetCandidates) {
               try {
-                view.context.assets.open(p).use {
-                  SVGAParser.shareParser().decodeFromAssets(p, callback)
-                  return
-                }
+                val stream = view.context.assets.open(p)
+                SVGAParser.shareParser().decodeFromInputStream(stream, "file:///assets/$p", callback, true)
+                return
               } catch (_: Exception) {}
             }
             callback.onError()
@@ -262,15 +275,19 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
         var found = false
         for (c in candidates) {
           try {
-            view.context.assets.open(c).use {
-              SVGAParser.shareParser().decodeFromAssets(c, callback)
-              found = true
-              return
-            }
+            val stream = view.context.assets.open(c)
+            SVGAParser.shareParser().decodeFromInputStream(stream, "file:///assets/$c", callback, true)
+            found = true
+            break
           } catch (_: Exception) {}
         }
         if (!found) {
-          SVGAParser.shareParser().decodeFromAssets(assetPath, callback)
+          try {
+            val stream = view.context.assets.open(assetPath)
+            SVGAParser.shareParser().decodeFromInputStream(stream, "file:///assets/$assetPath", callback, true)
+          } catch (e: Exception) {
+            callback.onError()
+          }
         }
       }
     } catch (e: Exception) {

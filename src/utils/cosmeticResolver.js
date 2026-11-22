@@ -111,7 +111,15 @@ export const normalizeCosmeticAsset = (value) => {
 };
 
 export const resolveFrameAsset = (user, explicitFrame = null) => {
-  const raw =
+  const tierLevel = Number(
+    user?.svipLevel ??
+    user?.svip ??
+    user?.vipLevel ??
+    user?.vip ??
+    0
+  );
+
+  let raw =
     explicitFrame ||
     user?.equippedFrameAsset ||
     user?.equippedProfileFrame ||
@@ -124,40 +132,47 @@ export const resolveFrameAsset = (user, explicitFrame = null) => {
     user?.avatarFrameAsset ||
     user?.avatarFrame ||
     user?.effectiveIdentity?.avatarFrame ||
-    (user?.vipLevel ? `vip_frame_${user.vipLevel}` : null) ||
+    (tierLevel > 0 ? `vip_frame_${Math.min(Math.max(tierLevel, 1), 5)}` : null) ||
     null;
+
+  if (!raw && tierLevel > 0) {
+    raw = `vip_frame_${Math.min(Math.max(tierLevel, 1), 5)}`;
+  }
 
   const normalized = normalizeCosmeticAsset(raw);
   if (!normalized) return null;
 
   let animUrl = normalized.animationUrl;
+  const isServerUrl = typeof animUrl === 'string' && /^https?:\/\//i.test(animUrl);
   const nameStr = String(normalized.name || normalized.id || normalized.imageUrl || '').toLowerCase();
 
-  // Match VIP frames (vip_frame_1 .. 5, VIP 1 .. 5)
-  const vipMatch = nameStr.match(/vip[_\s-]?frame[_\s-]?([1-5])|vip[_\s-]?([1-5])/i);
-  if (vipMatch) {
-    const level = vipMatch[1] || vipMatch[2];
-    animUrl = `asset://animations/vip_frame_${level}.svga`;
-  } else if (!animUrl || animUrl.toLowerCase().endsWith('.png')) {
-    // Map known frame styles to hardware-accelerated animated SVGAs
-    if (nameStr.includes('rose') || nameStr.includes('blossom') || nameStr.includes('starter')) {
-      animUrl = 'asset://animations/vip_frame_1.svga';
-    } else if (nameStr.includes('wing') || nameStr.includes('angel') || nameStr.includes('graceful') || nameStr.includes('phoenix')) {
-      animUrl = 'asset://animations/vip_frame_2.svga';
-    } else if (nameStr.includes('neon') || nameStr.includes('crystal') || nameStr.includes('rockstar') || nameStr.includes('tiara') || nameStr.includes('amethyst')) {
-      animUrl = 'asset://animations/vip_frame_3.svga';
-    } else if (nameStr.includes('dragon') || nameStr.includes('fire') || nameStr.includes('ruby') || nameStr.includes('amber')) {
-      animUrl = 'asset://animations/vip_frame_4.svga';
-    } else if (nameStr.includes('crown') || nameStr.includes('imperial') || nameStr.includes('gold') || nameStr.includes('king') || nameStr.includes('sovereign') || nameStr.includes('eternity')) {
-      animUrl = 'asset://animations/vip_frame_5.svga';
+  // Match VIP frames (vip_frame_1 .. 5, VIP 1 .. 5) only when not a server URL
+  if (!isServerUrl) {
+    const vipMatch = nameStr.match(/vip[_\s-]?frame[_\s-]?([1-5])|vip[_\s-]?([1-5])/i);
+    if (vipMatch) {
+      const level = vipMatch[1] || vipMatch[2];
+      animUrl = `asset://animations/vip_frame_${level}.svga`;
+    } else if (!animUrl || animUrl.toLowerCase().endsWith('.png')) {
+      // Map known frame styles to hardware-accelerated animated SVGAs
+      if (nameStr.includes('rose') || nameStr.includes('blossom') || nameStr.includes('starter')) {
+        animUrl = 'asset://animations/vip_frame_1.svga';
+      } else if (nameStr.includes('wing') || nameStr.includes('angel') || nameStr.includes('graceful') || nameStr.includes('phoenix')) {
+        animUrl = 'asset://animations/vip_frame_2.svga';
+      } else if (nameStr.includes('neon') || nameStr.includes('crystal') || nameStr.includes('rockstar') || nameStr.includes('tiara') || nameStr.includes('amethyst')) {
+        animUrl = 'asset://animations/vip_frame_3.svga';
+      } else if (nameStr.includes('dragon') || nameStr.includes('fire') || nameStr.includes('ruby') || nameStr.includes('amber')) {
+        animUrl = 'asset://animations/vip_frame_4.svga';
+      } else if (nameStr.includes('crown') || nameStr.includes('imperial') || nameStr.includes('gold') || nameStr.includes('king') || nameStr.includes('sovereign') || nameStr.includes('eternity')) {
+        animUrl = 'asset://animations/vip_frame_5.svga';
+      }
     }
-  }
 
-  // If imageUrl has a vip_frame png, map to the svga equivalent
-  if (!animUrl && normalized.imageUrl) {
-    const imgVip = normalized.imageUrl.match(/vip_frame_([1-5])\.(?:png|svga)/i);
-    if (imgVip) {
-      animUrl = `asset://animations/vip_frame_${imgVip[1]}.svga`;
+    // If imageUrl has a vip_frame png, map to the svga equivalent
+    if (!animUrl && normalized.imageUrl) {
+      const imgVip = normalized.imageUrl.match(/vip_frame_([1-5])\.(?:png|svga)/i);
+      if (imgVip) {
+        animUrl = `asset://animations/vip_frame_${imgVip[1]}.svga`;
+      }
     }
   }
 

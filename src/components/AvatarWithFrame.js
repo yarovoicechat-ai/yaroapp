@@ -282,8 +282,12 @@ function AvatarWithFrame({
     if (combinedStr.includes('crown') || combinedStr.includes('imperial') || combinedStr.includes('gold') || combinedStr.includes('king') || combinedStr.includes('sovereign')) {
       return 'asset://animations/vip_frame_5.svga';
     }
+    const userTier = Number(user?.svipLevel || user?.svip || user?.vipLevel || user?.vip || 0);
+    if (userTier > 0) {
+      return `asset://animations/vip_frame_${Math.min(Math.max(userTier, 1), 5)}.svga`;
+    }
     return uploadedFrame?.animationUrl || null;
-  }, [uploadedFrame, frameOverlaySource, frameName]);
+  }, [uploadedFrame, frameOverlaySource, frameName, user]);
 
   const staticFallbackFrame = useMemo(() => {
     if (typeof frameOverlaySource === 'string' && !/\.svga(?:[?#]|$)/i.test(frameOverlaySource)) {
@@ -297,6 +301,10 @@ function AvatarWithFrame({
     }
     const animUrl = uploadedFrame?.animationUrl || (typeof frameOverlaySource === 'string' ? frameOverlaySource : '');
     if (typeof animUrl === 'string' && /\.svga(?:[?#]|$)/i.test(animUrl)) {
+      const vipMatch = animUrl.match(/vip_frame_([1-5])\.svga/i);
+      if (vipMatch) {
+        return `asset://vip/frame/vip_frame_${vipMatch[1]}.png`;
+      }
       return animUrl.replace(/\.svga([?#]|$)/i, '.png$1');
     }
     return undefined;

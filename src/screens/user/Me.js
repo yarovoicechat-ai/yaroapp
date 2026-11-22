@@ -464,7 +464,14 @@ export default function MeScreen() {
             <View style={styles.avatarSection}>
               <AvatarWithFrame
                 user={user}
-                frame={user?.equippedFrameAsset || equippedFrame || user?.equippedFrame || null}
+                frame={
+                  user?.equippedFrameAsset ||
+                  equippedFrame ||
+                  user?.equippedFrame ||
+                  (Number(user?.svipLevel || user?.svip || user?.vipLevel || user?.vip || 0) > 0
+                    ? `vip_frame_${Math.min(Math.max(Number(user?.svipLevel || user?.svip || user?.vipLevel || user?.vip), 1), 5)}`
+                    : null)
+                }
                 size={78}
                 showOnlineDot={true}
                 isOnline={true}

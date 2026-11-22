@@ -40,6 +40,7 @@ class MainApplication : Application(), ReactApplication {
   override fun onCreate() {
     super.onCreate()
     try {
+      ResumableSVGAImageView.ensureDurationScale()
       SVGAParser.shareParser().init(this)
     } catch (e: Exception) {
       if (BuildConfig.DEBUG) {

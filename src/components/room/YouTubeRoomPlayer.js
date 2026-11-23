@@ -280,11 +280,29 @@ export default function YouTubeRoomPlayer({
           // If queue has next video and is host, play next
         }
       } else if (msg.event === 'onError') {
-        // 101 or 150 = owner does not allow embedding
-        if (msg.code === 101 || msg.code === 150 || msg.code === 5) {
-          setEmbedError(true);
-          setLoading(false);
+        const code = Number(msg.code);
+        let errorMsg = 'Playback error occurred';
+        let isRestricted = false;
+
+        if (code === 2) {
+          errorMsg = 'Invalid video ID or parameter.';
+        } else if (code === 5) {
+          errorMsg = 'HTML5 player playback error. Please try again.';
+        } else if (code === 100) {
+          errorMsg = 'This video is unavailable, removed or private.';
+          isRestricted = true;
+        } else if (code === 101 || code === 150) {
+          errorMsg = 'This video cannot be played inside YARO. Open it on YouTube.';
+          isRestricted = true;
+        } else if (code === 153) {
+          errorMsg = 'Client identity / referrer check required (Error 153). Open it on YouTube.';
+          isRestricted = true;
+        } else {
+          errorMsg = `Playback error code: ${code}`;
         }
+
+        setEmbedError(isRestricted);
+        setLoading(false);
       }
     } catch {
       // Ignore non-json messages
@@ -332,25 +350,35 @@ export default function YouTubeRoomPlayer({
 
           var player;
           function onYouTubeIframeAPIReady() {
-            player = new YT.Player('player', {
-              videoId: '${session.videoId}',
-              playerVars: {
-                autoplay: 1,
-                controls: 0,
-                rel: 0,
-                showinfo: 0,
-                modestbranding: 1,
-                playsinline: 1,
-                fs: 0,
-                iv_load_policy: 3,
-                disablekb: 1
-              },
-              events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange,
-                'onError': onPlayerError
-              }
-            });
+            try {
+              player = new YT.Player('player', {
+                videoId: '${session.videoId}',
+                playerVars: {
+                  autoplay: 1,
+                  controls: 0,
+                  rel: 0,
+                  showinfo: 0,
+                  modestbranding: 1,
+                  playsinline: 1,
+                  fs: 0,
+                  iv_load_policy: 3,
+                  disablekb: 1,
+                  origin: 'https://yaroapp.in',
+                  enablejsapi: 1,
+                  widget_referrer: 'https://yaroapp.in'
+                },
+                events: {
+                  'onReady': onPlayerReady,
+                  'onStateChange': onPlayerStateChange,
+                  'onError': onPlayerError
+                }
+              });
+            } catch (err) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                event: 'onError',
+                code: 5
+              }));
+            }
           }
 
           function onPlayerReady(event) {
@@ -396,12 +424,19 @@ export default function YouTubeRoomPlayer({
       {!embedError ? (
         <WebView
           ref={webViewRef}
-          source={{ html: htmlContent }}
+          source={{
+            html: htmlContent,
+            baseUrl: 'https://yaroapp.in',
+          }}
+          originWhitelist={['*']}
           style={styles.webView}
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled
           domStorageEnabled
+          mixedContentMode="always"
+          androidLayerType="hardware"
+          userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
           onMessage={handleMessage}
           scrollEnabled={false}
           bounces={false}
@@ -410,8 +445,8 @@ export default function YouTubeRoomPlayer({
         /* Non-embeddable error card */
         <View style={styles.embedErrorContainer}>
           <MaterialCommunityIcons name="alert-circle-outline" size={36} color="#EF4444" />
-          <Text style={styles.embedErrorTitle}>Embedding restricted by YouTube</Text>
-          <Text style={styles.embedErrorSub}>The creator of this video does not allow playback in third-party apps.</Text>
+          <Text style={styles.embedErrorTitle}>Playback Restricted</Text>
+          <Text style={styles.embedErrorSub}>This video cannot be played inside YARO. Open it on YouTube.</Text>
           <View style={styles.embedErrorActions}>
             <TouchableOpacity
               style={styles.openYtBtn}

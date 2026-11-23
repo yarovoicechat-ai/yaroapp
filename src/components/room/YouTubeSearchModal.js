@@ -33,11 +33,30 @@ export default function YouTubeSearchModal({
     setError('');
     try {
       const q = String(query || '').trim();
-      const res = await apiUtil.get(`/youtube/search?q=${encodeURIComponent(q)}`);
+      let res;
+      try {
+        res = await apiUtil.get(`/youtube/search?q=${encodeURIComponent(q)}`);
+      } catch (firstErr) {
+        // Fallback to voice-club sub-route
+        res = await apiUtil.get(`/voice-club/youtube/search?q=${encodeURIComponent(q)}`);
+      }
+
       const list = res?.data?.data?.items || res?.data?.items || [];
-      setVideos(Array.isArray(list) ? list : []);
+      const items = Array.isArray(list) ? list : [];
+      setVideos(items);
+      if (items.length === 0 && q) {
+        setError('No videos found for this search. Try searching another song or artist.');
+      }
     } catch (err) {
-      setError('Unable to load YouTube videos. Please try again.');
+      if (err?.code === 'ECONNABORTED' || String(err?.message || '').toLowerCase().includes('network')) {
+        setError('Internet connection unavailable. Please check your network.');
+      } else if (err?.response?.status === 403) {
+        setError('YouTube search quota limit reached. Please try again shortly.');
+      } else if (err?.response?.status === 500) {
+        setError('Search service temporarily unavailable. Please try again.');
+      } else {
+        setError(err?.response?.data?.message || 'Unable to load YouTube videos. Tap Retry to try again.');
+      }
     } finally {
       setLoading(false);
     }

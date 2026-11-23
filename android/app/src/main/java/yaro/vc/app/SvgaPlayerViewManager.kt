@@ -19,6 +19,7 @@ import java.util.WeakHashMap
 class ResumableSVGAImageView(context: Context) : SVGAImageView(context) {
   var lastVideoItem: SVGAVideoEntity? = null
   var isAutoPlaying: Boolean = true
+  var savedCallback: SVGACallback? = null
 
   companion object {
     fun ensureDurationScale() {
@@ -38,6 +39,10 @@ class ResumableSVGAImageView(context: Context) : SVGAImageView(context) {
     post {
       ensureDurationScale()
       val item = lastVideoItem
+      android.util.Log.i("SvgaPlayerViewManager", "resumeIfNeeded: view=${hashCode()}, item=${item?.frames}, drawable=$drawable, isAnimating=$isAnimating")
+      if (callback == null && savedCallback != null) {
+        callback = savedCallback
+      }
       if (item != null) {
         if (drawable == null) {
           setVideoItem(item)
@@ -51,7 +56,21 @@ class ResumableSVGAImageView(context: Context) : SVGAImageView(context) {
 
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
+    android.util.Log.i("SvgaPlayerViewManager", "onAttachedToWindow: view=${hashCode()}")
     resumeIfNeeded()
+  }
+
+  override fun onDetachedFromWindow() {
+    android.util.Log.i("SvgaPlayerViewManager", "onDetachedFromWindow: view=${hashCode()}")
+    super.onDetachedFromWindow()
+  }
+
+  override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+    super.onSizeChanged(w, h, oldw, oldh)
+    android.util.Log.i("SvgaPlayerViewManager", "onSizeChanged: view=${hashCode()}, w=$w, h=$h")
+    if (w > 0 && h > 0) {
+      resumeIfNeeded()
+    }
   }
 
   override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
@@ -101,14 +120,21 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
   override fun createViewInstance(reactContext: ThemedReactContext): SVGAImageView =
     ResumableSVGAImageView(reactContext).apply {
       setBackgroundColor(android.graphics.Color.TRANSPARENT)
-      callback = object : SVGACallback {
+      val cb = object : SVGACallback {
         override fun onFinished() {
+          android.util.Log.i("SvgaPlayerViewManager", "onFinished: view=${this@apply.hashCode()}")
           emit(this@apply, "topPlaybackFinished")
         }
         override fun onPause() {}
         override fun onRepeat() {}
-        override fun onStep(frame: Int, percentage: Double) {}
+        override fun onStep(frame: Int, percentage: Double) {
+          if (frame % 15 == 0) {
+            android.util.Log.i("SvgaPlayerViewManager", "onStep: view=${this@apply.hashCode()}, frame=$frame")
+          }
+        }
       }
+      callback = cb
+      savedCallback = cb
       loops = 0
       clearsAfterStop = false
       clearsAfterDetached = false
@@ -159,6 +185,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
   @ReactProp(name = "source")
   fun setSource(view: SVGAImageView, source: String?) {
     val rView = view as? ResumableSVGAImageView
+    android.util.Log.i("SvgaPlayerViewManager", "setSource called: view=${view.hashCode()}, source=$source")
     if (source.isNullOrBlank()) {
       sources.remove(view)
       loadingSources.remove(view)
@@ -171,6 +198,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
     }
 
     if (sources[view] == source && rView?.lastVideoItem != null) {
+      android.util.Log.i("SvgaPlayerViewManager", "source matches cached, resuming: view=${view.hashCode()}")
       rView.resumeIfNeeded()
       return
     }
@@ -183,6 +211,7 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
     val callback = object : SVGAParser.ParseCompletion {
       override fun onComplete(videoItem: SVGAVideoEntity) {
         mainHandler.post {
+          android.util.Log.i("SvgaPlayerViewManager", "onComplete: view=${view.hashCode()}, frames=${videoItem.frames}, fps=${videoItem.FPS}")
           if (sources[view] != source) return@post
           loadingSources.remove(view)
           rView?.lastVideoItem = videoItem
@@ -191,15 +220,16 @@ class SvgaPlayerViewManager : SimpleViewManager<SVGAImageView>() {
           if (rView?.isAutoPlaying != false) {
             ResumableSVGAImageView.ensureDurationScale()
             view.startAnimation()
+            android.util.Log.i("SvgaPlayerViewManager", "startAnimation: view=${view.hashCode()}, isAnimating=${view.isAnimating}")
           }
         }
       }
 
       override fun onError() {
         mainHandler.post {
+          android.util.Log.e("SvgaPlayerViewManager", "onError: view=${view.hashCode()}, source=$source")
           if (sources[view] != source) return@post
           loadingSources.remove(view)
-          android.util.Log.e("SvgaPlayerViewManager", "Error decoding SVGA")
           emit(view, "topPlaybackError")
         }
       }

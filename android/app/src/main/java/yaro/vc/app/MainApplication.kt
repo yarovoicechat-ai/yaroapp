@@ -41,6 +41,9 @@ class MainApplication : Application(), ReactApplication {
     super.onCreate()
     try {
       ResumableSVGAImageView.ensureDurationScale()
+      try {
+        com.opensource.svgaplayer.utils.log.SVGALogger.setLogEnabled(true)
+      } catch (_: Exception) {}
       SVGAParser.shareParser().init(this)
     } catch (e: Exception) {
       if (BuildConfig.DEBUG) {

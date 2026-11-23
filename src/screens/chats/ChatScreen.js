@@ -37,6 +37,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset } from '../../utils/safeAreaUtils';
 import ChatGiftModal from '../../components/chat/ChatGiftModal';
 import ChatSafetyMenu from '../../components/chat/ChatSafetyMenu';
+import { formatMessageTime, formatLastSeen, formatMessageDateDivider } from '../../utils/chatTimeUtil';
 
 const { width } = Dimensions.get('window');
 const SCREEN_WIDTH = width;
@@ -203,12 +204,22 @@ const Massage = ({ route }) => {
     });
   }, [otherUser?.name, user?._id, user?.id, user?.name, user?.userId]);
 
-  const formatLastSeen = lastMessageTime
-    ? new Date(lastMessageTime).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-    : 'Just now';
+  const [otherUserState, setOtherUserState] = useState(() => ({
+    ...otherUser,
+    isOnline: Boolean(otherUser?.isOnline),
+    lastOnline: otherUser?.lastOnline || otherUser?.lastActiveAt || lastMessageTime || null,
+  }));
+
+  useEffect(() => {
+    if (otherUser && typeof otherUser === 'object' && Object.keys(otherUser).length > 0) {
+      setOtherUserState(prev => ({
+        ...prev,
+        ...otherUser,
+        isOnline: otherUser.isOnline !== undefined ? Boolean(otherUser.isOnline) : prev.isOnline,
+        lastOnline: otherUser.lastOnline || otherUser.lastActiveAt || prev.lastOnline,
+      }));
+    }
+  }, [otherUser]);
 
   useEffect(() => {
     if (!conversationId) return undefined;
@@ -219,9 +230,19 @@ const Massage = ({ route }) => {
         apiUtil.get('/gifts/received', { params: { limit: 100 } }),
       ]);
 
-      const messages = messagesResult.status === 'fulfilled'
-        ? messagesResult.value.data?.data?.messages || []
-        : [];
+      const resData = messagesResult.status === 'fulfilled' ? messagesResult.value.data?.data : null;
+      const messages = Array.isArray(resData?.messages)
+        ? resData.messages
+        : (Array.isArray(resData) ? resData : (messagesResult.status === 'fulfilled' ? messagesResult.value.data?.messages || [] : []));
+      if (resData?.otherParticipant) {
+        const op = resData.otherParticipant;
+        setOtherUserState(prev => ({
+          ...prev,
+          ...op,
+          isOnline: op.isOnline !== undefined ? Boolean(op.isOnline) : prev.isOnline,
+          lastOnline: op.lastOnline || prev.lastOnline,
+        }));
+      }
       if (messagesResult.status === 'rejected') {
         console.error('Error fetching messages:', messagesResult.reason?.message);
       }
@@ -283,8 +304,8 @@ const Massage = ({ route }) => {
           if (key) merged.set(key, message);
         });
         return [...merged.values()].sort((a, b) => {
-          const aTime = new Date(a.updatedAt || a.createdAt || a.timestamp || 0).getTime();
-          const bTime = new Date(b.updatedAt || b.createdAt || b.timestamp || 0).getTime();
+          const aTime = new Date(a.createdAt || a.sentAt || a.timestamp || a.updatedAt || 0).getTime();
+          const bTime = new Date(b.createdAt || b.sentAt || b.timestamp || b.updatedAt || 0).getTime();
           return aTime - bTime;
         });
       });
@@ -298,15 +319,60 @@ const Massage = ({ route }) => {
     socket.emit('joinConversation', { conversationId });
     console.log('Joined conversation:', conversationId);
 
+    const targetOtherIds = new Set([
+      String(otherUser?._id || ''),
+      String(otherUser?.id || ''),
+      String(otherUser?.userId || ''),
+    ].filter(Boolean));
+
+    const handleUserOnline = (data) => {
+      const uid = String(data?.userId || data?.id || data || '');
+      if (targetOtherIds.has(uid)) {
+        setOtherUserState(prev => ({ ...prev, isOnline: true }));
+      }
+    };
+
+    const handleUserOffline = (data) => {
+      const uid = String(data?.userId || data?.id || '');
+      if (targetOtherIds.has(uid)) {
+        setOtherUserState(prev => ({
+          ...prev,
+          isOnline: false,
+          lastOnline: data?.lastOnline || new Date().toISOString(),
+        }));
+      }
+    };
+
+    socket.on('userOnline', handleUserOnline);
+    socket.on('userOffline', handleUserOffline);
+
     const handleNewMessage = ({ conversationId: convId, message: msgWrapper }) => {
       console.log('New message event received:', { convId, msgWrapper });
       if (convId === conversationId) {
         const newMsg = msgWrapper?.message || msgWrapper;
         if (newMsg) {
+          if (!newMsg.createdAt && !newMsg.timestamp) {
+            newMsg.createdAt = new Date().toISOString();
+          }
           console.log('Adding new message:', newMsg);
-          setMessages(prev => prev.some((existing) => String(existing._id || existing.id) === String(newMsg._id || newMsg.id))
-            ? prev
-            : [...prev, newMsg]);
+          setMessages(prev => {
+            if (prev.some((existing) => String(existing._id || existing.id) === String(newMsg._id || newMsg.id))) {
+              return prev;
+            }
+            const updated = [...prev, newMsg];
+            return updated.sort((a, b) => {
+              const aTime = new Date(a.createdAt || a.sentAt || a.timestamp || a.updatedAt || 0).getTime();
+              const bTime = new Date(b.createdAt || b.sentAt || b.timestamp || b.updatedAt || 0).getTime();
+              return aTime - bTime;
+            });
+          });
+          const senderId = String(newMsg.sender?._id || newMsg.sender?.id || newMsg.sender || '');
+          if (targetOtherIds.has(senderId)) {
+            setOtherUserState(prev => ({
+              ...prev,
+              lastOnline: newMsg.createdAt || new Date().toISOString(),
+            }));
+          }
         }
       }
     };
@@ -360,6 +426,8 @@ const Massage = ({ route }) => {
     return () => {
       console.log('Cleaning up socket listeners');
       if (giftTimerRef.current) clearTimeout(giftTimerRef.current);
+      socket.off('userOnline', handleUserOnline);
+      socket.off('userOffline', handleUserOffline);
       socket.off('newMessageNotification', handleNewMessage);
       socket.off('messagesSeen', handleMessagesSeen);
       socket.off('giftReceived', handleGiftReceived);
@@ -409,12 +477,16 @@ const Massage = ({ route }) => {
       return;
     }
 
+    const now = new Date();
+    const nowIso = now.toISOString();
     const tempMessage = {
-      _id: `temp-${Date.now()}`,
+      _id: `temp-${now.getTime()}`,
       sender: user._id || user.id,
       content: messageContentToSend,
       status: 'sending',
-      updatedAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      timestamp: now.getTime(),
     };
 
     setMessages(prev => [...prev, tempMessage]);
@@ -639,17 +711,17 @@ const Massage = ({ route }) => {
           >
             <View style={styles.navAvatarWrapper}>
               <Image source={receiverImage} style={styles.navAvatar} />
-              {otherUser?.isOnline && <View style={styles.navOnlineDot} />}
+              {otherUserState?.isOnline && <View style={styles.navOnlineDot} />}
             </View>
             <View style={styles.navTextWrapper}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.navUserName} numberOfLines={1}>
-                  {otherUser?.name || 'User'}
+                  {otherUserState?.name || otherUser?.name || 'User'}
                 </Text>
                 <Icon name="verified" size={13} color="#03dcfe" style={{ marginLeft: 4 }} />
               </View>
               <Text style={styles.navUserStatus}>
-                {otherUser?.isOnline ? 'Online' : `Active at ${formatLastSeen}`}
+                {formatLastSeen(otherUserState?.isOnline, otherUserState?.lastOnline, lastMessageTime)}
               </Text>
             </View>
           </TouchableOpacity>
@@ -671,82 +743,99 @@ const Massage = ({ route }) => {
             scrollViewRef.current?.scrollToEnd({ animated: true })
           }
           showsVerticalScrollIndicator={false}
-          ListHeaderComponent={<View style={styles.dateDividerPill}>
-            <Text style={styles.dateDividerText}>Today</Text>
-          </View>}
           renderItem={({ item: msg, index }) => {
             if (!msg) return null;
-            const isSent = msg.sender === user._id;
-            const msgTime = msg.updatedAt ? new Date(msg.updatedAt).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            }) : '';
+            const senderId = String(msg.sender?._id || msg.sender?.id || msg.sender || '');
+            const myIds = [user?._id, user?.id, user?.userId].filter(Boolean).map(String);
+            const isSent = myIds.includes(senderId);
+
+            const rawTime = msg.createdAt || msg.sentAt || msg.timestamp || msg.updatedAt;
+            const msgTime = formatMessageTime(rawTime);
+
+            const prevMsg = index > 0 ? messages[index - 1] : null;
+            const prevRawTime = prevMsg ? (prevMsg.createdAt || prevMsg.sentAt || prevMsg.timestamp || prevMsg.updatedAt) : null;
+            const prevDateStr = prevRawTime ? new Date(prevRawTime).toDateString() : '';
+            const curDateStr = rawTime ? new Date(rawTime).toDateString() : '';
+            const isNewDay = index === 0 || (curDateStr && curDateStr !== prevDateStr);
+            const dateDividerText = isNewDay && rawTime ? formatMessageDateDivider(rawTime) : '';
 
             if (msg.type === 'gift') {
               const giftDetails = msg.gift || msg;
               const giftVisual = resolveGiftVisual(giftDetails);
-              const sentByCurrentUser = String(msg.sender) === String(user?._id || user?.id || user?.userId);
+              const sentByCurrentUser = isSent;
               return (
-                <View
-                  key={msg._id || msg.transactionId || index}
-                  style={[styles.messageRow, sentByCurrentUser ? styles.messageRowRight : styles.messageRowLeft]}
-                >
-                  <View style={styles.giftMessageBubble}>
-                    {giftVisual.giftImage ? (
-                      <Image source={{ uri: giftVisual.giftImage }} style={styles.giftMessageIcon} resizeMode="contain" />
-                    ) : giftVisual.giftIcon ? (
-                      <Text style={styles.giftMessageEmoji}>{giftVisual.giftIcon}</Text>
-                    ) : (
-                      <Icon name="card-giftcard" size={24} color="#F59E0B" />
-                    )}
-                    <Text style={styles.giftMessageText}>
-                      {sentByCurrentUser ? 'You sent' : `${msg.senderName || otherUser?.name || 'User'} sent`} {msg.quantity || 1}x {msg.giftName || giftDetails.name || 'Gift'}
-                    </Text>
-                    {!!msgTime && <Text style={styles.giftMessageTime}>{msgTime}</Text>}
+                <View key={msg._id || msg.transactionId || index}>
+                  {isNewDay && Boolean(dateDividerText) && (
+                    <View style={styles.dateDividerPill}>
+                      <Text style={styles.dateDividerText}>{dateDividerText}</Text>
+                    </View>
+                  )}
+                  <View
+                    style={[styles.messageRow, sentByCurrentUser ? styles.messageRowRight : styles.messageRowLeft]}
+                  >
+                    <View style={styles.giftMessageBubble}>
+                      {giftVisual.giftImage ? (
+                        <Image source={{ uri: giftVisual.giftImage }} style={styles.giftMessageIcon} resizeMode="contain" />
+                      ) : giftVisual.giftIcon ? (
+                        <Text style={styles.giftMessageEmoji}>{giftVisual.giftIcon}</Text>
+                      ) : (
+                        <Icon name="card-giftcard" size={24} color="#F59E0B" />
+                      )}
+                      <Text style={styles.giftMessageText}>
+                        {sentByCurrentUser ? 'You sent' : `${msg.senderName || otherUserState?.name || otherUser?.name || 'User'} sent`} {msg.quantity || 1}x {msg.giftName || giftDetails.name || 'Gift'}
+                      </Text>
+                      {!!msgTime && <Text style={styles.giftMessageTime}>{msgTime}</Text>}
+                    </View>
                   </View>
                 </View>
               );
             }
 
             return (
-              <View
-                key={msg._id || index}
-                style={[
-                  styles.messageRow,
-                  isSent ? styles.messageRowRight : styles.messageRowLeft
-                ]}
-              >
-                <View style={isSent ? styles.bubbleWrapperRight : styles.bubbleWrapperLeft}>
-                  {isSent ? (
-                    <LinearGradient
-                      colors={['#8B5CF6', '#6C5CE7']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.bubbleSent}
-                    >
-                      <Text style={[styles.messageText, { color: '#FFFFFF' }]}>{msg.content}</Text>
-                    </LinearGradient>
-                  ) : (
-                    <View style={styles.bubbleReceived}>
-                      <Text style={styles.messageText}>{msg.content}</Text>
-                    </View>
-                  )}
-
-                  <View style={styles.bubbleMeta}>
-                    <Text style={styles.metaTime}>{msgTime}</Text>
-                    {isSent && (
-                      <View style={{ marginLeft: 4 }}>
-                        {msg.status === 'seen' ? (
-                          <Icon name="done-all" size={14} color="#03dcfe" />
-                        ) : ['sent', 'queued', 'delivered'].includes(msg.status) || !msg.status ? (
-                          <Icon name={msg.status === 'delivered' ? 'done-all' : 'done'} size={14} color="rgba(255,255,255,0.55)" />
-                        ) : msg.status === 'sending' ? (
-                          <ActivityIndicator size={10} color="#03dcfe" />
-                        ) : (
-                          <Icon name="error-outline" size={14} color="#ff3b30" />
-                        )}
+              <View key={msg._id || index}>
+                {isNewDay && Boolean(dateDividerText) && (
+                  <View style={styles.dateDividerPill}>
+                    <Text style={styles.dateDividerText}>{dateDividerText}</Text>
+                  </View>
+                )}
+                <View
+                  style={[
+                    styles.messageRow,
+                    isSent ? styles.messageRowRight : styles.messageRowLeft
+                  ]}
+                >
+                  <View style={isSent ? styles.bubbleWrapperRight : styles.bubbleWrapperLeft}>
+                    {isSent ? (
+                      <LinearGradient
+                        colors={['#8B5CF6', '#6C5CE7']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.bubbleSent}
+                      >
+                        <Text style={[styles.messageText, { color: '#FFFFFF' }]}>{msg.content}</Text>
+                      </LinearGradient>
+                    ) : (
+                      <View style={styles.bubbleReceived}>
+                        <Text style={styles.messageText}>{msg.content}</Text>
                       </View>
                     )}
+
+                    <View style={styles.bubbleMeta}>
+                      <Text style={styles.metaTime}>{msgTime}</Text>
+                      {isSent && (
+                        <View style={{ marginLeft: 4 }}>
+                          {msg.status === 'seen' ? (
+                            <Icon name="done-all" size={14} color="#03dcfe" />
+                          ) : ['sent', 'queued', 'delivered'].includes(msg.status) || !msg.status ? (
+                            <Icon name={msg.status === 'delivered' ? 'done-all' : 'done'} size={14} color="rgba(255,255,255,0.55)" />
+                          ) : msg.status === 'sending' ? (
+                            <ActivityIndicator size={10} color="#03dcfe" />
+                          ) : (
+                            <Icon name="error-outline" size={14} color="#ff3b30" />
+                          )}
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </View>
               </View>

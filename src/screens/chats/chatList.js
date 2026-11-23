@@ -20,6 +20,7 @@ import { getUserAvatar } from '../../utils/avatarUtil';
 import { AuthContext } from '../../context/AuthProvider';
 import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import useInboxMessages from '../../hooks/useInboxMessages';
+import { formatConversationTime } from '../../utils/chatTimeUtil';
 
 const diamondIcon = require('../../assets/icons/diamond.png');
 
@@ -211,11 +212,18 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
     const lastMsg = typeof item.lastMessage === 'string' ? item.lastMessage : (item.lastMessage?.content || item.lastMessage?.text || 'Tap to chat');
     const senderName = other?.name || 'User';
 
+    const lastMsgTimeRaw = item.lastMessage?.createdAt || item.lastMessage?.sentAt || item.lastMessage?.updatedAt || item.updatedAt || item.createdAt;
+    const conversationTime = formatConversationTime(lastMsgTimeRaw);
+
     return (
       <TouchableOpacity
         activeOpacity={0.8}
         style={styles.cardWrapper}
-        onPress={() => openScreen('Chat', { conversationId: item._id, otherUser: other })}
+        onPress={() => openScreen('Chat', {
+          conversationId: item._id,
+          otherUser: other,
+          lastMessageTime: lastMsgTimeRaw,
+        })}
       >
         <View style={styles.avatarWrapper}>
           <Image source={getUserAvatar(other)} style={styles.userAvatarImg} />
@@ -236,10 +244,16 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
         </View>
 
         <View style={styles.cardRightMeta}>
-          {Number(item.unreadCount) > 0 && <View style={styles.unreadBadgePill}>
-            <Text style={styles.unreadBadgeVal}>{Number(item.unreadCount) > 99 ? '99+' : Number(item.unreadCount)}</Text>
-          </View>}
-          <Icon name="chevron-forward" size={18} color="#CBD5E1" style={{ marginTop: 4 }} />
+          {Boolean(conversationTime) && (
+            <Text style={styles.timeAgoText}>{conversationTime}</Text>
+          )}
+          {Number(item.unreadCount) > 0 ? (
+            <View style={styles.unreadBadgePill}>
+              <Text style={styles.unreadBadgeVal}>{Number(item.unreadCount) > 99 ? '99+' : Number(item.unreadCount)}</Text>
+            </View>
+          ) : (
+            <Icon name="chevron-forward" size={16} color="#CBD5E1" style={{ marginTop: 2 }} />
+          )}
         </View>
       </TouchableOpacity>
     );

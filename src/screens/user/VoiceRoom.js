@@ -50,6 +50,8 @@ import RoomEntryEffectEngine from '../../components/room/RoomEntryEffectEngine';
 import ResponsiveChatBubble from '../../components/room/ResponsiveChatBubble';
 import VoiceRoomSeatGrid from '../../components/room/VoiceRoomSeatGrid';
 import RoomPKPanel from '../../components/room/RoomPKPanel';
+import YouTubeRoomPlayer from '../../components/room/YouTubeRoomPlayer';
+import YouTubeSearchModal from '../../components/room/YouTubeSearchModal';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
 import SvgaView from '../../components/SvgaView';
 import {
@@ -1098,6 +1100,22 @@ export default function VoiceRoomScreen() {
   const [wealthModalVisible, setWealthModalVisible] = useState(false);
   const [onlineUsersModalVisible, setOnlineUsersModalVisible] = useState(false);
   const [pkPanelTrigger, setPkPanelTrigger] = useState(0);
+  const [watchTogetherActive, setWatchTogetherActive] = useState(false);
+  const [ytSearchModalVisible, setYtSearchModalVisible] = useState(false);
+
+  useEffect(() => {
+    const targetRoomId = currentRoomId || room?.id || room?.roomId;
+    if (!targetRoomId) return;
+    let alive = true;
+    apiUtil.get(`/voice-club/rooms/${targetRoomId}/watch`).then((res) => {
+      if (!alive) return;
+      const data = res?.data?.data || res?.data;
+      if (data && data.videoId && data.isActive !== false) {
+        setWatchTogetherActive(true);
+      }
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [currentRoomId, room?.id, room?.roomId]);
   const [gamesModalVisible, setGamesModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState(null);
   const [isGameMinimized, setIsGameMinimized] = useState(false);
@@ -2084,6 +2102,17 @@ export default function VoiceRoomScreen() {
         </View>
       )}
 
+      {/* YouTube Watch Together Player Area (matching video reference) */}
+      {watchTogetherActive && (
+        <YouTubeRoomPlayer
+          roomId={currentRoomId || room?.id || room?.roomId}
+          isHost={isRoomOwner}
+          currentUser={user}
+          onOpenSearch={() => setYtSearchModalVisible(true)}
+          onClosePlayer={() => setWatchTogetherActive(false)}
+        />
+      )}
+
       {/* Gift Celebration Banner */}
       <VoiceRoomSeatGrid
         topTwoSeats={topTwoSeats}
@@ -2681,6 +2710,10 @@ export default function VoiceRoomScreen() {
         onOpenRoomTasks={() => setRoomTasksVisible(true)}
         onOpenMedal={() => navigation.navigate('Medal')}
         onOpenPK={() => setPkPanelTrigger(prev => prev + 1)}
+        onOpenWatchTogether={() => {
+          setWatchTogetherActive(true);
+          if (isRoomOwner) setYtSearchModalVisible(true);
+        }}
         hasRoomHosting={hasRoomHosting}
         onOpenGames={() => setGamesModalVisible(true)}
         onOpenRoomSupport={() => {
@@ -2689,6 +2722,26 @@ export default function VoiceRoomScreen() {
           }
         }}
         bottomSafePadding={bottomSafePadding}
+      />
+
+      {/* YouTube Watch Together Search Modal */}
+      <YouTubeSearchModal
+        visible={ytSearchModalVisible}
+        onClose={() => setYtSearchModalVisible(false)}
+        roomId={currentRoomId || room?.id || room?.roomId}
+        onSelectVideo={async (video) => {
+          try {
+            const targetRoomId = currentRoomId || room?.id || room?.roomId;
+            setWatchTogetherActive(true);
+            const socket = getSocket();
+            if (socket) {
+              socket.emit('roomWatch:selectVideo', { roomId: targetRoomId, videoData: video });
+            }
+            await apiUtil.post(`/voice-club/rooms/${targetRoomId}/watch/select`, video);
+          } catch (err) {
+            console.warn('[WatchTogether] Select error:', err);
+          }
+        }}
       />
 
       {/* MODAL 2B: ROOM 3-DOT HEADER MODAL (TRIGGERED BY TOP RIGHT 3-DOTS BUTTON) */}

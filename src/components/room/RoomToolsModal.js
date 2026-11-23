@@ -37,6 +37,7 @@ export default function RoomToolsModal({
   onOpenMedal,
   onOpenGames,
   onOpenPK,
+  onOpenWatchTogether,
   hasRoomHosting = false,
   bottomSafePadding = 16,
 }) {
@@ -159,6 +160,23 @@ export default function RoomToolsModal({
                 <MaterialCommunityIcons name="sword-cross" size={22} color="#EF4444" />
               </View>
               <Text style={styles.toolLabel}>Room PK</Text>
+            </TouchableOpacity>
+
+            {/* Watch Together / YouTube */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenWatchTogether && onOpenWatchTogether();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, { borderColor: '#EF4444' }]}>
+                <MaterialCommunityIcons name="youtube" size={24} color="#EF4444" />
+              </View>
+              <Text style={styles.toolLabel}>Watch Video</Text>
             </TouchableOpacity>
 
             {/* Seat Layout (if host or official manager) */}

@@ -1101,6 +1101,7 @@ export default function VoiceRoomScreen() {
   const [gamesModalVisible, setGamesModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState(null);
   const [isGameMinimized, setIsGameMinimized] = useState(false);
+  const [isGameFullscreen, setIsGameFullscreen] = useState(false);
   const [activeGameSessionUrl, setActiveGameSessionUrl] = useState('');
   const [activeGameSessionId, setActiveGameSessionId] = useState('');
   const [activeGameTicket, setActiveGameTicket] = useState('');
@@ -1120,6 +1121,7 @@ export default function VoiceRoomScreen() {
         setActiveGameSessionId(gameSessionManager.getSessionId());
         setActiveGameTicket(gameSessionManager.getLaunchTicket());
         setIsGameMinimized(false);
+        setIsGameFullscreen(false);
       } else {
         AlertService.show('Game Launch Error', result.error || 'Failed to start game session', 'error');
       }
@@ -1137,6 +1139,7 @@ export default function VoiceRoomScreen() {
     setActiveGameSessionId('');
     setActiveGameTicket('');
     setIsGameMinimized(false);
+    setIsGameFullscreen(false);
   };
 
   useEffect(() => {
@@ -2446,23 +2449,65 @@ export default function VoiceRoomScreen() {
       </View>
       </View>
 
-      {/* Cocos Creator 3.8.x Game View (Full Portrait Game Viewport matching reference video) */}
+      {/* Cocos Creator 3.8.x Game View (Bottom Sheet Modal Overlay) */}
       {Boolean(activeGame && !isGameMinimized) && (
-        <View style={styles.voiceGameAreaContainer}>
-          <GameContainer
-            game={activeGame}
-            sessionUrl={activeGameSessionUrl}
-            sessionId={activeGameSessionId}
-            ticket={activeGameTicket}
-            coinsBalance={Number(user?.coins || 0)}
-            onClose={handleCloseGame}
-            onMinimize={handleCloseGame}
-            onRecharge={() => navigation.navigate('Recharge')}
-            onRefreshBalance={() => {
-              if (typeof fetchUserProfile === 'function') fetchUserProfile();
-            }}
-          />
+        <View style={styles.voiceGameModalWrapper} pointerEvents="box-none">
+          {!isGameFullscreen && (
+            <TouchableWithoutFeedback onPress={() => setIsGameMinimized(true)}>
+              <View style={styles.voiceGameBackdrop} />
+            </TouchableWithoutFeedback>
+          )}
+          <View
+            style={[
+              styles.voiceGameAreaContainer,
+              isGameFullscreen && styles.voiceGameAreaFullscreen,
+            ]}
+          >
+            <GameContainer
+              game={activeGame}
+              sessionUrl={activeGameSessionUrl}
+              sessionId={activeGameSessionId}
+              ticket={activeGameTicket}
+              coinsBalance={Number(user?.coins || 0)}
+              isFullscreen={isGameFullscreen}
+              onToggleFullscreen={() => setIsGameFullscreen(prev => !prev)}
+              onClose={handleCloseGame}
+              onMinimize={() => setIsGameMinimized(true)}
+              onRecharge={() => navigation.navigate('Recharge')}
+              onRefreshBalance={() => {
+                if (typeof fetchUserProfile === 'function') fetchUserProfile();
+              }}
+            />
+          </View>
         </View>
+      )}
+
+      {/* Floating Mini Game Pill when minimized */}
+      {Boolean(activeGame && isGameMinimized) && (
+        <TouchableOpacity
+          style={styles.floatingMiniGamePill}
+          activeOpacity={0.85}
+          onPress={() => setIsGameMinimized(false)}
+        >
+          <LinearGradient
+            colors={['#FF1493', '#8B5CF6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.floatingMiniGameGradient}
+          >
+            <View style={styles.floatingMiniGameDot} />
+            <MaterialCommunityIcons name="crown" size={16} color="#FFD700" />
+            <Text style={styles.floatingMiniGameText} numberOfLines={1}>
+              {activeGame?.title || 'Greedy King'}
+            </Text>
+            <TouchableOpacity
+              onPress={handleCloseGame}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialCommunityIcons name="close-circle" size={16} color="rgba(255, 255, 255, 0.85)" />
+            </TouchableOpacity>
+          </LinearGradient>
+        </TouchableOpacity>
       )}
 
       {/* Backdrop to dismiss room chat composer on outside tap */}
@@ -6043,22 +6088,50 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
   },
+  voiceGameModalWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+    elevation: 25,
+    justifyContent: 'flex-end',
+  },
+  voiceGameBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
   voiceGameAreaContainer: {
     position: 'absolute',
-    top: 0,
     bottom: 0,
     left: 0,
     right: 0,
+    height: Math.round(Dimensions.get('window').height * 0.70),
     backgroundColor: '#0B0716',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
-    zIndex: 100,
-    elevation: 25,
+    zIndex: 101,
+    elevation: 30,
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255, 20, 147, 0.45)',
+    shadowColor: '#FF1493',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+  },
+  voiceGameAreaFullscreen: {
+    top: 0,
+    height: '100%',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderTopWidth: 0,
   },
   floatingMiniGamePill: {
     position: 'absolute',
     right: 14,
+    bottom: 110,
     zIndex: 90,
     elevation: 10,
+    borderRadius: 20,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,

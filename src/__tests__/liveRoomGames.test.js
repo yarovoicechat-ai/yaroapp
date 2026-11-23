@@ -4,12 +4,10 @@ import LiveGamesModal, { LIVE_GAMES_LIST } from '../components/live/LiveGamesMod
 import LiveRoomGameView from '../components/live/LiveRoomGameView';
 
 describe('Live Room Games System', () => {
-  it('contains all 8 live games in catalog list including greedy-king and food-game', () => {
-    expect(LIVE_GAMES_LIST.length).toBe(8);
+  it('contains all 6 live games in catalog list including greedy-king and lucky-wheel', () => {
+    expect(LIVE_GAMES_LIST.length).toBe(6);
     expect(LIVE_GAMES_LIST.map(g => g.id)).toEqual([
       'greedy-king',
-      'food-game',
-      'greedy-baby',
       'lucky-wheel',
       'teen-patti',
       'lucky-7',

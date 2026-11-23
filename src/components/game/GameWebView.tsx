@@ -38,6 +38,19 @@ const INJECTED_INIT_SCRIPT = `
 
   // 2. Viewport and Cocos Resolution Adaptation
   window.adaptCocosViewport = function(w, h, isHalf) {
+    document.documentElement.style.width = '100%';
+    document.documentElement.style.height = '100%';
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.margin = '0';
+    document.documentElement.style.padding = '0';
+    if (document.body) {
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+      document.body.style.margin = '0';
+      document.body.style.padding = '0';
+      document.body.style.overflow = 'hidden';
+      document.body.style.backgroundColor = '#0B0716';
+    }
     var canvas = document.getElementById('GameCanvas') || document.querySelector('canvas');
     if (canvas) {
       canvas.style.width = '100%';
@@ -51,6 +64,12 @@ const INJECTED_INIT_SCRIPT = `
     }
     if (window.cc && window.cc.view) {
       try {
+        if (typeof window.cc.view.enableAutoFullScreen === 'function') {
+          window.cc.view.enableAutoFullScreen(false);
+        }
+        if (typeof window.cc.view.resizeWithBrowserSize === 'function') {
+          window.cc.view.resizeWithBrowserSize(true);
+        }
         // Policy: 1 is FIXED_WIDTH (full width edge-to-edge, zero black bars, accurate 1:1 touch coordinate mapping)
         window.cc.view.setDesignResolutionSize(720, 1280, 1);
       } catch (e) {}

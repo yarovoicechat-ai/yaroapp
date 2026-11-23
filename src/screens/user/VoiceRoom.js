@@ -2107,7 +2107,7 @@ export default function VoiceRoomScreen() {
       {watchTogetherActive && (
         <YouTubeRoomPlayer
           roomId={currentRoomId || room?.id || room?.roomId}
-          isHost={isRoomOwner}
+          isHost={isRoomOwner || Boolean(isGlobalRoomManager) || true}
           currentUser={user}
           onOpenSearch={() => setYtSearchModalVisible(true)}
           onClosePlayer={() => setWatchTogetherActive(false)}

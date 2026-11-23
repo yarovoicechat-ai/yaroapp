@@ -162,9 +162,8 @@ export default function YouTubeRoomPlayer({
     };
   }, [roomId, syncWithServer, onClosePlayer]);
 
-  // Host Action: Play / Pause toggle
+  // Play / Pause toggle
   const handleTogglePlayPause = async () => {
-    if (!isHost) return;
     pokeControls();
     const nextAction = isPlaying ? 'pause' : 'play';
     setIsPlaying(!isPlaying);
@@ -193,11 +192,36 @@ export default function YouTubeRoomPlayer({
     }
   };
 
-  // Host Action: Seek by offset (+10s / -10s)
+  // Seek by offset (+10s / -10s / +30s / -30s)
   const handleSeekOffset = (seconds) => {
-    if (!isHost) return;
     pokeControls();
-    const target = Math.max(0, Math.min(currentTime + seconds, duration || 9999));
+    const maxDur = duration || session?.durationSeconds || 9999;
+    const target = Math.max(0, Math.min(currentTime + seconds, maxDur));
+    setCurrentTime(target);
+
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`if (window.player && window.player.seekTo) window.player.seekTo(${target}, true); true;`);
+    }
+
+    try {
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('roomWatch:seek', { roomId, currentTime: target });
+      }
+      apiUtil.post(`/voice-club/rooms/${roomId}/watch/playback`, {
+        action: 'seek',
+        currentTime: target,
+      });
+    } catch {
+      // Ignore
+    }
+  };
+
+  // Direct Seek to specific second (from Progress Bar touch/scrub)
+  const handleSeekTo = (targetSeconds) => {
+    pokeControls();
+    const maxDur = duration || session?.durationSeconds || 9999;
+    const target = Math.max(0, Math.min(targetSeconds, maxDur));
     setCurrentTime(target);
 
     if (webViewRef.current) {
@@ -507,63 +531,121 @@ export default function YouTubeRoomPlayer({
               )}
             </View>
 
-            {/* Center Controls: Prev (-10s), Play/Pause, Next (+10s) */}
-            {isHost && (
-              <View style={styles.centerControlsRow}>
-                <TouchableOpacity
-                  style={styles.skipBtn}
-                  onPress={() => handleSeekOffset(-10)}
-                  activeOpacity={0.8}
-                >
-                  <MaterialCommunityIcons name="rewind-10" size={28} color="#FFFFFF" />
-                </TouchableOpacity>
+            {/* Center Controls: -30s, -10s, Play/Pause, +10s, +30s */}
+            <View style={styles.centerControlsRow}>
+              {/* -30s */}
+              <TouchableOpacity
+                style={styles.skipBtn}
+                onPress={() => handleSeekOffset(-30)}
+                activeOpacity={0.75}
+              >
+                <MaterialCommunityIcons name="rewind-30" size={26} color="#FFFFFF" />
+                <Text style={styles.skipBtnLabel}>-30s</Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.playPauseCircle}
-                  onPress={handleTogglePlayPause}
-                  activeOpacity={0.85}
-                >
-                  <Icon
-                    name={isPlaying ? 'pause' : 'play'}
-                    size={30}
-                    color="#FFFFFF"
-                    style={!isPlaying ? { marginLeft: 3 } : null}
+              {/* -10s (Peeche) */}
+              <TouchableOpacity
+                style={styles.skipBtn}
+                onPress={() => handleSeekOffset(-10)}
+                activeOpacity={0.75}
+              >
+                <MaterialCommunityIcons name="rewind-10" size={30} color="#FFFFFF" />
+                <Text style={styles.skipBtnLabel}>-10s</Text>
+              </TouchableOpacity>
+
+              {/* Play / Pause Circle */}
+              <TouchableOpacity
+                style={styles.playPauseCircle}
+                onPress={handleTogglePlayPause}
+                activeOpacity={0.85}
+              >
+                <Icon
+                  name={isPlaying ? 'pause' : 'play'}
+                  size={32}
+                  color="#FFFFFF"
+                  style={!isPlaying ? { marginLeft: 3 } : null}
+                />
+              </TouchableOpacity>
+
+              {/* +10s (Aage) */}
+              <TouchableOpacity
+                style={styles.skipBtn}
+                onPress={() => handleSeekOffset(10)}
+                activeOpacity={0.75}
+              >
+                <MaterialCommunityIcons name="fast-forward-10" size={30} color="#FFFFFF" />
+                <Text style={styles.skipBtnLabel}>+10s</Text>
+              </TouchableOpacity>
+
+              {/* +30s */}
+              <TouchableOpacity
+                style={styles.skipBtn}
+                onPress={() => handleSeekOffset(30)}
+                activeOpacity={0.75}
+              >
+                <MaterialCommunityIcons name="fast-forward-30" size={26} color="#FFFFFF" />
+                <Text style={styles.skipBtnLabel}>+30s</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Bottom Controls Area: Seek Progress Bar + Bottom Bar */}
+            <View style={styles.bottomAreaContainer}>
+              {/* Interactive Seek / Progress Bar (Aage - Peeche karne ke liye) */}
+              <TouchableOpacity
+                style={styles.progressBarTouchArea}
+                activeOpacity={1}
+                onPress={(e) => {
+                  const { locationX } = e.nativeEvent;
+                  const total = duration || session?.durationSeconds || 1;
+                  const barWidth = SCREEN_WIDTH - 24;
+                  const pct = Math.max(0, Math.min(1, locationX / barWidth));
+                  handleSeekTo(Math.round(pct * total));
+                }}
+              >
+                <View style={styles.progressBarTrack}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: `${Math.min(100, Math.max(0, ((currentTime || 0) / (duration || session?.durationSeconds || 1)) * 100))}%`,
+                      },
+                    ]}
                   />
-                </TouchableOpacity>
+                  <View
+                    style={[
+                      styles.progressBarThumb,
+                      {
+                        left: `${Math.min(97, Math.max(0, ((currentTime || 0) / (duration || session?.durationSeconds || 1)) * 100))}%`,
+                      },
+                    ]}
+                  />
+                </View>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.skipBtn}
-                  onPress={() => handleSeekOffset(10)}
-                  activeOpacity={0.8}
-                >
-                  <MaterialCommunityIcons name="fast-forward-10" size={28} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-            )}
+              {/* Bottom Bar: Search, Time, YouTube Logo */}
+              <View style={styles.bottomBar}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    style={styles.bottomSearchBtn}
+                    onPress={onOpenSearch}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Icon name="search" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
 
-            {/* Bottom Bar: Search, Time, YouTube Logo */}
-            <View style={styles.bottomBar}>
-              {isHost && (
-                <TouchableOpacity
-                  style={styles.bottomSearchBtn}
-                  onPress={onOpenSearch}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Icon name="search" size={18} color="#FFFFFF" />
-                </TouchableOpacity>
-              )}
+                  {/* Time pill */}
+                  <View style={styles.timePill}>
+                    <Text style={styles.timeText}>
+                      {formatTime(currentTime)} / {formatTime(duration || session.durationSeconds)}
+                    </Text>
+                  </View>
+                </View>
 
-              {/* Time pill */}
-              <View style={styles.timePill}>
-                <Text style={styles.timeText}>
-                  {formatTime(currentTime)} / {formatTime(duration || session.durationSeconds)}
-                </Text>
-              </View>
-
-              {/* YouTube Logo */}
-              <View style={styles.ytLogoContainer}>
-                <MaterialCommunityIcons name="youtube" size={22} color="#EF4444" />
-                <Text style={styles.ytLogoText}>YouTube</Text>
+                {/* YouTube Logo */}
+                <View style={styles.ytLogoContainer}>
+                  <MaterialCommunityIcons name="youtube" size={22} color="#EF4444" />
+                  <Text style={styles.ytLogoText}>YouTube</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -648,10 +730,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 36,
+    gap: 16,
   },
   skipBtn: {
-    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
+  },
+  skipBtnLabel: {
+    color: '#CBD5E1',
+    fontSize: 9,
+    fontWeight: '700',
+    marginTop: 2,
   },
   playPauseCircle: {
     width: 52,
@@ -663,10 +753,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  bottomAreaContainer: {
+    width: '100%',
+  },
+  progressBarTouchArea: {
+    width: '100%',
+    paddingVertical: 8,
+    justifyContent: 'center',
+  },
+  progressBarTrack: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 2,
+    position: 'relative',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#EF4444',
+    borderRadius: 2,
+  },
+  progressBarThumb: {
+    position: 'absolute',
+    top: -4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+  },
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: -2,
   },
   bottomSearchBtn: {
     backgroundColor: 'rgba(0, 0, 0, 0.6)',

@@ -1811,12 +1811,13 @@ export default function VoiceRoomScreen() {
     });
   }
 
-  // Top seat: Seat 0 (Host 👑)
-  const topTwoSeats = fullSeats.slice(0, 1);
+  // Top 2 seats: Seat 0 (Host 👑) & Seat 1 (Co-Host 💖)
+  const topTwoSeats = fullSeats.slice(0, 2);
 
-  // Bottom guest seats: exactly bottomCount seats (1 to bottomCount)!
-  const bottomRemainingSeats = fullSeats.slice(1, 1 + seatConfig.bottomCount);
+  // Bottom guest seats: exactly bottomCount seats (2 to 2 + bottomCount)!
+  const bottomRemainingSeats = fullSeats.slice(2, 2 + seatConfig.bottomCount);
   const isCompactLayout = seatConfig.isCompact;
+  const isSixPerRow = Boolean(seatConfig.isSixPerRow);
   const bottomSeatsPerRow = seatConfig.seatsPerRow;
   const bottomSeatRows = [];
   for (let i = 0; i < bottomRemainingSeats.length; i += bottomSeatsPerRow) {
@@ -2119,6 +2120,7 @@ export default function VoiceRoomScreen() {
         topTwoSeats={topTwoSeats}
         bottomSeatRows={bottomSeatRows}
         isCompactLayout={isCompactLayout}
+        isSixPerRow={isSixPerRow}
         speakingSeatIndices={speakingSeatIndices}
         activeSeatSkin={activeSeatSkin}
         user={user}
@@ -2720,6 +2722,17 @@ export default function VoiceRoomScreen() {
           setPkPanelTrigger(prev => prev + 1);
         }}
         onOpenWatchTogether={() => {
+          const hasVip4Plus = Number(user?.vipLevel || 0) >= 4 || Number(user?.svipLevel || 0) >= 4;
+          const hasOwnerGrant = Boolean(user?.canWatchTogether);
+          const isEligible = hasVip4Plus || hasOwnerGrant || isRoomOwner || isContextOwnerMatch || isEffectiveGlobalRoomManager;
+          if (!isEligible) {
+            AlertService.show(
+              'VIP 4 & 5 Feature ⭐',
+              'YouTube Watch Together option VIP 4 aur VIP 5 users ke liye reserved hai ya Admin Owner dwara granted hona chahiye.',
+              'warning'
+            );
+            return;
+          }
           setWatchTogetherActive(true);
           if (isRoomOwner) setYtSearchModalVisible(true);
         }}

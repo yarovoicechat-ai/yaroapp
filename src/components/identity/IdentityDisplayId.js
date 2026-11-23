@@ -7,8 +7,10 @@ import { resolveDisplayId } from '../../utils/identityId';
 
 export default function IdentityDisplayId({ userId, officialDisplayId = null, isOfficial = false,
   customDisplayId = null, badgeUrl = null, badgeText = null, showBadge = true, showCopy = true,
-  showPrefix = true, prefix = 'YARO ID : ', fontSize = 13, textColor = '#64748B', style }) {
-  const { effectiveId, isUnique } = resolveDisplayId({ userId, officialDisplayId, isOfficial, customDisplayId });
+  showPrefix = true, prefix = 'YARO ID : ', fontSize = 13, textColor = '#64748B', isTestAccount = false, user = null, style }) {
+  const isTest = Boolean(isTestAccount || user?.isTestAccount);
+  const { effectiveId, isUnique } = resolveDisplayId({ userId, officialDisplayId, isOfficial, customDisplayId, isTestAccount: isTest });
+  if (!effectiveId) return null;
   const cleanBadgeUrl = badgeUrl && !/frame/i.test(String(badgeUrl)) ? badgeUrl : null;
   const idColorAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {

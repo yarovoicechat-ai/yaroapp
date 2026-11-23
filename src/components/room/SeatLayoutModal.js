@@ -18,28 +18,28 @@ const { width } = Dimensions.get('window');
 
 const MIC_LAYOUTS = [
   {
-    id: 8,
-    label: '8 people',
-    count: 8,
-    rows: [4, 4],
-  },
-  {
-    id: 12,
-    label: '12 people',
-    count: 12,
-    rows: [4, 4, 4],
-  },
-  {
-    id: '12_alt',
-    label: '12 people',
-    count: 12,
-    rows: [3, 4, 5],
+    id: 10,
+    label: '12 seats',
+    count: 10,
+    rows: [2, 5, 5],
   },
   {
     id: 15,
-    label: '15 people',
+    label: '17 seats',
     count: 15,
-    rows: [5, 5, 5],
+    rows: [2, 5, 5, 5],
+  },
+  {
+    id: 20,
+    label: '20 seats',
+    count: 20,
+    rows: [2, 6, 6, 6],
+  },
+  {
+    id: 26,
+    label: '26 seats',
+    count: 26,
+    rows: [2, 6, 6, 6, 6],
   },
 ];
 
@@ -133,15 +133,16 @@ export default function SeatLayoutModal({
                 {(() => {
                   let seatCounter = 1;
                   return currentLayout.rows.map((rowSeats, rowIndex) => (
-                    <View key={`row-${rowIndex}`} style={styles.micRow}>
+                    <View key={`row-${rowIndex}`} style={[styles.micRow, rowIndex === 0 && { justifyContent: 'center', gap: 36, marginBottom: 8 }]}>
                       {Array.from({ length: rowSeats }).map((_, seatIdx) => {
-                        const num = seatCounter++;
+                        const isTop = rowIndex === 0;
+                        const label = isTop ? (seatIdx === 0 ? 'Host 👑' : 'Co-Host 💖') : `No.${seatCounter++}`;
                         return (
-                          <View key={`seat-${num}`} style={styles.micItem}>
-                            <View style={styles.micCircle}>
-                              <MaterialCommunityIcons name="microphone" size={14} color="#E9D5FF" />
+                          <View key={`seat-${rowIndex}-${seatIdx}`} style={styles.micItem}>
+                            <View style={[styles.micCircle, isTop && (seatIdx === 0 ? { borderColor: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.2)' } : { borderColor: '#EC4899', backgroundColor: 'rgba(236, 72, 153, 0.2)' })]}>
+                              <MaterialCommunityIcons name={isTop ? (seatIdx === 0 ? 'crown' : 'heart') : 'microphone'} size={14} color={isTop ? (seatIdx === 0 ? '#FBBF24' : '#F472B6') : '#E9D5FF'} />
                             </View>
-                            <Text style={styles.micLabel}>No.{num}</Text>
+                            <Text style={[styles.micLabel, isTop && { fontSize: 8.5, fontWeight: '700', color: seatIdx === 0 ? '#F59E0B' : '#EC4899' }]}>{label}</Text>
                           </View>
                         );
                       })}

@@ -117,6 +117,10 @@ export default function FollowersScreen() {
   }, [fetchUsers]);
 
   const toggleFollow = async (targetUser) => {
+    if (targetUser?.isTestAccount) {
+      AlertService.show('Test Account', 'Test accounts cannot be followed.', 'info');
+      return;
+    }
     const targetId = String(targetUser._id || targetUser.id || targetUser.userId);
     const isCurrentlyFollowed = followedSet.has(targetId);
 

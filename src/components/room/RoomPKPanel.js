@@ -411,7 +411,7 @@ export default function RoomPKPanel({
               >
                 {activeTab === 'vote' ? (
                   <LinearGradient
-                    colors={['#D97706', '#2563EB']}
+                    colors={['#FF8A00', '#2F80ED']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.activeTabGradient}
@@ -432,7 +432,7 @@ export default function RoomPKPanel({
               >
                 {activeTab === 'personal' ? (
                   <LinearGradient
-                    colors={['#D97706', '#2563EB']}
+                    colors={['#FF8A00', '#2F80ED']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.activeTabGradient}
@@ -453,7 +453,7 @@ export default function RoomPKPanel({
               >
                 {activeTab === 'team' ? (
                   <LinearGradient
-                    colors={['#D97706', '#2563EB']}
+                    colors={['#FF8A00', '#2F80ED']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.activeTabGradient}
@@ -723,7 +723,7 @@ export default function RoomPKPanel({
                     >
                       {isSel ? (
                         <LinearGradient
-                          colors={['#D97706', '#2563EB']}
+                          colors={['#FF8A00', '#2F80ED']}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 0 }}
                           style={styles.durationGradient}
@@ -758,7 +758,7 @@ export default function RoomPKPanel({
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={['rgba(255, 255, 255, 0.95)', 'rgba(210, 220, 235, 0.90)']}
+                colors={['#FFFFFF', '#FFFFFF']}
                 style={styles.confirmGradient}
               >
                 {busy ? (
@@ -886,7 +886,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 12,
     borderWidth: 1,
     borderColor: '#1E293B',
   },
@@ -894,37 +894,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 48,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-    marginBottom: 8,
+    height: 44,
+    backgroundColor: '#121B2F',
+    borderRadius: 22,
+    padding: 3,
+    marginBottom: 10,
   },
   tabItem: {
     flex: 1,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 19,
   },
   tabItemActive: {
     overflow: 'hidden',
+    borderRadius: 19,
   },
   activeTabGradient: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 19,
   },
   activeTabText: {
     color: '#FFFFFF',
-    fontWeight: '900',
-    fontStyle: 'italic',
-    fontSize: 14,
+    fontWeight: '800',
+    fontSize: 13,
   },
   inactiveTabText: {
-    color: '#94A3B8',
+    color: '#8E9CB2',
     fontWeight: '600',
-    fontStyle: 'italic',
     fontSize: 13,
   },
   teamSubTabsRow: {
@@ -1038,13 +1039,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   seatCircleEmpty: {
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
-    borderColor: '#1E293B',
+    backgroundColor: 'transparent',
+    borderColor: '#00A3FF',
+    borderWidth: 1.5,
   },
   seatEmptyLabel: {
-    color: '#64748B',
-    fontSize: 10,
-    fontWeight: '600',
+    color: '#00A3FF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   seatAvatarImg: {
     width: '100%',
@@ -1216,20 +1218,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   confirmTouchable: {
-    borderRadius: 24,
+    borderRadius: 26,
     overflow: 'hidden',
-    marginTop: 4,
+    marginTop: 6,
     marginBottom: 8,
   },
   confirmGradient: {
-    height: 48,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 24,
+    borderRadius: 26,
   },
   confirmBtnText: {
-    color: '#0F172A',
-    fontSize: 15,
+    color: '#0B0F19',
+    fontSize: 16,
     fontWeight: '900',
   },
   pickerBackdrop: {

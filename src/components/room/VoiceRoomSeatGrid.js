@@ -71,6 +71,7 @@ export default function VoiceRoomSeatGrid({
   topTwoSeats,
   bottomSeatRows,
   isCompactLayout,
+  isSixPerRow = false,
   speakingSeatIndices,
   activeSeatSkin,
   user,
@@ -192,9 +193,9 @@ export default function VoiceRoomSeatGrid({
             {row.map((seat) => {
               const seatNum = `No.${seat.seatIndex}`;
               const isOccupied = Boolean(seat.user);
-              const seatWidth = isCompactLayout ? (width - 16) / 5 : (width - 24) / 4;
-              const circleSize = isCompactLayout ? 50 : 58;
-              const avatarSize = isCompactLayout ? 46 : 54;
+              const seatWidth = isSixPerRow ? (width - 12) / 6 : (isCompactLayout ? (width - 16) / 5 : (width - 24) / 4);
+              const circleSize = isSixPerRow ? 44 : (isCompactLayout ? 50 : 58);
+              const avatarSize = isSixPerRow ? 40 : (isCompactLayout ? 46 : 54);
 
               return (
                 <TouchableOpacity
@@ -256,12 +257,12 @@ export default function VoiceRoomSeatGrid({
                           )}
                         </View>
                       </VipMicWave>
-                      <IdentityDisplayName name={seat.user.name} effect={seatNameEffect(seat.user)} isCrowded={isCompactLayout} style={[styles.seatUserName, isCompactLayout && { fontSize: 9.5, maxWidth: 66 }]} />
+                      <IdentityDisplayName name={seat.user.name} effect={seatNameEffect(seat.user)} isCrowded={isCompactLayout || isSixPerRow} style={[styles.seatUserName, isCompactLayout && { fontSize: 9.5, maxWidth: 66 }, isSixPerRow && { fontSize: 8, maxWidth: 50 }]} />
                       {renderSeatPostTag(seat.user)}
                       {showSeatCharm && (
-                        <View style={[styles.charmPill, isCompactLayout && { paddingHorizontal: 3, paddingVertical: 0 }]}>
+                        <View style={[styles.charmPill, (isCompactLayout || isSixPerRow) && { paddingHorizontal: 3, paddingVertical: 0 }]}>
                           <Text style={styles.charmFlower}>🌸</Text>
-                          <Text style={[styles.charmVal, isCompactLayout && { fontSize: 8 }]}>{seat.charm || 0}</Text>
+                          <Text style={[styles.charmVal, (isCompactLayout || isSixPerRow) && { fontSize: 8 }]}>{seat.charm || 0}</Text>
                         </View>
                       )}
                     </View>

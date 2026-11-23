@@ -37,6 +37,7 @@ export default function RoomToolsModal({
   onOpenMedal,
   onOpenGames,
   onOpenPK,
+  onOpenRoomPK,
   onOpenWatchTogether,
   hasRoomHosting = false,
   bottomSafePadding = 16,
@@ -145,7 +146,7 @@ export default function RoomToolsModal({
               <Text style={styles.toolLabel}>Broadcast</Text>
             </TouchableOpacity>
 
-            {/* Room PK */}
+            {/* PK (In-Room PK: Vote, Personal, Team) */}
             <TouchableOpacity
               style={styles.toolCol}
               onPress={() => {
@@ -156,8 +157,25 @@ export default function RoomToolsModal({
               }}
               activeOpacity={0.8}
             >
+              <View style={[styles.toolCircle, { borderColor: '#F59E0B' }]}>
+                <MaterialCommunityIcons name="sword-cross" size={22} color="#F59E0B" />
+              </View>
+              <Text style={styles.toolLabel}>PK</Text>
+            </TouchableOpacity>
+
+            {/* Room PK (Cross-Room Match PK & Invite PK) */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenRoomPK && onOpenRoomPK();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
               <View style={[styles.toolCircle, { borderColor: '#EF4444' }]}>
-                <MaterialCommunityIcons name="sword-cross" size={22} color="#EF4444" />
+                <MaterialCommunityIcons name="shield-sword-outline" size={22} color="#EF4444" />
               </View>
               <Text style={styles.toolLabel}>Room PK</Text>
             </TouchableOpacity>

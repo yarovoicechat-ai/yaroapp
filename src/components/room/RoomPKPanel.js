@@ -27,6 +27,7 @@ export default function RoomPKPanel({
   isOwner = false,
   bottomSafePadding = 16,
   openTrigger = 0,
+  initialMode = 'in_room',
   roomUsers = [],
   roomSeats = [],
   currentUser = null,
@@ -37,6 +38,7 @@ export default function RoomPKPanel({
     return () => { unmountedRef.current = true; };
   }, []);
 
+  const [panelMode, setPanelMode] = useState(initialMode || 'in_room');
   const [match, setMatch] = useState(null);
   const [visible, setVisible] = useState(false);
   const [rulesVisible, setRulesVisible] = useState(false);
@@ -49,8 +51,11 @@ export default function RoomPKPanel({
   const [showInRoomConfig, setShowInRoomConfig] = useState(true);
 
   useEffect(() => {
-    if (openTrigger > 0) setVisible(true);
-  }, [openTrigger]);
+    if (openTrigger > 0) {
+      if (initialMode) setPanelMode(initialMode);
+      setVisible(true);
+    }
+  }, [openTrigger, initialMode]);
 
   // Main navigation: 'personal' | 'team' | 'vote'
   const [activeTab, setActiveTab] = useState('personal');
@@ -526,113 +531,139 @@ export default function RoomPKPanel({
 
           <View style={[styles.popupContainer, { paddingBottom: Math.max(bottomSafePadding, 16) }]}>
 
-            {/* 1. Speech Bubble Tooltip */}
-            <View style={styles.tooltipContainer}>
-              <View style={styles.tooltipBubble}>
-                <Text style={styles.tooltipText}>All user in your room can hear the opposite voice now!</Text>
-                <Text style={styles.tooltipTextBold}>Try it!</Text>
+            {/* 1. Speech Bubble Tooltip (Shown in Room PK mode or when PK is live) */}
+            {(panelMode === 'room_pk' || isPKLive) && (
+              <View style={styles.tooltipContainer}>
+                <View style={styles.tooltipBubble}>
+                  <Text style={styles.tooltipText}>All user in your room can hear the opposite voice now!</Text>
+                  <Text style={styles.tooltipTextBold}>Try it!</Text>
+                </View>
+                <View style={styles.tooltipArrow} />
               </View>
-              <View style={styles.tooltipArrow} />
-            </View>
+            )}
 
-            {/* 2. PK Capsule Pill Badge */}
-            <View style={styles.pkBadgeRow}>
-              <LinearGradient
-                colors={['#F59E0B', '#3B82F6']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.pkPillBadge}
-              >
-                <MaterialCommunityIcons name="sword-cross" size={16} color="#FFF" style={{ marginRight: 4 }} />
-                <Text style={styles.pkPillText}>PK</Text>
-              </LinearGradient>
-            </View>
+            {/* 2. PK Capsule Pill Badge (Shown in Room PK mode or when PK is live) */}
+            {(panelMode === 'room_pk' || isPKLive) && (
+              <View style={styles.pkBadgeRow}>
+                <LinearGradient
+                  colors={['#F59E0B', '#3B82F6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.pkPillBadge}
+                >
+                  <MaterialCommunityIcons name="sword-cross" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                  <Text style={styles.pkPillText}>PK</Text>
+                </LinearGradient>
+              </View>
+            )}
 
             {/* 3. The PK Card: Pre-Battle State or Active Battle State */}
             {!isPKLive ? (
-              /* PRE-BATTLE CARD (Matching Image 1:1) */
+              /* PRE-BATTLE CARD */
               <ScrollView
                 style={styles.mainPkCardScroll}
                 contentContainerStyle={styles.mainPkCard}
                 showsVerticalScrollIndicator={false}
               >
-                {/* Header row: ID:CurrentRoomId on left, ID:Waiting on right */}
-                <View style={styles.cardHeaderRow}>
-                  <Text style={styles.roomIdHeader}>ID:{displayRoomId}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.waitingHeader}>ID:Waiting</Text>
-                    <TouchableOpacity
-                      onPress={() => setVisible(false)}
-                      style={styles.cardCloseBtn}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <Icon name="close" size={16} color="#94A3B8" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                {panelMode === 'room_pk' ? (
+                  /* ROOM PK MODE: Matching User's Reference Screenshot 1:1 */
+                  <>
+                    {/* Header row: ID:CurrentRoomId on left, ID:Waiting on right */}
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={styles.roomIdHeader}>ID:{displayRoomId}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.waitingHeader}>ID:Waiting</Text>
+                        <TouchableOpacity
+                          onPress={() => setVisible(false)}
+                          style={styles.cardCloseBtn}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <Icon name="close" size={16} color="#94A3B8" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
 
-                {/* Error Banner */}
-                {Boolean(error) && (
-                  <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
-                )}
+                    {/* Error Banner */}
+                    {Boolean(error) && (
+                      <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
+                    )}
 
-                {/* Capsule Buttons: Match PK & Invite PK */}
-                <View style={styles.actionButtonsRow}>
-                  {/* Match PK */}
-                  <TouchableOpacity
-                    style={styles.actionCapsuleBtn}
-                    onPress={handleMatchPK}
-                    activeOpacity={0.85}
-                    disabled={busy || matching}
-                  >
-                    <LinearGradient
-                      colors={['#FBBF24', '#D97706']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.actionCapsuleGradient}
-                    >
-                      {matching ? (
-                        <ActivityIndicator size="small" color="#78350F" />
-                      ) : (
-                        <Text style={styles.matchBtnText}>Match PK</Text>
-                      )}
-                    </LinearGradient>
-                  </TouchableOpacity>
+                    {/* Capsule Buttons: Match PK & Invite PK */}
+                    <View style={styles.actionButtonsRow}>
+                      {/* Match PK */}
+                      <TouchableOpacity
+                        style={styles.actionCapsuleBtn}
+                        onPress={handleMatchPK}
+                        activeOpacity={0.85}
+                        disabled={busy || matching}
+                      >
+                        <LinearGradient
+                          colors={['#FBBF24', '#D97706']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.actionCapsuleGradient}
+                        >
+                          {matching ? (
+                            <ActivityIndicator size="small" color="#78350F" />
+                          ) : (
+                            <Text style={styles.matchBtnText}>Match PK</Text>
+                          )}
+                        </LinearGradient>
+                      </TouchableOpacity>
 
-                  {/* Invite PK */}
-                  <TouchableOpacity
-                    style={styles.actionCapsuleBtn}
-                    onPress={() => {
-                      loadOpponents();
-                      setInviteModalVisible(true);
-                    }}
-                    activeOpacity={0.85}
-                    disabled={busy}
-                  >
-                    <LinearGradient
-                      colors={['#38BDF8', '#2563EB']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.actionCapsuleGradient}
-                    >
-                      <Text style={styles.inviteBtnText}>Invite PK</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
+                      {/* Invite PK */}
+                      <TouchableOpacity
+                        style={styles.actionCapsuleBtn}
+                        onPress={() => {
+                          loadOpponents();
+                          setInviteModalVisible(true);
+                        }}
+                        activeOpacity={0.85}
+                        disabled={busy}
+                      >
+                        <LinearGradient
+                          colors={['#38BDF8', '#2563EB']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.actionCapsuleGradient}
+                        >
+                          <Text style={styles.inviteBtnText}>Invite PK</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    </View>
 
-                {/* Looting Mode Switch Row */}
-                <View style={styles.lootingRow}>
-                  <Text style={styles.lootingText}>Whether to enable looting mode</Text>
-                  <Switch
-                    value={jackpotEnabled}
-                    onValueChange={setJackpotEnabled}
-                    trackColor={{ false: '#475569', true: '#8B5CF6' }}
-                    thumbColor={jackpotEnabled ? '#DDD6FE' : '#94A3B8'}
-                  />
-                </View>
+                    {/* Looting Mode Switch Row */}
+                    <View style={styles.lootingRow}>
+                      <Text style={styles.lootingText}>Whether to enable looting mode</Text>
+                      <Switch
+                        value={jackpotEnabled}
+                        onValueChange={setJackpotEnabled}
+                        trackColor={{ false: '#475569', true: '#8B5CF6' }}
+                        thumbColor={jackpotEnabled ? '#DDD6FE' : '#94A3B8'}
+                      />
+                    </View>
+                  </>
+                ) : (
+                  /* IN-ROOM PK MODE: Vote PK | Personal Gift PK | Team Gift PK */
+                  <>
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={[styles.roomIdHeader, { color: '#F8FAFC' }]}>Voice Room PK</Text>
+                      <TouchableOpacity
+                        onPress={() => setVisible(false)}
+                        style={styles.cardCloseBtn}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Icon name="close" size={16} color="#94A3B8" />
+                      </TouchableOpacity>
+                    </View>
 
-                {/* IN-ROOM MODES (Vote / Personal / Team) - Always mounted for test compatibility and full functionality */}
-                <View style={styles.inRoomConfigContainer}>
+                    {/* Error Banner */}
+                    {Boolean(error) && (
+                      <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
+                    )}
+
+                    {/* IN-ROOM MODES (Vote / Personal / Team) */}
+                    <View style={styles.inRoomConfigContainer}>
                   {/* Top Tabs: Vote PK | Personal gift PK | Team gift pk */}
                   <View style={styles.topTabsBar}>
                     <TouchableOpacity
@@ -804,6 +835,8 @@ export default function RoomPKPanel({
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
+                </>
+                )}
               </ScrollView>
             ) : (
               /* ACTIVE BATTLE CARD (Matching Image 1:1) */

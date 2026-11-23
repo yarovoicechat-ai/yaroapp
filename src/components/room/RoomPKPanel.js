@@ -378,7 +378,7 @@ export default function RoomPKPanel({
       {/* Floating PK Button on Voice Room Screen */}
       <TouchableOpacity
         testID="pk-toggle-panel"
-        style={styles.floatingTrigger}
+        style={[styles.floatingTrigger, !isPKLive && { height: 0, width: 0, opacity: 0, marginVertical: 0 }]}
         onPress={() => setVisible(true)}
         activeOpacity={0.85}
       >

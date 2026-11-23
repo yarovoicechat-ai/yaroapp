@@ -1100,7 +1100,6 @@ export default function VoiceRoomScreen() {
   const [wealthModalVisible, setWealthModalVisible] = useState(false);
   const [onlineUsersModalVisible, setOnlineUsersModalVisible] = useState(false);
   const [pkPanelTrigger, setPkPanelTrigger] = useState(0);
-  const [pkPanelMode, setPkPanelMode] = useState('in_room');
   const [watchTogetherActive, setWatchTogetherActive] = useState(false);
   const [ytSearchModalVisible, setYtSearchModalVisible] = useState(false);
 
@@ -2137,7 +2136,6 @@ export default function VoiceRoomScreen() {
         isOwner={isRoomOwner}
         bottomSafePadding={bottomSafePadding}
         openTrigger={pkPanelTrigger}
-        initialMode={pkPanelMode}
         roomUsers={onlineUsers}
         roomSeats={seats}
         currentUser={user}
@@ -2713,14 +2711,7 @@ export default function VoiceRoomScreen() {
         onBanRoom={handleOfficialBanRoom}
         onOpenRoomTasks={() => setRoomTasksVisible(true)}
         onOpenMedal={() => navigation.navigate('Medal')}
-        onOpenPK={() => {
-          setPkPanelMode('in_room');
-          setPkPanelTrigger(prev => prev + 1);
-        }}
-        onOpenRoomPK={() => {
-          setPkPanelMode('room_pk');
-          setPkPanelTrigger(prev => prev + 1);
-        }}
+        onOpenPK={() => setPkPanelTrigger(prev => prev + 1)}
         onOpenWatchTogether={() => {
           const hasVip4Plus = Number(user?.vipLevel || 0) >= 4 || Number(user?.svipLevel || 0) >= 4;
           const hasOwnerGrant = Boolean(user?.canWatchTogether);

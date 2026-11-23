@@ -144,7 +144,7 @@ export default function RoomToolsModal({
               <Text style={styles.toolLabel}>Broadcast</Text>
             </TouchableOpacity>
 
-            {/* PK Battle */}
+            {/* Room PK */}
             <TouchableOpacity
               style={styles.toolCol}
               onPress={() => {
@@ -158,7 +158,7 @@ export default function RoomToolsModal({
               <View style={[styles.toolCircle, { borderColor: '#EF4444' }]}>
                 <MaterialCommunityIcons name="sword-cross" size={22} color="#EF4444" />
               </View>
-              <Text style={styles.toolLabel}>PK Battle</Text>
+              <Text style={styles.toolLabel}>Room PK</Text>
             </TouchableOpacity>
 
             {/* Seat Layout (if host or official manager) */}

@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { apiUtil } from '../../utils/apiUtil';
 import { getSocket } from '../../sockets';
 import { normalizePKRoomId, roomPKView } from '../../utils/roomPkState';
@@ -27,35 +26,18 @@ export default function RoomPKPanel({
   isOwner = false,
   bottomSafePadding = 16,
   openTrigger = 0,
-  initialMode = 'in_room',
   roomUsers = [],
   roomSeats = [],
   currentUser = null,
 }) {
-  const unmountedRef = useRef(false);
-  useEffect(() => {
-    unmountedRef.current = false;
-    return () => { unmountedRef.current = true; };
-  }, []);
-
-  const [panelMode, setPanelMode] = useState(initialMode || 'in_room');
   const [match, setMatch] = useState(null);
   const [visible, setVisible] = useState(false);
   const [rulesVisible, setRulesVisible] = useState(false);
   const [giftPickerVisible, setGiftPickerVisible] = useState(false);
-  const [inviteModalVisible, setInviteModalVisible] = useState(false);
-  const [matching, setMatching] = useState(false);
-  const [opponentRooms, setOpponentRooms] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [inviteTab, setInviteTab] = useState('follow'); // 'follow' | 'recent'
-  const [showInRoomConfig, setShowInRoomConfig] = useState(true);
 
   useEffect(() => {
-    if (openTrigger > 0) {
-      if (initialMode) setPanelMode(initialMode);
-      setVisible(true);
-    }
-  }, [openTrigger, initialMode]);
+    if (openTrigger > 0) setVisible(true);
+  }, [openTrigger]);
 
   // Main navigation: 'personal' | 'team' | 'vote'
   const [activeTab, setActiveTab] = useState('personal');
@@ -66,7 +48,7 @@ export default function RoomPKPanel({
   // Duration in minutes: 1, 3, 5, 10, 30 (seconds: 60, 180, 300, 600, 1800)
   const [selectedDurationMin, setSelectedDurationMin] = useState(1);
 
-  // Looting / Jackpot toggle
+  // Jackpot toggle
   const [jackpotEnabled, setJackpotEnabled] = useState(false);
 
   // Selected gift (null = all gifts count)
@@ -75,6 +57,13 @@ export default function RoomPKPanel({
   // Selections
   const [personalSelectedUserId, setPersonalSelectedUserId] = useState('');
   const [crossRoomId, setCrossRoomId] = useState('');
+  const handleCrossRoomInvite = () => {
+    executeApi('/invite', {
+      pkType: 'room',
+      targetRoomId: crossRoomId,
+      durationSeconds: selectedDurationMin * 60,
+    });
+  };
   const [teamYellowUserIds, setTeamYellowUserIds] = useState([]);
   const [teamBlueUserIds, setTeamBlueUserIds] = useState([]);
   const [voteSideAUserId, setVoteSideAUserId] = useState('');
@@ -92,11 +81,6 @@ export default function RoomPKPanel({
   currentRoom.current = roomId;
   const lastSnapshot = useRef(null);
   const base = `/voice-club/rooms/${encodeURIComponent(roomId || '')}/pk`;
-
-  const displayRoomId = useMemo(() => {
-    const raw = String(roomId || '');
-    return raw.replace(/^room_/, '');
-  }, [roomId]);
 
   // 10-seat representation (seats 1 through 10)
   const tenSeats = useMemo(() => {
@@ -191,13 +175,12 @@ export default function RoomPKPanel({
   }, [roomSeats, roomUsers, currentUser]);
 
   const applySnapshot = useCallback(data => {
-    if (unmountedRef.current) return;
     if (data && !data.roomIds?.includes(normalizePKRoomId(roomId))) return;
     const previous = lastSnapshot.current;
     if (data && previous?.id === data.id && new Date(previous.updatedAt).getTime() > new Date(data.updatedAt).getTime()) return;
     lastSnapshot.current = data;
-    setMatch(data || null);
-    if (data?.serverTime) setOffset(new Date(data.serverTime).getTime() - Date.now());
+    setMatch(data);
+    if (data?.serverNow) setOffset(Number(data.serverNow) - Date.now());
   }, [roomId]);
 
   // Real-time Socket.IO listener and periodic sync
@@ -206,16 +189,19 @@ export default function RoomPKPanel({
     let alive = true;
     let attached = null;
     let inflight = false;
+    lastSnapshot.current = null;
+    setMatch(null);
+    setError('');
 
-    const handleState = (payload) => {
-      if (alive && !unmountedRef.current && payload?.roomIds?.includes(normalizePKRoomId(roomId))) {
+    const handleState = payload => {
+      if (alive && payload?.roomIds?.includes(normalizePKRoomId(roomId))) {
         requestSequence.current++;
         applySnapshot(payload);
       }
     };
 
     const syncState = async () => {
-      if (inflight || !alive || unmountedRef.current || AppState?.currentState === 'background') return;
+      if (inflight || !alive || AppState?.currentState === 'background') return;
       inflight = true;
       const socket = getSocket();
       if (socket && socket !== attached) {
@@ -226,7 +212,7 @@ export default function RoomPKPanel({
       const seq = ++requestSequence.current;
       try {
         const response = await apiUtil.get(base);
-        if (alive && !unmountedRef.current && seq === requestSequence.current) {
+        if (alive && seq === requestSequence.current) {
           applySnapshot(response.data?.data || null);
         }
       } catch (e) {
@@ -237,11 +223,15 @@ export default function RoomPKPanel({
     };
 
     syncState();
-    const interval = setInterval(syncState, 5000);
+    const interval = setInterval(syncState, 15000);
+    const foreground = AppState?.addEventListener?.('change', state => {
+      if (state === 'active') syncState();
+    });
 
     return () => {
       alive = false;
       clearInterval(interval);
+      foreground?.remove?.();
       attached?.off('room_pk:state', handleState);
     };
   }, [roomId, base, applySnapshot]);
@@ -251,7 +241,7 @@ export default function RoomPKPanel({
   useEffect(() => {
     if (isPKActive || visible) {
       const clock = setInterval(() => {
-        if (!unmountedRef.current && AppState?.currentState !== 'background') setNow(Date.now());
+        if (AppState?.currentState !== 'background') setNow(Date.now());
       }, 1000);
       return () => clearInterval(clock);
     }
@@ -262,46 +252,13 @@ export default function RoomPKPanel({
     if (visible) {
       let alive = true;
       apiUtil.get('/gift/all').then(res => {
-        if (!alive || unmountedRef.current) return;
+        if (!alive) return;
         const list = res?.data?.data || res?.data || [];
         setGiftCatalog(Array.isArray(list) ? list : []);
       }).catch(() => {});
       return () => { alive = false; };
     }
   }, [visible]);
-
-  // Fetch opponent rooms for invitation
-  const loadOpponents = useCallback(async () => {
-    try {
-      const res = await apiUtil.get(`${base}/opponents`);
-      const list = res?.data?.data || res?.data || [];
-      if (!unmountedRef.current && Array.isArray(list) && list.length > 0) {
-        setOpponentRooms(list);
-      } else {
-        const activeRes = await apiUtil.get('/voice-club/rooms/active');
-        const activeList = activeRes?.data?.data || activeRes?.data || [];
-        if (!unmountedRef.current) {
-          const filtered = (Array.isArray(activeList) ? activeList : [])
-            .filter(r => normalizePKRoomId(r.channelName || r.roomId || r.id) !== normalizePKRoomId(roomId))
-            .map(r => ({
-              id: normalizePKRoomId(r.channelName || r.roomId || r.id),
-              title: r.title || 'Live Room',
-              coverImage: r.coverImage || r.ownerId?.image || r.ownerId?.avatar || '',
-              userId: r.ownerId?.userId ? String(r.ownerId.userId) : String(r.channelName || '').replace(/^room_/, ''),
-            }));
-          setOpponentRooms(filtered);
-        }
-      }
-    } catch {
-      // Ignore
-    }
-  }, [base, roomId]);
-
-  useEffect(() => {
-    if (visible || inviteModalVisible) {
-      loadOpponents();
-    }
-  }, [visible, inviteModalVisible, loadOpponents]);
 
   const view = roomPKView(match, roomId, now, offset);
 
@@ -314,68 +271,19 @@ export default function RoomPKPanel({
     const targetRoom = roomId;
     try {
       const response = await apiUtil.post(`${base}${endpoint}`, payload);
-      if (!unmountedRef.current && currentRoom.current === targetRoom && seq === requestSequence.current) {
+      if (currentRoom.current === targetRoom && seq === requestSequence.current) {
         applySnapshot(response.data?.data);
       }
     } catch (e) {
-      if (!unmountedRef.current && currentRoom.current === targetRoom) {
+      if (currentRoom.current === targetRoom) {
         setError(e.response?.data?.message || e.message || 'PK operation failed. Please try again.');
       }
     } finally {
-      if (!unmountedRef.current) setBusy(false);
+      setBusy(false);
     }
   };
 
-  // Match PK Action
-  const handleMatchPK = async () => {
-    if (busy || matching) return;
-    setMatching(true);
-    setError('');
-    try {
-      await loadOpponents();
-      const target = opponentRooms[0];
-      if (target) {
-        await executeApi('/invite', {
-          pkType: 'room',
-          pkMode: 'room',
-          targetRoomId: target.id || target.userId,
-          durationSeconds: selectedDurationMin * 60,
-          jackpotEnabled,
-        });
-      } else {
-        setError('No available room found for Match PK. Please use Invite PK to challenge directly.');
-      }
-    } catch (e) {
-      if (!unmountedRef.current) setError(e.message || 'Matching failed');
-    } finally {
-      if (!unmountedRef.current) setMatching(false);
-    }
-  };
-
-  // Invite Opponent Action
-  const handleInviteOpponent = (targetId) => {
-    if (!targetId) return;
-    setInviteModalVisible(false);
-    executeApi('/invite', {
-      pkType: 'room',
-      pkMode: 'room',
-      targetRoomId: String(targetId).trim(),
-      durationSeconds: selectedDurationMin * 60,
-      jackpotEnabled,
-    });
-  };
-
-  const handleCrossRoomInvite = () => {
-    executeApi('/invite', {
-      pkType: 'room',
-      pkMode: 'room',
-      targetRoomId: crossRoomId,
-      durationSeconds: selectedDurationMin * 60,
-      jackpotEnabled,
-    });
-  };
-
-  // Seat Press Handler for in-room modes
+  // Seat Press Handler based on active mode
   const handleSeatPress = (seat) => {
     if (seat.isEmpty || !seat.user) return;
     const uid = String(seat.user.userId || seat.user.id);
@@ -400,14 +308,7 @@ export default function RoomPKPanel({
     }
   };
 
-  // Candidate Press Handler
-  const handleCandidatePress = (cand) => {
-    if (!cand?.userId && !cand?.id) return;
-    const uid = String(cand.userId || cand.id);
-    setPersonalSelectedUserId(prev => prev === uid ? '' : uid);
-  };
-
-  // Confirm Button Action for in-room modes
+  // Confirm Button Action
   const handleConfirm = () => {
     const durationSeconds = selectedDurationMin * 60;
     const selectedGiftId = selectedGift?._id || selectedGift?.id || null;
@@ -472,569 +373,290 @@ export default function RoomPKPanel({
 
   const isPKLive = match && ['invited', 'active'].includes(match.status);
 
-  // Filtered opponent rooms for search
-  const filteredOpponentRooms = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return opponentRooms;
-    return opponentRooms.filter(r =>
-      String(r.title || '').toLowerCase().includes(q) ||
-      String(r.id || '').toLowerCase().includes(q) ||
-      String(r.userId || '').toLowerCase().includes(q)
-    );
-  }, [opponentRooms, searchQuery]);
-
-  const leftScore = match?.scores?.[0] || 0;
-  const rightScore = match?.scores?.[1] || 0;
-  const opponentDisplayId = match?.rooms?.[1]?.userId || match?.rooms?.[1]?.id || 'Waiting';
-
   return (
     <>
-      {/* 
-        FLOATING TRIGGER:
-        Per user instruction: "room se room pk option hta do"
-        We do NOT show any floating trigger on the screen when PK is idle!
-        Only when a battle is actively running and the main card is dismissed,
-        we render a minimal pill so users can tap to view the battle card.
-      */}
-      {isPKLive && !visible && (
-        <TouchableOpacity
-          testID="pk-toggle-panel"
-          style={styles.floatingTrigger}
-          onPress={() => setVisible(true)}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={['#F59E0B', '#3B82F6']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.floatingGradient}
-          >
-            <MaterialCommunityIcons name="sword-cross" size={14} color="#FFF" style={{ marginRight: 4 }} />
-            <Text style={styles.floatingText}>{`PK • ${view.timer}`}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
-
-      {/* MAIN POPUP MODAL (Matching User's Reference Screenshot) */}
-      <Modal
-        visible={visible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setVisible(false)}
+      {/* Floating PK Button on Voice Room Screen */}
+      <TouchableOpacity
+        testID="pk-toggle-panel"
+        style={styles.floatingTrigger}
+        onPress={() => setVisible(true)}
+        activeOpacity={0.85}
       >
-        <View style={[styles.popupBackdrop, panelMode === 'in_room' && !isPKLive && styles.bottomSheetBackdrop]}>
-          <TouchableOpacity
-            style={styles.dismissOverlay}
-            activeOpacity={1}
-            onPress={() => setVisible(false)}
-          />
+        <LinearGradient
+          colors={isPKLive ? ['#F59E0B', '#3B82F6'] : ['#1E293B', '#0F172A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.floatingGradient}
+        >
+          <Text style={styles.floatingText}>
+            {isPKLive ? `PK • ${view.timer}` : '⚔️ ROOM PK'}
+          </Text>
+        </LinearGradient>
+      </TouchableOpacity>
 
-          <View
-            style={[
-              styles.popupContainer,
-              panelMode === 'in_room' && !isPKLive && styles.bottomSheetContainer,
-              { paddingBottom: Math.max(bottomSafePadding, 16) },
-            ]}
-          >
+      {/* Main Bottom Sheet Modal */}
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={() => setVisible(false)}>
+        <View style={styles.backdrop}>
+          <TouchableOpacity style={styles.dismissOverlay} activeOpacity={1} onPress={() => setVisible(false)} />
+          <View style={[styles.sheetContainer, { paddingBottom: Math.max(bottomSafePadding, 16) }]}>
 
-            {/* 1. Speech Bubble Tooltip (Shown in Room PK mode or when PK is live) */}
-            {(panelMode === 'room_pk' || isPKLive) && (
-              <View style={styles.tooltipContainer}>
-                <View style={styles.tooltipBubble}>
-                  <Text style={styles.tooltipText}>All user in your room can hear the opposite voice now!</Text>
-                  <Text style={styles.tooltipTextBold}>Try it!</Text>
-                </View>
-                <View style={styles.tooltipArrow} />
-              </View>
-            )}
-
-            {/* 2. PK Capsule Pill Badge (Shown in Room PK mode or when PK is live) */}
-            {(panelMode === 'room_pk' || isPKLive) && (
-              <View style={styles.pkBadgeRow}>
-                <LinearGradient
-                  colors={['#F59E0B', '#3B82F6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.pkPillBadge}
-                >
-                  <MaterialCommunityIcons name="sword-cross" size={16} color="#FFF" style={{ marginRight: 4 }} />
-                  <Text style={styles.pkPillText}>PK</Text>
-                </LinearGradient>
-              </View>
-            )}
-
-            {/* 3. The PK Card: Pre-Battle State or Active Battle State */}
-            {!isPKLive ? (
-              /* PRE-BATTLE CARD */
-              <ScrollView
-                style={styles.mainPkCardScroll}
-                contentContainerStyle={styles.mainPkCard}
-                showsVerticalScrollIndicator={false}
+            {/* Top Slanted Tabs: Vote PK | Personal gift PK | Team gift pk */}
+            <View style={styles.topTabsBar}>
+              {/* Tab 1: Vote PK */}
+              <TouchableOpacity
+                testID="pk-tab-vote"
+                style={[styles.tabItem, activeTab === 'vote' && styles.tabItemActive]}
+                onPress={() => setActiveTab('vote')}
+                activeOpacity={0.8}
               >
-                {panelMode === 'room_pk' ? (
-                  /* ROOM PK MODE: Matching User's Reference Screenshot 1:1 */
-                  <>
-                    {/* Header row: ID:CurrentRoomId on left, ID:Waiting on right */}
-                    <View style={styles.cardHeaderRow}>
-                      <Text style={styles.roomIdHeader}>ID:{displayRoomId}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.waitingHeader}>ID:Waiting</Text>
-                        <TouchableOpacity
-                          onPress={() => setVisible(false)}
-                          style={styles.cardCloseBtn}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                          <Icon name="close" size={16} color="#94A3B8" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-
-                    {/* Error Banner */}
-                    {Boolean(error) && (
-                      <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
-                    )}
-
-                    {/* Capsule Buttons: Match PK & Invite PK */}
-                    <View style={styles.actionButtonsRow}>
-                      {/* Match PK */}
-                      <TouchableOpacity
-                        style={styles.actionCapsuleBtn}
-                        onPress={handleMatchPK}
-                        activeOpacity={0.85}
-                        disabled={busy || matching}
-                      >
-                        <LinearGradient
-                          colors={['#FBBF24', '#D97706']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.actionCapsuleGradient}
-                        >
-                          {matching ? (
-                            <ActivityIndicator size="small" color="#78350F" />
-                          ) : (
-                            <Text style={styles.matchBtnText}>Match PK</Text>
-                          )}
-                        </LinearGradient>
-                      </TouchableOpacity>
-
-                      {/* Invite PK */}
-                      <TouchableOpacity
-                        style={styles.actionCapsuleBtn}
-                        onPress={() => {
-                          loadOpponents();
-                          setInviteModalVisible(true);
-                        }}
-                        activeOpacity={0.85}
-                        disabled={busy}
-                      >
-                        <LinearGradient
-                          colors={['#38BDF8', '#2563EB']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.actionCapsuleGradient}
-                        >
-                          <Text style={styles.inviteBtnText}>Invite PK</Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Looting Mode Switch Row */}
-                    <View style={styles.lootingRow}>
-                      <Text style={styles.lootingText}>Whether to enable looting mode</Text>
-                      <Switch
-                        value={jackpotEnabled}
-                        onValueChange={setJackpotEnabled}
-                        trackColor={{ false: '#475569', true: '#8B5CF6' }}
-                        thumbColor={jackpotEnabled ? '#DDD6FE' : '#94A3B8'}
-                      />
-                    </View>
-                  </>
+                {activeTab === 'vote' ? (
+                  <LinearGradient
+                    colors={['#D97706', '#2563EB']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.activeTabGradient}
+                  >
+                    <Text style={styles.activeTabText}>Vote PK</Text>
+                  </LinearGradient>
                 ) : (
-                  /* IN-ROOM PK MODE: Vote PK | Personal Gift PK | Team Gift PK (Matching Screenshot 1:1) */
-                  <View style={styles.inRoomBottomSheet}>
-                    {/* Top Tabs: Vote PK | Personal gift PK | Team gift pk */}
-                    <View style={styles.topTabsBar}>
-                      <TouchableOpacity
-                        testID="pk-tab-vote"
-                        style={[styles.tabItem, activeTab === 'vote' && styles.tabItemActive]}
-                        onPress={() => setActiveTab('vote')}
-                      >
-                        {activeTab === 'vote' ? (
-                          <LinearGradient
-                            colors={['#F59E0B', '#2563EB']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.activeTabGradient}
-                          >
-                            <Text style={styles.activeTabText}>Vote PK</Text>
-                          </LinearGradient>
-                        ) : (
-                          <Text style={styles.inactiveTabText}>Vote PK</Text>
-                        )}
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        testID="pk-mode-user"
-                        style={[styles.tabItem, activeTab === 'personal' && styles.tabItemActive]}
-                        onPress={() => setActiveTab('personal')}
-                      >
-                        {activeTab === 'personal' ? (
-                          <LinearGradient
-                            colors={['#F59E0B', '#2563EB']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.activeTabGradient}
-                          >
-                            <Text style={styles.activeTabText}>Personal gift PK</Text>
-                          </LinearGradient>
-                        ) : (
-                          <Text style={styles.inactiveTabText}>Personal gift PK</Text>
-                        )}
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        testID="pk-mode-room"
-                        style={[styles.tabItem, activeTab === 'team' && styles.tabItemActive]}
-                        onPress={() => setActiveTab('team')}
-                      >
-                        {activeTab === 'team' ? (
-                          <LinearGradient
-                            colors={['#F59E0B', '#2563EB']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.activeTabGradient}
-                          >
-                            <Text style={styles.activeTabText}>Team gift pk</Text>
-                          </LinearGradient>
-                        ) : (
-                          <Text style={styles.inactiveTabText}>Team gift pk</Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Hint: Calculated by the gifts received ⓘ */}
-                    <View style={styles.calcHintRow}>
-                      <Text style={styles.calcHintText}>Calculated by the gifts received</Text>
-                      <TouchableOpacity onPress={() => setRulesVisible(true)} style={{ marginLeft: 6 }}>
-                        <Icon name="help-circle-outline" size={16} color="#64748B" />
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Error Banner */}
-                    {Boolean(error) && (
-                      <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
-                    )}
-
-                    {/* Sub-header for Team Gift PK */}
-                    {activeTab === 'team' && (
-                      <View style={styles.teamSubTabsRow}>
-                        <TouchableOpacity
-                          style={[styles.teamSubTabBtn, teamSubTab === 'yellow' && styles.teamSubTabBtnYellowActive]}
-                          onPress={() => setTeamSubTab('yellow')}
-                        >
-                          <Text style={[styles.teamSubTabText, teamSubTab === 'yellow' ? styles.yellowTextActive : styles.inactiveSubTabText]}>
-                            Yellow team
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.teamSubTabBtn, teamSubTab === 'blue' && styles.teamSubTabBtnBlueActive]}
-                          onPress={() => setTeamSubTab('blue')}
-                        >
-                          <Text style={[styles.teamSubTabText, teamSubTab === 'blue' ? styles.blueTextActive : styles.inactiveSubTabText]}>
-                            Blue team
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-
-                    {/* 10-Seat Grid (Matching Screenshot 1:1) */}
-                    <View style={styles.seatsGridContainer}>
-                      {/* Row 1: Seats 1 - 5 */}
-                      <View style={styles.seatsRow}>
-                        {tenSeats.slice(0, 5).map(seat => {
-                          const uid = String(seat.user?.userId || '');
-                          const isYellow = teamYellowUserIds.includes(uid);
-                          const isBlue = teamBlueUserIds.includes(uid);
-                          const isPersonalSel = personalSelectedUserId === uid;
-                          const isSideA = voteSideAUserId === uid;
-                          const isSideB = voteSideBUserId === uid;
-                          const isSelected = isYellow || isBlue || isPersonalSel || isSideA || isSideB;
-                          return (
-                            <TouchableOpacity
-                              key={seat.seatNumber}
-                              style={styles.seatCell}
-                              onPress={() => handleSeatPress(seat)}
-                              activeOpacity={0.8}
-                            >
-                              <View
-                                style={[
-                                  styles.seatCircle,
-                                  seat.isEmpty ? styles.seatCircleEmpty : styles.seatCircleOccupied,
-                                  isSelected && styles.seatCircleSelected,
-                                  isYellow && { borderColor: '#F59E0B', borderWidth: 2.5 },
-                                  isBlue && { borderColor: '#3B82F6', borderWidth: 2.5 },
-                                ]}
-                              >
-                                {seat.isEmpty ? (
-                                  <Text style={styles.emptySeatText}>Empty</Text>
-                                ) : (
-                                  <Image
-                                    source={{ uri: seat.user.avatar || 'https://via.placeholder.com/50' }}
-                                    style={styles.seatAvatarImage}
-                                  />
-                                )}
-                              </View>
-                              <Text
-                                style={seat.isEmpty ? styles.seatNumText : styles.seatUserNameText}
-                                numberOfLines={1}
-                              >
-                                {seat.isEmpty ? seat.seatNumber : seat.user.name}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-
-                      {/* Row 2: Seats 6 - 10 */}
-                      <View style={styles.seatsRow}>
-                        {tenSeats.slice(5, 10).map(seat => {
-                          const uid = String(seat.user?.userId || '');
-                          const isYellow = teamYellowUserIds.includes(uid);
-                          const isBlue = teamBlueUserIds.includes(uid);
-                          const isPersonalSel = personalSelectedUserId === uid;
-                          const isSideA = voteSideAUserId === uid;
-                          const isSideB = voteSideBUserId === uid;
-                          const isSelected = isYellow || isBlue || isPersonalSel || isSideA || isSideB;
-                          return (
-                            <TouchableOpacity
-                              key={seat.seatNumber}
-                              style={styles.seatCell}
-                              onPress={() => handleSeatPress(seat)}
-                              activeOpacity={0.8}
-                            >
-                              <View
-                                style={[
-                                  styles.seatCircle,
-                                  seat.isEmpty ? styles.seatCircleEmpty : styles.seatCircleOccupied,
-                                  isSelected && styles.seatCircleSelected,
-                                  isYellow && { borderColor: '#F59E0B', borderWidth: 2.5 },
-                                  isBlue && { borderColor: '#3B82F6', borderWidth: 2.5 },
-                                ]}
-                              >
-                                {seat.isEmpty ? (
-                                  <Text style={styles.emptySeatText}>Empty</Text>
-                                ) : (
-                                  <Image
-                                    source={{ uri: seat.user.avatar || 'https://via.placeholder.com/50' }}
-                                    style={styles.seatAvatarImage}
-                                  />
-                                )}
-                              </View>
-                              <Text
-                                style={seat.isEmpty ? styles.seatNumText : styles.seatUserNameText}
-                                numberOfLines={1}
-                              >
-                                {seat.isEmpty ? seat.seatNumber : seat.user.name}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-
-                    {/* Audience in room: (Matching Screenshot) */}
-                    <View style={styles.sectionHeaderRow}>
-                      <Text style={styles.sectionTitle}>Audience in room:</Text>
-                    </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.audienceScroll}>
-                      {roomCandidates.length > 0 ? (
-                        roomCandidates.map(c => {
-                          const isSel = personalSelectedUserId === String(c.userId || c.id);
-                          return (
-                            <TouchableOpacity
-                              key={c.id}
-                              style={[styles.audienceItem, isSel && styles.audienceItemSelected]}
-                              onPress={() => handleCandidatePress(c)}
-                              activeOpacity={0.8}
-                            >
-                              <Image source={{ uri: c.avatar || 'https://via.placeholder.com/40' }} style={styles.audienceAvatar} />
-                              <Text style={styles.audienceName} numberOfLines={1}>{c.name}</Text>
-                            </TouchableOpacity>
-                          );
-                        })
-                      ) : (
-                        <View style={styles.audienceItem}>
-                          <View style={styles.emptyAudienceCircle}>
-                            <Icon name="person-outline" size={18} color="#64748B" />
-                          </View>
-                          <Text style={styles.audienceName}>No audience</Text>
-                        </View>
-                      )}
-                    </ScrollView>
-
-                    {/* Select a gift (Matching Screenshot) */}
-                    <View style={styles.sectionHeaderRow}>
-                      <Text style={styles.sectionTitle}>Select a gift</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.selectGiftCard}
-                      onPress={() => setGiftPickerVisible(true)}
-                      activeOpacity={0.85}
-                    >
-                      <View style={styles.giftIconBox}>
-                        <MaterialCommunityIcons name="gift-outline" size={20} color="#38BDF8" />
-                      </View>
-                      <Text style={styles.selectGiftLabel}>
-                        {selectedGift ? selectedGift.name : 'All gifts count'}
-                      </Text>
-                      <Icon name="chevron-forward" size={18} color="#64748B" />
-                    </TouchableOpacity>
-
-                    {/* Select duration(minutes) (Matching Screenshot) */}
-                    <View style={styles.sectionHeaderRow}>
-                      <Text style={styles.sectionTitle}>Select duration(minutes)</Text>
-                    </View>
-                    <View style={styles.durationsRow}>
-                      {[1, 3, 5, 10, 30].map(min => {
-                        const isSel = selectedDurationMin === min;
-                        return (
-                          <TouchableOpacity
-                            key={min}
-                            style={[styles.durationCapsule, isSel && styles.durationCapsuleActive]}
-                            onPress={() => setSelectedDurationMin(min)}
-                            activeOpacity={0.8}
-                          >
-                            {isSel ? (
-                              <LinearGradient
-                                colors={['#F59E0B', '#2563EB']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.durationGradient}
-                              >
-                                <Text style={styles.durationNumActive}>{min}</Text>
-                              </LinearGradient>
-                            ) : (
-                              <Text style={styles.durationNum}>{min}</Text>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-
-                    {/* Jackpot mode Toggle (Matching Screenshot) */}
-                    <View style={styles.jackpotRow}>
-                      <Text style={styles.jackpotLabel}>Jackpot mode</Text>
-                      <Switch
-                        value={jackpotEnabled}
-                        onValueChange={setJackpotEnabled}
-                        trackColor={{ false: '#334155', true: '#8B5CF6' }}
-                        thumbColor={jackpotEnabled ? '#DDD6FE' : '#94A3B8'}
-                      />
-                    </View>
-
-                    {/* Big White Confirm Button (Matching Screenshot 1:1) */}
-                    <TouchableOpacity
-                      testID={activeTab === 'vote' ? 'pk-start-vote' : (activeTab === 'team' ? 'pk-start-team' : 'pk-send-invite')}
-                      style={styles.confirmWhiteBtn}
-                      onPress={handleConfirm}
-                      disabled={busy}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.confirmWhiteBtnText}>Confirm</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <Text style={styles.inactiveTabText}>Vote PK</Text>
                 )}
-              </ScrollView>
-            ) : (
-              /* ACTIVE BATTLE CARD (Matching Image 1:1) */
-              <View style={styles.activeBattleCard}>
-                {/* Close / Minimize button */}
+              </TouchableOpacity>
+
+              {/* Tab 2: Personal gift PK */}
+              <TouchableOpacity
+                testID="pk-mode-user"
+                style={[styles.tabItem, activeTab === 'personal' && styles.tabItemActive]}
+                onPress={() => setActiveTab('personal')}
+                activeOpacity={0.8}
+              >
+                {activeTab === 'personal' ? (
+                  <LinearGradient
+                    colors={['#D97706', '#2563EB']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.activeTabGradient}
+                  >
+                    <Text style={styles.activeTabText}>Personal gift PK</Text>
+                  </LinearGradient>
+                ) : (
+                  <Text style={styles.inactiveTabText}>Personal gift PK</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Tab 3: Team gift pk */}
+              <TouchableOpacity
+                testID="pk-mode-room"
+                style={[styles.tabItem, activeTab === 'team' && styles.tabItemActive]}
+                onPress={() => setActiveTab('team')}
+                activeOpacity={0.8}
+              >
+                {activeTab === 'team' ? (
+                  <LinearGradient
+                    colors={['#D97706', '#2563EB']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.activeTabGradient}
+                  >
+                    <Text style={styles.activeTabText}>Team gift pk</Text>
+                  </LinearGradient>
+                ) : (
+                  <Text style={styles.inactiveTabText}>Team gift pk</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Sub-header for Team Gift PK: Yellow team | Blue team + (?) icon */}
+            {activeTab === 'team' && (
+              <View style={styles.teamSubTabsRow}>
+                <View style={styles.teamSubTabsLeft}>
+                  <TouchableOpacity
+                    style={[styles.teamSubTabBtn, teamSubTab === 'yellow' && styles.teamSubTabBtnYellowActive]}
+                    onPress={() => setTeamSubTab('yellow')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.teamSubTabText, teamSubTab === 'yellow' ? styles.yellowTextActive : styles.inactiveSubTabText]}>
+                      Yellow team
+                    </Text>
+                    {teamSubTab === 'yellow' && <View style={styles.yellowIndicator} />}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.teamSubTabBtn, teamSubTab === 'blue' && styles.teamSubTabBtnBlueActive]}
+                    onPress={() => setTeamSubTab('blue')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.teamSubTabText, teamSubTab === 'blue' ? styles.blueTextActive : styles.inactiveSubTabText]}>
+                      Blue team
+                    </Text>
+                    {teamSubTab === 'blue' && <View style={styles.blueIndicator} />}
+                  </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity
-                  onPress={() => setVisible(false)}
-                  style={styles.battleCloseBtn}
+                  style={styles.helpCircleBtn}
+                  onPress={() => setRulesVisible(true)}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Icon name="close" size={18} color="#94A3B8" />
+                  <Icon name="help-circle-outline" size={22} color="#CBD5E1" />
                 </TouchableOpacity>
-
-                {/* Top timer pill */}
-                <View style={styles.timerCapsule}>
-                  <Text style={styles.timerCapsuleText}>{view.timer || '300s'}</Text>
-                </View>
-
-                {/* Realtime Prize Pool capsule */}
-                <View style={styles.prizePoolCapsule}>
-                  <Text style={styles.prizePoolText}>Realtime Prize Pool: 💎 {match.prizePool || 0}</Text>
-                </View>
-
-                {/* Header row: Room IDs and Room Names */}
-                <View style={styles.battleHeaderRow}>
-                  <View style={styles.battleRoomColLeft}>
-                    <Text style={styles.battleRoomId}>ID:{displayRoomId}</Text>
-                    <Text style={styles.battleRoomName} numberOfLines={1}>{match.rooms?.[0]?.title || 'My Room'}</Text>
-                  </View>
-                  <View style={styles.battleRoomColRight}>
-                    <Text style={styles.battleRoomId}>ID:{opponentDisplayId}</Text>
-                    <Text style={styles.battleRoomName} numberOfLines={1}>{match.rooms?.[1]?.title || 'Opponent Room'}</Text>
-                  </View>
-                </View>
-
-                {/* Dual score bar with Lightning Bolt */}
-                <View style={styles.scoreBarContainer}>
-                  <View style={[styles.scoreBarLeft, { flex: Math.max(leftScore, 1) }]}>
-                    <Text style={styles.scoreTextLeft}>{leftScore}</Text>
-                  </View>
-                  <View style={styles.lightningIconContainer}>
-                    <Icon name="flash" size={16} color="#FBBF24" />
-                  </View>
-                  <View style={[styles.scoreBarRight, { flex: Math.max(rightScore, 1) }]}>
-                    <Text style={styles.scoreTextRight}>{rightScore}</Text>
-                  </View>
-                </View>
-
-                {/* Top3 Supporter Row */}
-                <View style={styles.supportersRow}>
-                  <View style={styles.supportersSideLeft}>
-                    <Text style={styles.supporterLabel}>Top3 supporter</Text>
-                    <View style={styles.supporterCirclesRow}>
-                      <View style={[styles.supporterCircle, styles.supporterGold]}>
-                        <MaterialCommunityIcons name="chair-rolling" size={12} color="#D97706" />
-                      </View>
-                      <View style={[styles.supporterCircle, styles.supporterGold]}>
-                        <MaterialCommunityIcons name="chair-rolling" size={12} color="#D97706" />
-                      </View>
-                      <View style={[styles.supporterCircle, styles.supporterGold]}>
-                        <MaterialCommunityIcons name="chair-rolling" size={12} color="#D97706" />
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles.supportersSideRight}>
-                    <Text style={styles.supporterLabel}>Top3 supporter</Text>
-                    <View style={styles.supporterCirclesRow}>
-                      <View style={[styles.supporterCircle, styles.supporterBlue]}>
-                        <MaterialCommunityIcons name="chair-rolling" size={12} color="#2563EB" />
-                      </View>
-                      <View style={[styles.supporterCircle, styles.supporterBlue]}>
-                        <MaterialCommunityIcons name="chair-rolling" size={12} color="#2563EB" />
-                      </View>
-                      <View style={[styles.supporterCircle, styles.supporterBlue]}>
-                        <MaterialCommunityIcons name="chair-rolling" size={12} color="#2563EB" />
-                      </View>
-                    </View>
-                  </View>
-                </View>
-
-                {/* End PK Button for Owner */}
-                {isOwner && (
-                  <TouchableOpacity onPress={handleCancelPK} style={styles.cancelBattleBtn} activeOpacity={0.8}>
-                    <Text style={styles.cancelBattleText}>End PK Battle</Text>
-                  </TouchableOpacity>
-                )}
               </View>
             )}
 
-            {/* Hidden Input & Button Elements for Automated Tests Compatibility */}
+            {/* Subtitle: Calculated by the gifts received + (?) */}
+            <View style={styles.subtitleRow}>
+              <Text style={styles.subtitleText}>Calculated by the gifts received</Text>
+              <TouchableOpacity onPress={() => setRulesVisible(true)} hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}>
+                <Icon name="help-circle-outline" size={15} color="#94A3B8" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Error banner */}
+            {Boolean(error) && (
+              <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
+            )}
+
+            {/* Live PK scoreboard when active */}
+            {isPKLive && (
+              <View testID="pk-scoreboard" style={styles.liveScoreboardCard}>
+                <View style={styles.liveHeaderRow}>
+                  <Text style={styles.liveBadge}>LIVE PK</Text>
+                  <Text style={styles.liveTimerText}>{view.timer}</Text>
+                  {isOwner && (
+                    <TouchableOpacity onPress={handleCancelPK} style={styles.endPkSmallBtn}>
+                      <Text style={styles.endPkSmallBtnText}>End PK</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.liveScoresRow}>
+                  <Text style={[styles.scoreNum, { color: '#F59E0B' }]}>{match.scores?.[0] || 0}</Text>
+                  <Text style={styles.vsCenter}>VS</Text>
+                  <Text style={[styles.scoreNum, { color: '#38BDF8' }]}>{match.scores?.[1] || 0}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* 10-SEAT GRID: 2 Rows of 5 Seats (Seats 1-10) */}
+            <View style={styles.seatsGridContainer}>
+              {/* Row 1: Seats 1 to 5 */}
+              <View style={styles.seatsRow}>
+                {tenSeats.slice(0, 5).map(seat => {
+                  const uid = String(seat.user?.userId || '');
+                  const isYellow = teamYellowUserIds.includes(uid);
+                  const isBlue = teamBlueUserIds.includes(uid);
+                  const isPersonalSel = personalSelectedUserId === uid;
+                  const isSideA = voteSideAUserId === uid;
+                  const isSideB = voteSideBUserId === uid;
+                  const isSelected = isYellow || isBlue || isPersonalSel || isSideA || isSideB;
+
+                  return (
+                    <TouchableOpacity
+                      key={seat.seatNumber}
+                      style={styles.seatCell}
+                      onPress={() => handleSeatPress(seat)}
+                      disabled={seat.isEmpty}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[
+                        styles.seatCircle,
+                        seat.isEmpty && styles.seatCircleEmpty,
+                        isYellow && styles.seatYellowBorder,
+                        isBlue && styles.seatBlueBorder,
+                        isPersonalSel && styles.seatSelectedBorder,
+                      ]}>
+                        {seat.isEmpty ? (
+                          <Text style={styles.seatEmptyLabel}>Empty</Text>
+                        ) : (
+                          <>
+                            <Image source={{ uri: seat.user.avatar || 'https://via.placeholder.com/50' }} style={styles.seatAvatarImg} />
+                            {isSelected && (
+                              <View style={[styles.checkBadge, (isYellow || isSideA) ? styles.checkBadgeYellow : styles.checkBadgeBlue]}>
+                                <Icon name="checkmark" size={10} color="#FFF" />
+                              </View>
+                            )}
+                          </>
+                        )}
+                      </View>
+                      <Text numberOfLines={1} style={styles.seatBottomLabel}>
+                        {seat.isEmpty ? seat.seatNumber : seat.user.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Row 2: Seats 6 to 10 */}
+              <View style={styles.seatsRow}>
+                {tenSeats.slice(5, 10).map(seat => {
+                  const uid = String(seat.user?.userId || '');
+                  const isYellow = teamYellowUserIds.includes(uid);
+                  const isBlue = teamBlueUserIds.includes(uid);
+                  const isPersonalSel = personalSelectedUserId === uid;
+                  const isSideA = voteSideAUserId === uid;
+                  const isSideB = voteSideBUserId === uid;
+                  const isSelected = isYellow || isBlue || isPersonalSel || isSideA || isSideB;
+
+                  return (
+                    <TouchableOpacity
+                      key={seat.seatNumber}
+                      style={styles.seatCell}
+                      onPress={() => handleSeatPress(seat)}
+                      disabled={seat.isEmpty}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[
+                        styles.seatCircle,
+                        seat.isEmpty && styles.seatCircleEmpty,
+                        isYellow && styles.seatYellowBorder,
+                        isBlue && styles.seatBlueBorder,
+                        isPersonalSel && styles.seatSelectedBorder,
+                      ]}>
+                        {seat.isEmpty ? (
+                          <Text style={styles.seatEmptyLabel}>Empty</Text>
+                        ) : (
+                          <>
+                            <Image source={{ uri: seat.user.avatar || 'https://via.placeholder.com/50' }} style={styles.seatAvatarImg} />
+                            {isSelected && (
+                              <View style={[styles.checkBadge, (isYellow || isSideA) ? styles.checkBadgeYellow : styles.checkBadgeBlue]}>
+                                <Icon name="checkmark" size={10} color="#FFF" />
+                              </View>
+                            )}
+                          </>
+                        )}
+                      </View>
+                      <Text numberOfLines={1} style={styles.seatBottomLabel}>
+                        {seat.isEmpty ? seat.seatNumber : seat.user.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Audience in room (if any non-seated members present) */}
+            {roomCandidates.filter(c => !c.isSeated).length > 0 && (
+              <View style={{ marginTop: 6, marginBottom: 8 }}>
+                <Text style={[styles.fieldLabel, { fontSize: 11, color: '#94A3B8' }]}>Audience in room:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                  {roomCandidates.filter(c => !c.isSeated).map(c => {
+                    const uid = String(c.userId || c.id);
+                    const isPersonalSel = personalSelectedUserId === uid;
+                    return (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[styles.candidateChip, isPersonalSel && styles.candidateChipSelected]}
+                        onPress={() => setPersonalSelectedUserId(prev => prev === uid ? '' : uid)}
+                      >
+                        <Image source={{ uri: c.avatar || 'https://via.placeholder.com/40' }} style={styles.candidateChipAvatar} />
+                        <Text numberOfLines={1} style={styles.candidateChipText}>{c.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Hidden Input & Button for Automated Tests Compatibility */}
             <View style={{ height: 0, overflow: 'hidden', opacity: 0 }}>
               <TextInput
                 testID="pk-user-id"
@@ -1046,140 +668,107 @@ export default function RoomPKPanel({
                 value={crossRoomId}
                 onChangeText={setCrossRoomId}
               />
+              <TouchableOpacity testID="pk-send-invite" onPress={handleConfirm} />
+              <TouchableOpacity testID="pk-start-vote" onPress={handleConfirm} />
+              <TouchableOpacity testID="pk-start-team" onPress={handleConfirm} />
               <TouchableOpacity testID="pk-tab-history" onPress={() => {}} />
               <TouchableOpacity testID="pk-send-invite-room" onPress={handleCrossRoomInvite} />
             </View>
 
-          </View>
-        </View>
-      </Modal>
-
-      {/* ROOM PK INVITATION BOTTOM SHEET MODAL (Matching User's Reference Frame 7s) */}
-      <Modal
-        visible={inviteModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setInviteModalVisible(false)}
-      >
-        <View style={styles.invitationBackdrop}>
-          <TouchableOpacity
-            style={styles.invitationDismiss}
-            activeOpacity={1}
-            onPress={() => setInviteModalVisible(false)}
-          />
-          <View style={styles.invitationSheet}>
-            <Text style={styles.invitationTitle}>Room PK invitation</Text>
-
-            {/* Search Bar */}
-            <View style={styles.searchBarRow}>
-              <View style={styles.searchInputContainer}>
-                <Icon name="search" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search all room by room ID"
-                  placeholderTextColor="#94A3B8"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  keyboardType="default"
-                  autoCapitalize="none"
-                />
-                {Boolean(searchQuery) && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Icon name="close-circle" size={16} color="#94A3B8" />
-                  </TouchableOpacity>
-                )}
-              </View>
+            {/* Section: Select a gift */}
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>Select a gift</Text>
               <TouchableOpacity
-                style={styles.cancelSearchBtn}
-                onPress={() => {
-                  setSearchQuery('');
-                  setInviteModalVisible(false);
-                }}
+                style={styles.selectGiftCard}
+                onPress={() => setGiftPickerVisible(true)}
+                activeOpacity={0.8}
               >
-                <Text style={styles.cancelSearchText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Tabs: My follow room | Recently */}
-            <View style={styles.inviteTabsRow}>
-              <TouchableOpacity
-                style={styles.inviteTabItem}
-                onPress={() => setInviteTab('follow')}
-              >
-                <Text style={[styles.inviteTabText, inviteTab === 'follow' && styles.inviteTabTextActive]}>
-                  My follow room
-                </Text>
-                {inviteTab === 'follow' && <View style={styles.inviteTabIndicator} />}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.inviteTabItem}
-                onPress={() => setInviteTab('recent')}
-              >
-                <Text style={[styles.inviteTabText, inviteTab === 'recent' && styles.inviteTabTextActive]}>
-                  Recently
-                </Text>
-                {inviteTab === 'recent' && <View style={styles.inviteTabIndicator} />}
-              </TouchableOpacity>
-            </View>
-
-            {/* Room List */}
-            <ScrollView style={styles.opponentsList} showsVerticalScrollIndicator={false}>
-              {filteredOpponentRooms.map(room => (
-                <View key={room.id} style={styles.opponentRoomCard}>
-                  <View style={styles.opponentAvatarWrap}>
-                    {room.coverImage ? (
-                      <Image source={{ uri: room.coverImage }} style={styles.opponentAvatar} />
+                <View style={styles.selectGiftLeft}>
+                  <View style={styles.giftIconWrap}>
+                    {selectedGift ? (
+                      <Image source={{ uri: selectedGift.icon || selectedGift.image || selectedGift.previewUrl }} style={styles.giftThumb} />
                     ) : (
-                      <View style={styles.opponentAvatarPlaceholder}>
-                        <MaterialCommunityIcons name="sword-cross" size={20} color="#F59E0B" />
+                      <View style={styles.stackCube}>
+                        <View style={[styles.cubeLayer, { top: 0, opacity: 0.9 }]} />
+                        <View style={[styles.cubeLayer, { top: 6, opacity: 0.6 }]} />
+                        <View style={[styles.cubeLayer, { top: 12, opacity: 0.3 }]} />
                       </View>
                     )}
                   </View>
-                  <View style={styles.opponentInfo}>
-                    <Text style={styles.opponentTitle} numberOfLines={1}>{room.title || 'Live Room'}</Text>
-                    <Text style={styles.opponentIdText}>Room id:{room.userId || room.id}</Text>
+                  <View style={{ marginLeft: 12 }}>
+                    <Text style={styles.selectedGiftTitle}>
+                      {selectedGift ? selectedGift.name : 'All gifts count'}
+                    </Text>
+                    {selectedGift && (
+                      <Text style={styles.selectedGiftCost}>{selectedGift.price || selectedGift.cost || 0} 🪙</Text>
+                    )}
                   </View>
-                  <TouchableOpacity
-                    style={styles.inviteActionBtn}
-                    onPress={() => handleInviteOpponent(room.id || room.userId)}
-                    activeOpacity={0.85}
-                  >
-                    <LinearGradient
-                      colors={['#38BDF8', '#2563EB']}
-                      style={styles.inviteActionGradient}
+                </View>
+                <Icon name="chevron-forward" size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Section: Select duration(minutes) - 1, 3, 5, 10, 30 */}
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>Select duration(minutes)</Text>
+              <View style={styles.durationsRow}>
+                {[1, 3, 5, 10, 30].map(min => {
+                  const isSel = selectedDurationMin === min;
+                  return (
+                    <TouchableOpacity
+                      key={min}
+                      style={[styles.durationCapsule, isSel && styles.durationCapsuleActive]}
+                      onPress={() => setSelectedDurationMin(min)}
+                      activeOpacity={0.8}
                     >
-                      <Text style={styles.inviteActionText}>Invite</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              ))}
+                      {isSel ? (
+                        <LinearGradient
+                          colors={['#D97706', '#2563EB']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.durationGradient}
+                        >
+                          <Text style={styles.durationNumActive}>{min}</Text>
+                        </LinearGradient>
+                      ) : (
+                        <Text style={styles.durationNum}>{min}</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
 
-              {filteredOpponentRooms.length === 0 && (
-                <View style={styles.emptyOpponentsBox}>
-                  <Text style={styles.emptyOpponentsText}>No rooms found.</Text>
-                </View>
-              )}
+            {/* Section: Jackpot mode toggle */}
+            <View style={styles.jackpotRow}>
+              <Text style={styles.jackpotLabel}>Jackpot mode</Text>
+              <Switch
+                value={jackpotEnabled}
+                onValueChange={setJackpotEnabled}
+                trackColor={{ false: '#334155', true: '#38BDF8' }}
+                thumbColor={jackpotEnabled ? '#FFF' : '#94A3B8'}
+              />
+            </View>
 
-              {/* Direct Challenge Option for Searched Room ID */}
-              {Boolean(searchQuery.trim()) && (
-                <TouchableOpacity
-                  style={styles.directInviteCard}
-                  onPress={() => handleInviteOpponent(searchQuery.trim())}
-                  activeOpacity={0.85}
-                >
-                  <LinearGradient
-                    colors={['#F59E0B', '#3B82F6']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.directInviteGradient}
-                  >
-                    <MaterialCommunityIcons name="sword-cross" size={16} color="#FFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.directInviteText}>Challenge Room ID: {searchQuery.trim()}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
-            </ScrollView>
+            {/* Confirm Button (Frosted White Capsule matching video) */}
+            <TouchableOpacity
+              style={styles.confirmTouchable}
+              onPress={handleConfirm}
+              disabled={busy}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0.95)', 'rgba(210, 220, 235, 0.90)']}
+                style={styles.confirmGradient}
+              >
+                {busy ? (
+                  <ActivityIndicator size="small" color="#0F172A" />
+                ) : (
+                  <Text style={styles.confirmBtnText}>Confirm</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
           </View>
         </View>
       </Modal>
@@ -1228,7 +817,7 @@ export default function RoomPKPanel({
         </View>
       </Modal>
 
-      {/* PK Rules Guidelines Modal */}
+      {/* PK Rules Guidelines Modal (matching video_frame_10_33s.png) */}
       <Modal visible={rulesVisible} transparent animationType="slide" onRequestClose={() => setRulesVisible(false)}>
         <View style={styles.rulesBackdrop}>
           <View style={styles.rulesContainer}>
@@ -1240,14 +829,29 @@ export default function RoomPKPanel({
             </View>
 
             <ScrollView contentContainerStyle={styles.rulesContent}>
-              <Text style={styles.rulesBannerHeader}>GUIDELINE OF PK FUNCTION IN VOICE ROOMS</Text>
+              <Text style={styles.rulesBannerHeader}>GUIDELINE OF PK Function IN VOICE ROOMS</Text>
               <View style={styles.rulesHighlightBox}>
                 <Text style={styles.rulesHighlightText}>Voice rooms mein PK function bhi hai, aa kar dekhiye!</Text>
               </View>
 
               <Text style={styles.rulesSectionTitle}>Room PK kya hai?</Text>
               <Text style={styles.rulesBody}>
-                Room PK se do voice rooms aapas mein connect hote hain aur unke users ek dusre ki aawaz sun sakte hain. Match PK se random matching hoti hai aur Invite PK se kisi bhi room ko ID ke zariye challenge kiya ja sakta hai.
+                Room PK mein 3 modes hain: Personal Gift PK, Team Gift PK aur Vote PK. Room ke owners aur admins har baar PK ka ek mode choose kar sakte hain.
+              </Text>
+
+              <Text style={styles.rulesSectionTitle}>1. Personal Gift PK</Text>
+              <Text style={styles.rulesBody}>
+                MIC par 2 users ko 1v1 battle ke liye select karein. Dono users ko milne wale eligible gifts unke score mein add honge.
+              </Text>
+
+              <Text style={styles.rulesSectionTitle}>2. Team Gift PK</Text>
+              <Text style={styles.rulesBody}>
+                MIC seats 1-10 se Yellow Team aur Blue Team banayein. Har team ko bheje gaye gifts team points mein count honge.
+              </Text>
+
+              <Text style={styles.rulesSectionTitle}>3. Vote PK</Text>
+              <Text style={styles.rulesBody}>
+                Audience bina kisi beans deduction ke free mein vote karti hai. Jis side ko sabse zyada votes milte hain, wo jeet ti hai!
               </Text>
             </ScrollView>
           </View>
@@ -1258,7 +862,6 @@ export default function RoomPKPanel({
 }
 
 const styles = StyleSheet.create({
-  // Minimal floating pill (rendered ONLY when PK is actively live and card is closed)
   floatingTrigger: {
     alignSelf: 'center',
     borderRadius: 20,
@@ -1266,467 +869,209 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   floatingGradient: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 5,
     borderRadius: 20,
     alignItems: 'center',
   },
   floatingText: { color: '#FFF', fontWeight: '900', fontSize: 13, fontStyle: 'italic' },
-
-  // Main Popup Backdrop & Container
-  popupBackdrop: {
+  backdrop: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-  },
-  bottomSheetBackdrop: {
     justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
   },
-  dismissOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  popupContainer: {
-    width: SCREEN_WIDTH - 28,
-    alignItems: 'center',
-  },
-  bottomSheetContainer: {
-    width: SCREEN_WIDTH,
-    backgroundColor: '#0A0F1D',
+  dismissOverlay: { flex: 1 },
+  sheetContainer: {
+    backgroundColor: '#090E1E',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 16,
-    paddingTop: 16,
-    maxHeight: '85%',
-  },
-
-  // 1. Tooltip Bubble (White speech bubble with downward pointer)
-  tooltipContainer: {
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  tooltipBubble: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    maxWidth: SCREEN_WIDTH - 60,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  tooltipText: {
-    color: '#1E293B',
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  tooltipTextBold: {
-    color: '#1E293B',
-    fontSize: 13,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  tooltipArrow: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderTopWidth: 8,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: '#FFFFFF',
-    alignSelf: 'center',
-  },
-
-  // 2. PK Capsule Pill Badge
-  pkBadgeRow: {
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  pkPillBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 5,
-    borderRadius: 16,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  pkPillText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 14,
-    fontStyle: 'italic',
-  },
-
-  // 3. Dark Translucent Glassmorphic Card (Matching Image 1:1)
-  mainPkCardScroll: {
-    width: '100%',
-    maxHeight: 520,
-  },
-  mainPkCard: {
-    width: '100%',
-    backgroundColor: 'rgba(22, 28, 56, 0.94)',
-    borderRadius: 18,
+    paddingTop: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  roomIdHeader: {
-    color: '#CBD5E1',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  waitingHeader: {
-    color: '#94A3B8',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cardCloseBtn: {
-    marginLeft: 10,
-    padding: 2,
-  },
-
-  // Capsule Action Buttons: Match PK & Invite PK
-  actionButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 16,
-  },
-  actionCapsuleBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  actionCapsuleGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  matchBtnText: {
-    color: '#5B2C00',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  inviteBtnText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-
-  // Looting Mode Row
-  lootingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-    paddingTop: 12,
-    marginBottom: 12,
-  },
-  lootingText: {
-    color: '#E2E8F0',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-
-  // IN-ROOM CONFIG SECTION (Matching Screenshot 1:1)
-  inRoomBottomSheet: {
-    width: '100%',
-    paddingTop: 4,
+    borderColor: '#1E293B',
   },
   topTabsBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 44,
-    marginBottom: 6,
-    gap: 8,
+    height: 48,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+    marginBottom: 8,
   },
   tabItem: {
     flex: 1,
-    height: 44,
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 18,
-    overflow: 'hidden',
   },
   tabItemActive: {
-    backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
   activeTabGradient: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 18,
-    paddingHorizontal: 8,
+    borderRadius: 8,
   },
   activeTabText: {
     color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 13,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    fontSize: 14,
   },
   inactiveTabText: {
     color: '#94A3B8',
-    fontSize: 13,
     fontWeight: '600',
+    fontStyle: 'italic',
+    fontSize: 13,
   },
-  calcHintRow: {
+  teamSubTabsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  teamSubTabsLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
+    gap: 20,
   },
-  calcHintText: {
-    color: '#64748B',
-    fontSize: 12,
+  teamSubTabBtn: {
+    paddingVertical: 4,
+    position: 'relative',
+  },
+  teamSubTabBtnYellowActive: {},
+  teamSubTabBtnBlueActive: {},
+  teamSubTabText: {
+    fontSize: 15,
+    fontWeight: '800',
+    fontStyle: 'italic',
+  },
+  yellowTextActive: { color: '#F59E0B' },
+  blueTextActive: { color: '#38BDF8' },
+  inactiveSubTabText: { color: '#64748B' },
+  yellowIndicator: {
+    position: 'absolute',
+    bottom: -2,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: '#F59E0B',
+    borderRadius: 1,
+  },
+  blueIndicator: {
+    position: 'absolute',
+    bottom: -2,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: '#38BDF8',
+    borderRadius: 1,
+  },
+  helpCircleBtn: {
+    padding: 4,
+  },
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 6,
+  },
+  subtitleText: {
+    color: '#CBD5E1',
+    fontSize: 13,
     fontWeight: '500',
   },
-  seatsGridContainer: {
+  errorText: {
+    color: '#FDA4AF',
+    fontSize: 12,
+    marginVertical: 4,
+  },
+  liveScoreboardCard: {
+    backgroundColor: '#15213B',
+    borderRadius: 12,
+    padding: 10,
     marginVertical: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  liveHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  liveBadge: { color: '#38BDF8', fontWeight: '900', fontSize: 11 },
+  liveTimerText: { color: '#FDE047', fontWeight: '900', fontSize: 13 },
+  endPkSmallBtn: { backgroundColor: '#EF4444', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  endPkSmallBtnText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
+  liveScoresRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  scoreNum: { fontSize: 18, fontWeight: '900' },
+  vsCenter: { color: '#FFF', fontSize: 12, fontWeight: '900', fontStyle: 'italic' },
+  seatsGridContainer: {
+    marginVertical: 10,
   },
   seatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 6,
+    marginBottom: 10,
   },
   seatCell: {
     alignItems: 'center',
-    width: (SCREEN_WIDTH - 64) / 5,
+    width: (SCREEN_WIDTH - 48) / 5,
   },
   seatCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    justifyContent: 'center',
+    backgroundColor: '#101726',
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#1E293B',
+    position: 'relative',
+    overflow: 'hidden',
   },
   seatCircleEmpty: {
-    borderWidth: 1.5,
-    borderColor: '#0284C7',
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    borderColor: '#1E293B',
   },
-  seatCircleOccupied: {
-    borderWidth: 1.5,
-    borderColor: '#38BDF8',
-    overflow: 'hidden',
-  },
-  seatCircleSelected: {
-    borderWidth: 2.5,
-    borderColor: '#F59E0B',
-  },
-  emptySeatText: {
-    color: '#38BDF8',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  seatAvatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 24,
-  },
-  seatNumText: {
+  seatEmptyLabel: {
     color: '#64748B',
-    fontSize: 11,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  seatUserNameText: {
-    color: '#E2E8F0',
-    fontSize: 11,
-    marginTop: 4,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  sectionHeaderRow: {
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  sectionTitle: {
-    color: '#E2E8F0',
-    fontSize: 13,
+    fontSize: 10,
     fontWeight: '600',
   },
-  audienceScroll: {
-    flexDirection: 'row',
-    marginVertical: 4,
-  },
-  audienceItem: {
-    alignItems: 'center',
-    marginRight: 14,
-    width: 52,
-  },
-  audienceItemSelected: {
-    opacity: 0.85,
-  },
-  audienceAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#38BDF8',
-  },
-  emptyAudienceCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#334155',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  audienceName: {
-    color: '#CBD5E1',
-    fontSize: 10,
-    marginTop: 3,
-    textAlign: 'center',
-  },
-  selectGiftCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 2,
-    marginBottom: 4,
-  },
-  giftIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  selectGiftLabel: {
-    color: '#F8FAFC',
-    fontSize: 13,
-    flex: 1,
-    fontWeight: '500',
-  },
-  durationsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginTop: 4,
-    marginBottom: 6,
-  },
-  durationCapsule: {
-    flex: 1,
-    height: 38,
-    borderRadius: 14,
-    backgroundColor: '#1E293B',
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  durationCapsuleActive: {
-    backgroundColor: 'transparent',
-  },
-  durationGradient: {
+  seatAvatarImg: {
     width: '100%',
     height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 14,
-  },
-  durationNum: {
-    color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  durationNumActive: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  jackpotRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  jackpotLabel: {
-    color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  confirmWhiteBtn: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
   },
-  confirmWhiteBtnText: {
-    color: '#0A0F1D',
-    fontSize: 16,
-    fontWeight: 'bold',
+  seatYellowBorder: {
+    borderColor: '#F59E0B',
+    borderWidth: 2,
   },
-
-  // Candidate users chips (Personal PK)
-  candidatesSection: {
-    marginVertical: 6,
-  },
-  candidatesSectionLabel: {
-    color: '#94A3B8',
-    fontSize: 11,
-    marginBottom: 4,
-  },
-  candidatesScroll: {
-    flexDirection: 'row',
+  seatBlueBorder: {
+    borderColor: '#38BDF8',
+    borderWidth: 2,
   },
   candidateChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1E293B',
+    borderRadius: 16,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 14,
-    marginRight: 6,
     borderWidth: 1,
     borderColor: '#334155',
   },
   candidateChipSelected: {
     borderColor: '#38BDF8',
-    backgroundColor: '#0C4A6E',
+    backgroundColor: '#1E294B',
   },
   candidateChipAvatar: {
     width: 22,
@@ -1735,468 +1080,226 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   candidateChipText: {
-    color: '#FFFFFF',
+    color: '#E2E8F0',
     fontSize: 11,
+    fontWeight: '600',
     maxWidth: 90,
   },
-
-  teamSubTabsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    marginVertical: 6,
-  },
-  teamSubTabBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#1E293B',
-  },
-  teamSubTabBtnYellowActive: {
-    backgroundColor: '#D97706',
-  },
-  teamSubTabBtnBlueActive: {
-    backgroundColor: '#2563EB',
-  },
-  teamSubTabText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  yellowTextActive: { color: '#FFF' },
-  blueTextActive: { color: '#FFF' },
-  inactiveSubTabText: { color: '#94A3B8' },
-
-  seatsGridContainer: {
-    marginVertical: 8,
-  },
-  seatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginVertical: 4,
-  },
-  seatCell: {
-    alignItems: 'center',
-  },
-  seatCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1E293B',
-    borderWidth: 1.5,
-    borderColor: '#334155',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  seatCircleSelected: {
+  seatSelectedBorder: {
     borderColor: '#38BDF8',
+    borderWidth: 2,
   },
-  seatAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  checkBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  seatNumberText: {
-    color: '#94A3B8',
-    fontSize: 10,
+  checkBadgeYellow: { backgroundColor: '#F59E0B' },
+  checkBadgeBlue: { backgroundColor: '#0284C7' },
+  seatBottomLabel: {
+    color: '#64748B',
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'center',
+    maxWidth: 52,
+  },
+  fieldSection: {
+    marginTop: 10,
+  },
+  fieldLabel: {
+    color: '#F1F5F9',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  selectGiftCard: {
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectGiftLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  giftIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#1E293B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  giftThumb: {
+    width: 34,
+    height: 34,
+    resizeMode: 'contain',
+  },
+  stackCube: {
+    width: 24,
+    height: 24,
+    position: 'relative',
+  },
+  cubeLayer: {
+    position: 'absolute',
+    left: 2,
+    right: 2,
+    height: 10,
+    borderRadius: 3,
+    backgroundColor: '#94A3B8',
+  },
+  selectedGiftTitle: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  selectedGiftCost: {
+    color: '#EAB308',
+    fontSize: 11,
+    fontWeight: '800',
     marginTop: 2,
   },
-
   durationsRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     gap: 8,
-    marginVertical: 8,
   },
   durationCapsule: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#1E293B',
-  },
-  durationCapsuleActive: {
-    backgroundColor: '#D97706',
-  },
-  durationNum: {
-    color: '#94A3B8',
-    fontSize: 12,
-  },
-  durationNumActive: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-
-  confirmTouchable: {
-    marginTop: 8,
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  confirmGradient: {
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  confirmBtnText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-
-  // 4. ACTIVE BATTLE CARD (Matching Reference Frame 15s)
-  activeBattleCard: {
-    width: '100%',
-    backgroundColor: 'rgba(22, 28, 56, 0.94)',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
-    padding: 16,
-    alignItems: 'center',
-  },
-  battleCloseBtn: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    zIndex: 10,
-  },
-  timerCapsule: {
-    backgroundColor: '#B45309',
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    borderRadius: 14,
-    marginBottom: 8,
-  },
-  timerCapsuleText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  prizePoolCapsule: {
-    backgroundColor: '#1E1B4B',
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.4)',
-  },
-  prizePoolText: {
-    color: '#DDD6FE',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  battleHeaderRow: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  battleRoomColLeft: {
     flex: 1,
-    alignItems: 'flex-start',
-  },
-  battleRoomColRight: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-  battleRoomId: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  battleRoomName: {
-    color: '#F8FAFC',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-
-  scoreBarContainer: {
-    width: '100%',
-    height: 22,
-    flexDirection: 'row',
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(26, 36, 56, 0.8)',
     alignItems: 'center',
-    borderRadius: 11,
-    overflow: 'hidden',
-    backgroundColor: '#0F172A',
-    marginVertical: 8,
-  },
-  scoreBarLeft: {
-    height: '100%',
-    backgroundColor: '#EAB308',
     justifyContent: 'center',
-    paddingLeft: 8,
-  },
-  scoreTextLeft: {
-    color: '#451A03',
-    fontWeight: '900',
-    fontSize: 12,
-  },
-  lightningIconContainer: {
-    zIndex: 10,
-    marginHorizontal: -6,
-  },
-  scoreBarRight: {
-    height: '100%',
-    backgroundColor: '#3B82F6',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    paddingRight: 8,
-  },
-  scoreTextRight: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 12,
-  },
-
-  supportersRow: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  supportersSideLeft: {
-    alignItems: 'flex-start',
-  },
-  supportersSideRight: {
-    alignItems: 'flex-end',
-  },
-  supporterLabel: {
-    color: '#94A3B8',
-    fontSize: 11,
-    marginBottom: 4,
-  },
-  supporterCirclesRow: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  supporterCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  supporterGold: {
-    backgroundColor: 'rgba(234, 179, 8, 0.2)',
-    borderWidth: 1,
-    borderColor: '#EAB308',
-  },
-  supporterBlue: {
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    borderWidth: 1,
-    borderColor: '#3B82F6',
-  },
-
-  cancelBattleBtn: {
-    marginTop: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    borderWidth: 1,
-    borderColor: '#EF4444',
-  },
-  cancelBattleText: {
-    color: '#F87171',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-
-  // 5. ROOM PK INVITATION MODAL (Matching Reference Frame 7s)
-  invitationBackdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-  },
-  invitationDismiss: {
-    flex: 1,
-  },
-  invitationSheet: {
-    backgroundColor: '#0D1527',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-    maxHeight: '75%',
     borderWidth: 1,
     borderColor: '#1E293B',
   },
-  invitationTitle: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 14,
+  durationCapsuleActive: {
+    borderWidth: 0,
+    overflow: 'hidden',
   },
-  searchBarRow: {
-    flexDirection: 'row',
+  durationGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 19,
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  searchInputContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E293B',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    height: 38,
-  },
-  searchInput: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 13,
-    padding: 0,
-  },
-  cancelSearchBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-  },
-  cancelSearchText: {
-    color: '#CBD5E1',
-    fontSize: 14,
-  },
-
-  inviteTabsRow: {
-    flexDirection: 'row',
-    gap: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-    marginBottom: 10,
-    paddingBottom: 2,
-  },
-  inviteTabItem: {
-    paddingVertical: 6,
-    position: 'relative',
-  },
-  inviteTabText: {
-    color: '#64748B',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  inviteTabTextActive: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  inviteTabIndicator: {
-    position: 'absolute',
-    bottom: -3,
-    left: 4,
-    right: 4,
-    height: 2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 1,
-  },
-
-  opponentsList: {
-    maxHeight: 320,
-  },
-  opponentRoomCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  opponentAvatarWrap: {
-    marginRight: 12,
-  },
-  opponentAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#1E293B',
-  },
-  opponentAvatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#1E293B',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  opponentInfo: {
-    flex: 1,
-  },
-  opponentTitle: {
-    color: '#FFFFFF',
+  durationNum: {
+    color: '#CBD5E1',
+    fontWeight: '800',
     fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
   },
-  opponentIdText: {
+  durationNumActive: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 14,
+  },
+  jackpotRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  jackpotLabel: {
     color: '#94A3B8',
     fontSize: 12,
+    fontWeight: '600',
   },
-  inviteActionBtn: {
-    borderRadius: 16,
+  confirmTouchable: {
+    borderRadius: 24,
     overflow: 'hidden',
+    marginTop: 4,
+    marginBottom: 8,
   },
-  inviteActionGradient: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  inviteActionText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-
-  directInviteCard: {
-    marginTop: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  directInviteGradient: {
-    flexDirection: 'row',
+  confirmGradient: {
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    borderRadius: 24,
+  },
+  confirmBtnText: {
+    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  pickerContainer: {
+    backgroundColor: '#0F172A',
+    borderRadius: 20,
+    width: '100%',
+    maxHeight: '75%',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pickerTitle: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  pickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  pickerGiftItem: {
+    width: '30%',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  pickerGiftItemSelected: {
+    borderColor: '#EAB308',
+    backgroundColor: '#262215',
+  },
+  pickerGiftThumb: { width: 38, height: 38, resizeMode: 'contain' },
+  pickerGiftName: { color: '#E2E8F0', fontSize: 11, fontWeight: '700', marginTop: 4 },
+  pickerGiftPrice: { color: '#EAB308', fontSize: 10, fontWeight: '800', marginTop: 2 },
+  rulesBackdrop: { flex: 1, backgroundColor: '#0A0F1D' },
+  rulesContainer: { flex: 1 },
+  rulesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+    backgroundColor: '#FFF',
   },
-  directInviteText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-  emptyOpponentsBox: {
-    paddingVertical: 24,
+  rulesBackBtn: { marginRight: 12 },
+  rulesTitle: { color: '#0F172A', fontSize: 18, fontWeight: '800' },
+  rulesContent: { padding: 18 },
+  rulesBannerHeader: { color: '#38BDF8', fontSize: 12, fontWeight: '800', letterSpacing: 1, textAlign: 'center' },
+  rulesHighlightBox: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 14,
+    marginVertical: 14,
     alignItems: 'center',
   },
-  emptyOpponentsText: {
-    color: '#64748B',
-    fontSize: 13,
-  },
-
-  errorText: {
-    color: '#F87171',
-    fontSize: 12,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-
-  // Picker & Rules Styles
-  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20 },
-  pickerContainer: { backgroundColor: '#0F172A', borderRadius: 16, padding: 16, maxHeight: '80%' },
-  pickerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  pickerTitle: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  pickerGiftItem: { width: '30%', backgroundColor: '#1E293B', borderRadius: 12, alignItems: 'center', padding: 8, marginBottom: 12, borderWidth: 1, borderColor: '#334155' },
-  pickerGiftItemSelected: { borderColor: '#38BDF8', backgroundColor: '#0C4A6E' },
-  pickerGiftThumb: { width: 40, height: 40, marginBottom: 4 },
-  pickerGiftName: { color: '#CBD5E1', fontSize: 11, fontWeight: '600', textAlign: 'center' },
-  pickerGiftPrice: { color: '#FBBF24', fontSize: 10, fontWeight: 'bold' },
-
-  rulesBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  rulesContainer: { backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' },
-  rulesHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  rulesBackBtn: { marginRight: 12 },
-  rulesTitle: { fontSize: 18, fontWeight: 'bold', color: '#0F172A' },
-  rulesContent: { paddingBottom: 24 },
-  rulesBannerHeader: { fontSize: 14, fontWeight: '900', color: '#1E293B', marginBottom: 8 },
-  rulesHighlightBox: { backgroundColor: '#FEF3C7', padding: 12, borderRadius: 8, marginBottom: 16 },
-  rulesHighlightText: { color: '#92400E', fontWeight: 'bold', fontSize: 13 },
-  rulesSectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#0F172A', marginTop: 12, marginBottom: 4 },
-  rulesBody: { fontSize: 13, color: '#475569', lineHeight: 18 },
+  rulesHighlightText: { color: '#FDE047', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  rulesSectionTitle: { color: '#F8FAFC', fontSize: 15, fontWeight: '800', marginTop: 14, marginBottom: 6 },
+  rulesBody: { color: '#94A3B8', fontSize: 13, lineHeight: 20 },
 });

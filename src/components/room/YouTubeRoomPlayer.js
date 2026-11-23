@@ -261,10 +261,49 @@ export default function YouTubeRoomPlayer({
   };
 
   // Handle messages from WebView
+  const handleSuggestedVideoSelected = useCallback(async (newVideoId) => {
+    if (!newVideoId || newVideoId === session?.videoId) return;
+    setEmbedError(false);
+    setIsPlaying(true);
+    setCurrentTime(0);
+    setLoading(true);
+
+    webViewRef.current?.injectJavaScript(`
+      if (window.player && window.player.loadVideoById) {
+        window.player.loadVideoById('${newVideoId}', 0);
+        window.player.playVideo();
+      }
+      true;
+    `);
+
+    const newSessionData = {
+      videoId: newVideoId,
+      title: 'Suggested Video',
+      channelTitle: 'YouTube',
+      status: 'playing',
+      currentTime: 0,
+      selectedBy: currentUser?.name || 'Room Member',
+    };
+    setSession(prev => ({ ...(prev || {}), ...newSessionData }));
+
+    try {
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('roomWatch:selectVideo', { roomId, videoData: newSessionData });
+      }
+      await apiUtil.post(`/voice-club/rooms/${roomId}/watch/select`, newSessionData);
+    } catch (err) {
+      console.warn('[YouTubeRoomPlayer] failed to sync suggested video selection:', err);
+    }
+  }, [session?.videoId, currentUser, roomId]);
+
+  // Handle messages from WebView
   const handleMessage = (event) => {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.event === 'onReady') {
+      if (msg.event === 'onSelectSuggestedVideo' && msg.videoId) {
+        handleSuggestedVideoSelected(msg.videoId);
+      } else if (msg.event === 'onReady') {
         setPlayerReady(true);
         setLoading(false);
         if (msg.duration) setDuration(msg.duration);
@@ -297,6 +336,9 @@ export default function YouTubeRoomPlayer({
         }
       } else if (msg.event === 'onStateChange') {
         // 1 = PLAYING, 2 = PAUSED, 0 = ENDED
+        if (msg.videoId && msg.videoId !== session?.videoId) {
+          handleSuggestedVideoSelected(msg.videoId);
+        }
         if (msg.data === 1) setIsPlaying(true);
         else if (msg.data === 2) setIsPlaying(false);
         else if (msg.data === 0) {
@@ -410,10 +452,20 @@ export default function YouTubeRoomPlayer({
           }
 
           function onPlayerStateChange(event) {
+            var currentVid = '';
+            try {
+              if (player && player.getVideoUrl) {
+                var url = player.getVideoUrl();
+                var m = url && url.match(/v=([\w-]{11})/);
+                if (m && m[1]) currentVid = m[1];
+              }
+            } catch(e) {}
+
             window.ReactNativeWebView.postMessage(JSON.stringify({
               event: 'onStateChange',
               data: event.data,
-              currentTime: player.getCurrentTime()
+              currentTime: player && player.getCurrentTime ? player.getCurrentTime() : 0,
+              videoId: currentVid
             }));
           }
 
@@ -423,6 +475,30 @@ export default function YouTubeRoomPlayer({
               code: event.data
             }));
           }
+
+          // Intercept clicks on links / suggested videos inside YouTube iframe
+          window.addEventListener('click', function(e) {
+            var el = e.target;
+            while (el && el.tagName !== 'A') {
+              el = el.parentElement;
+            }
+            if (el && el.href) {
+              var m = el.href.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+              if (m && m[1]) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  event: 'onSelectSuggestedVideo',
+                  videoId: m[1]
+                }));
+                if (player && player.loadVideoById) {
+                  player.loadVideoById(m[1], 0);
+                  player.playVideo();
+                }
+                return false;
+              }
+            }
+          }, true);
 
           setInterval(function() {
             if (player && player.getCurrentTime) {
@@ -460,6 +536,28 @@ export default function YouTubeRoomPlayer({
           onMessage={handleMessage}
           scrollEnabled={false}
           bounces={false}
+          setSupportMultipleWindows={false}
+          onShouldStartLoadWithRequest={(request) => {
+            const { url } = request;
+            if (!url) return true;
+            if (url === 'about:blank' || url.startsWith('https://yaroapp.in')) {
+              return true;
+            }
+
+            // Suggested or recommended video link clicked: stay inside YARO room!
+            const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+            if (ytMatch && ytMatch[1]) {
+              handleSuggestedVideoSelected(ytMatch[1]);
+              return false; // Prevent external browser / YouTube app launch
+            }
+
+            // Block any other external navigation (ads, channels, external links)
+            if (url.includes('youtube.com') || url.includes('youtu.be') || url.startsWith('vnd.youtube') || url.startsWith('intent:')) {
+              return false;
+            }
+
+            return false;
+          }}
         />
       ) : (
         /* Non-embeddable error card */

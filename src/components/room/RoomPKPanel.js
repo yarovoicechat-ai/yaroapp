@@ -24,9 +24,10 @@ export default function RoomPKPanel({
   }, [openTrigger]);
   const [opponents, setOpponents] = useState([]);
   const [history, setHistory] = useState([]);
-  const [target, setTarget] = useState('');
+  const [targetUserId, setTargetUserId] = useState('');
+  const [targetRoomId, setTargetRoomId] = useState('');
   const [selectedDuration, setSelectedDuration] = useState(300);
-  const [selectedType, setSelectedType] = useState('room');
+  const [selectedType, setSelectedType] = useState('user');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -177,28 +178,45 @@ export default function RoomPKPanel({
     } finally { setBusy(false); }
   };
 
-  const sendInvite = value => {
+  const sendUserInvite = value => {
     const rawVal = String(value || '').trim();
-    if (!rawVal) { setError('Enter User ID or select an active user.'); return; }
+    if (!rawVal) { setError('Enter User ID of an active user in this room.'); return; }
 
-    if (selectedType === 'user') {
-      const foundInRoom = roomCandidates.some(c =>
-        String(c.userId) === rawVal ||
-        String(c.id) === rawVal ||
-        String(c._id) === rawVal
-      );
-      if (!foundInRoom && roomCandidates.length > 0) {
-        setError('User must be in this room for User PK.');
-        return;
-      }
+    const foundInRoom = roomCandidates.some(c =>
+      String(c.userId) === rawVal ||
+      String(c.id) === rawVal ||
+      String(c._id) === rawVal
+    );
+    if (!foundInRoom && roomCandidates.length > 0) {
+      setError('User must be in this room for User PK.');
+      return;
     }
 
     action('/invite', {
-      targetRoomId: rawVal,
       targetUserId: rawVal,
+      targetRoomId: rawVal,
       durationSeconds: selectedDuration,
-      pkType: selectedType,
+      pkType: 'user',
     });
+  };
+
+  const sendRoomInvite = value => {
+    const rawVal = String(value || '').trim();
+    if (!rawVal) { setError('Enter Opponent Room ID.'); return; }
+
+    action('/invite', {
+      targetRoomId: rawVal,
+      durationSeconds: selectedDuration,
+      pkType: 'room',
+    });
+  };
+
+  const sendInvite = value => {
+    if (selectedType === 'user') {
+      sendUserInvite(value);
+    } else {
+      sendRoomInvite(value);
+    }
   };
   const respond = decision => action(`/${match.id}/respond`, { decision });
   const inProgress = match && ['invited', 'active'].includes(match.status);
@@ -368,8 +386,8 @@ export default function RoomPKPanel({
                     <View style={styles.idRow}>
                       <TextInput
                         testID="pk-user-id"
-                        value={target}
-                        onChangeText={setTarget}
+                        value={targetUserId}
+                        onChangeText={setTargetUserId}
                         placeholder="Enter Room User ID"
                         placeholderTextColor="#64748B"
                         autoCapitalize="none"
@@ -381,9 +399,9 @@ export default function RoomPKPanel({
                         testID="pk-send-invite"
                         disabled={busy}
                         style={styles.primary}
-                        onPress={() => sendInvite(target)}
+                        onPress={() => sendUserInvite(targetUserId)}
                       >
-                        <Text style={styles.primaryText}>Invite</Text>
+                        <Text style={styles.primaryText}>Invite User</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -396,8 +414,8 @@ export default function RoomPKPanel({
                         disabled={!isOwner || busy}
                         style={styles.opponent}
                         onPress={() => {
-                          setTarget(String(candidate.userId));
-                          sendInvite(String(candidate.userId));
+                          setTargetUserId(String(candidate.userId));
+                          sendUserInvite(String(candidate.userId));
                         }}
                       >
                         {Boolean(candidate.avatar) ? (
@@ -421,50 +439,49 @@ export default function RoomPKPanel({
               ) : (
                 <>
                   <Text style={styles.sectionTitle}>Challenge Opponent Room (Room PK)</Text>
-                  {!isOwner && <Text style={styles.hint}>Only the host can send or accept PK invitations.</Text>}
+                  {!isOwner && <Text style={styles.hint}>Only the host can send or accept PK invitations with other live rooms.</Text>}
                   {isOwner && (
                     <View style={styles.idRow}>
                       <TextInput
                         testID="pk-room-id"
-                        value={target}
-                        onChangeText={setTarget}
+                        value={targetRoomId}
+                        onChangeText={setTargetRoomId}
                         placeholder="Enter Opponent Room ID"
                         placeholderTextColor="#64748B"
                         autoCapitalize="none"
-                        keyboardType="numeric"
                         style={styles.input}
                         editable={!busy}
                       />
                       <TouchableOpacity
-                        testID="pk-send-invite"
+                        testID="pk-send-invite-room"
                         disabled={busy}
                         style={styles.primary}
-                        onPress={() => sendInvite(target)}
+                        onPress={() => sendRoomInvite(targetRoomId)}
                       >
-                        <Text style={styles.primaryText}>Invite</Text>
+                        <Text style={styles.primaryText}>Invite Room</Text>
                       </TouchableOpacity>
                     </View>
                   )}
                   {loading && <ActivityIndicator color="#38BDF8" style={styles.loader} />}
                   {!loading && !opponents.length && (
-                    <Text style={styles.hint}>No active opponents available right now. Invite another user to start a live session.</Text>
+                    <Text style={styles.hint}>No active opponent rooms available right now. Invite another host to start a live session.</Text>
                   )}
                   {opponents.map(opponent => {
-                    const opponentUserId = opponent.userId || String(opponent.id || '').replace(/^room_/, '');
+                    const opponentRoomId = opponent.id || opponent.roomId || '';
                     return (
                       <TouchableOpacity
                         key={opponent.id}
                         disabled={!isOwner || busy}
                         style={styles.opponent}
                         onPress={() => {
-                          setTarget(opponentUserId);
-                          sendInvite(opponentUserId || opponent.id);
+                          setTargetRoomId(opponentRoomId);
+                          sendRoomInvite(opponentRoomId);
                         }}
                       >
                         {Boolean(opponent.coverImage) && <Image source={{ uri: opponent.coverImage }} style={styles.avatar} />}
                         <View style={styles.teamCopy}>
                           <Text style={styles.teamName}>{opponent.title || opponent.hostName}</Text>
-                          <Text style={styles.caption}>{opponent.hostName} • User ID: {opponentUserId}</Text>
+                          <Text style={styles.caption}>{opponent.hostName} • Room ID: {opponentRoomId}</Text>
                         </View>
                         {isOwner && <Text style={styles.inviteLink}>Invite</Text>}
                       </TouchableOpacity>

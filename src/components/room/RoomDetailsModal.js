@@ -115,9 +115,18 @@ export default function RoomDetailsModal({
               {roomTitle}
             </Text>
 
-            {/* ID */}
+            {/* Room ID */}
             <View style={styles.idRow}>
-              <IdentityDisplayId userId={owner?.userId || room?.roomId || room?.id} customDisplayId={roomId} badgeUrl={effectiveBadgeUrl} showBadge showPrefix showCopy textColor="#94A3B8" />
+              <IdentityDisplayId
+                userId={room?.roomId || room?.id || room?.channelName}
+                customDisplayId={roomId}
+                badgeUrl={effectiveBadgeUrl}
+                showBadge
+                showPrefix
+                prefix="Room ID: "
+                showCopy
+                textColor="#94A3B8"
+              />
             </View>
 
             {/* Stats Row: Total Diamonds | Members */}

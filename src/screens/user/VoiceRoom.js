@@ -1883,7 +1883,17 @@ export default function VoiceRoomScreen() {
             </Text>
             <View style={styles.headerRoomSubRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <IdentityDisplayId userId={room?.hostId || room?.owner?.userId || seats[0]?.user?.userId || room?.id || room?.roomId} customDisplayId={displayRoomId} badgeUrl={roomBadgeUrl} showBadge showPrefix showCopy={false} fontSize={10} textColor="#CBD5E1" />
+                <IdentityDisplayId
+                  userId={room?.id || room?.roomId || room?.channelName}
+                  customDisplayId={displayRoomId}
+                  badgeUrl={roomBadgeUrl}
+                  showBadge
+                  showPrefix
+                  prefix="Room ID: "
+                  showCopy={false}
+                  fontSize={10}
+                  textColor="#CBD5E1"
+                />
               </View>
               <TouchableOpacity
                 activeOpacity={0.7}

@@ -157,7 +157,57 @@ describe('User PK in Same Room Enforcement', () => {
       '/voice-club/rooms/room_pk_101/pk/invite',
       expect.objectContaining({
         targetRoomId: '1002',
+        targetUserId: '1002',
         pkType: 'user',
+      })
+    );
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('separately handles Room PK with Room ID', async () => {
+    let root;
+    await act(async () => {
+      root = renderer.create(
+        <RoomPKPanel
+          roomId="room_pk_101"
+          isOwner={true}
+          openTrigger={1}
+          roomSeats={mockRoomSeats}
+          roomUsers={mockOnlineUsers}
+          currentUser={currentUser}
+        />
+      );
+    });
+
+    const instance = root.root;
+
+    // Switch to Room PK
+    const roomPkTouchable = instance.findByProps({ testID: 'pk-mode-room' });
+    await act(async () => {
+      roomPkTouchable.props.onPress();
+    });
+
+    // Enter Opponent Room ID
+    const input = instance.findByProps({ testID: 'pk-room-id' });
+    await act(async () => {
+      input.props.onChangeText('room_opp_555');
+    });
+
+    // Tap Invite Room
+    const inviteBtn = instance.findByProps({ testID: 'pk-send-invite-room' });
+    await act(async () => {
+      inviteBtn.props.onPress();
+    });
+
+    // Verify API called with pkType: 'room' and targetRoomId: 'room_opp_555'
+    expect(apiUtil.post).toHaveBeenCalledWith(
+      '/voice-club/rooms/room_pk_101/pk/invite',
+      expect.objectContaining({
+        targetRoomId: 'room_opp_555',
+        pkType: 'room',
       })
     );
 

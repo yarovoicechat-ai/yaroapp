@@ -522,14 +522,20 @@ export default function RoomPKPanel({
         animationType="fade"
         onRequestClose={() => setVisible(false)}
       >
-        <View style={styles.popupBackdrop}>
+        <View style={[styles.popupBackdrop, panelMode === 'in_room' && !isPKLive && styles.bottomSheetBackdrop]}>
           <TouchableOpacity
             style={styles.dismissOverlay}
             activeOpacity={1}
             onPress={() => setVisible(false)}
           />
 
-          <View style={[styles.popupContainer, { paddingBottom: Math.max(bottomSafePadding, 16) }]}>
+          <View
+            style={[
+              styles.popupContainer,
+              panelMode === 'in_room' && !isPKLive && styles.bottomSheetContainer,
+              { paddingBottom: Math.max(bottomSafePadding, 16) },
+            ]}
+          >
 
             {/* 1. Speech Bubble Tooltip (Shown in Room PK mode or when PK is live) */}
             {(panelMode === 'room_pk' || isPKLive) && (
@@ -644,16 +650,73 @@ export default function RoomPKPanel({
                     </View>
                   </>
                 ) : (
-                  /* IN-ROOM PK MODE: Vote PK | Personal Gift PK | Team Gift PK */
-                  <>
-                    <View style={styles.cardHeaderRow}>
-                      <Text style={[styles.roomIdHeader, { color: '#F8FAFC' }]}>Voice Room PK</Text>
+                  /* IN-ROOM PK MODE: Vote PK | Personal Gift PK | Team Gift PK (Matching Screenshot 1:1) */
+                  <View style={styles.inRoomBottomSheet}>
+                    {/* Top Tabs: Vote PK | Personal gift PK | Team gift pk */}
+                    <View style={styles.topTabsBar}>
                       <TouchableOpacity
-                        onPress={() => setVisible(false)}
-                        style={styles.cardCloseBtn}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        testID="pk-tab-vote"
+                        style={[styles.tabItem, activeTab === 'vote' && styles.tabItemActive]}
+                        onPress={() => setActiveTab('vote')}
                       >
-                        <Icon name="close" size={16} color="#94A3B8" />
+                        {activeTab === 'vote' ? (
+                          <LinearGradient
+                            colors={['#F59E0B', '#2563EB']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.activeTabGradient}
+                          >
+                            <Text style={styles.activeTabText}>Vote PK</Text>
+                          </LinearGradient>
+                        ) : (
+                          <Text style={styles.inactiveTabText}>Vote PK</Text>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        testID="pk-mode-user"
+                        style={[styles.tabItem, activeTab === 'personal' && styles.tabItemActive]}
+                        onPress={() => setActiveTab('personal')}
+                      >
+                        {activeTab === 'personal' ? (
+                          <LinearGradient
+                            colors={['#F59E0B', '#2563EB']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.activeTabGradient}
+                          >
+                            <Text style={styles.activeTabText}>Personal gift PK</Text>
+                          </LinearGradient>
+                        ) : (
+                          <Text style={styles.inactiveTabText}>Personal gift PK</Text>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        testID="pk-mode-room"
+                        style={[styles.tabItem, activeTab === 'team' && styles.tabItemActive]}
+                        onPress={() => setActiveTab('team')}
+                      >
+                        {activeTab === 'team' ? (
+                          <LinearGradient
+                            colors={['#F59E0B', '#2563EB']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.activeTabGradient}
+                          >
+                            <Text style={styles.activeTabText}>Team gift pk</Text>
+                          </LinearGradient>
+                        ) : (
+                          <Text style={styles.inactiveTabText}>Team gift pk</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Hint: Calculated by the gifts received ⓘ */}
+                    <View style={styles.calcHintRow}>
+                      <Text style={styles.calcHintText}>Calculated by the gifts received</Text>
+                      <TouchableOpacity onPress={() => setRulesVisible(true)} style={{ marginLeft: 6 }}>
+                        <Icon name="help-circle-outline" size={16} color="#64748B" />
                       </TouchableOpacity>
                     </View>
 
@@ -662,180 +725,224 @@ export default function RoomPKPanel({
                       <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
                     )}
 
-                    {/* IN-ROOM MODES (Vote / Personal / Team) */}
-                    <View style={styles.inRoomConfigContainer}>
-                  {/* Top Tabs: Vote PK | Personal gift PK | Team gift pk */}
-                  <View style={styles.topTabsBar}>
-                    <TouchableOpacity
-                      testID="pk-tab-vote"
-                      style={[styles.tabItem, activeTab === 'vote' && styles.tabItemActive]}
-                      onPress={() => setActiveTab('vote')}
-                    >
-                      <Text style={activeTab === 'vote' ? styles.activeTabText : styles.inactiveTabText}>Vote PK</Text>
-                    </TouchableOpacity>
+                    {/* Sub-header for Team Gift PK */}
+                    {activeTab === 'team' && (
+                      <View style={styles.teamSubTabsRow}>
+                        <TouchableOpacity
+                          style={[styles.teamSubTabBtn, teamSubTab === 'yellow' && styles.teamSubTabBtnYellowActive]}
+                          onPress={() => setTeamSubTab('yellow')}
+                        >
+                          <Text style={[styles.teamSubTabText, teamSubTab === 'yellow' ? styles.yellowTextActive : styles.inactiveSubTabText]}>
+                            Yellow team
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.teamSubTabBtn, teamSubTab === 'blue' && styles.teamSubTabBtnBlueActive]}
+                          onPress={() => setTeamSubTab('blue')}
+                        >
+                          <Text style={[styles.teamSubTabText, teamSubTab === 'blue' ? styles.blueTextActive : styles.inactiveSubTabText]}>
+                            Blue team
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
 
-                    <TouchableOpacity
-                      testID="pk-mode-user"
-                      style={[styles.tabItem, activeTab === 'personal' && styles.tabItemActive]}
-                      onPress={() => setActiveTab('personal')}
-                    >
-                      <Text style={activeTab === 'personal' ? styles.activeTabText : styles.inactiveTabText}>Personal gift PK</Text>
-                    </TouchableOpacity>
+                    {/* 10-Seat Grid (Matching Screenshot 1:1) */}
+                    <View style={styles.seatsGridContainer}>
+                      {/* Row 1: Seats 1 - 5 */}
+                      <View style={styles.seatsRow}>
+                        {tenSeats.slice(0, 5).map(seat => {
+                          const uid = String(seat.user?.userId || '');
+                          const isYellow = teamYellowUserIds.includes(uid);
+                          const isBlue = teamBlueUserIds.includes(uid);
+                          const isPersonalSel = personalSelectedUserId === uid;
+                          const isSideA = voteSideAUserId === uid;
+                          const isSideB = voteSideBUserId === uid;
+                          const isSelected = isYellow || isBlue || isPersonalSel || isSideA || isSideB;
+                          return (
+                            <TouchableOpacity
+                              key={seat.seatNumber}
+                              style={styles.seatCell}
+                              onPress={() => handleSeatPress(seat)}
+                              activeOpacity={0.8}
+                            >
+                              <View
+                                style={[
+                                  styles.seatCircle,
+                                  seat.isEmpty ? styles.seatCircleEmpty : styles.seatCircleOccupied,
+                                  isSelected && styles.seatCircleSelected,
+                                  isYellow && { borderColor: '#F59E0B', borderWidth: 2.5 },
+                                  isBlue && { borderColor: '#3B82F6', borderWidth: 2.5 },
+                                ]}
+                              >
+                                {seat.isEmpty ? (
+                                  <Text style={styles.emptySeatText}>Empty</Text>
+                                ) : (
+                                  <Image
+                                    source={{ uri: seat.user.avatar || 'https://via.placeholder.com/50' }}
+                                    style={styles.seatAvatarImage}
+                                  />
+                                )}
+                              </View>
+                              <Text
+                                style={seat.isEmpty ? styles.seatNumText : styles.seatUserNameText}
+                                numberOfLines={1}
+                              >
+                                {seat.isEmpty ? seat.seatNumber : seat.user.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
 
-                    <TouchableOpacity
-                      testID="pk-mode-room"
-                      style={[styles.tabItem, activeTab === 'team' && styles.tabItemActive]}
-                      onPress={() => setActiveTab('team')}
-                    >
-                      <Text style={activeTab === 'team' ? styles.activeTabText : styles.inactiveTabText}>Team gift pk</Text>
-                    </TouchableOpacity>
-                  </View>
+                      {/* Row 2: Seats 6 - 10 */}
+                      <View style={styles.seatsRow}>
+                        {tenSeats.slice(5, 10).map(seat => {
+                          const uid = String(seat.user?.userId || '');
+                          const isYellow = teamYellowUserIds.includes(uid);
+                          const isBlue = teamBlueUserIds.includes(uid);
+                          const isPersonalSel = personalSelectedUserId === uid;
+                          const isSideA = voteSideAUserId === uid;
+                          const isSideB = voteSideBUserId === uid;
+                          const isSelected = isYellow || isBlue || isPersonalSel || isSideA || isSideB;
+                          return (
+                            <TouchableOpacity
+                              key={seat.seatNumber}
+                              style={styles.seatCell}
+                              onPress={() => handleSeatPress(seat)}
+                              activeOpacity={0.8}
+                            >
+                              <View
+                                style={[
+                                  styles.seatCircle,
+                                  seat.isEmpty ? styles.seatCircleEmpty : styles.seatCircleOccupied,
+                                  isSelected && styles.seatCircleSelected,
+                                  isYellow && { borderColor: '#F59E0B', borderWidth: 2.5 },
+                                  isBlue && { borderColor: '#3B82F6', borderWidth: 2.5 },
+                                ]}
+                              >
+                                {seat.isEmpty ? (
+                                  <Text style={styles.emptySeatText}>Empty</Text>
+                                ) : (
+                                  <Image
+                                    source={{ uri: seat.user.avatar || 'https://via.placeholder.com/50' }}
+                                    style={styles.seatAvatarImage}
+                                  />
+                                )}
+                              </View>
+                              <Text
+                                style={seat.isEmpty ? styles.seatNumText : styles.seatUserNameText}
+                                numberOfLines={1}
+                              >
+                                {seat.isEmpty ? seat.seatNumber : seat.user.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
 
-                  {/* Candidate Users Chips (for Personal PK) */}
-                  {activeTab === 'personal' && roomCandidates.length > 0 && (
-                    <View style={styles.candidatesSection}>
-                      <Text style={styles.candidatesSectionLabel}>Select User in Room:</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.candidatesScroll}>
-                        {roomCandidates.map(c => {
+                    {/* Audience in room: (Matching Screenshot) */}
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={styles.sectionTitle}>Audience in room:</Text>
+                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.audienceScroll}>
+                      {roomCandidates.length > 0 ? (
+                        roomCandidates.map(c => {
                           const isSel = personalSelectedUserId === String(c.userId || c.id);
                           return (
                             <TouchableOpacity
                               key={c.id}
-                              style={[styles.candidateChip, isSel && styles.candidateChipSelected]}
+                              style={[styles.audienceItem, isSel && styles.audienceItemSelected]}
                               onPress={() => handleCandidatePress(c)}
+                              activeOpacity={0.8}
                             >
-                              <Image source={{ uri: c.avatar || 'https://via.placeholder.com/40' }} style={styles.candidateChipAvatar} />
-                              <Text numberOfLines={1} style={styles.candidateChipText}>{c.name}</Text>
+                              <Image source={{ uri: c.avatar || 'https://via.placeholder.com/40' }} style={styles.audienceAvatar} />
+                              <Text style={styles.audienceName} numberOfLines={1}>{c.name}</Text>
                             </TouchableOpacity>
                           );
-                        })}
-                      </ScrollView>
-                    </View>
-                  )}
+                        })
+                      ) : (
+                        <View style={styles.audienceItem}>
+                          <View style={styles.emptyAudienceCircle}>
+                            <Icon name="person-outline" size={18} color="#64748B" />
+                          </View>
+                          <Text style={styles.audienceName}>No audience</Text>
+                        </View>
+                      )}
+                    </ScrollView>
 
-                  {/* Sub-header for Team Gift PK */}
-                  {activeTab === 'team' && (
-                    <View style={styles.teamSubTabsRow}>
-                      <TouchableOpacity
-                        style={[styles.teamSubTabBtn, teamSubTab === 'yellow' && styles.teamSubTabBtnYellowActive]}
-                        onPress={() => setTeamSubTab('yellow')}
-                      >
-                        <Text style={[styles.teamSubTabText, teamSubTab === 'yellow' ? styles.yellowTextActive : styles.inactiveSubTabText]}>
-                          Yellow team
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.teamSubTabBtn, teamSubTab === 'blue' && styles.teamSubTabBtnBlueActive]}
-                        onPress={() => setTeamSubTab('blue')}
-                      >
-                        <Text style={[styles.teamSubTabText, teamSubTab === 'blue' ? styles.blueTextActive : styles.inactiveSubTabText]}>
-                          Blue team
-                        </Text>
-                      </TouchableOpacity>
+                    {/* Select a gift (Matching Screenshot) */}
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={styles.sectionTitle}>Select a gift</Text>
                     </View>
-                  )}
-
-                  {/* 10-Seat Grid */}
-                  <View style={styles.seatsGridContainer}>
-                    <View style={styles.seatsRow}>
-                      {tenSeats.slice(0, 5).map(seat => {
-                        const uid = String(seat.user?.userId || '');
-                        const isYellow = teamYellowUserIds.includes(uid);
-                        const isBlue = teamBlueUserIds.includes(uid);
-                        const isPersonalSel = personalSelectedUserId === uid;
-                        const isSideA = voteSideAUserId === uid;
-                        const isSideB = voteSideBUserId === uid;
-                        const isSelected = isYellow || isBlue || isPersonalSel || isSideA || isSideB;
-                        return (
-                          <TouchableOpacity
-                            key={seat.seatNumber}
-                            style={styles.seatCell}
-                            onPress={() => handleSeatPress(seat)}
-                            activeOpacity={0.8}
-                          >
-                            <View style={[
-                              styles.seatCircle,
-                              isSelected && styles.seatCircleSelected,
-                              isYellow && { borderColor: '#F59E0B' },
-                              isBlue && { borderColor: '#3B82F6' },
-                            ]}>
-                              {seat.isEmpty ? (
-                                <MaterialCommunityIcons name="chair-rolling" size={18} color="#475569" />
-                              ) : (
-                                <Image source={{ uri: seat.user.avatar || 'https://via.placeholder.com/40' }} style={styles.seatAvatar} />
-                              )}
-                            </View>
-                            <Text style={styles.seatNumberText}>{seat.seatNumber}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                    <View style={styles.seatsRow}>
-                      {tenSeats.slice(5, 10).map(seat => {
-                        const uid = String(seat.user?.userId || '');
-                        const isYellow = teamYellowUserIds.includes(uid);
-                        const isBlue = teamBlueUserIds.includes(uid);
-                        const isPersonalSel = personalSelectedUserId === uid;
-                        const isSideA = voteSideAUserId === uid;
-                        const isSideB = voteSideBUserId === uid;
-                        const isSelected = isYellow || isBlue || isPersonalSel || isSideA || isSideB;
-                        return (
-                          <TouchableOpacity
-                            key={seat.seatNumber}
-                            style={styles.seatCell}
-                            onPress={() => handleSeatPress(seat)}
-                            activeOpacity={0.8}
-                          >
-                            <View style={[
-                              styles.seatCircle,
-                              isSelected && styles.seatCircleSelected,
-                              isYellow && { borderColor: '#F59E0B' },
-                              isBlue && { borderColor: '#3B82F6' },
-                            ]}>
-                              {seat.isEmpty ? (
-                                <MaterialCommunityIcons name="chair-rolling" size={18} color="#475569" />
-                              ) : (
-                                <Image source={{ uri: seat.user.avatar || 'https://via.placeholder.com/40' }} style={styles.seatAvatar} />
-                              )}
-                            </View>
-                            <Text style={styles.seatNumberText}>{seat.seatNumber}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-
-                  {/* Duration Row */}
-                  <View style={styles.durationsRow}>
-                    {[1, 3, 5, 10, 30].map(min => (
-                      <TouchableOpacity
-                        key={min}
-                        style={[styles.durationCapsule, selectedDurationMin === min && styles.durationCapsuleActive]}
-                        onPress={() => setSelectedDurationMin(min)}
-                      >
-                        <Text style={selectedDurationMin === min ? styles.durationNumActive : styles.durationNum}>{min}m</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  {/* Start In-Room PK Button */}
-                  <TouchableOpacity
-                    testID={activeTab === 'vote' ? 'pk-start-vote' : (activeTab === 'team' ? 'pk-start-team' : 'pk-send-invite')}
-                    style={styles.confirmTouchable}
-                    onPress={handleConfirm}
-                    disabled={busy}
-                  >
-                    <LinearGradient
-                      colors={['#F59E0B', '#3B82F6']}
-                      style={styles.confirmGradient}
+                    <TouchableOpacity
+                      style={styles.selectGiftCard}
+                      onPress={() => setGiftPickerVisible(true)}
+                      activeOpacity={0.85}
                     >
-                      <Text style={styles.confirmBtnText}>
-                        {activeTab === 'vote' ? 'Start Vote PK' : (activeTab === 'team' ? 'Start Team PK' : 'Start Personal PK')}
+                      <View style={styles.giftIconBox}>
+                        <MaterialCommunityIcons name="gift-outline" size={20} color="#38BDF8" />
+                      </View>
+                      <Text style={styles.selectGiftLabel}>
+                        {selectedGift ? selectedGift.name : 'All gifts count'}
                       </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-                </>
+                      <Icon name="chevron-forward" size={18} color="#64748B" />
+                    </TouchableOpacity>
+
+                    {/* Select duration(minutes) (Matching Screenshot) */}
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={styles.sectionTitle}>Select duration(minutes)</Text>
+                    </View>
+                    <View style={styles.durationsRow}>
+                      {[1, 3, 5, 10, 30].map(min => {
+                        const isSel = selectedDurationMin === min;
+                        return (
+                          <TouchableOpacity
+                            key={min}
+                            style={[styles.durationCapsule, isSel && styles.durationCapsuleActive]}
+                            onPress={() => setSelectedDurationMin(min)}
+                            activeOpacity={0.8}
+                          >
+                            {isSel ? (
+                              <LinearGradient
+                                colors={['#F59E0B', '#2563EB']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.durationGradient}
+                              >
+                                <Text style={styles.durationNumActive}>{min}</Text>
+                              </LinearGradient>
+                            ) : (
+                              <Text style={styles.durationNum}>{min}</Text>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    {/* Jackpot mode Toggle (Matching Screenshot) */}
+                    <View style={styles.jackpotRow}>
+                      <Text style={styles.jackpotLabel}>Jackpot mode</Text>
+                      <Switch
+                        value={jackpotEnabled}
+                        onValueChange={setJackpotEnabled}
+                        trackColor={{ false: '#334155', true: '#8B5CF6' }}
+                        thumbColor={jackpotEnabled ? '#DDD6FE' : '#94A3B8'}
+                      />
+                    </View>
+
+                    {/* Big White Confirm Button (Matching Screenshot 1:1) */}
+                    <TouchableOpacity
+                      testID={activeTab === 'vote' ? 'pk-start-vote' : (activeTab === 'team' ? 'pk-start-team' : 'pk-send-invite')}
+                      style={styles.confirmWhiteBtn}
+                      onPress={handleConfirm}
+                      disabled={busy}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.confirmWhiteBtnText}>Confirm</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </ScrollView>
             ) : (
@@ -1172,7 +1279,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+  bottomSheetBackdrop: {
+    justifyContent: 'flex-end',
   },
   dismissOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1180,6 +1290,15 @@ const styles = StyleSheet.create({
   popupContainer: {
     width: SCREEN_WIDTH - 28,
     alignItems: 'center',
+  },
+  bottomSheetContainer: {
+    width: SCREEN_WIDTH,
+    backgroundColor: '#0A0F1D',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    maxHeight: '85%',
   },
 
   // 1. Tooltip Bubble (White speech bubble with downward pointer)
@@ -1338,40 +1457,248 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // IN-ROOM CONFIG SECTION
-  inRoomConfigContainer: {
-    marginTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    paddingTop: 10,
+  // IN-ROOM CONFIG SECTION (Matching Screenshot 1:1)
+  inRoomBottomSheet: {
+    width: '100%',
+    paddingTop: 4,
   },
   topTabsBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 38,
-    marginBottom: 8,
+    height: 44,
+    marginBottom: 6,
+    gap: 8,
   },
   tabItem: {
     flex: 1,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  tabItemActive: {
+    backgroundColor: 'transparent',
+  },
+  activeTabGradient: {
+    width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 8,
-    backgroundColor: '#1E293B',
-    marginHorizontal: 3,
-  },
-  tabItemActive: {
-    backgroundColor: '#2563EB',
+    borderRadius: 18,
+    paddingHorizontal: 8,
   },
   activeTabText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 13,
   },
   inactiveTabText: {
     color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  calcHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  calcHintText: {
+    color: '#64748B',
     fontSize: 12,
+    fontWeight: '500',
+  },
+  seatsGridContainer: {
+    marginVertical: 6,
+  },
+  seatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 6,
+  },
+  seatCell: {
+    alignItems: 'center',
+    width: (SCREEN_WIDTH - 64) / 5,
+  },
+  seatCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  seatCircleEmpty: {
+    borderWidth: 1.5,
+    borderColor: '#0284C7',
+    backgroundColor: 'transparent',
+  },
+  seatCircleOccupied: {
+    borderWidth: 1.5,
+    borderColor: '#38BDF8',
+    overflow: 'hidden',
+  },
+  seatCircleSelected: {
+    borderWidth: 2.5,
+    borderColor: '#F59E0B',
+  },
+  emptySeatText: {
+    color: '#38BDF8',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  seatAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+  },
+  seatNumText: {
+    color: '#64748B',
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  seatUserNameText: {
+    color: '#E2E8F0',
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  sectionHeaderRow: {
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  audienceScroll: {
+    flexDirection: 'row',
+    marginVertical: 4,
+  },
+  audienceItem: {
+    alignItems: 'center',
+    marginRight: 14,
+    width: 52,
+  },
+  audienceItemSelected: {
+    opacity: 0.85,
+  },
+  audienceAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#38BDF8',
+  },
+  emptyAudienceCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audienceName: {
+    color: '#CBD5E1',
+    fontSize: 10,
+    marginTop: 3,
+    textAlign: 'center',
+  },
+  selectGiftCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  giftIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  selectGiftLabel: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    flex: 1,
+    fontWeight: '500',
+  },
+  durationsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  durationCapsule: {
+    flex: 1,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#1E293B',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  durationCapsuleActive: {
+    backgroundColor: 'transparent',
+  },
+  durationGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 14,
+  },
+  durationNum: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  durationNumActive: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  jackpotRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  jackpotLabel: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  confirmWhiteBtn: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  confirmWhiteBtnText: {
+    color: '#0A0F1D',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 
   // Candidate users chips (Personal PK)

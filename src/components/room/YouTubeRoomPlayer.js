@@ -352,16 +352,16 @@ export default function YouTubeRoomPlayer({
     );
   }
 
-  // HTML content for YouTube IFrame Player
+  // HTML content for YouTube IFrame Player (Native YouTube Progressive Player)
   const htmlContent = `
     <!DOCTYPE html>
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; background-color: #000; overflow: hidden; }
-          html, body { width: 100%; height: 100%; }
-          #player { width: 100%; height: 100%; pointer-events: none; }
+          * { margin: 0; padding: 0; box-sizing: border-box; background-color: #000; }
+          html, body { width: 100%; height: 100%; overflow: hidden; }
+          #player { width: 100%; height: 100%; }
         </style>
       </head>
       <body>
@@ -379,14 +379,10 @@ export default function YouTubeRoomPlayer({
                 videoId: '${session.videoId}',
                 playerVars: {
                   autoplay: 1,
-                  controls: 0,
+                  controls: 1,
+                  fs: 1,
                   rel: 0,
-                  showinfo: 0,
-                  modestbranding: 1,
                   playsinline: 1,
-                  fs: 0,
-                  iv_load_policy: 3,
-                  disablekb: 1,
                   origin: 'https://yaroapp.in',
                   enablejsapi: 1,
                   widget_referrer: 'https://yaroapp.in'
@@ -444,7 +440,7 @@ export default function YouTubeRoomPlayer({
 
   return (
     <View style={styles.playerContainer}>
-      {/* YouTube WebView */}
+      {/* Native YouTube WebView */}
       {!embedError ? (
         <WebView
           ref={webViewRef}
@@ -489,168 +485,45 @@ export default function YouTubeRoomPlayer({
 
       {/* Loading overlay */}
       {loading && (
-        <View style={styles.playerLoadingOverlay}>
+        <View style={styles.playerLoadingOverlay} pointerEvents="none">
           <ActivityIndicator size="small" color="#FFF" />
           <Text style={styles.playerLoadingText}>Connecting YouTube...</Text>
         </View>
       )}
 
-      {/* Touch capture layer to toggle controls */}
-      <TouchableOpacity
-        style={styles.touchOverlay}
-        activeOpacity={1}
-        onPress={pokeControls}
-      >
-        {/* Watching Together Badge */}
+      {/* Minimal Non-Blocking Top Header for Room Actions */}
+      <View style={styles.nativeTopHeader} pointerEvents="box-none">
         <View style={styles.watchingTogetherBadge}>
           <View style={styles.liveRedDot} />
           <Text style={styles.watchingTogetherText}>Watching Together</Text>
         </View>
 
-        {/* CONTROLS OVERLAY (Shown on tap) */}
-        {showControls && (
-          <View style={styles.controlsOverlay}>
-            {/* Top Bar: Title & Channel & Close */}
-            <View style={styles.topBar}>
-              <View style={styles.topInfo}>
-                <Text style={styles.topVideoTitle} numberOfLines={1}>
-                  {session.videoTitle || 'YouTube Video'}
-                </Text>
-                <Text style={styles.topChannelTitle} numberOfLines={1}>
-                  {session.channelTitle || 'YouTube'}
-                </Text>
-              </View>
-              {isHost && (
-                <TouchableOpacity
-                  style={styles.closeBtn}
-                  onPress={handleClose}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Icon name="close" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              )}
-            </View>
+        <View style={styles.topTitleWrapper}>
+          <Text style={styles.topVideoTitle} numberOfLines={1}>
+            {session.videoTitle || 'YouTube Video'}
+          </Text>
+        </View>
 
-            {/* Center Controls: -30s, -10s, Play/Pause, +10s, +30s */}
-            <View style={styles.centerControlsRow}>
-              {/* -30s */}
-              <TouchableOpacity
-                style={styles.skipBtn}
-                onPress={() => handleSeekOffset(-30)}
-                activeOpacity={0.75}
-              >
-                <MaterialCommunityIcons name="rewind-30" size={26} color="#FFFFFF" />
-                <Text style={styles.skipBtnLabel}>-30s</Text>
-              </TouchableOpacity>
+        <View style={styles.topActionsRow}>
+          {/* Search New Video Button */}
+          <TouchableOpacity
+            style={styles.topIconBtn}
+            onPress={onOpenSearch}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Icon name="search" size={18} color="#FFFFFF" />
+          </TouchableOpacity>
 
-              {/* -10s (Peeche) */}
-              <TouchableOpacity
-                style={styles.skipBtn}
-                onPress={() => handleSeekOffset(-10)}
-                activeOpacity={0.75}
-              >
-                <MaterialCommunityIcons name="rewind-10" size={30} color="#FFFFFF" />
-                <Text style={styles.skipBtnLabel}>-10s</Text>
-              </TouchableOpacity>
-
-              {/* Play / Pause Circle */}
-              <TouchableOpacity
-                style={styles.playPauseCircle}
-                onPress={handleTogglePlayPause}
-                activeOpacity={0.85}
-              >
-                <Icon
-                  name={isPlaying ? 'pause' : 'play'}
-                  size={32}
-                  color="#FFFFFF"
-                  style={!isPlaying ? { marginLeft: 3 } : null}
-                />
-              </TouchableOpacity>
-
-              {/* +10s (Aage) */}
-              <TouchableOpacity
-                style={styles.skipBtn}
-                onPress={() => handleSeekOffset(10)}
-                activeOpacity={0.75}
-              >
-                <MaterialCommunityIcons name="fast-forward-10" size={30} color="#FFFFFF" />
-                <Text style={styles.skipBtnLabel}>+10s</Text>
-              </TouchableOpacity>
-
-              {/* +30s */}
-              <TouchableOpacity
-                style={styles.skipBtn}
-                onPress={() => handleSeekOffset(30)}
-                activeOpacity={0.75}
-              >
-                <MaterialCommunityIcons name="fast-forward-30" size={26} color="#FFFFFF" />
-                <Text style={styles.skipBtnLabel}>+30s</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Bottom Controls Area: Seek Progress Bar + Bottom Bar */}
-            <View style={styles.bottomAreaContainer}>
-              {/* Interactive Seek / Progress Bar (Aage - Peeche karne ke liye) */}
-              <TouchableOpacity
-                style={styles.progressBarTouchArea}
-                activeOpacity={1}
-                onPress={(e) => {
-                  const { locationX } = e.nativeEvent;
-                  const total = duration || session?.durationSeconds || 1;
-                  const barWidth = SCREEN_WIDTH - 24;
-                  const pct = Math.max(0, Math.min(1, locationX / barWidth));
-                  handleSeekTo(Math.round(pct * total));
-                }}
-              >
-                <View style={styles.progressBarTrack}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        width: `${Math.min(100, Math.max(0, ((currentTime || 0) / (duration || session?.durationSeconds || 1)) * 100))}%`,
-                      },
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.progressBarThumb,
-                      {
-                        left: `${Math.min(97, Math.max(0, ((currentTime || 0) / (duration || session?.durationSeconds || 1)) * 100))}%`,
-                      },
-                    ]}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              {/* Bottom Bar: Search, Time, YouTube Logo */}
-              <View style={styles.bottomBar}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <TouchableOpacity
-                    style={styles.bottomSearchBtn}
-                    onPress={onOpenSearch}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Icon name="search" size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-
-                  {/* Time pill */}
-                  <View style={styles.timePill}>
-                    <Text style={styles.timeText}>
-                      {formatTime(currentTime)} / {formatTime(duration || session.durationSeconds)}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* YouTube Logo */}
-                <View style={styles.ytLogoContainer}>
-                  <MaterialCommunityIcons name="youtube" size={22} color="#EF4444" />
-                  <Text style={styles.ytLogoText}>YouTube</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-      </TouchableOpacity>
+          {/* Close Player Button */}
+          <TouchableOpacity
+            style={styles.topIconBtn}
+            onPress={handleClose}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Icon name="close" size={18} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
@@ -667,6 +540,35 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#000000',
+  },
+  nativeTopHeader: {
+    position: 'absolute',
+    top: 8,
+    left: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 20,
+  },
+  topTitleWrapper: {
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  topVideoTitle: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  topActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  topIconBtn: {
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderRadius: 14,
+    padding: 5,
   },
   touchOverlay: {
     ...StyleSheet.absoluteFillObject,

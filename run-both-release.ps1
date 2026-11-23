@@ -1,17 +1,18 @@
-Write-Host "Building Release APK..."
-Set-Location -Path android
+Set-Location -Path $PSScriptRoot
+Write-Host "Building Release APK in $PSScriptRoot..."
+Set-Location -Path "$PSScriptRoot\android"
 .\gradlew.bat assembleRelease
 if ($LASTEXITCODE -ne 0) {
     throw "Release build failed."
 }
-Set-Location -Path ..
+Set-Location -Path $PSScriptRoot
 
-$apkPath = "android\app\build\outputs\apk\release\app-arm64-v8a-release.apk"
+$apkPath = "$PSScriptRoot\android\app\build\outputs\apk\release\app-arm64-v8a-release.apk"
 if (-not (Test-Path $apkPath)) {
-    $apkPath = "android\app\build\outputs\apk\release\app-universal-release.apk"
+    $apkPath = "$PSScriptRoot\android\app\build\outputs\apk\release\app-universal-release.apk"
 }
 if (-not (Test-Path $apkPath)) {
-    $apkPath = "android\app\build\outputs\apk\release\app-release.apk"
+    $apkPath = "$PSScriptRoot\android\app\build\outputs\apk\release\app-release.apk"
 }
 
 if (-not (Test-Path $apkPath)) {
@@ -21,18 +22,19 @@ if (-not (Test-Path $apkPath)) {
 Write-Host "Finding connected devices..."
 $deviceLines = adb devices -l
 $uniqueTransports = @()
-$seenModels = @{}
 
 foreach ($line in $deviceLines) {
-    if ($line -match "model:(\S+).*transport_id:(\d+)") {
-        $model = $Matches[1]
+    if ($line -match "(\S+)\s+device\s+.*transport_id:(\d+)") {
+        $devId = $Matches[1]
         $tid = $Matches[2]
-        if (-not $seenModels.ContainsKey($model)) {
-            $seenModels[$model] = $tid
-            $uniqueTransports += [PSCustomObject]@{
-                Model = $model
-                TransportId = $tid
-            }
+        $model = "Device"
+        if ($line -match "model:(\S+)") {
+            $model = $Matches[1]
+        }
+        $uniqueTransports += [PSCustomObject]@{
+            DeviceId = $devId
+            Model = $model
+            TransportId = $tid
         }
     }
 }

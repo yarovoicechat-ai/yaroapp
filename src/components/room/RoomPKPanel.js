@@ -1,11 +1,19 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, AppState } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { apiUtil } from '../../utils/apiUtil';
 import { getSocket } from '../../sockets';
 import { normalizePKRoomId, roomPKView } from '../../utils/roomPkState';
 
-export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding = 16, openTrigger = 0 }) {
+export default function RoomPKPanel({
+  roomId,
+  isOwner = false,
+  bottomSafePadding = 16,
+  openTrigger = 0,
+  roomUsers = [],
+  roomSeats = [],
+  currentUser = null,
+}) {
   const [match, setMatch] = useState(null);
   const [visible, setVisible] = useState(false);
 
@@ -30,6 +38,57 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
   const lastSnapshot = useRef(null);
   const lastInvite = useRef('');
   const base = `/voice-club/rooms/${encodeURIComponent(roomId || '')}/pk`;
+
+  // Candidates in the same room for User PK (seated users + online users, excluding self)
+  const roomCandidates = useMemo(() => {
+    const map = new Map();
+    const myIds = new Set([
+      String(currentUser?._id || ''),
+      String(currentUser?.id || ''),
+      String(currentUser?.userId || ''),
+    ].filter(Boolean));
+
+    const isMe = (u) => [String(u?._id || ''), String(u?.id || ''), String(u?.userId || '')].some(id => id && myIds.has(id));
+
+    // 1. Add seated users in the room
+    (roomSeats || []).forEach(seat => {
+      if (seat?.user && !isMe(seat.user)) {
+        const u = seat.user;
+        const uid = String(u.userId || u._id || u.id || '');
+        if (uid) {
+          map.set(uid, {
+            id: uid,
+            _id: u._id || u.id,
+            userId: u.userId || uid,
+            name: u.name || `Mic #${seat.seatIndex + 1}`,
+            avatar: u.avatar || u.image || '',
+            isSeated: true,
+            seatIndex: seat.seatIndex,
+          });
+        }
+      }
+    });
+
+    // 2. Add online users in the room
+    const rawOnline = Array.isArray(roomUsers) ? roomUsers : Object.values(roomUsers || {});
+    rawOnline.forEach(u => {
+      if (u && !isMe(u)) {
+        const uid = String(u.userId || u._id || u.id || '');
+        if (uid && !map.has(uid)) {
+          map.set(uid, {
+            id: uid,
+            _id: u._id || u.id,
+            userId: u.userId || uid,
+            name: u.name || 'Member',
+            avatar: u.avatar || u.image || '',
+            isSeated: false,
+          });
+        }
+      }
+    });
+
+    return Array.from(map.values());
+  }, [roomSeats, roomUsers, currentUser]);
 
   const apply = useCallback(data => {
     if (data && !data.roomIds?.includes(normalizePKRoomId(roomId))) return;
@@ -121,8 +180,22 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
   const sendInvite = value => {
     const rawVal = String(value || '').trim();
     if (!rawVal) { setError('Enter User ID or select an active user.'); return; }
+
+    if (selectedType === 'user') {
+      const foundInRoom = roomCandidates.some(c =>
+        String(c.userId) === rawVal ||
+        String(c.id) === rawVal ||
+        String(c._id) === rawVal
+      );
+      if (!foundInRoom && roomCandidates.length > 0) {
+        setError('User must be in this room for User PK.');
+        return;
+      }
+    }
+
     action('/invite', {
       targetRoomId: rawVal,
+      targetUserId: rawVal,
       durationSeconds: selectedDuration,
       pkType: selectedType,
     });
@@ -219,12 +292,21 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
           <ScrollView showsVerticalScrollIndicator={false}>
             {scoreCard(false)}
             {match?.status === 'invited' && <View style={styles.inviteCard}>
-              <Text style={styles.body}>{view.side === 1 ? `${match.rooms?.[0]?.title} challenged you to ${Math.round((match.durationSeconds || 300) / 60)}-min ${match.pkType === 'user' ? 'User PK' : 'Room PK'}!` : 'Waiting for the other room owner to accept…'}</Text>
-              {isOwner && view.remaining > 0 && <View style={styles.actions}>
-                {view.side === 1 ? <>
+              <Text style={styles.body}>
+                {match.pkType === 'user'
+                  ? (view.side === 1 || String(currentUser?._id || currentUser?.id) === String(match.rooms?.[1]?.ownerId)
+                      ? `${match.rooms?.[0]?.title || 'Host'} challenged you to ${Math.round((match.durationSeconds || 300) / 60)}-min User PK!`
+                      : 'Waiting for challenged user to accept…')
+                  : (view.side === 1
+                      ? `${match.rooms?.[0]?.title} challenged you to ${Math.round((match.durationSeconds || 300) / 60)}-min Room PK!`
+                      : 'Waiting for the other room owner to accept…')
+                }
+              </Text>
+              {view.remaining > 0 && <View style={styles.actions}>
+                {(view.side === 1 || String(currentUser?._id || currentUser?.id) === String(match.rooms?.[1]?.ownerId)) ? <>
                   <TouchableOpacity testID="pk-decline" disabled={busy} style={styles.secondary} onPress={() => respond('decline')}><Text style={styles.body}>Decline</Text></TouchableOpacity>
                   <TouchableOpacity testID="pk-accept" disabled={busy} style={styles.primary} onPress={() => respond('accept')}><Text style={styles.primaryText}>Accept PK</Text></TouchableOpacity>
-                </> : <TouchableOpacity testID="pk-cancel" disabled={busy} style={styles.secondary} onPress={() => respond('cancel')}><Text style={styles.body}>Cancel invitation</Text></TouchableOpacity>}
+                </> : (isOwner ? <TouchableOpacity testID="pk-cancel" disabled={busy} style={styles.secondary} onPress={() => respond('cancel')}><Text style={styles.body}>Cancel invitation</Text></TouchableOpacity> : null)}
               </View>}
             </View>}
             {match?.status === 'active' && <Text style={styles.hint}>Send gifts to your team to support your side. Top 3 senders are ranked above.</Text>}
@@ -239,6 +321,7 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
                 <Text style={styles.selectorLabel}>Battle Mode</Text>
                 <View style={styles.pillRow}>
                   <TouchableOpacity
+                    testID="pk-mode-room"
                     style={[styles.optionPill, selectedType === 'room' && styles.optionPillActive]}
                     onPress={() => setSelectedType('room')}
                   >
@@ -246,6 +329,7 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
                     <Text style={[styles.optionPillText, selectedType === 'room' && styles.optionPillTextActive]}>Room PK</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
+                    testID="pk-mode-user"
                     style={[styles.optionPill, selectedType === 'user' && styles.optionPillActive]}
                     onPress={() => setSelectedType('user')}
                   >
@@ -276,36 +360,118 @@ export default function RoomPKPanel({ roomId, isOwner = false, bottomSafePadding
                 </View>
               </View>
 
-              <Text style={styles.sectionTitle}>Challenge Opponent (User ID)</Text>
-              {!isOwner && <Text style={styles.hint}>Only the host can send or accept PK invitations.</Text>}
-              {isOwner && <View style={styles.idRow}>
-                <TextInput testID="pk-room-id" value={target} onChangeText={setTarget} placeholder="Enter User ID" placeholderTextColor="#64748B"
-                  autoCapitalize="none" keyboardType="numeric" style={styles.input} editable={!busy} />
-                <TouchableOpacity testID="pk-send-invite" disabled={busy} style={styles.primary} onPress={() => sendInvite(target)}><Text style={styles.primaryText}>Invite</Text></TouchableOpacity>
-              </View>}
-              {loading && <ActivityIndicator color="#38BDF8" style={styles.loader} />}
-              {!loading && !opponents.length && <Text style={styles.hint}>No active opponents available right now. Invite another user to start a live session.</Text>}
-              {opponents.map(opponent => {
-                const opponentUserId = opponent.userId || String(opponent.id || '').replace(/^room_/, '');
-                return (
-                  <TouchableOpacity
-                    key={opponent.id}
-                    disabled={!isOwner || busy}
-                    style={styles.opponent}
-                    onPress={() => {
-                      setTarget(opponentUserId);
-                      sendInvite(opponentUserId || opponent.id);
-                    }}
-                  >
-                    {Boolean(opponent.coverImage) && <Image source={{ uri: opponent.coverImage }} style={styles.avatar} />}
-                    <View style={styles.teamCopy}>
-                      <Text style={styles.teamName}>{opponent.title || opponent.hostName}</Text>
-                      <Text style={styles.caption}>{opponent.hostName} • User ID: {opponentUserId}</Text>
+              {selectedType === 'user' ? (
+                <>
+                  <Text style={styles.sectionTitle}>Challenge User in Room (User PK)</Text>
+                  <Text style={styles.hint}>User PK is a 1v1 battle with an active user in this room.</Text>
+                  {isOwner && (
+                    <View style={styles.idRow}>
+                      <TextInput
+                        testID="pk-user-id"
+                        value={target}
+                        onChangeText={setTarget}
+                        placeholder="Enter Room User ID"
+                        placeholderTextColor="#64748B"
+                        autoCapitalize="none"
+                        keyboardType="numeric"
+                        style={styles.input}
+                        editable={!busy}
+                      />
+                      <TouchableOpacity
+                        testID="pk-send-invite"
+                        disabled={busy}
+                        style={styles.primary}
+                        onPress={() => sendInvite(target)}
+                      >
+                        <Text style={styles.primaryText}>Invite</Text>
+                      </TouchableOpacity>
                     </View>
-                    {isOwner && <Text style={styles.inviteLink}>Invite</Text>}
-                  </TouchableOpacity>
-                );
-              })}
+                  )}
+                  {roomCandidates.length === 0 ? (
+                    <Text style={styles.hint}>No other users in this room right now. Invite friends to join your room first.</Text>
+                  ) : (
+                    roomCandidates.map(candidate => (
+                      <TouchableOpacity
+                        key={candidate.id}
+                        disabled={!isOwner || busy}
+                        style={styles.opponent}
+                        onPress={() => {
+                          setTarget(String(candidate.userId));
+                          sendInvite(String(candidate.userId));
+                        }}
+                      >
+                        {Boolean(candidate.avatar) ? (
+                          <Image source={{ uri: candidate.avatar }} style={styles.avatar} />
+                        ) : (
+                          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                            <Icon name="person" size={18} color="#94A3B8" />
+                          </View>
+                        )}
+                        <View style={styles.teamCopy}>
+                          <Text style={styles.teamName}>{candidate.name}</Text>
+                          <Text style={styles.caption}>
+                            {candidate.isSeated ? `Mic #${candidate.seatIndex + 1}` : 'In Room'} • User ID: {candidate.userId}
+                          </Text>
+                        </View>
+                        {isOwner && <Text style={styles.inviteLink}>Invite</Text>}
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </>
+              ) : (
+                <>
+                  <Text style={styles.sectionTitle}>Challenge Opponent Room (Room PK)</Text>
+                  {!isOwner && <Text style={styles.hint}>Only the host can send or accept PK invitations.</Text>}
+                  {isOwner && (
+                    <View style={styles.idRow}>
+                      <TextInput
+                        testID="pk-room-id"
+                        value={target}
+                        onChangeText={setTarget}
+                        placeholder="Enter Opponent Room ID"
+                        placeholderTextColor="#64748B"
+                        autoCapitalize="none"
+                        keyboardType="numeric"
+                        style={styles.input}
+                        editable={!busy}
+                      />
+                      <TouchableOpacity
+                        testID="pk-send-invite"
+                        disabled={busy}
+                        style={styles.primary}
+                        onPress={() => sendInvite(target)}
+                      >
+                        <Text style={styles.primaryText}>Invite</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {loading && <ActivityIndicator color="#38BDF8" style={styles.loader} />}
+                  {!loading && !opponents.length && (
+                    <Text style={styles.hint}>No active opponents available right now. Invite another user to start a live session.</Text>
+                  )}
+                  {opponents.map(opponent => {
+                    const opponentUserId = opponent.userId || String(opponent.id || '').replace(/^room_/, '');
+                    return (
+                      <TouchableOpacity
+                        key={opponent.id}
+                        disabled={!isOwner || busy}
+                        style={styles.opponent}
+                        onPress={() => {
+                          setTarget(opponentUserId);
+                          sendInvite(opponentUserId || opponent.id);
+                        }}
+                      >
+                        {Boolean(opponent.coverImage) && <Image source={{ uri: opponent.coverImage }} style={styles.avatar} />}
+                        <View style={styles.teamCopy}>
+                          <Text style={styles.teamName}>{opponent.title || opponent.hostName}</Text>
+                          <Text style={styles.caption}>{opponent.hostName} • User ID: {opponentUserId}</Text>
+                        </View>
+                        {isOwner && <Text style={styles.inviteLink}>Invite</Text>}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </>
+              )}
             </>}
             {history.length > 0 && <><Text style={styles.sectionTitle}>Recent results</Text>
               {history.map(record => {
@@ -339,6 +505,7 @@ const styles = StyleSheet.create({
   teamName: { color: '#F1F5F9', fontSize: 12, fontWeight: '700' },
   score: { fontSize: 22, fontWeight: '900' },
   avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#334155' },
+  avatarPlaceholder: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' },
   progressTrack: { height: 5, borderRadius: 4, overflow: 'hidden', flexDirection: 'row', marginTop: 6 },
   timer: { color: '#FDE047', fontSize: 12, fontWeight: '900', textAlign: 'center', marginTop: 5 },
   inviteCard: { padding: 12, backgroundColor: '#1E293B', borderRadius: 12, marginVertical: 8 },

@@ -2090,8 +2090,15 @@ export default function VoiceRoomScreen() {
         styles={styles}
       />
 
-      <RoomPKPanel roomId={currentRoomId || room?.id || room?.roomId}
-        isOwner={isRoomOwner} bottomSafePadding={bottomSafePadding} openTrigger={pkPanelTrigger} />
+      <RoomPKPanel
+        roomId={currentRoomId || room?.id || room?.roomId}
+        isOwner={isRoomOwner}
+        bottomSafePadding={bottomSafePadding}
+        openTrigger={pkPanelTrigger}
+        roomUsers={onlineUsers}
+        roomSeats={seats}
+        currentUser={user}
+      />
 
       {/* Notice & Announcement & Event Row (Image 2 Model) */}
       <View style={styles.noticeAnnouncementRow}>

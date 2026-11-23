@@ -6,7 +6,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 Set-Location -Path ..
 
-$apkPath = "android\app\build\outputs\apk\release\app-release.apk"
+$apkPath = "android\app\build\outputs\apk\release\app-arm64-v8a-release.apk"
+if (-not (Test-Path $apkPath)) {
+    $apkPath = "android\app\build\outputs\apk\release\app-universal-release.apk"
+}
+if (-not (Test-Path $apkPath)) {
+    $apkPath = "android\app\build\outputs\apk\release\app-release.apk"
+}
 
 if (-not (Test-Path $apkPath)) {
     throw "Release APK not found at $apkPath"

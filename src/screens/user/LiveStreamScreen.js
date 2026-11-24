@@ -442,7 +442,13 @@ export default function LiveStreamScreen({ navigation, route }) {
           '⚔️ PK Battle Challenge',
           `${data.fromHost?.name || 'A Broadcaster'} challenged you to a ${durText} PK Battle!`,
           [
-            { text: 'Decline', style: 'cancel' },
+            {
+              text: 'Decline',
+              style: 'cancel',
+              onPress: () => {
+                socket.emit('live:pk_reject', { fromRoomId: data.fromRoomId, reason: 'Declined by host' });
+              },
+            },
             {
               text: 'Accept ⚔️',
               onPress: () => {
@@ -455,8 +461,11 @@ export default function LiveStreamScreen({ navigation, route }) {
                 setIsPK(true);
               },
             },
-          ],
+          ]
         );
+      },
+      'live:pk_rejected': data => {
+        AlertService.show('PK Challenge Declined', data?.reason || 'The broadcaster declined your PK challenge.', 'info');
       },
     };
     Object.entries(handlers).forEach(([event, handler]) => socket.on(event, handler));
@@ -809,9 +818,10 @@ export default function LiveStreamScreen({ navigation, route }) {
     } else {
       try {
         const res = await apiUtil.get('/live/rooms');
-        const activeRooms = res.data?.data?.rooms || [];
-        const otherRooms = activeRooms.filter(r => r._id !== roomId && r.status === 'live');
-        if (otherRooms.length > 0) {
+        const rawRooms = res.data?.data;
+        const activeRooms = Array.isArray(rawRooms) ? rawRooms : rawRooms?.rooms || [];
+        const otherRooms = activeRooms.filter(r => String(r._id) !== String(roomId) && r.status === 'live');
+        if (otherRooms.length === 1) {
           const target = otherRooms[0];
           Alert.alert(
             '⚔️ PK Battle Duration',
@@ -823,8 +833,26 @@ export default function LiveStreamScreen({ navigation, route }) {
               { text: 'Cancel', style: 'cancel' },
             ]
           );
+        } else if (otherRooms.length > 1) {
+          const buttons = otherRooms.slice(0, 4).map(target => ({
+            text: target.host?.name ? `${target.host.name}` : `Room ${String(target._id).slice(-4)}`,
+            onPress: () => {
+              Alert.alert(
+                '⚔️ PK Battle Duration',
+                `Select duration to challenge ${target.host?.name || 'Broadcaster'}:`,
+                [
+                  { text: '5 min', onPress: () => sendLivePKInvite(target._id, 300) },
+                  { text: '15 min', onPress: () => sendLivePKInvite(target._id, 900) },
+                  { text: '30 min', onPress: () => sendLivePKInvite(target._id, 1800) },
+                  { text: 'Cancel', style: 'cancel' },
+                ]
+              );
+            },
+          }));
+          buttons.push({ text: 'Cancel', style: 'cancel' });
+          Alert.alert('⚔️ Select Broadcaster Opponent', 'Choose an active live broadcaster to challenge:', buttons);
         } else {
-          AlertService.show('PK Battle', 'No other broadcaster is available for a PK invitation.', 'info');
+          AlertService.show('PK Battle', 'No other broadcaster is currently live for a PK challenge.', 'info');
         }
       } catch (err) {
         AlertService.show('PK Battle', err.response?.data?.message || 'Could not load available broadcasters.', 'error');

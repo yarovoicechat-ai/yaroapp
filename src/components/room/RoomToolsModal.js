@@ -92,113 +92,27 @@ export default function RoomToolsModal({
             </TouchableOpacity>
           </View>
 
-          {/* Room Mode Section (Matching Reference Recording) */}
-          <Text style={styles.sectionTitle}>Room Mode</Text>
+          {/* Section Title */}
+          <Text style={styles.sectionTitle}>Room Tools</Text>
+
+          {/* Tools Grid / Row */}
           <View style={styles.toolsRow}>
-            {/* Video Mode */}
+            {/* Mute */}
             <TouchableOpacity
               style={styles.toolCol}
               onPress={() => {
                 onClose();
-                setTimeout(() => {
-                  onOpenWatchTogether && onOpenWatchTogether();
-                }, 350);
+                onToggleMic && onToggleMic();
               }}
               activeOpacity={0.8}
             >
-              <View style={[styles.toolCircle, { borderColor: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                <MaterialCommunityIcons name="play-circle" size={26} color="#F59E0B" />
+              <View style={[styles.toolCircle, isMuted && styles.toolCircleMuted]}>
+                <Icon name={isMuted ? 'volume-mute' : 'volume-high'} size={22} color="#8B5CF6" />
               </View>
-              <Text style={[styles.toolLabel, { color: '#FCD34D', fontWeight: 'bold' }]}>Video</Text>
+              <Text style={styles.toolLabel}>Mute</Text>
             </TouchableOpacity>
 
-            {/* Ludo Game */}
-            <TouchableOpacity
-              style={styles.toolCol}
-              onPress={() => {
-                onClose();
-                setTimeout(() => {
-                  onOpenGames && onOpenGames();
-                }, 350);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.toolCircle, { borderColor: '#10B981' }]}>
-                <MaterialCommunityIcons name="dice-multiple" size={22} color="#10B981" />
-              </View>
-              <Text style={styles.toolLabel}>Ludo</Text>
-            </TouchableOpacity>
-
-            {/* Carrom */}
-            <TouchableOpacity
-              style={styles.toolCol}
-              onPress={() => {
-                onClose();
-                setTimeout(() => {
-                  onOpenGames && onOpenGames();
-                }, 350);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.toolCircle, { borderColor: '#EC4899' }]}>
-                <MaterialCommunityIcons name="circle-slice-8" size={22} color="#EC4899" />
-              </View>
-              <Text style={styles.toolLabel}>Carrom</Text>
-            </TouchableOpacity>
-
-            {/* Truth & Dare */}
-            <TouchableOpacity
-              style={styles.toolCol}
-              onPress={() => {
-                onClose();
-                setTimeout(() => {
-                  onOpenGames && onOpenGames();
-                }, 350);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.toolCircle, { borderColor: '#8B5CF6' }]}>
-                <MaterialCommunityIcons name="bottle-tonic-outline" size={22} color="#8B5CF6" />
-              </View>
-              <Text style={styles.toolLabel}>Truth & Dare</Text>
-            </TouchableOpacity>
-
-            {/* Talent */}
-            <TouchableOpacity
-              style={styles.toolCol}
-              onPress={() => {
-                onClose();
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.toolCircle, { borderColor: '#3B82F6' }]}>
-                <MaterialCommunityIcons name="microphone-variant" size={22} color="#3B82F6" />
-              </View>
-              <Text style={styles.toolLabel}>Talent</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Play Center Section */}
-          <Text style={[styles.sectionTitle, { marginTop: 4 }]}>Play center</Text>
-          <View style={styles.toolsRow}>
-            {/* PK Battle */}
-            <TouchableOpacity
-              style={styles.toolCol}
-              onPress={() => {
-                onClose();
-                setTimeout(() => {
-                  onOpenPK && onOpenPK();
-                }, 350);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.toolCircle, { borderColor: '#EF4444' }]}>
-                <MaterialCommunityIcons name="sword-cross" size={22} color="#EF4444" />
-              </View>
-              <Text style={styles.toolLabel}>PK</Text>
-            </TouchableOpacity>
-
-            {/* Room music */}
+            {/* Room music is controlled by the host, admins, and official managers */}
             {(isHost || isGlobalRoomManager) && (
               <TouchableOpacity
                 style={styles.toolCol}
@@ -217,21 +131,6 @@ export default function RoomToolsModal({
               </TouchableOpacity>
             )}
 
-            {/* Mute */}
-            <TouchableOpacity
-              style={styles.toolCol}
-              onPress={() => {
-                onClose();
-                onToggleMic && onToggleMic();
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.toolCircle, isMuted && styles.toolCircleMuted]}>
-                <Icon name={isMuted ? 'volume-mute' : 'volume-high'} size={22} color="#8B5CF6" />
-              </View>
-              <Text style={styles.toolLabel}>Mute</Text>
-            </TouchableOpacity>
-
             {/* Broadcast */}
             <TouchableOpacity
               style={styles.toolCol}
@@ -245,9 +144,42 @@ export default function RoomToolsModal({
               </View>
               <Text style={styles.toolLabel}>Broadcast</Text>
             </TouchableOpacity>
-          </View>
 
-          {/* Seat Layout (if host or official manager) */}
+            {/* PK Battle */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenPK && onOpenPK();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, { borderColor: '#EF4444' }]}>
+                <MaterialCommunityIcons name="sword-cross" size={22} color="#EF4444" />
+              </View>
+              <Text style={styles.toolLabel}>PK</Text>
+            </TouchableOpacity>
+
+            {/* Video Mode (Matching Reference Video) */}
+            <TouchableOpacity
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenWatchTogether && onOpenWatchTogether();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, { borderColor: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                <MaterialCommunityIcons name="play-circle" size={26} color="#F59E0B" />
+              </View>
+              <Text style={[styles.toolLabel, { color: '#FCD34D', fontWeight: 'bold' }]}>Video</Text>
+            </TouchableOpacity>
+
+            {/* Seat Layout (if host or official manager) */}
             {(isHost || isGlobalRoomManager) && (
               <TouchableOpacity
                 style={styles.toolCol}

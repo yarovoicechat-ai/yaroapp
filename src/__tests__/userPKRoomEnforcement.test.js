@@ -215,4 +215,69 @@ describe('User PK in Same Room Enforcement', () => {
       root.unmount();
     });
   });
+
+  it('allows owner to select any two seated users for Personal Gift PK without auto-selecting owner', async () => {
+    const seatsWithThreeUsers = [
+      { seatIndex: 0, user: { _id: 'host_1', userId: '1001', name: 'Host King' } },
+      { seatIndex: 1, user: { _id: 'user_in_room_2', userId: '1002', name: 'Fighter One' } },
+      { seatIndex: 2, user: { _id: 'user_in_room_3', userId: '1003', name: 'Fighter Two' } },
+    ];
+
+    let root;
+    await act(async () => {
+      root = renderer.create(
+        <RoomPKPanel
+          roomId="room_pk_101"
+          isOwner={true}
+          openTrigger={1}
+          roomSeats={seatsWithThreeUsers}
+          roomUsers={mockOnlineUsers}
+          currentUser={currentUser}
+        />
+      );
+    });
+
+    const instance = root.root;
+
+    // Switch to Personal Gift PK mode
+    const userPkTouchable = instance.findByProps({ testID: 'pk-mode-user' });
+    await act(async () => {
+      userPkTouchable.props.onPress();
+    });
+
+    // Find seat cell touchables by testID
+    const seat2 = instance.findByProps({ testID: 'pk-seat-2' });
+    const seat3 = instance.findByProps({ testID: 'pk-seat-3' });
+
+    // Tap Seat 2 (Fighter One) - slot A
+    await act(async () => {
+      seat2.props.onPress();
+    });
+
+    // Tap Seat 3 (Fighter Two) - slot B
+    await act(async () => {
+      seat3.props.onPress();
+    });
+
+    // Tap Confirm button
+    const confirmBtn = instance.findByProps({ testID: 'pk-send-invite' });
+    await act(async () => {
+      confirmBtn.props.onPress();
+    });
+
+    // Verify API called with participantA: Fighter One and participantB: Fighter Two
+    expect(apiUtil.post).toHaveBeenCalledWith(
+      '/voice-club/rooms/room_pk_101/pk/invite',
+      expect.objectContaining({
+        pkMode: 'personal',
+        participantA: expect.objectContaining({ userId: '1002' }),
+        participantB: expect.objectContaining({ userId: '1003' }),
+        targetUserId: '1003',
+      })
+    );
+
+    act(() => {
+      root.unmount();
+    });
+  });
 });

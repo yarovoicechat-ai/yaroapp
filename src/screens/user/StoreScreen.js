@@ -65,8 +65,8 @@ const normalizeStoreItem = (item) => ({
 const StoreAsset = CosmeticAsset;
 
 
-// Store categories: Unique ID, Frames, Chat Bubble, Theme, Tassel, Entry, Mic Wave, Profile Card, Room Card, Profile Entry, VIP, King of Kings, Badge, Tag
-const STORE_CATEGORIES = ['Unique ID', 'Frames', 'Chat Bubble', 'Theme', 'Seat Skin', 'Entrance', 'Entry', 'Mic Wave', 'Profile Card', 'Room Card', 'Profile Entry', 'VIP', 'King of Kings', 'Badge', 'Tag'];
+// Store categories: Unique ID, Frames, Chat Bubble, Theme, Tassel, Entry, Mic Wave, Profile Card, Room Card, Profile Entry, Badge, Tag
+const STORE_CATEGORIES = ['Unique ID', 'Frames', 'Chat Bubble', 'Theme', 'Seat Skin', 'Entrance', 'Entry', 'Mic Wave', 'Profile Card', 'Room Card', 'Profile Entry', 'Badge', 'Tag'];
 
 const createEmptyCatalog = () =>
   STORE_CATEGORIES.reduce((result, category) => ({ ...result, [category]: [] }), {});
@@ -514,9 +514,6 @@ export default function StoreScreen() {
           <View style={styles.previewAvatarWrap}>
             <View style={[styles.previewFrameRing, { borderColor: item ? item.previewColor : '#F59E0B' }]}>
               <Image source={getUserAvatar(user)} style={styles.previewAvatarImg} />
-            </View>
-            <View style={styles.vipCrownBadge}>
-              <Text style={{ fontSize: 13 }}>👑</Text>
             </View>
           </View>
 

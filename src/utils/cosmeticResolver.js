@@ -111,14 +111,6 @@ export const normalizeCosmeticAsset = (value) => {
 };
 
 export const resolveFrameAsset = (user, explicitFrame = null) => {
-  const tierLevel = Number(
-    user?.svipLevel ??
-    user?.svip ??
-    user?.vipLevel ??
-    user?.vip ??
-    0
-  );
-
   let raw =
     explicitFrame ||
     user?.equippedFrameAsset ||
@@ -132,15 +124,9 @@ export const resolveFrameAsset = (user, explicitFrame = null) => {
     user?.avatarFrameAsset ||
     user?.avatarFrame ||
     user?.effectiveIdentity?.avatarFrame ||
-    (tierLevel > 0 ? `vip_frame_${Math.min(Math.max(tierLevel, 1), 5)}` : null) ||
     null;
 
-  if (!raw && tierLevel > 0) {
-    raw = `vip_frame_${Math.min(Math.max(tierLevel, 1), 5)}`;
-  }
-
-  const normalized = normalizeCosmeticAsset(raw);
-  if (!normalized) return null;
+  if (!raw) return null;
 
   let animUrl = normalized.animationUrl;
   const isServerUrl = typeof animUrl === 'string' && /^https?:\/\//i.test(animUrl);

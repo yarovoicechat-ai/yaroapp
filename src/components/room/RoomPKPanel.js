@@ -55,6 +55,8 @@ export default function RoomPKPanel({
   const [selectedGift, setSelectedGift] = useState(null);
 
   // Selections
+  const [personalSideAUserId, setPersonalSideAUserId] = useState('');
+  const [personalSideBUserId, setPersonalSideBUserId] = useState('');
   const [personalSelectedUserId, setPersonalSelectedUserId] = useState('');
   const [crossRoomId, setCrossRoomId] = useState('');
   const handleCrossRoomInvite = () => {
@@ -289,8 +291,17 @@ export default function RoomPKPanel({
     const uid = String(seat.user.userId || seat.user.id);
 
     if (activeTab === 'personal') {
-      if (seat.isMe) return;
-      setPersonalSelectedUserId(prev => prev === uid ? '' : uid);
+      if (personalSideAUserId === uid) {
+        setPersonalSideAUserId('');
+      } else if (personalSideBUserId === uid) {
+        setPersonalSideBUserId('');
+      } else if (!personalSideAUserId) {
+        setPersonalSideAUserId(uid);
+      } else if (!personalSideBUserId) {
+        setPersonalSideBUserId(uid);
+      } else {
+        setPersonalSideBUserId(uid);
+      }
     } else if (activeTab === 'team') {
       if (teamSubTab === 'yellow') {
         setTeamBlueUserIds(prev => prev.filter(id => id !== uid));
@@ -314,20 +325,43 @@ export default function RoomPKPanel({
     const selectedGiftId = selectedGift?._id || selectedGift?.id || null;
 
     if (activeTab === 'personal') {
-      if (!personalSelectedUserId) {
+      const pA = personalSideAUserId;
+      const pB = personalSideBUserId;
+      const fallbackTarget = !pA && !pB ? personalSelectedUserId : '';
+      const finalA = pA;
+      const finalB = pB || fallbackTarget;
+
+      if (!finalA && !finalB) {
         setError('Please select an opponent from the mic seats.');
         return;
       }
-      const foundInRoom = roomCandidates.some(c => String(c.userId) === personalSelectedUserId || String(c.id) === personalSelectedUserId);
-      if (!foundInRoom && roomCandidates.length > 0) {
+      if (finalA && !finalB) {
+        setError('Please select both participants for Personal Gift PK.');
+        return;
+      }
+      if (finalA && finalB && finalA === finalB) {
+        setError('Both participants must be different users.');
+        return;
+      }
+
+      const targetToVerify = finalB;
+      const foundInRoom = roomCandidates.some(c => String(c.userId) === targetToVerify || String(c.id) === targetToVerify);
+      if (!foundInRoom && roomCandidates.length > 0 && targetToVerify) {
         setError('User must be in this room for User PK.');
         return;
       }
+
+      const findUser = (uid) => tenSeats.find(s => String(s.user?.userId) === uid)?.user ||
+        roomCandidates.find(c => String(c.userId || c.id) === uid) ||
+        { userId: uid, id: uid, name: `User ${uid}` };
+
       executeApi('/invite', {
         pkMode: 'personal',
         pkType: 'user',
-        targetRoomId: personalSelectedUserId,
-        targetUserId: personalSelectedUserId,
+        participantA: finalA ? findUser(finalA) : undefined,
+        participantB: findUser(finalB),
+        targetRoomId: finalB,
+        targetUserId: finalB,
         durationSeconds,
         selectedGiftId,
         jackpotEnabled,
@@ -505,7 +539,17 @@ export default function RoomPKPanel({
 
             {/* Subtitle: Calculated by the gifts received + (?) */}
             <View style={styles.subtitleRow}>
-              <Text style={styles.subtitleText}>Calculated by the gifts received</Text>
+              <Text style={styles.subtitleText}>
+                {activeTab === 'personal'
+                  ? (!personalSideAUserId && !personalSideBUserId
+                      ? 'Select 2 mic users to battle'
+                      : (!personalSideAUserId
+                          ? 'Select 1st PK participant'
+                          : (!personalSideBUserId
+                              ? 'Select 2nd PK participant'
+                              : 'Calculated by the gifts received')))
+                  : 'Calculated by the gifts received'}
+              </Text>
               <TouchableOpacity onPress={() => setRulesVisible(true)} hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}>
                 <Icon name="help-circle-outline" size={15} color="#94A3B8" style={{ marginLeft: 4 }} />
               </TouchableOpacity>
@@ -542,16 +586,18 @@ export default function RoomPKPanel({
               <View style={styles.seatsRow}>
                 {tenSeats.slice(0, 5).map(seat => {
                   const uid = String(seat.user?.userId || '');
-                  const isYellow = teamYellowUserIds.includes(uid);
-                  const isBlue = teamBlueUserIds.includes(uid);
-                  const isPersonalSel = personalSelectedUserId === uid;
+                  const isPersonalA = activeTab === 'personal' && personalSideAUserId === uid;
+                  const isPersonalB = activeTab === 'personal' && personalSideBUserId === uid;
                   const isSideA = voteSideAUserId === uid;
                   const isSideB = voteSideBUserId === uid;
-                  const isSelected = isYellow || isBlue || isPersonalSel || isSideA || isSideB;
+                  const isYellow = activeTab === 'team' ? teamYellowUserIds.includes(uid) : (activeTab === 'personal' ? isPersonalA : isSideA);
+                  const isBlue = activeTab === 'team' ? teamBlueUserIds.includes(uid) : (activeTab === 'personal' ? isPersonalB : isSideB);
+                  const isSelected = isYellow || isBlue;
 
                   return (
                     <TouchableOpacity
                       key={seat.seatNumber}
+                      testID={`pk-seat-${seat.seatNumber}`}
                       style={styles.seatCell}
                       onPress={() => handleSeatPress(seat)}
                       disabled={seat.isEmpty}
@@ -562,7 +608,6 @@ export default function RoomPKPanel({
                         seat.isEmpty && styles.seatCircleEmpty,
                         isYellow && styles.seatYellowBorder,
                         isBlue && styles.seatBlueBorder,
-                        isPersonalSel && styles.seatSelectedBorder,
                       ]}>
                         {seat.isEmpty ? (
                           <Text style={styles.seatEmptyLabel}>Empty</Text>
@@ -570,8 +615,10 @@ export default function RoomPKPanel({
                           <>
                             <Image source={{ uri: seat.user.avatar || 'https://via.placeholder.com/50' }} style={styles.seatAvatarImg} />
                             {isSelected && (
-                              <View style={[styles.checkBadge, (isYellow || isSideA) ? styles.checkBadgeYellow : styles.checkBadgeBlue]}>
-                                <Icon name="checkmark" size={10} color="#FFF" />
+                              <View style={[styles.checkBadge, isYellow ? styles.checkBadgeYellow : styles.checkBadgeBlue]}>
+                                <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700' }}>
+                                  {activeTab === 'personal' ? (isPersonalA ? '1' : '2') : (activeTab === 'vote' ? (isSideA ? 'A' : 'B') : '✓')}
+                                </Text>
                               </View>
                             )}
                           </>
@@ -589,16 +636,18 @@ export default function RoomPKPanel({
               <View style={styles.seatsRow}>
                 {tenSeats.slice(5, 10).map(seat => {
                   const uid = String(seat.user?.userId || '');
-                  const isYellow = teamYellowUserIds.includes(uid);
-                  const isBlue = teamBlueUserIds.includes(uid);
-                  const isPersonalSel = personalSelectedUserId === uid;
+                  const isPersonalA = activeTab === 'personal' && personalSideAUserId === uid;
+                  const isPersonalB = activeTab === 'personal' && personalSideBUserId === uid;
                   const isSideA = voteSideAUserId === uid;
                   const isSideB = voteSideBUserId === uid;
-                  const isSelected = isYellow || isBlue || isPersonalSel || isSideA || isSideB;
+                  const isYellow = activeTab === 'team' ? teamYellowUserIds.includes(uid) : (activeTab === 'personal' ? isPersonalA : isSideA);
+                  const isBlue = activeTab === 'team' ? teamBlueUserIds.includes(uid) : (activeTab === 'personal' ? isPersonalB : isSideB);
+                  const isSelected = isYellow || isBlue;
 
                   return (
                     <TouchableOpacity
                       key={seat.seatNumber}
+                      testID={`pk-seat-${seat.seatNumber}`}
                       style={styles.seatCell}
                       onPress={() => handleSeatPress(seat)}
                       disabled={seat.isEmpty}
@@ -609,7 +658,6 @@ export default function RoomPKPanel({
                         seat.isEmpty && styles.seatCircleEmpty,
                         isYellow && styles.seatYellowBorder,
                         isBlue && styles.seatBlueBorder,
-                        isPersonalSel && styles.seatSelectedBorder,
                       ]}>
                         {seat.isEmpty ? (
                           <Text style={styles.seatEmptyLabel}>Empty</Text>
@@ -617,8 +665,10 @@ export default function RoomPKPanel({
                           <>
                             <Image source={{ uri: seat.user.avatar || 'https://via.placeholder.com/50' }} style={styles.seatAvatarImg} />
                             {isSelected && (
-                              <View style={[styles.checkBadge, (isYellow || isSideA) ? styles.checkBadgeYellow : styles.checkBadgeBlue]}>
-                                <Icon name="checkmark" size={10} color="#FFF" />
+                              <View style={[styles.checkBadge, isYellow ? styles.checkBadgeYellow : styles.checkBadgeBlue]}>
+                                <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700' }}>
+                                  {activeTab === 'personal' ? (isPersonalA ? '1' : '2') : (activeTab === 'vote' ? (isSideA ? 'A' : 'B') : '✓')}
+                                </Text>
                               </View>
                             )}
                           </>
@@ -640,15 +690,36 @@ export default function RoomPKPanel({
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                   {roomCandidates.filter(c => !c.isSeated).map(c => {
                     const uid = String(c.userId || c.id);
-                    const isPersonalSel = personalSelectedUserId === uid;
+                    const isCandidateA = personalSideAUserId === uid;
+                    const isCandidateB = personalSideBUserId === uid;
+                    const isSelectedCandidate = isCandidateA || isCandidateB || personalSelectedUserId === uid;
                     return (
                       <TouchableOpacity
                         key={c.id}
-                        style={[styles.candidateChip, isPersonalSel && styles.candidateChipSelected]}
-                        onPress={() => setPersonalSelectedUserId(prev => prev === uid ? '' : uid)}
+                        style={[styles.candidateChip, isSelectedCandidate && styles.candidateChipSelected]}
+                        onPress={() => {
+                          if (personalSideAUserId === uid) {
+                            setPersonalSideAUserId('');
+                          } else if (personalSideBUserId === uid) {
+                            setPersonalSideBUserId('');
+                          } else if (!personalSideAUserId) {
+                            setPersonalSideAUserId(uid);
+                          } else if (!personalSideBUserId) {
+                            setPersonalSideBUserId(uid);
+                          } else {
+                            setPersonalSideBUserId(uid);
+                          }
+                        }}
                       >
                         <Image source={{ uri: c.avatar || 'https://via.placeholder.com/40' }} style={styles.candidateChipAvatar} />
                         <Text numberOfLines={1} style={styles.candidateChipText}>{c.name}</Text>
+                        {isSelectedCandidate && (
+                          <View style={[styles.checkBadge, { position: 'relative', marginLeft: 4, bottom: 0, right: 0 }, isCandidateA ? styles.checkBadgeYellow : styles.checkBadgeBlue]}>
+                            <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '700' }}>
+                              {isCandidateA ? '1' : '2'}
+                            </Text>
+                          </View>
+                        )}
                       </TouchableOpacity>
                     );
                   })}

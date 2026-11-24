@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
   Dimensions,
   Image,
   Linking,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -15,7 +18,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { getSocket } from '../../sockets';
 import { apiUtil } from '../../utils/apiUtil';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PLAYER_HEIGHT = Math.round((SCREEN_WIDTH * 9) / 16);
 
 function formatTime(secs) {
@@ -39,7 +42,9 @@ export default function YouTubeRoomPlayer({
   const [duration, setDuration] = useState(0);
   const [playerReady, setPlayerReady] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [embedError, setEmbedError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
   const controlsTimeoutRef = useRef(null);
@@ -47,7 +52,7 @@ export default function YouTubeRoomPlayer({
   const currentRoomIdRef = useRef(roomId);
   currentRoomIdRef.current = roomId;
 
-  // Auto-hide controls overlay after 4 seconds
+  // Auto-hide controls overlay after 4.5 seconds
   const pokeControls = useCallback(() => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
@@ -55,6 +60,16 @@ export default function YouTubeRoomPlayer({
       setShowControls(false);
     }, 4500);
   }, []);
+
+  // Hardware back button handler: when in fullscreen, exit fullscreen instead of leaving room
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      setIsFullscreen(false);
+      return true; // Prevent default room exit
+    });
+    return () => backHandler.remove();
+  }, [isFullscreen]);
 
   // Fetch initial session state
   const syncWithServer = useCallback(async () => {
@@ -192,7 +207,7 @@ export default function YouTubeRoomPlayer({
     }
   };
 
-  // Seek by offset (+10s / -10s / +30s / -30s)
+  // Seek by offset (+10s / -10s)
   const handleSeekOffset = (seconds) => {
     pokeControls();
     const maxDur = duration || session?.durationSeconds || 9999;
@@ -242,12 +257,14 @@ export default function YouTubeRoomPlayer({
     }
   };
 
-  // Host Action: Close Watch Session
+  // Close Watch Session
   const handleClose = async () => {
     if (!isHost) {
+      setIsFullscreen(false);
       onClosePlayer && onClosePlayer();
       return;
     }
+
     try {
       const socket = getSocket();
       if (socket) socket.emit('roomWatch:close', { roomId });
@@ -255,12 +272,13 @@ export default function YouTubeRoomPlayer({
     } catch {
       // Ignore
     } finally {
+      setIsFullscreen(false);
       setSession(null);
       onClosePlayer && onClosePlayer();
     }
   };
 
-  // Handle messages from WebView
+  // Handle suggested video clicks inside player without leaving room
   const handleSuggestedVideoSelected = useCallback(async (newVideoId) => {
     if (!newVideoId || newVideoId === session?.videoId) return;
     setEmbedError(false);
@@ -278,7 +296,7 @@ export default function YouTubeRoomPlayer({
 
     const newSessionData = {
       videoId: newVideoId,
-      title: 'Suggested Video',
+      videoTitle: 'Suggested Video',
       channelTitle: 'YouTube',
       status: 'playing',
       currentTime: 0,
@@ -307,7 +325,6 @@ export default function YouTubeRoomPlayer({
         setPlayerReady(true);
         setLoading(false);
         if (msg.duration) setDuration(msg.duration);
-        // If late joiner, sync to expected time
         if (session?.expectedCurrentTime && session.expectedCurrentTime > 0) {
           webViewRef.current?.injectJavaScript(`
             if (window.player && window.player.seekTo) window.player.seekTo(${session.expectedCurrentTime}, true);
@@ -343,7 +360,6 @@ export default function YouTubeRoomPlayer({
         else if (msg.data === 2) setIsPlaying(false);
         else if (msg.data === 0) {
           setIsPlaying(false);
-          // If queue has next video and is host, play next
         }
       } else if (msg.event === 'onError') {
         const code = Number(msg.code);
@@ -367,6 +383,7 @@ export default function YouTubeRoomPlayer({
           errorMsg = `Playback error code: ${code}`;
         }
 
+        setErrorMessage(errorMsg);
         setEmbedError(isRestricted);
         setLoading(false);
       }
@@ -383,18 +400,16 @@ export default function YouTubeRoomPlayer({
           <MaterialCommunityIcons name="youtube" size={42} color="#EF4444" />
           <Text style={styles.placeholderTitle}>YouTube Watch Together</Text>
           <Text style={styles.placeholderSub}>Watch and listen to YouTube videos with room members in real time</Text>
-          {isHost && (
-            <TouchableOpacity style={styles.searchPromptBtn} onPress={onOpenSearch} activeOpacity={0.85}>
-              <Icon name="search" size={16} color="#FFF" style={{ marginRight: 6 }} />
-              <Text style={styles.searchPromptText}>Search Video</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.searchPromptBtn} onPress={onOpenSearch} activeOpacity={0.85}>
+            <Icon name="search" size={16} color="#FFF" style={{ marginRight: 6 }} />
+            <Text style={styles.searchPromptText}>Search Video</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  // HTML content for YouTube IFrame Player (Native YouTube Progressive Player)
+  // HTML content for YouTube IFrame Player
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -402,7 +417,7 @@ export default function YouTubeRoomPlayer({
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; background-color: #000; }
-          html, body { width: 100%; height: 100%; overflow: hidden; }
+          html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
           #player { width: 100%; height: 100%; }
         </style>
       </head>
@@ -422,7 +437,7 @@ export default function YouTubeRoomPlayer({
                 playerVars: {
                   autoplay: 1,
                   controls: 1,
-                  fs: 1,
+                  fs: 0,
                   rel: 0,
                   playsinline: 1,
                   origin: 'https://yaroapp.in',
@@ -476,30 +491,6 @@ export default function YouTubeRoomPlayer({
             }));
           }
 
-          // Intercept clicks on links / suggested videos inside YouTube iframe
-          window.addEventListener('click', function(e) {
-            var el = e.target;
-            while (el && el.tagName !== 'A') {
-              el = el.parentElement;
-            }
-            if (el && el.href) {
-              var m = el.href.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-              if (m && m[1]) {
-                e.preventDefault();
-                e.stopPropagation();
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  event: 'onSelectSuggestedVideo',
-                  videoId: m[1]
-                }));
-                if (player && player.loadVideoById) {
-                  player.loadVideoById(m[1], 0);
-                  player.playVideo();
-                }
-                return false;
-              }
-            }
-          }, true);
-
           setInterval(function() {
             if (player && player.getCurrentTime) {
               window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -514,57 +505,103 @@ export default function YouTubeRoomPlayer({
     </html>
   `;
 
+  const totalDur = duration || session?.durationSeconds || 0;
+  const progressPercent = totalDur > 0 ? Math.min(100, Math.max(0, (currentTime / totalDur) * 100)) : 0;
+
   return (
-    <View style={styles.playerContainer}>
+    <View style={isFullscreen ? styles.fullscreenContainer : styles.playerContainer}>
+      {isFullscreen && <StatusBar hidden={true} />}
+
       {/* Native YouTube WebView */}
       {!embedError ? (
-        <WebView
-          ref={webViewRef}
-          source={{
-            html: htmlContent,
-            baseUrl: 'https://yaroapp.in',
-          }}
-          originWhitelist={['*']}
-          style={styles.webView}
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-          javaScriptEnabled
-          domStorageEnabled
-          mixedContentMode="always"
-          androidLayerType="hardware"
-          userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-          onMessage={handleMessage}
-          scrollEnabled={false}
-          bounces={false}
-          setSupportMultipleWindows={false}
-          onShouldStartLoadWithRequest={(request) => {
-            const { url } = request;
-            if (!url) return true;
-            if (url === 'about:blank' || url.startsWith('https://yaroapp.in')) {
+        <View style={styles.webContainer}>
+          <WebView
+            ref={webViewRef}
+            source={{
+              html: htmlContent,
+              baseUrl: 'https://yaroapp.in',
+            }}
+            originWhitelist={['*']}
+            style={styles.webView}
+            allowsInlineMediaPlayback
+            mediaPlaybackRequiresUserAction={false}
+            javaScriptEnabled
+            domStorageEnabled
+            mixedContentMode="always"
+            androidLayerType="hardware"
+            allowsFullscreenVideo={true}
+            userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+            onMessage={handleMessage}
+            scrollEnabled={false}
+            bounces={false}
+            setSupportMultipleWindows={false}
+            onShouldStartLoadWithRequest={(request) => {
+              const { url } = request;
+              if (!url) return true;
+
+              // 1. Core origins and blank pages
+              if (
+                url === 'about:blank' ||
+                url.startsWith('https://yaroapp.in') ||
+                url.startsWith('data:') ||
+                url.startsWith('blob:')
+              ) {
+                return true;
+              }
+
+              // 2. YouTube iframe API, embed frames, video stream chunks, and assets MUST be allowed
+              if (
+                url.includes('/iframe_api') ||
+                url.includes('/embed/') ||
+                url.includes('/s/player/') ||
+                url.includes('googlevideo.com') ||
+                url.includes('ytimg.com') ||
+                url.includes('ggpht.com') ||
+                url.includes('youtube-nocookie.com') ||
+                url.includes('doubleclick.net') ||
+                url.includes('google.com/generate_204') ||
+                url.includes('/api/stats/')
+              ) {
+                return true;
+              }
+
+              // 3. User clicked a video link / suggested video (e.g. watch?v=... or youtu.be/...)
+              const ytWatchMatch = url.match(/(?:watch\?.*v=|youtu\.be\/)([\w-]{11})/);
+              if (ytWatchMatch && ytWatchMatch[1]) {
+                const newId = ytWatchMatch[1];
+                if (newId !== session?.videoId) {
+                  handleSuggestedVideoSelected(newId);
+                }
+                return false; // Prevent navigating away to external YouTube website
+              }
+
+              // 4. Block external navigation away from YARO (channels, external links, apps)
+              if (
+                url.startsWith('intent:') ||
+                url.startsWith('vnd.youtube:') ||
+                url.includes('/channel/') ||
+                url.includes('/user/') ||
+                url.includes('/c/') ||
+                url.includes('accounts.google.com')
+              ) {
+                return false;
+              }
+
               return true;
-            }
+            }}
+          />
 
-            // Suggested or recommended video link clicked: stay inside YARO room!
-            const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-            if (ytMatch && ytMatch[1]) {
-              handleSuggestedVideoSelected(ytMatch[1]);
-              return false; // Prevent external browser / YouTube app launch
-            }
-
-            // Block any other external navigation (ads, channels, external links)
-            if (url.includes('youtube.com') || url.includes('youtu.be') || url.startsWith('vnd.youtube') || url.startsWith('intent:')) {
-              return false;
-            }
-
-            return false;
-          }}
-        />
+          {/* Invisible Touch Layer to Toggle Custom Overlay Controls */}
+          <TouchableWithoutFeedback onPress={pokeControls}>
+            <View style={styles.touchCaptureLayer} />
+          </TouchableWithoutFeedback>
+        </View>
       ) : (
         /* Non-embeddable error card */
         <View style={styles.embedErrorContainer}>
           <MaterialCommunityIcons name="alert-circle-outline" size={36} color="#EF4444" />
           <Text style={styles.embedErrorTitle}>Playback Restricted</Text>
-          <Text style={styles.embedErrorSub}>This video cannot be played inside YARO. Open it on YouTube.</Text>
+          <Text style={styles.embedErrorSub}>{errorMessage || 'This video cannot be played inside YARO. Open it on YouTube.'}</Text>
           <View style={styles.embedErrorActions}>
             <TouchableOpacity
               style={styles.openYtBtn}
@@ -572,11 +609,9 @@ export default function YouTubeRoomPlayer({
             >
               <Text style={styles.openYtText}>Open in YouTube</Text>
             </TouchableOpacity>
-            {isHost && (
-              <TouchableOpacity style={styles.changeVideoBtn} onPress={onOpenSearch}>
-                <Text style={styles.changeVideoText}>Pick Another</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.changeVideoBtn} onPress={onOpenSearch}>
+              <Text style={styles.changeVideoText}>Pick Another</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -589,39 +624,135 @@ export default function YouTubeRoomPlayer({
         </View>
       )}
 
-      {/* Minimal Non-Blocking Top Header for Room Actions */}
-      <View style={styles.nativeTopHeader} pointerEvents="box-none">
-        <View style={styles.watchingTogetherBadge}>
-          <View style={styles.liveRedDot} />
-          <Text style={styles.watchingTogetherText}>Watching Together</Text>
-        </View>
+      {/* Controls Overlay (Shown on tap, auto-hides after 4.5s) */}
+      {showControls && (
+        <View style={styles.controlsOverlay} pointerEvents="box-none">
+          {/* Top Bar */}
+          <View style={styles.topControlBar}>
+            {isFullscreen ? (
+              <TouchableOpacity
+                style={styles.topRoundBtn}
+                onPress={() => setIsFullscreen(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Icon name="arrow-back" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.watchingTogetherBadge}>
+                <View style={styles.liveRedDot} />
+                <Text style={styles.watchingTogetherText}>Watching Together</Text>
+              </View>
+            )}
 
-        <View style={styles.topTitleWrapper}>
-          <Text style={styles.topVideoTitle} numberOfLines={1}>
-            {session.videoTitle || 'YouTube Video'}
-          </Text>
-        </View>
+            <View style={styles.topTitleWrapper}>
+              <Text style={styles.topVideoTitle} numberOfLines={1}>
+                {session.videoTitle || session.title || 'YouTube Video'}
+              </Text>
+            </View>
 
-        <View style={styles.topActionsRow}>
-          {/* Search New Video Button */}
-          <TouchableOpacity
-            style={styles.topIconBtn}
-            onPress={onOpenSearch}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Icon name="search" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
+            <View style={styles.topActionsRow}>
+              {/* Search Video */}
+              <TouchableOpacity
+                style={styles.topRoundBtn}
+                onPress={onOpenSearch}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Icon name="search" size={17} color="#FFFFFF" />
+              </TouchableOpacity>
 
-          {/* Close Player Button */}
-          <TouchableOpacity
-            style={styles.topIconBtn}
-            onPress={handleClose}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Icon name="close" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
+              {/* Toggle Fullscreen Button */}
+              <TouchableOpacity
+                style={styles.topRoundBtn}
+                onPress={() => setIsFullscreen(!isFullscreen)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialCommunityIcons
+                  name={isFullscreen ? 'fullscreen-exit' : 'fullscreen'}
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+
+              {/* Close Button */}
+              <TouchableOpacity
+                style={styles.topRoundBtn}
+                onPress={handleClose}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Icon name="close" size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Center Playback Controls (Rewind 10s, Play/Pause, Forward 10s) */}
+          <View style={styles.centerControlsRow} pointerEvents="box-none">
+            <TouchableOpacity
+              style={styles.centerSkipBtn}
+              onPress={() => handleSeekOffset(-10)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="rewind-10" size={30} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.centerPlayPauseBtn}
+              onPress={handleTogglePlayPause}
+              activeOpacity={0.85}
+            >
+              <Icon name={isPlaying ? 'pause' : 'play'} size={28} color="#FFFFFF" style={{ marginLeft: isPlaying ? 0 : 3 }} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.centerSkipBtn}
+              onPress={() => handleSeekOffset(10)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="fast-forward-10" size={30} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Bottom Scrubber & Time Bar */}
+          <View style={styles.bottomBarContainer} pointerEvents="box-none">
+            {/* Scrubber Progress Bar Track */}
+            <TouchableOpacity
+              style={styles.progressBarTouchArea}
+              activeOpacity={1}
+              onPress={(e) => {
+                const clickX = e.nativeEvent.locationX;
+                const barWidth = isFullscreen ? SCREEN_WIDTH - 32 : SCREEN_WIDTH - 32;
+                if (barWidth > 0 && totalDur > 0) {
+                  const ratio = Math.max(0, Math.min(1, clickX / barWidth));
+                  handleSeekTo(ratio * totalDur);
+                }
+              }}
+            >
+              <View style={styles.progressBarTrack}>
+                <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+                <View style={[styles.progressBarThumb, { left: `${Math.max(0, progressPercent - 2)}%` }]} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Time & Fullscreen Row */}
+            <View style={styles.timeInfoRow}>
+              <Text style={styles.timeLabel}>
+                {formatTime(currentTime)} / {formatTime(totalDur)}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setIsFullscreen(!isFullscreen)}
+                style={styles.bottomFullscreenBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MaterialCommunityIcons
+                  name={isFullscreen ? 'fullscreen-exit' : 'fullscreen'}
+                  size={19}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </View>
+      )}
     </View>
   );
 }
@@ -634,55 +765,49 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
-  webView: {
+  fullscreenContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
     height: '100%',
     backgroundColor: '#000000',
+    zIndex: 99999,
   },
-  nativeTopHeader: {
-    position: 'absolute',
-    top: 8,
-    left: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: 20,
-  },
-  topTitleWrapper: {
+  webContainer: {
     flex: 1,
-    marginHorizontal: 8,
+    position: 'relative',
   },
-  topVideoTitle: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: 'bold',
+  webView: {
+    flex: 1,
+    backgroundColor: '#000000',
   },
-  topActionsRow: {
+  touchCaptureLayer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+    zIndex: 5,
+  },
+  controlsOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.40)',
+    justifyContent: 'space-between',
+    padding: 12,
+    zIndex: 10,
+  },
+  topControlBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  topIconBtn: {
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    borderRadius: 14,
-    padding: 5,
-  },
-  touchOverlay: {
-    ...StyleSheet.absoluteFillObject,
     justifyContent: 'space-between',
   },
   watchingTogetherBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 10,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    zIndex: 20,
   },
   liveRedDot: {
     width: 6,
@@ -696,70 +821,58 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-  controlsOverlay: {
+  topTitleWrapper: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'space-between',
-    padding: 10,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingLeft: 120, // space for badge
-  },
-  topInfo: {
-    flex: 1,
+    marginHorizontal: 8,
   },
   topVideoTitle: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
   },
-  topChannelTitle: {
-    color: '#CBD5E1',
-    fontSize: 10,
+  topActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  closeBtn: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 14,
-    padding: 4,
-    marginLeft: 8,
+  topRoundBtn: {
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderRadius: 16,
+    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   centerControlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    gap: 28,
   },
-  skipBtn: {
+  centerSkipBtn: {
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderRadius: 22,
+    padding: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 4,
   },
-  skipBtnLabel: {
-    color: '#CBD5E1',
-    fontSize: 9,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  playPauseCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-    justifyContent: 'center',
+  centerPlayPauseBtn: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'rgba(239, 68, 68, 0.90)',
     alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#EF4444',
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
   },
-  bottomAreaContainer: {
+  bottomBarContainer: {
     width: '100%',
   },
   progressBarTouchArea: {
     width: '100%',
     paddingVertical: 8,
-    justifyContent: 'center',
   },
   progressBarTrack: {
     height: 4,
@@ -782,41 +895,19 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#EF4444',
   },
-  bottomBar: {
+  timeInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: -2,
   },
-  bottomSearchBtn: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 14,
-    padding: 6,
-  },
-  timePill: {
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  timeText: {
+  timeLabel: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
   },
-  ytLogoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  ytLogoText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: 'bold',
-    marginLeft: 3,
+  bottomFullscreenBtn: {
+    padding: 4,
   },
   playerLoadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -876,7 +967,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  // Placeholder card when no video selected
   placeholderContainer: {
     width: SCREEN_WIDTH - 24,
     alignSelf: 'center',

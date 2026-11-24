@@ -2725,7 +2725,7 @@ export default function VoiceRoomScreen() {
             return;
           }
           setWatchTogetherActive(true);
-          if (isRoomOwner) setYtSearchModalVisible(true);
+          setYtSearchModalVisible(true);
         }}
         hasRoomHosting={hasRoomHosting}
         onOpenGames={() => setGamesModalVisible(true)}

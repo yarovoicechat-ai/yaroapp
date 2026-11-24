@@ -1,4 +1,4 @@
-﻿// Badge labels do not turn a permanent numeric ID into a unique ID.
+// Badge labels do not turn a permanent numeric ID into a unique ID.
 export const resolveDisplayId = ({ userId, officialDisplayId, customDisplayId, isOfficial = false, isTestAccount = false }) => {
   if (isTestAccount) return { effectiveId: '', isUnique: false };
   const clean = value => value == null ? '' : String(value).trim();

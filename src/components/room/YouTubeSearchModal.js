@@ -35,10 +35,10 @@ export default function YouTubeSearchModal({
       const q = String(query || '').trim();
       let res;
       try {
-        res = await apiUtil.get(`/youtube/search?q=${encodeURIComponent(q)}`);
-      } catch (firstErr) {
-        // Fallback to voice-club sub-route
         res = await apiUtil.get(`/voice-club/youtube/search?q=${encodeURIComponent(q)}`);
+      } catch (firstErr) {
+        // Fallback to youtube/search
+        res = await apiUtil.get(`/youtube/search?q=${encodeURIComponent(q)}`);
       }
 
       const list = res?.data?.data?.items || res?.data?.items || [];

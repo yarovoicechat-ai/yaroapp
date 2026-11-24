@@ -1103,6 +1103,20 @@ export default function VoiceRoomScreen() {
   const [watchTogetherActive, setWatchTogetherActive] = useState(false);
   const [ytSearchModalVisible, setYtSearchModalVisible] = useState(false);
 
+  const hasVideoAccess = Boolean(user?.hasVideoAccess || user?.canWatchTogether);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('user:video_permission_updated', (data) => {
+      const isTarget = [user?.userId, user?._id, user?.id].some(
+        (id) => [data?.userId, data?.userDbId].some((target) => target != null && String(target) === String(id))
+      );
+      if (isTarget && !data?.hasVideoAccess && !data?.canWatchTogether) {
+        setYtSearchModalVisible(false);
+      }
+    });
+    return () => sub.remove();
+  }, [user]);
+
   useEffect(() => {
     const targetRoomId = currentRoomId || room?.id || room?.roomId;
     if (!targetRoomId) return;
@@ -2107,7 +2121,7 @@ export default function VoiceRoomScreen() {
       {watchTogetherActive && (
         <YouTubeRoomPlayer
           roomId={currentRoomId || room?.id || room?.roomId}
-          isHost={Boolean(isRoomOwner || isEffectiveGlobalRoomManager || isCurrentUserAdmin)}
+          isHost={Boolean(hasVideoAccess)}
           currentUser={user}
           onOpenSearch={() => setYtSearchModalVisible(true)}
           onClosePlayer={() => setWatchTogetherActive(false)}
@@ -2712,14 +2726,12 @@ export default function VoiceRoomScreen() {
         onOpenRoomTasks={() => setRoomTasksVisible(true)}
         onOpenMedal={() => navigation.navigate('Medal')}
         onOpenPK={() => setPkPanelTrigger(prev => prev + 1)}
+        hasVideoAccess={hasVideoAccess}
         onOpenWatchTogether={() => {
-          const hasVip4Plus = Number(user?.vipLevel || 0) >= 4 || Number(user?.svipLevel || 0) >= 4;
-          const hasOwnerGrant = Boolean(user?.canWatchTogether);
-          const isEligible = hasVip4Plus || hasOwnerGrant || isRoomOwner || isContextOwnerMatch || isEffectiveGlobalRoomManager;
-          if (!isEligible) {
+          if (!hasVideoAccess) {
             AlertService.show(
-              'VIP 4 & 5 Feature ⭐',
-              'YouTube Watch Together option VIP 4 aur VIP 5 users ke liye reserved hai ya Admin Owner dwara granted hona chahiye.',
+              'Video Access Restricted',
+              'Aapke paas Video Mode ka access nahi hai. Admin Panel se permission grant hone par hi video chalega.',
               'warning'
             );
             return;

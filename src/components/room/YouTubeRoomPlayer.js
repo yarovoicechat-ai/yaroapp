@@ -400,10 +400,12 @@ export default function YouTubeRoomPlayer({
           <MaterialCommunityIcons name="youtube" size={42} color="#EF4444" />
           <Text style={styles.placeholderTitle}>YouTube Watch Together</Text>
           <Text style={styles.placeholderSub}>Watch and listen to YouTube videos with room members in real time</Text>
-          <TouchableOpacity style={styles.searchPromptBtn} onPress={onOpenSearch} activeOpacity={0.85}>
-            <Icon name="search" size={16} color="#FFF" style={{ marginRight: 6 }} />
-            <Text style={styles.searchPromptText}>Search Video</Text>
-          </TouchableOpacity>
+          {Boolean(isHost) && (
+            <TouchableOpacity style={styles.searchPromptBtn} onPress={onOpenSearch} activeOpacity={0.85}>
+              <Icon name="search" size={16} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={styles.searchPromptText}>Search Video</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -609,9 +611,11 @@ export default function YouTubeRoomPlayer({
             >
               <Text style={styles.openYtText}>Open in YouTube</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.changeVideoBtn} onPress={onOpenSearch}>
-              <Text style={styles.changeVideoText}>Pick Another</Text>
-            </TouchableOpacity>
+            {Boolean(isHost) && (
+              <TouchableOpacity style={styles.changeVideoBtn} onPress={onOpenSearch}>
+                <Text style={styles.changeVideoText}>Pick Another</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
@@ -652,13 +656,15 @@ export default function YouTubeRoomPlayer({
 
             <View style={styles.topActionsRow}>
               {/* Search Video */}
-              <TouchableOpacity
-                style={styles.topRoundBtn}
-                onPress={onOpenSearch}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Icon name="search" size={17} color="#FFFFFF" />
-              </TouchableOpacity>
+              {Boolean(isHost) && (
+                <TouchableOpacity
+                  style={styles.topRoundBtn}
+                  onPress={onOpenSearch}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Icon name="search" size={17} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
 
               {/* Toggle Fullscreen Button */}
               <TouchableOpacity
@@ -685,39 +691,42 @@ export default function YouTubeRoomPlayer({
           </View>
 
           {/* Center Playback Controls (Rewind 10s, Play/Pause, Forward 10s) */}
-          <View style={styles.centerControlsRow} pointerEvents="box-none">
-            <TouchableOpacity
-              style={styles.centerSkipBtn}
-              onPress={() => handleSeekOffset(-10)}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="rewind-10" size={30} color="#FFFFFF" />
-            </TouchableOpacity>
+          {Boolean(isHost) && (
+            <View style={styles.centerControlsRow} pointerEvents="box-none">
+              <TouchableOpacity
+                style={styles.centerSkipBtn}
+                onPress={() => handleSeekOffset(-10)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="rewind-10" size={30} color="#FFFFFF" />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.centerPlayPauseBtn}
-              onPress={handleTogglePlayPause}
-              activeOpacity={0.85}
-            >
-              <Icon name={isPlaying ? 'pause' : 'play'} size={28} color="#FFFFFF" style={{ marginLeft: isPlaying ? 0 : 3 }} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.centerPlayPauseBtn}
+                onPress={handleTogglePlayPause}
+                activeOpacity={0.85}
+              >
+                <Icon name={isPlaying ? 'pause' : 'play'} size={28} color="#FFFFFF" style={{ marginLeft: isPlaying ? 0 : 3 }} />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.centerSkipBtn}
-              onPress={() => handleSeekOffset(10)}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="fast-forward-10" size={30} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={styles.centerSkipBtn}
+                onPress={() => handleSeekOffset(10)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="fast-forward-10" size={30} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Bottom Scrubber & Time Bar */}
           <View style={styles.bottomBarContainer} pointerEvents="box-none">
             {/* Scrubber Progress Bar Track */}
             <TouchableOpacity
               style={styles.progressBarTouchArea}
-              activeOpacity={1}
+              activeOpacity={isHost ? 1 : 0.9}
               onPress={(e) => {
+                if (!isHost) return;
                 const clickX = e.nativeEvent.locationX;
                 const barWidth = isFullscreen ? SCREEN_WIDTH - 32 : SCREEN_WIDTH - 32;
                 if (barWidth > 0 && totalDur > 0) {

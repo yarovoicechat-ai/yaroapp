@@ -201,5 +201,75 @@ describe('YouTube Watch Together Full-Stack Component Tests', () => {
         root.unmount();
       });
     });
+
+    it('hides search and playback controls when isHost is false (non-authorized user)', async () => {
+      apiUtil.get.mockResolvedValueOnce({
+        data: { success: true, data: { status: 'idle', videoId: '' } },
+      });
+
+      let root;
+      await act(async () => {
+        root = renderer.create(
+          <YouTubeRoomPlayer
+            roomId="test-room-123"
+            isHost={false}
+            onOpenSearch={jest.fn()}
+            onClosePlayer={jest.fn()}
+          />
+        );
+      });
+
+      const textNodes = root.root.findAllByType('Text').map((t) => t.props.children);
+      expect(textNodes).toContain('YouTube Watch Together');
+      expect(textNodes).not.toContain('Search Video');
+
+      act(() => {
+        root.unmount();
+      });
+    });
+  });
+
+  describe('3. RoomToolsModal Video Option Visibility', () => {
+    const RoomToolsModal = require('../components/room/RoomToolsModal').default;
+
+    it('shows Video option when hasVideoAccess is true', () => {
+      let root;
+      act(() => {
+        root = renderer.create(
+          <RoomToolsModal
+            visible={true}
+            onClose={jest.fn()}
+            hasVideoAccess={true}
+          />
+        );
+      });
+
+      const textNodes = root.root.findAllByType('Text').map((t) => t.props.children);
+      expect(textNodes).toContain('Video');
+
+      act(() => {
+        root.unmount();
+      });
+    });
+
+    it('completely hides Video option when hasVideoAccess is false', () => {
+      let root;
+      act(() => {
+        root = renderer.create(
+          <RoomToolsModal
+            visible={true}
+            onClose={jest.fn()}
+            hasVideoAccess={false}
+          />
+        );
+      });
+
+      const textNodes = root.root.findAllByType('Text').map((t) => t.props.children);
+      expect(textNodes).not.toContain('Video');
+
+      act(() => {
+        root.unmount();
+      });
+    });
   });
 });

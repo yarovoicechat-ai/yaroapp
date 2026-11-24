@@ -51,7 +51,7 @@ export default function YouTubeSearchModal({
       if (err?.code === 'ECONNABORTED' || String(err?.message || '').toLowerCase().includes('network')) {
         setError('Internet connection unavailable. Please check your network.');
       } else if (err?.response?.status === 403) {
-        setError('YouTube search quota limit reached. Please try again shortly.');
+        setError(err?.response?.data?.message || 'Video Access Denied: You do not have permission to search or play videos. Please request permission from Admin Panel.');
       } else if (err?.response?.status === 500) {
         setError('Search service temporarily unavailable. Please try again.');
       } else {

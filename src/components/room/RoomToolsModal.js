@@ -38,6 +38,7 @@ export default function RoomToolsModal({
   onOpenGames,
   onOpenPK,
   onOpenWatchTogether,
+  hasVideoAccess = false,
   hasRoomHosting = false,
   bottomSafePadding = 16,
 }) {
@@ -162,22 +163,24 @@ export default function RoomToolsModal({
               <Text style={styles.toolLabel}>PK</Text>
             </TouchableOpacity>
 
-            {/* Video Mode (Matching Reference Video) */}
-            <TouchableOpacity
-              style={styles.toolCol}
-              onPress={() => {
-                onClose();
-                setTimeout(() => {
-                  onOpenWatchTogether && onOpenWatchTogether();
-                }, 350);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.toolCircle, { borderColor: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                <MaterialCommunityIcons name="play-circle" size={26} color="#F59E0B" />
-              </View>
-              <Text style={[styles.toolLabel, { color: '#FCD34D', fontWeight: 'bold' }]}>Video</Text>
-            </TouchableOpacity>
+            {/* Video Mode (Matching Reference Video - User-Wise Admin Access Only) */}
+            {Boolean(hasVideoAccess) && (
+              <TouchableOpacity
+                style={styles.toolCol}
+                onPress={() => {
+                  onClose();
+                  setTimeout(() => {
+                    onOpenWatchTogether && onOpenWatchTogether();
+                  }, 350);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.toolCircle, { borderColor: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                  <MaterialCommunityIcons name="play-circle" size={26} color="#F59E0B" />
+                </View>
+                <Text style={[styles.toolLabel, { color: '#FCD34D', fontWeight: 'bold' }]}>Video</Text>
+              </TouchableOpacity>
+            )}
 
             {/* Seat Layout (if host or official manager) */}
             {(isHost || isGlobalRoomManager) && (

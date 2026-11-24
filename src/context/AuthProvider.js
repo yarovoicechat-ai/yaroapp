@@ -122,7 +122,24 @@ export const AuthProvider = ({ children }) => {
       commitCanonicalUser({ ...current, nameEffect: data.nameEffect,
         effectiveIdentity: { ...(current.effectiveIdentity || {}), nameEffect: data.nameEffect } });
     });
-    return () => subscription.remove();
+    const videoPermSub = DeviceEventEmitter.addListener('user:video_permission_updated', (data) => {
+      const current = userRef.current;
+      if (!current) return;
+      const match = [current.userId, current._id, current.id].some(
+        (id) => [data?.userId, data?.userDbId].some((target) => target != null && String(target) === String(id))
+      );
+      if (match) {
+        commitCanonicalUser({
+          ...current,
+          hasVideoAccess: Boolean(data?.hasVideoAccess),
+          canWatchTogether: Boolean(data?.canWatchTogether || data?.hasVideoAccess),
+        });
+      }
+    });
+    return () => {
+      subscription.remove();
+      videoPermSub.remove();
+    };
   }, [commitCanonicalUser]);
 
   const setEquippedFrame = useCallback(

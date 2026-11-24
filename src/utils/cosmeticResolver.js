@@ -128,6 +128,9 @@ export const resolveFrameAsset = (user, explicitFrame = null) => {
 
   if (!raw) return null;
 
+  const normalized = normalizeCosmeticAsset(raw);
+  if (!normalized) return null;
+
   let animUrl = normalized.animationUrl;
   const isServerUrl = typeof animUrl === 'string' && /^https?:\/\//i.test(animUrl);
   const nameStr = String(normalized.name || normalized.id || normalized.imageUrl || '').toLowerCase();

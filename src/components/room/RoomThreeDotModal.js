@@ -29,6 +29,7 @@ export default function RoomThreeDotModal({
   onRemoveSeat,
   isGlobalRoomManager = false,
   onBanRoom,
+  onOpenPK,
   onToggleStealth,
   isStealthActive = false,
   isRoomLocked = false,
@@ -73,6 +74,18 @@ export default function RoomThreeDotModal({
 
   // Room Owner sees full management suite
   const ownerItems = [
+    {
+      id: 'room_pk',
+      label: 'Room PK ⚔️',
+      icon: 'sword-cross',
+      iconColor: '#EF4444', // Red-Orange
+      onPress: () => {
+        onClose();
+        setTimeout(() => {
+          onOpenPK && onOpenPK();
+        }, 300);
+      },
+    },
     {
       id: 'mic_count',
       label: 'Number of Mic',

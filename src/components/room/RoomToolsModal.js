@@ -148,6 +148,7 @@ export default function RoomToolsModal({
 
             {/* PK Battle */}
             <TouchableOpacity
+              testID="room-tools-pk-btn"
               style={styles.toolCol}
               onPress={() => {
                 onClose();
@@ -157,10 +158,10 @@ export default function RoomToolsModal({
               }}
               activeOpacity={0.8}
             >
-              <View style={[styles.toolCircle, { borderColor: '#EF4444' }]}>
-                <MaterialCommunityIcons name="sword-cross" size={22} color="#EF4444" />
+              <View style={[styles.toolCircle, { borderColor: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
+                <MaterialCommunityIcons name="sword-cross" size={24} color="#EF4444" />
               </View>
-              <Text style={styles.toolLabel}>PK</Text>
+              <Text style={[styles.toolLabel, { color: '#FCA5A5', fontWeight: 'bold' }]}>Room PK</Text>
             </TouchableOpacity>
 
             {/* Video Mode (Matching Reference Video - User-Wise Admin Access Only) */}

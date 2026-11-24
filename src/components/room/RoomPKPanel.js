@@ -266,7 +266,9 @@ export default function RoomPKPanel({
 
   // API Call helper
   const executeApi = async (endpoint, payload) => {
-    if (busy || !isOwner) return;
+    if (busy) return;
+    const isPublicAction = endpoint.includes('/vote') || endpoint.includes('/respond');
+    if (!isOwner && !isPublicAction) return;
     setBusy(true);
     setError('');
     const seq = ++requestSequence.current;
@@ -283,6 +285,15 @@ export default function RoomPKPanel({
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleRespond = (decision) => {
+    if (!match?.id) return;
+    executeApi(`/${match.id}/respond`, { decision });
+  };
+
+  const handleVote = (side) => {
+    executeApi('/vote', { side });
   };
 
   // Seat Press Handler based on active mode
@@ -412,12 +423,15 @@ export default function RoomPKPanel({
       {/* Floating PK Button on Voice Room Screen */}
       <TouchableOpacity
         testID="pk-toggle-panel"
-        style={[styles.floatingTrigger, !isPKLive && { height: 0, width: 0, opacity: 0, marginVertical: 0 }]}
+        style={[
+          styles.floatingTrigger,
+          (!isPKLive && !isOwner) && { height: 0, width: 0, opacity: 0, marginVertical: 0, display: 'none' }
+        ]}
         onPress={() => setVisible(true)}
         activeOpacity={0.85}
       >
         <LinearGradient
-          colors={isPKLive ? ['#F59E0B', '#3B82F6'] : ['#1E293B', '#0F172A']}
+          colors={isPKLive ? ['#F59E0B', '#EF4444'] : ['#8B5CF6', '#EC4899']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.floatingGradient}
@@ -560,17 +574,102 @@ export default function RoomPKPanel({
               <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
             )}
 
+            {/* Incoming or Pending PK Invitation */}
+            {Boolean(match && match.status === 'invited') && (
+              <View testID="pk-invitation-card" style={styles.invitationCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={styles.invitationTitle}>
+                    {match.invitedBy === String(currentUser?._id || currentUser?.id || currentUser?.userId || '')
+                      ? '⏳ Challenge Sent'
+                      : '⚔️ Incoming Room PK Challenge!'}
+                  </Text>
+                  <Text style={styles.liveTimerText}>{view.timer}</Text>
+                </View>
+                <Text style={styles.invitationSub}>
+                  {match.invitedBy === String(currentUser?._id || currentUser?.id || currentUser?.userId || '')
+                    ? 'Waiting for opponent to accept or decline the PK challenge...'
+                    : `Host invited your room to battle! Mode: ${match.pkMode === 'team' ? 'Team Gift PK' : match.pkMode === 'vote' ? 'Vote PK' : 'Personal Gift PK'}`}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                  {match.invitedBy !== String(currentUser?._id || currentUser?.id || currentUser?.userId || '') ? (
+                    <>
+                      <TouchableOpacity
+                        testID="pk-accept-invite"
+                        style={[styles.inviteActionBtn, { backgroundColor: '#10B981' }]}
+                        onPress={() => handleRespond('accept')}
+                        disabled={busy}
+                      >
+                        <Text style={styles.inviteActionBtnText}>Accept Challenge</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        testID="pk-decline-invite"
+                        style={[styles.inviteActionBtn, { backgroundColor: '#EF4444' }]}
+                        onPress={() => handleRespond('decline')}
+                        disabled={busy}
+                      >
+                        <Text style={styles.inviteActionBtnText}>Decline</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <TouchableOpacity
+                      testID="pk-cancel-invite"
+                      style={[styles.inviteActionBtn, { backgroundColor: '#475569' }]}
+                      onPress={handleCancelPK}
+                      disabled={busy}
+                    >
+                      <Text style={styles.inviteActionBtnText}>Cancel Challenge</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+
             {/* Live PK scoreboard when active */}
-            {isPKLive && (
+            {isPKLive && match?.status === 'active' && (
               <View testID="pk-scoreboard" style={styles.liveScoreboardCard}>
                 <View style={styles.liveHeaderRow}>
-                  <Text style={styles.liveBadge}>LIVE PK</Text>
+                  <Text style={styles.liveBadge}>LIVE PK • {match.pkMode ? String(match.pkMode).toUpperCase() : 'BATTLE'}</Text>
                   <Text style={styles.liveTimerText}>{view.timer}</Text>
                   {isOwner && (
                     <TouchableOpacity onPress={handleCancelPK} style={styles.endPkSmallBtn}>
                       <Text style={styles.endPkSmallBtnText}>End PK</Text>
                     </TouchableOpacity>
                   )}
+                </View>
+                <View style={styles.liveScoresRow}>
+                  <Text style={[styles.scoreNum, { color: '#F59E0B' }]}>{match.scores?.[0] || 0}</Text>
+                  <Text style={styles.vsCenter}>VS</Text>
+                  <Text style={[styles.scoreNum, { color: '#38BDF8' }]}>{match.scores?.[1] || 0}</Text>
+                </View>
+                {match.pkMode === 'vote' && (
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 8, justifyContent: 'center' }}>
+                    <TouchableOpacity
+                      testID="pk-vote-side-0"
+                      style={[styles.voteBtn, { backgroundColor: '#F59E0B' }]}
+                      onPress={() => handleVote(0)}
+                      disabled={busy}
+                    >
+                      <Text style={styles.voteBtnText}>Vote A ({match.scores?.[0] || 0})</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      testID="pk-vote-side-1"
+                      style={[styles.voteBtn, { backgroundColor: '#38BDF8' }]}
+                      onPress={() => handleVote(1)}
+                      disabled={busy}
+                    >
+                      <Text style={styles.voteBtnText}>Vote B ({match.scores?.[1] || 0})</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* PK Result Banner when finished */}
+            {Boolean(match && match.status === 'finished') && (
+              <View testID="pk-result-card" style={[styles.liveScoreboardCard, { borderColor: '#F59E0B' }]}>
+                <View style={styles.liveHeaderRow}>
+                  <Text style={[styles.liveBadge, { color: '#FCD34D' }]}>BATTLE FINISHED</Text>
+                  <Text style={[styles.liveTimerText, { color: '#F59E0B' }]}>{view.result || 'FINISHED'}</Text>
                 </View>
                 <View style={styles.liveScoresRow}>
                   <Text style={[styles.scoreNum, { color: '#F59E0B' }]}>{match.scores?.[0] || 0}</Text>
@@ -1063,6 +1162,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
+  invitationCard: {
+    backgroundColor: '#1E1B4B',
+    borderRadius: 12,
+    padding: 12,
+    marginVertical: 6,
+    borderWidth: 1.5,
+    borderColor: '#6366F1',
+  },
+  invitationTitle: { color: '#C7D2FE', fontWeight: '800', fontSize: 13 },
+  invitationSub: { color: '#94A3B8', fontSize: 11, marginTop: 3 },
+  inviteActionBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteActionBtnText: { color: '#FFF', fontWeight: '800', fontSize: 12 },
+  voteBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voteBtnText: { color: '#FFF', fontWeight: '900', fontSize: 11 },
   liveHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

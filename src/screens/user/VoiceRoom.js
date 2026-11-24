@@ -693,15 +693,9 @@ export default function VoiceRoomScreen() {
     (isRoomOwner ? user?.userId : null);
 
   const displayRoomId =
-    room?.uniqueId ||
-    room?.customDisplayId ||
-    room?.displayId ||
-    (isRoomOwner ? (user?.customDisplayId || user?.displayId || user?.uniqueId) : null) ||
-    seats[0]?.user?.uniqueId ||
-    seats[0]?.user?.customDisplayId ||
-    seats[0]?.user?.displayId ||
-    room?.id ||
     room?.roomId ||
+    room?.channelName ||
+    (currentRoomId && /^\d+$/.test(String(currentRoomId)) ? String(currentRoomId) : null) ||
     '—';
 
   const rawRoomBadgeUrl =
@@ -1929,7 +1923,7 @@ export default function VoiceRoomScreen() {
             <View style={styles.headerRoomSubRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <IdentityDisplayId
-                  userId={room?.id || room?.roomId || room?.channelName}
+                  userId={displayRoomId}
                   customDisplayId={displayRoomId}
                   badgeUrl={roomBadgeUrl}
                   showBadge
@@ -2159,7 +2153,13 @@ export default function VoiceRoomScreen() {
 
       <RoomPKPanel
         roomId={currentRoomId || room?.id || room?.roomId}
-        isOwner={isRoomOwner}
+        isOwner={Boolean(
+          isRoomOwner ||
+          isContextOwnerMatch ||
+          isCurrentUserAdmin ||
+          isEffectiveGlobalRoomManager ||
+          (seats?.[0]?.user && [String(user?._id || ''), String(user?.id || ''), String(user?.userId || '')].some(uid => uid && uid === String(seats[0].user.userId || seats[0].user.id || seats[0].user._id)))
+        )}
         bottomSafePadding={bottomSafePadding}
         openTrigger={pkPanelTrigger}
         roomUsers={onlineUsers}
@@ -2787,6 +2787,7 @@ export default function VoiceRoomScreen() {
         onClose={() => setToolsModalVisible(false)}
         canModerate={isCurrentUserAdmin}
         isRoomOwner={isRoomOwner}
+        onOpenPK={() => setPkPanelTrigger(prev => prev + 1)}
         onKickUser={() => {
           setToolsModalVisible(false);
           setOnlineUsersModalVisible(true);

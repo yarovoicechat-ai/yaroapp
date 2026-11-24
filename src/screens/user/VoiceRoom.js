@@ -797,9 +797,9 @@ export default function VoiceRoomScreen() {
   };
 
   const handleUnlockRoom = async (options = {}) => {
-    if (options.alreadyUnlocked) { setCurrentRoomLocked(false); setHasRoomPin(false); setEditRoomLocked(false); setIsPinVerified(true); return; }
+    if (options && options.alreadyUnlocked === true) { setCurrentRoomLocked(false); setHasRoomPin(false); setEditRoomLocked(false); setIsPinVerified(true); return; }
     try {
-      const targetRoomId = room?.id || room?.roomId || route?.params?.roomId;
+      const targetRoomId = currentRoomId || room?._id || room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
       const res = await apiUtil.post(`/voice-club/rooms/${targetRoomId}/lock`, {
         isLocked: false,
       });
@@ -2871,8 +2871,8 @@ export default function VoiceRoomScreen() {
           }
         }}
         mode={roomLockModalMode}
-        roomId={room?._id || room?.id || room?.roomId || room?.channelName || route?.params?.roomId}
-        isRoomLocked={currentRoomLocked}
+        roomId={currentRoomId || room?._id || room?.id || room?.roomId || room?.channelName || route?.params?.roomId}
+        isRoomLocked={Boolean(currentRoomLocked || room?.isLocked)}
         onUnlockRoom={handleUnlockRoom}
         onSuccess={(pin) => {
           setIsPinVerified(true);

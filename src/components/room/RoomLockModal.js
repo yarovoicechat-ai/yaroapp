@@ -63,9 +63,13 @@ export default function RoomLockModal({
       return;
     }
 
-    // If caller provided custom onSuccess in set_pin mode (e.g. CreateLiveScreen before room is created),
+    const effectiveRoomId = typeof roomId === 'object' && roomId !== null
+      ? (roomId._id || roomId.id || roomId.roomId || roomId.channelName || '')
+      : String(roomId || '').trim();
+
+    // If caller provided custom onSuccess in set_pin mode AND there is no room ID (e.g. CreateLiveScreen before room is created),
     // delegate immediately without requiring a pre-existing roomId
-    if (mode === 'set_pin' && onSuccess) {
+    if (!effectiveRoomId && mode === 'set_pin' && onSuccess) {
       setLoading(true);
       try {
         await onSuccess(pin);
@@ -77,10 +81,6 @@ export default function RoomLockModal({
       }
       return;
     }
-
-    const effectiveRoomId = typeof roomId === 'object' && roomId !== null
-      ? (roomId._id || roomId.id || roomId.roomId || roomId.channelName || '')
-      : String(roomId || '').trim();
 
     if (!effectiveRoomId) {
       AlertService.show('Notice', 'Room identifier missing.', 'info');
@@ -96,6 +96,7 @@ export default function RoomLockModal({
           pin,
         });
         if (res.data?.success) {
+          if (onSuccess) await onSuccess(pin);
           AlertService.show(isLive ? 'Private Live' : 'Room Locked', '4-digit password set successfully!', 'success');
           onClose(true);
         } else {
@@ -156,7 +157,7 @@ export default function RoomLockModal({
 
     try {
       if (onUnlockRoom) {
-        await onUnlockRoom({ alreadyUnlocked: true });
+        await onUnlockRoom({ alreadyUnlocked: false });
         onClose();
         return;
       }

@@ -577,7 +577,7 @@ export default function RoomPKPanel({
                           </>
                         )}
                       </View>
-                      <Text numberOfLines={1} style={styles.seatBottomLabel}>
+                      <Text numberOfLines={1} style={[styles.seatBottomLabel, !seat.isEmpty && styles.seatBottomLabelOccupied]}>
                         {seat.isEmpty ? seat.seatNumber : seat.user.name}
                       </Text>
                     </TouchableOpacity>
@@ -624,7 +624,7 @@ export default function RoomPKPanel({
                           </>
                         )}
                       </View>
-                      <Text numberOfLines={1} style={styles.seatBottomLabel}>
+                      <Text numberOfLines={1} style={[styles.seatBottomLabel, !seat.isEmpty && styles.seatBottomLabelOccupied]}>
                         {seat.isEmpty ? seat.seatNumber : seat.user.name}
                       </Text>
                     </TouchableOpacity>
@@ -882,51 +882,46 @@ const styles = StyleSheet.create({
   },
   dismissOverlay: { flex: 1 },
   sheetContainer: {
-    backgroundColor: '#090E1E',
+    backgroundColor: '#070E1B',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 16,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#182438',
   },
   topTabsBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 44,
-    backgroundColor: '#121B2F',
-    borderRadius: 22,
-    padding: 3,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   tabItem: {
-    flex: 1,
-    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 19,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   tabItemActive: {
-    overflow: 'hidden',
-    borderRadius: 19,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   activeTabGradient: {
-    width: '100%',
-    height: '100%',
+    paddingHorizontal: 18,
+    paddingVertical: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 19,
+    borderRadius: 20,
   },
   activeTabText: {
     color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
+    fontWeight: '700',
+    fontSize: 14,
   },
   inactiveTabText: {
-    color: '#8E9CB2',
+    color: '#8E9AA8',
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: 14,
   },
   teamSubTabsRow: {
     flexDirection: 'row',
@@ -980,9 +975,9 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   subtitleText: {
-    color: '#CBD5E1',
+    color: '#8E9AA8',
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   errorText: {
     color: '#FDA4AF',
@@ -1015,26 +1010,26 @@ const styles = StyleSheet.create({
   scoreNum: { fontSize: 18, fontWeight: '900' },
   vsCenter: { color: '#FFF', fontSize: 12, fontWeight: '900', fontStyle: 'italic' },
   seatsGridContainer: {
-    marginVertical: 10,
+    marginVertical: 8,
   },
   seatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   seatCell: {
     alignItems: 'center',
     width: (SCREEN_WIDTH - 48) / 5,
   },
   seatCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#101726',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#091120',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#1E293B',
+    borderColor: '#1E2D48',
     position: 'relative',
     overflow: 'hidden',
   },
@@ -1046,12 +1041,12 @@ const styles = StyleSheet.create({
   seatEmptyLabel: {
     color: '#00A3FF',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   seatAvatarImg: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
+    borderRadius: 25,
   },
   seatYellowBorder: {
     borderColor: '#F59E0B',
@@ -1064,12 +1059,12 @@ const styles = StyleSheet.create({
   candidateChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#121D30',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E2D48',
   },
   candidateChipSelected: {
     borderColor: '#38BDF8',
@@ -1082,9 +1077,9 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   candidateChipText: {
-    color: '#E2E8F0',
-    fontSize: 11,
-    fontWeight: '600',
+    color: '#F1F5F9',
+    fontSize: 12,
+    fontWeight: '500',
     maxWidth: 90,
   },
   seatSelectedBorder: {
@@ -1104,27 +1099,32 @@ const styles = StyleSheet.create({
   checkBadgeYellow: { backgroundColor: '#F59E0B' },
   checkBadgeBlue: { backgroundColor: '#0284C7' },
   seatBottomLabel: {
-    color: '#64748B',
-    fontSize: 11,
+    color: '#8E9AA8',
+    fontSize: 12,
     marginTop: 4,
     textAlign: 'center',
-    maxWidth: 52,
+    maxWidth: 58,
+  },
+  seatBottomLabelOccupied: {
+    color: '#E2E8F0',
+    fontWeight: '500',
   },
   fieldSection: {
     marginTop: 10,
   },
   fieldLabel: {
     color: '#F1F5F9',
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 6,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
   },
   selectGiftCard: {
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    backgroundColor: '#0F1A2C',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#1E293B',
-    padding: 10,
+    borderColor: '#19263E',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1134,10 +1134,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   giftIconWrap: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 10,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E2B42',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1160,9 +1160,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#94A3B8',
   },
   selectedGiftTitle: {
-    color: '#E2E8F0',
-    fontSize: 13,
-    fontWeight: '700',
+    color: '#F1F5F9',
+    fontSize: 14,
+    fontWeight: '500',
   },
   selectedGiftCost: {
     color: '#EAB308',
@@ -1174,16 +1174,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 8,
+    marginTop: 2,
   },
   durationCapsule: {
     flex: 1,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(26, 36, 56, 0.8)',
+    backgroundColor: '#121D30',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#1E293B',
   },
   durationCapsuleActive: {
     borderWidth: 0,
@@ -1197,42 +1196,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   durationNum: {
-    color: '#CBD5E1',
-    fontWeight: '800',
+    color: '#8E9AA8',
+    fontWeight: '600',
     fontSize: 14,
   },
   durationNumActive: {
     color: '#FFFFFF',
-    fontWeight: '900',
+    fontWeight: '700',
     fontSize: 14,
   },
   jackpotRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 14,
   },
   jackpotLabel: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#8E9AA8',
+    fontSize: 13,
+    fontWeight: '500',
   },
   confirmTouchable: {
     borderRadius: 26,
     overflow: 'hidden',
-    marginTop: 6,
+    marginTop: 4,
     marginBottom: 8,
   },
   confirmGradient: {
-    height: 50,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 26,
+    backgroundColor: '#FFFFFF',
   },
   confirmBtnText: {
     color: '#0B0F19',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   pickerBackdrop: {
     flex: 1,

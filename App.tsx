@@ -107,14 +107,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ErrorBoundary from './src/components/ErrorBoundary';
 
 // Global Uncaught JS Exception Handler to prevent native process crashes
-if (typeof global !== 'undefined' && (global as any).ErrorUtils) {
+if (typeof global !== 'undefined' && (global as any).ErrorUtils && typeof (global as any).ErrorUtils.setGlobalHandler === 'function') {
   const previousHandler = (global as any).ErrorUtils.getGlobalHandler?.();
-  (global as any).ErrorUtils.setJSExceptionHandler((error: any, isFatal: boolean) => {
+  (global as any).ErrorUtils.setGlobalHandler((error: any, isFatal: boolean) => {
     console.warn('[GlobalCrashGuard] Intercepted JS error:', error?.message || error, 'isFatal:', isFatal);
-    if (!isFatal && previousHandler) {
+    if (!isFatal && typeof previousHandler === 'function') {
       try { previousHandler(error, false); } catch (_) {}
     }
-  }, true);
+  });
 }
 
 export default function App() {

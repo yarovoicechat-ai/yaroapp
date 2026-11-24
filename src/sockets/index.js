@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 import { clearAuthSession } from '../utils/authSession';
+import { getInstallationDeviceId } from '../utils/deviceIdentity';
 
 const ACTIVE_SOCKET_URL = (SOCKET_URL || 'https://api.yaroapp.in').replace(/\/$/, '');
 
@@ -65,8 +66,10 @@ export const initSocket = async () => {
     }
   }
 
+  const deviceId = await getInstallationDeviceId().catch(() => '');
+
   if (socket) {
-    socket.auth = { token };
+    socket.auth = { token, deviceId };
     if (!socket.connected) socket.connect();
     return socket;
   }
@@ -75,7 +78,7 @@ export const initSocket = async () => {
   // 🌐 Connect Socket
   // --------------------
   socket = io(ACTIVE_SOCKET_URL, {
-    auth: { token },
+    auth: { token, deviceId },
     reconnection: true, // auto reconnect
     reconnectionAttempts: Infinity,
     reconnectionDelay: 2000,

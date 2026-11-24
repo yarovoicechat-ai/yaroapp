@@ -28,6 +28,7 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Platform,
+  DeviceEventEmitter,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1106,15 +1107,26 @@ export default function VoiceRoomScreen() {
   const hasVideoAccess = Boolean(user?.hasVideoAccess || user?.canWatchTogether);
 
   useEffect(() => {
-    const sub = DeviceEventEmitter.addListener('user:video_permission_updated', (data) => {
-      const isTarget = [user?.userId, user?._id, user?.id].some(
-        (id) => [data?.userId, data?.userDbId].some((target) => target != null && String(target) === String(id))
-      );
-      if (isTarget && !data?.hasVideoAccess && !data?.canWatchTogether) {
-        setYtSearchModalVisible(false);
-      }
-    });
-    return () => sub.remove();
+    try {
+      if (!DeviceEventEmitter || typeof DeviceEventEmitter.addListener !== 'function') return;
+      const sub = DeviceEventEmitter.addListener('user:video_permission_updated', (data) => {
+        try {
+          const isTarget = [user?.userId, user?._id, user?.id].some(
+            (id) => [data?.userId, data?.userDbId].some((target) => target != null && String(target) === String(id))
+          );
+          if (isTarget && !data?.hasVideoAccess && !data?.canWatchTogether) {
+            setYtSearchModalVisible(false);
+          }
+        } catch (innerErr) {
+          console.warn('[VoiceRoom] Video permission listener error:', innerErr);
+        }
+      });
+      return () => {
+        try { sub?.remove(); } catch (_) {}
+      };
+    } catch (e) {
+      console.warn('[VoiceRoom] Failed to attach video permission listener:', e);
+    }
   }, [user]);
 
   useEffect(() => {

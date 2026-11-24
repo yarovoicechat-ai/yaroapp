@@ -6,6 +6,8 @@ import dayjs from "dayjs";
 import { AlertService } from "./AlertService";
 import i18next from "i18next";
 import { clearAuthSession } from './authSession';
+import { getInstallationDeviceId } from './deviceIdentity';
+import { DeviceEventEmitter } from 'react-native';
 
 const PRODUCTION_BASE_URL = 'https://api.yaroapp.in/api';
 const normalizeApiBaseUrl = rawUrl => {
@@ -52,6 +54,35 @@ const addNetworkRetry = (client) => {
 
 addNetworkRetry(apiPublic);
 addNetworkRetry(apiUtil);
+
+apiPublic.interceptors.request.use(async (req) => {
+  try {
+    const devId = await getInstallationDeviceId();
+    if (devId && req.headers) {
+      req.headers['x-device-id'] = devId;
+    }
+  } catch (_) {}
+  return req;
+});
+
+apiPublic.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const resData = error.response?.data;
+    const statusCode = error.response?.status;
+    const errorCode = resData?.code || resData?.errorCode;
+    if (statusCode === 403 && (errorCode === 'ACCOUNT_BANNED' || errorCode === 'DEVICE_BANNED')) {
+      try {
+        DeviceEventEmitter.emit('AUTH_BANNED_EVENT', {
+          code: errorCode,
+          message: resData.message,
+          ...resData.data,
+        });
+      } catch (_) {}
+    }
+    return Promise.reject(error);
+  }
+);
 
 const getApiErrorMessage = (error, fallback = 'Something went wrong') => {
   if (error?.code === '12501' || error?.message?.includes('CANCELLED') || error?.message?.includes('canceled')) {
@@ -112,6 +143,14 @@ const publicPaths = [
 ];
 
 apiUtil.interceptors.request.use(async (req) => {
+  // Attach persistent installation device ID to every request
+  try {
+    const devId = await getInstallationDeviceId();
+    if (devId && req.headers) {
+      req.headers['x-device-id'] = devId;
+    }
+  } catch (_) {}
+
   // Handle FormData in React Native: remove hardcoded 'application/json' Content-Type
   // so the native layer automatically sets 'multipart/form-data; boundary=...'
   if (req.data && (typeof req.data.append === 'function' || (typeof FormData !== 'undefined' && req.data instanceof FormData))) {
@@ -200,6 +239,26 @@ apiUtil.interceptors.request.use(async (req) => {
 apiUtil.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const resData = error.response?.data;
+    const statusCode = error.response?.status;
+    const errorCode = resData?.code || resData?.errorCode;
+
+    // Handle Ban Restrictions (Account Banned or Device Banned)
+    if (statusCode === 403 && (errorCode === 'ACCOUNT_BANNED' || errorCode === 'DEVICE_BANNED')) {
+      try {
+        DeviceEventEmitter.emit('AUTH_BANNED_EVENT', {
+          code: errorCode,
+          message: resData.message,
+          ...resData.data,
+        });
+      } catch (_) {}
+
+      if (errorCode === 'ACCOUNT_BANNED') {
+        await clearAuthSession({ notify: false });
+      }
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401) {
       const code = error.response?.data?.code;
       const msg = error.response?.data?.message || '';

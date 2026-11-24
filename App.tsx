@@ -10,6 +10,7 @@ import { navigationRef } from "./src/utils/navigationRef";
 
 import { NativeModules, StatusBar, StyleSheet, View } from "react-native";
 import FloatingVoiceRoomWidget from "./src/components/FloatingVoiceRoomWidget";
+import BanModal from "./src/components/BanModal";
 
 const AppTheme = {
   ...DefaultTheme,
@@ -96,24 +97,41 @@ const AppWrapper = () => {
         <AppNavigator />
       </NavigationContainer>
       <FloatingVoiceRoomWidget />
+      <BanModal />
     </View>
   );
 };
 
 import { VoiceRoomProvider } from "./src/context/VoiceRoomContext";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import ErrorBoundary from './src/components/ErrorBoundary';
+
+// Global Uncaught JS Exception Handler to prevent native process crashes
+if (typeof global !== 'undefined' && (global as any).ErrorUtils) {
+  const previousHandler = (global as any).ErrorUtils.getGlobalHandler?.();
+  (global as any).ErrorUtils.setJSExceptionHandler((error: any, isFatal: boolean) => {
+    console.warn('[GlobalCrashGuard] Intercepted JS error:', error?.message || error, 'isFatal:', isFatal);
+    if (!isFatal && previousHandler) {
+      try { previousHandler(error, false); } catch (_) {}
+    }
+  }, true);
+}
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <UIProvider>
-          <VoiceRoomProvider>
-            <AppWrapper />
-          </VoiceRoomProvider>
-        </UIProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <UIProvider>
+            <VoiceRoomProvider>
+              <ErrorBoundary>
+                <AppWrapper />
+              </ErrorBoundary>
+            </VoiceRoomProvider>
+          </UIProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 

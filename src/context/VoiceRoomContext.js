@@ -1684,6 +1684,11 @@ export const VoiceRoomProvider = ({ children }) => {
         // 9. Error notifications
         sock.on('voice_room:error', (err) => {
           if (err?.code === 'ROOM_PIN_REQUIRED') { setActiveRoom(previous => previous ? { ...previous, isLocked: true, hasPin: true, mode: 'Private (PIN)', pinRequiredAt: Date.now() } : previous); return; }
+          const message = String(err?.message || '');
+          if (message.includes('seat_lock') || message.includes('Could not acquire lock') || message.includes('LockUnavailableError')) {
+            console.warn('[VoiceRoom] Suppressed internal lock contention error:', message);
+            return;
+          }
           if (err?.message) {
             AlertService.show('Voice Room', err.message, 'warning');
           }

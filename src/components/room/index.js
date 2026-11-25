@@ -20,4 +20,7 @@ export { default as RoomSeatActionModal } from './RoomSeatActionModal';
 export { default as RoomGroupPrivilegeModal } from './RoomGroupPrivilegeModal';
 export { default as FanClubBadge } from './FanClubBadge';
 export { default as FanClubIntroModal } from './FanClubIntroModal';
+export { default as CrossRoomPKModal } from './CrossRoomPKModal';
+export { default as RoomCalculatorModal } from './RoomCalculatorModal';
+export { default as RoomPKPanel } from './RoomPKPanel';
 

@@ -51,6 +51,7 @@ import RoomEntryEffectEngine from '../../components/room/RoomEntryEffectEngine';
 import ResponsiveChatBubble from '../../components/room/ResponsiveChatBubble';
 import VoiceRoomSeatGrid from '../../components/room/VoiceRoomSeatGrid';
 import RoomPKPanel from '../../components/room/RoomPKPanel';
+import CrossRoomPKModal from '../../components/room/CrossRoomPKModal';
 import YouTubeRoomPlayer from '../../components/room/YouTubeRoomPlayer';
 import YouTubeSearchModal from '../../components/room/YouTubeSearchModal';
 import AvatarWithFrame from '../../components/AvatarWithFrame';
@@ -1097,6 +1098,7 @@ export default function VoiceRoomScreen() {
   const [wealthModalVisible, setWealthModalVisible] = useState(false);
   const [onlineUsersModalVisible, setOnlineUsersModalVisible] = useState(false);
   const [pkPanelTrigger, setPkPanelTrigger] = useState(0);
+  const [crossRoomPkModalVisible, setCrossRoomPkModalVisible] = useState(false);
   const [watchTogetherActive, setWatchTogetherActive] = useState(false);
   const [ytSearchModalVisible, setYtSearchModalVisible] = useState(false);
   const [calculatorModalVisible, setCalculatorModalVisible] = useState(false);
@@ -2285,6 +2287,21 @@ export default function VoiceRoomScreen() {
         currentUser={user}
       />
 
+      {/* Dedicated Cross-Room PK Modal */}
+      <CrossRoomPKModal
+        visible={crossRoomPkModalVisible}
+        onClose={() => setCrossRoomPkModalVisible(false)}
+        roomId={currentRoomId || room?.id || room?.roomId}
+        isOwner={Boolean(
+          isRoomOwner ||
+          isContextOwnerMatch ||
+          isCurrentUserAdmin ||
+          isEffectiveGlobalRoomManager ||
+          (seats?.[0]?.user && [String(user?._id || ''), String(user?.id || ''), String(user?.userId || '')].some(uid => uid && uid === String(seats[0].user.userId || seats[0].user.id || seats[0].user._id)))
+        )}
+        currentUser={user}
+      />
+
       {/* Notice & Announcement & Event Row (Image 2 Model) */}
       <View style={styles.noticeAnnouncementRow}>
         {/* Left Column: Upar Notice & Niche Announcement */}
@@ -2885,6 +2902,7 @@ export default function VoiceRoomScreen() {
         onOpenRoomTasks={() => setRoomTasksVisible(true)}
         onOpenMedal={() => navigation.navigate('Medal')}
         onOpenPK={() => setPkPanelTrigger(prev => prev + 1)}
+        onOpenCrossRoomPK={() => setCrossRoomPkModalVisible(true)}
         hasVideoAccess={hasVideoAccess}
         onOpenWatchTogether={() => {
           if (!hasVideoAccess) {
@@ -2935,6 +2953,7 @@ export default function VoiceRoomScreen() {
         canModerate={isCurrentUserAdmin}
         isRoomOwner={isRoomOwner}
         onOpenPK={() => setPkPanelTrigger(prev => prev + 1)}
+        onOpenCrossRoomPK={() => setCrossRoomPkModalVisible(true)}
         onOpenCalculator={() => setCalculatorModalVisible(true)}
         onKickUser={() => {
           setToolsModalVisible(false);

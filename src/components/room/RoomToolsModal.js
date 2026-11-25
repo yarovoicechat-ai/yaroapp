@@ -38,6 +38,7 @@ export default function RoomToolsModal({
   onOpenMedal,
   onOpenGames,
   onOpenPK,
+  onOpenCrossRoomPK,
   onOpenWatchTogether,
   hasVideoAccess = false,
   hasRoomHosting = false,
@@ -147,7 +148,7 @@ export default function RoomToolsModal({
               <Text style={styles.toolLabel}>Broadcast</Text>
             </TouchableOpacity>
 
-            {/* PK Battle */}
+            {/* In-Room PK (Personal, Team, Vote) */}
             <TouchableOpacity
               testID="room-tools-pk-btn"
               style={styles.toolCol}
@@ -159,8 +160,26 @@ export default function RoomToolsModal({
               }}
               activeOpacity={0.8}
             >
-              <View style={[styles.toolCircle, { borderColor: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
-                <MaterialCommunityIcons name="sword-cross" size={24} color="#EF4444" />
+              <View style={[styles.toolCircle, { borderColor: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                <MaterialCommunityIcons name="sword-cross" size={24} color="#F59E0B" />
+              </View>
+              <Text style={[styles.toolLabel, { color: '#FCD34D', fontWeight: 'bold' }]}>PK</Text>
+            </TouchableOpacity>
+
+            {/* Cross-Room PK (Room vs Room Battle) */}
+            <TouchableOpacity
+              testID="room-tools-cross-room-pk-btn"
+              style={styles.toolCol}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  onOpenCrossRoomPK && onOpenCrossRoomPK();
+                }, 350);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.toolCircle, { borderColor: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                <MaterialCommunityIcons name="trophy-award" size={24} color="#EF4444" />
               </View>
               <Text style={[styles.toolLabel, { color: '#FCA5A5', fontWeight: 'bold' }]}>Room PK</Text>
             </TouchableOpacity>

@@ -437,7 +437,7 @@ export default function RoomPKPanel({
           style={styles.floatingGradient}
         >
           <Text style={styles.floatingText}>
-            {isPKLive ? `PK • ${view.timer}` : '⚔️ ROOM PK'}
+            {isPKLive ? `PK • ${view.timer}` : '⚔️ PK BATTLE'}
           </Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -448,9 +448,59 @@ export default function RoomPKPanel({
           <TouchableOpacity style={styles.dismissOverlay} activeOpacity={1} onPress={() => setVisible(false)} />
           <View style={[styles.sheetContainer, { paddingBottom: Math.max(bottomSafePadding, 16) }]}>
 
-            {/* Top Slanted Tabs: Vote PK | Personal gift PK | Team gift pk */}
+            {/* Header with Title and Close Button */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 }}>
+              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800' }}>PK Battle ⚔️</Text>
+              <TouchableOpacity onPress={() => setVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Icon name="close-circle" size={24} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Top Slanted Tabs: Personal PK | Team PK | Vote PK */}
             <View style={styles.topTabsBar}>
-              {/* Tab 1: Vote PK */}
+              {/* Tab 1: Personal PK */}
+              <TouchableOpacity
+                testID="pk-mode-user"
+                style={[styles.tabItem, activeTab === 'personal' && styles.tabItemActive]}
+                onPress={() => setActiveTab('personal')}
+                activeOpacity={0.8}
+              >
+                {activeTab === 'personal' ? (
+                  <LinearGradient
+                    colors={['#FF8A00', '#2F80ED']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.activeTabGradient}
+                  >
+                    <Text style={styles.activeTabText}>Personal PK</Text>
+                  </LinearGradient>
+                ) : (
+                  <Text style={styles.inactiveTabText}>Personal PK</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Tab 2: Team PK */}
+              <TouchableOpacity
+                testID="pk-mode-room"
+                style={[styles.tabItem, activeTab === 'team' && styles.tabItemActive]}
+                onPress={() => setActiveTab('team')}
+                activeOpacity={0.8}
+              >
+                {activeTab === 'team' ? (
+                  <LinearGradient
+                    colors={['#FF8A00', '#2F80ED']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.activeTabGradient}
+                  >
+                    <Text style={styles.activeTabText}>Team PK</Text>
+                  </LinearGradient>
+                ) : (
+                  <Text style={styles.inactiveTabText}>Team PK</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Tab 3: Vote PK */}
               <TouchableOpacity
                 testID="pk-tab-vote"
                 style={[styles.tabItem, activeTab === 'vote' && styles.tabItemActive]}
@@ -468,48 +518,6 @@ export default function RoomPKPanel({
                   </LinearGradient>
                 ) : (
                   <Text style={styles.inactiveTabText}>Vote PK</Text>
-                )}
-              </TouchableOpacity>
-
-              {/* Tab 2: Personal gift PK */}
-              <TouchableOpacity
-                testID="pk-mode-user"
-                style={[styles.tabItem, activeTab === 'personal' && styles.tabItemActive]}
-                onPress={() => setActiveTab('personal')}
-                activeOpacity={0.8}
-              >
-                {activeTab === 'personal' ? (
-                  <LinearGradient
-                    colors={['#FF8A00', '#2F80ED']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.activeTabGradient}
-                  >
-                    <Text style={styles.activeTabText}>Personal gift PK</Text>
-                  </LinearGradient>
-                ) : (
-                  <Text style={styles.inactiveTabText}>Personal gift PK</Text>
-                )}
-              </TouchableOpacity>
-
-              {/* Tab 3: Team gift pk */}
-              <TouchableOpacity
-                testID="pk-mode-room"
-                style={[styles.tabItem, activeTab === 'team' && styles.tabItemActive]}
-                onPress={() => setActiveTab('team')}
-                activeOpacity={0.8}
-              >
-                {activeTab === 'team' ? (
-                  <LinearGradient
-                    colors={['#FF8A00', '#2F80ED']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.activeTabGradient}
-                  >
-                    <Text style={styles.activeTabText}>Team gift pk</Text>
-                  </LinearGradient>
-                ) : (
-                  <Text style={styles.inactiveTabText}>Team gift pk</Text>
                 )}
               </TouchableOpacity>
             </View>

@@ -30,6 +30,7 @@ export default function RoomThreeDotModal({
   isGlobalRoomManager = false,
   onBanRoom,
   onOpenPK,
+  onOpenCrossRoomPK,
   onOpenCalculator,
   onToggleStealth,
   isStealthActive = false,
@@ -76,14 +77,26 @@ export default function RoomThreeDotModal({
   // Room Owner sees full management suite
   const ownerItems = [
     {
-      id: 'room_pk',
-      label: 'Room PK ⚔️',
+      id: 'in_room_pk',
+      label: 'PK Battle (Personal • Team • Vote) ⚔️',
       icon: 'sword-cross',
-      iconColor: '#EF4444', // Red-Orange
+      iconColor: '#F59E0B',
       onPress: () => {
         onClose();
         setTimeout(() => {
           onOpenPK && onOpenPK();
+        }, 300);
+      },
+    },
+    {
+      id: 'cross_room_pk',
+      label: 'Room PK (Cross-Room Battle) 🏆',
+      icon: 'trophy-award',
+      iconColor: '#EF4444',
+      onPress: () => {
+        onClose();
+        setTimeout(() => {
+          onOpenCrossRoomPK && onOpenCrossRoomPK();
         }, 300);
       },
     },

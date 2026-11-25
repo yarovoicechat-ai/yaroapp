@@ -6,6 +6,11 @@ import LivePKBar from '../components/live/LivePKBar';
 import RoomPKPanel from '../components/room/RoomPKPanel';
 import AlertService from '../utils/AlertService';
 
+jest.mock('react-native-device-info', () => ({
+  getUniqueId: jest.fn(() => Promise.resolve('test-device-id')),
+  getDeviceId: jest.fn(() => 'test-device'),
+}));
+
 jest.mock('../utils/AlertService', () => ({
   show: jest.fn(),
   info: jest.fn(),

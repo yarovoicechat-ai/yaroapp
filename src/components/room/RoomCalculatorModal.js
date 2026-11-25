@@ -28,6 +28,8 @@ const calcCloseBtnImg = require('../../assets/calculator/calc_close_btn.png');
 const calcConfirmBtnImg = require('../../assets/calculator/calc_confirm_btn.png');
 const calcStarImg = require('../../assets/calculator/calc_star.png');
 const calcHeartImg = require('../../assets/calculator/calc_heart.png');
+const calcFrameDecoratedImg = require('../../assets/calculator/calc_frame_decorated.png');
+const calcFramePlainImg = require('../../assets/calculator/calc_frame_plain.png');
 
 const DURATION_OPTIONS = Array.from({ length: 60 }, (_, i) => i + 1);
 
@@ -189,13 +191,12 @@ export default function RoomCalculatorModal({
           </View>
         ) : (
           // ==================== MAIN CALCULATOR POPUP ====================
-          <View style={styles.popupCard}>
-            {/* Top Stars & Bubbles Decor matching screenshot */}
-            <Image source={calcStarImg} style={styles.decorStarLeft} />
-            <Image source={calcStarImg} style={styles.decorStarRight} />
-            <Image source={calcHeartImg} style={styles.decorHeartLeft} />
-            <Image source={calcHeartImg} style={styles.decorHeartRight} />
-
+          <ImageBackground
+            source={calcFrameDecoratedImg}
+            style={styles.popupCard}
+            imageStyle={styles.popupCardImg}
+            resizeMode="stretch"
+          >
             {/* Top Hexagonal Header Ribbon Asset */}
             <View style={styles.headerRibbonContainer}>
               <ImageBackground
@@ -505,7 +506,7 @@ export default function RoomCalculatorModal({
                 </View>
               </View>
             )}
-          </View>
+          </ImageBackground>
         )}
 
         {/* ==================== DURATION SCROLL PICKER BOTTOM SHEET ==================== */}
@@ -584,32 +585,34 @@ const styles = StyleSheet.create({
   },
   // Popup card
   popupCard: {
-    width: SCREEN_WIDTH * 0.88,
-    maxWidth: 380,
-    backgroundColor: '#3E3465',
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: '#7C67B8',
-    paddingTop: 36,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    width: SCREEN_WIDTH * 0.92,
+    maxWidth: 395,
+    minHeight: 440,
+    backgroundColor: 'transparent',
+    paddingTop: 54,
+    paddingHorizontal: 28,
+    paddingBottom: 28,
     alignItems: 'center',
     position: 'relative',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    elevation: 15,
+    justifyContent: 'center',
+    shadowColor: '#38BDF8',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  popupCardImg: {
+    resizeMode: 'stretch',
   },
   // Top Header Ribbon
   headerRibbonContainer: {
     position: 'absolute',
-    top: -20,
+    top: -16,
     alignSelf: 'center',
     zIndex: 10,
   },
   headerRibbonBg: {
-    width: 170,
+    width: 175,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
@@ -627,57 +630,20 @@ const styles = StyleSheet.create({
   },
   helpBtn: {
     position: 'absolute',
-    top: 12,
-    left: 14,
-    zIndex: 5,
+    top: 20,
+    left: 20,
+    zIndex: 15,
   },
   closeBtn: {
     position: 'absolute',
-    top: 12,
-    right: 14,
-    zIndex: 5,
+    top: 20,
+    right: 20,
+    zIndex: 15,
   },
   iconBtnImg: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     resizeMode: 'contain',
-  },
-  // Decorations floating above top edge
-  decorStarLeft: {
-    position: 'absolute',
-    top: -30,
-    left: 36,
-    width: 30,
-    height: 30,
-    resizeMode: 'contain',
-    zIndex: 4,
-  },
-  decorStarRight: {
-    position: 'absolute',
-    top: -30,
-    right: 36,
-    width: 28,
-    height: 28,
-    resizeMode: 'contain',
-    zIndex: 4,
-  },
-  decorHeartLeft: {
-    position: 'absolute',
-    top: -24,
-    left: 10,
-    width: 24,
-    height: 24,
-    resizeMode: 'contain',
-    zIndex: 4,
-  },
-  decorHeartRight: {
-    position: 'absolute',
-    top: -24,
-    right: 10,
-    width: 24,
-    height: 24,
-    resizeMode: 'contain',
-    zIndex: 4,
   },
   // Setup State
   setupBody: {
@@ -685,12 +651,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   themeInputContainer: {
-    backgroundColor: '#2F2753',
+    backgroundColor: 'rgba(10, 16, 46, 0.75)',
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#4E4280',
+    borderWidth: 1.2,
+    borderColor: 'rgba(56, 189, 248, 0.45)',
     padding: 14,
-    minHeight: 120,
+    minHeight: 110,
     position: 'relative',
     marginBottom: 16,
   },
@@ -700,7 +666,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     padding: 0,
     textAlignVertical: 'top',
-    height: 75,
+    height: 70,
   },
   charCounter: {
     position: 'absolute',
@@ -717,10 +683,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   durationSelectorBox: {
-    backgroundColor: '#2F2753',
+    backgroundColor: 'rgba(10, 16, 46, 0.75)',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#4E4280',
+    borderWidth: 1.2,
+    borderColor: 'rgba(56, 189, 248, 0.45)',
     paddingHorizontal: 16,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -804,8 +770,10 @@ const styles = StyleSheet.create({
     minHeight: 180,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#2F2753',
+    backgroundColor: 'rgba(10, 16, 46, 0.75)',
     borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: 'rgba(56, 189, 248, 0.35)',
     padding: 16,
     marginBottom: 16,
   },

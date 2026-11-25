@@ -98,7 +98,7 @@ export default function FloatingCalculatorWidget({
 
         {/* Floating Card Body */}
         <LinearGradient
-          colors={['#4C3F78', '#382D5C', '#2A2048']}
+          colors={['#1E224F', '#141838', '#0C0E28']}
           style={styles.cardGradient}
         >
           {activeSession.topCharming ? (
@@ -179,14 +179,14 @@ const styles = StyleSheet.create({
   cardGradient: {
     borderRadius: 20,
     borderWidth: 1.8,
-    borderColor: '#8B5CF6',
+    borderColor: '#38BDF8',
     paddingTop: 26,
     paddingHorizontal: 8,
     paddingBottom: 8,
     minHeight: 156,
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.55,
     shadowRadius: 10,

@@ -30,6 +30,7 @@ export default function RoomThreeDotModal({
   isGlobalRoomManager = false,
   onBanRoom,
   onOpenPK,
+  onOpenCalculator,
   onToggleStealth,
   isStealthActive = false,
   isRoomLocked = false,
@@ -83,6 +84,18 @@ export default function RoomThreeDotModal({
         onClose();
         setTimeout(() => {
           onOpenPK && onOpenPK();
+        }, 300);
+      },
+    },
+    {
+      id: 'charm_calc',
+      label: 'Charm Activity 🌟',
+      icon: 'calculator',
+      iconColor: '#F59E0B',
+      onPress: () => {
+        onClose();
+        setTimeout(() => {
+          onOpenCalculator && onOpenCalculator();
         }, 300);
       },
     },

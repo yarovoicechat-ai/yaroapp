@@ -26,6 +26,7 @@ export default function RoomToolsModal({
   onOpenSeatSkinModal,
   showSeatCharm = false,
   onToggleSeatCharm,
+  onOpenCalculator,
   seatCount = 8,
   isHost,
   isGlobalRoomManager = false,
@@ -236,32 +237,34 @@ export default function RoomToolsModal({
               </TouchableOpacity>
             )}
 
-            {/* Seat Charm */}
+            {/* Charm / Calculator Activity */}
             <TouchableOpacity
+              testID="room-tools-charm-calc-btn"
               style={styles.toolCol}
               onPress={() => {
-                onToggleSeatCharm && onToggleSeatCharm();
+                onClose();
+                setTimeout(() => {
+                  onOpenCalculator && onOpenCalculator();
+                }, 350);
               }}
               activeOpacity={0.8}
             >
               <View
                 style={[
                   styles.toolCircle,
-                  showSeatCharm
-                    ? { borderColor: '#EC4899', backgroundColor: 'rgba(236, 72, 153, 0.22)' }
-                    : { borderColor: 'rgba(255, 255, 255, 0.12)' },
+                  { borderColor: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.15)' },
                 ]}
               >
-                <Text style={{ fontSize: 21 }}>🌸</Text>
+                <Text style={{ fontSize: 22 }}>🌟</Text>
               </View>
               <Text
                 style={[
                   styles.toolLabel,
-                  showSeatCharm && { color: '#EC4899', fontWeight: '700' },
+                  { color: '#FCD34D', fontWeight: 'bold' },
                 ]}
                 numberOfLines={1}
               >
-                {showSeatCharm ? 'Charm ON' : 'Charm OFF'}
+                Charm
               </Text>
             </TouchableOpacity>
 

@@ -73,6 +73,8 @@ import { roomGiftRecipients } from '../../utils/giftRecipients';
 import RoomToolsModal from '../../components/room/RoomToolsModal';
 import RoomThreeDotModal from '../../components/room/RoomThreeDotModal';
 import RoomExitModal from '../../components/room/RoomExitModal';
+import RoomCalculatorModal from '../../components/room/RoomCalculatorModal';
+import FloatingCalculatorWidget from '../../components/room/FloatingCalculatorWidget';
 import RoomEmojiModal from '../../components/room/RoomEmojiModal';
 import RoomWealthModal from '../../components/room/RoomWealthModal';
 import RoomOnlineUsersModal from '../../components/room/RoomOnlineUsersModal';
@@ -1097,6 +1099,122 @@ export default function VoiceRoomScreen() {
   const [pkPanelTrigger, setPkPanelTrigger] = useState(0);
   const [watchTogetherActive, setWatchTogetherActive] = useState(false);
   const [ytSearchModalVisible, setYtSearchModalVisible] = useState(false);
+  const [calculatorModalVisible, setCalculatorModalVisible] = useState(false);
+  const [calculatorSession, setCalculatorSession] = useState(null);
+
+  useEffect(() => {
+    const sock = getSocket();
+    if (!sock) return;
+
+    const handleCalcStarted = (data) => {
+      console.log('[VoiceRoom] Calculator started:', data);
+      setCalculatorSession(data);
+      const starter = data?.startedBy?.name || 'Host';
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `calc_start_${Date.now()}_${Math.random()}`,
+          text: `Calculator opened by ${starter}. ⭐777`,
+          isSystem: true,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    };
+
+    const handleCalcUpdated = (data) => {
+      setCalculatorSession(data);
+    };
+
+    const handleCalcEnded = (data) => {
+      console.log('[VoiceRoom] Calculator ended:', data);
+      setCalculatorSession(data);
+      const sup = data?.topSupporter?.name || 'None';
+      const charm = data?.topCharming?.name || 'None';
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `calc_end_${Date.now()}_${Math.random()}`,
+          text: `Calculator closed. The top supporter is ${sup}. The top charming is ${charm}.`,
+          isSystem: true,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    };
+
+    sock.on('room:calculator:started', handleCalcStarted);
+    sock.on('room:calculator:updated', handleCalcUpdated);
+    sock.on('room:calculator:ended', handleCalcEnded);
+
+    const targetRoomId = currentRoomId || room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
+    if (targetRoomId) {
+      sock.emit('room:calculator:get', { roomId: targetRoomId }, (res) => {
+        if (res?.success && res?.data) {
+          setCalculatorSession(res.data);
+        }
+      });
+    }
+
+    return () => {
+      sock.off('room:calculator:started', handleCalcStarted);
+      sock.off('room:calculator:updated', handleCalcUpdated);
+      sock.off('room:calculator:ended', handleCalcEnded);
+    };
+  }, [currentRoomId, room?.id, room?.roomId, room?.channelName]);
+
+  const handleStartCalculator = (theme, durationMins) => {
+    return new Promise((resolve, reject) => {
+      const sock = getSocket();
+      const targetRoomId = currentRoomId || room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
+      if (!sock) {
+        AlertService.show('Error', 'Network connection unavailable', 'error');
+        return reject(new Error('No socket'));
+      }
+      sock.emit(
+        'room:calculator:start',
+        { roomId: targetRoomId, theme, durationMins },
+        (res) => {
+          if (res?.success) {
+            setCalculatorSession(res.data);
+            AlertService.show('Started', `Calculator "${theme}" started for ${durationMins} mins!`, 'success');
+            resolve(res.data);
+          } else {
+            AlertService.show('Notice', res?.message || 'Could not start calculator', 'error');
+            reject(new Error(res?.message));
+          }
+        }
+      );
+    });
+  };
+
+  const handleEndCalculator = () => {
+    return new Promise((resolve, reject) => {
+      const sock = getSocket();
+      const targetRoomId = currentRoomId || room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
+      if (!sock) return reject(new Error('No socket'));
+      sock.emit('room:calculator:end', { roomId: targetRoomId }, (res) => {
+        if (res?.success) {
+          setCalculatorSession(res.data);
+          AlertService.show('Ended', 'Calculator ended.', 'info');
+          resolve(res.data);
+        } else {
+          AlertService.show('Notice', res?.message || 'Could not end calculator', 'error');
+          reject(new Error(res?.message));
+        }
+      });
+    });
+  };
+
+  const handleShareCalculator = (session) => {
+    const sock = getSocket();
+    const targetRoomId = currentRoomId || room?.id || room?.roomId || room?.channelName || route?.params?.roomId;
+    if (sock && targetRoomId) {
+      sock.emit('voice_room:send_chat', {
+        roomId: targetRoomId,
+        message: `🌟 Join our Calculator activity: "${session?.theme || 'Charm'}"!`,
+      });
+    }
+    AlertService.show('Shared', 'Shared to room chat!', 'success');
+  };
 
   const hasVideoAccess = Boolean(user?.hasVideoAccess || user?.canWatchTogether);
 
@@ -2664,6 +2782,29 @@ export default function VoiceRoomScreen() {
         </View>
       )}
 
+      {/* Floating Calculator Widget */}
+      <FloatingCalculatorWidget
+        activeSession={calculatorSession}
+        onPress={() => setCalculatorModalVisible(true)}
+      />
+
+      {/* Room Calculator Modal */}
+      <RoomCalculatorModal
+        visible={calculatorModalVisible}
+        onClose={() => setCalculatorModalVisible(false)}
+        roomId={currentRoomId || room?.id || room?.roomId}
+        isOwner={Boolean(
+          isRoomOwner ||
+          isContextOwnerMatch ||
+          isCurrentUserAdmin ||
+          isEffectiveGlobalRoomManager
+        )}
+        activeSession={calculatorSession}
+        onStartSession={handleStartCalculator}
+        onEndSession={handleEndCalculator}
+        onShareSession={handleShareCalculator}
+      />
+
       {/* MODAL 1: EXIT MODAL (KEEP VS LEAVE) */}
       <RoomExitModal
         visible={exitModalVisible}
@@ -2705,6 +2846,7 @@ export default function VoiceRoomScreen() {
             'info'
           );
         }}
+        onOpenCalculator={() => setCalculatorModalVisible(true)}
         seatCount={seatCount}
         isHost={isRoomOwner || isContextOwnerMatch || isCurrentUserAdmin || isEffectiveGlobalRoomManager}
         isGlobalRoomManager={isEffectiveGlobalRoomManager}
@@ -2788,6 +2930,7 @@ export default function VoiceRoomScreen() {
         canModerate={isCurrentUserAdmin}
         isRoomOwner={isRoomOwner}
         onOpenPK={() => setPkPanelTrigger(prev => prev + 1)}
+        onOpenCalculator={() => setCalculatorModalVisible(true)}
         onKickUser={() => {
           setToolsModalVisible(false);
           setOnlineUsersModalVisible(true);

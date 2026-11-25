@@ -292,7 +292,7 @@ export default function RoomCalculatorModal({
                           source={
                             activeSession.topCharming.avatar
                               ? { uri: activeSession.topCharming.avatar }
-                              : require('../../assets/avatars/avatar1.png')
+                              : require('../../assets/avtar.webp')
                           }
                           style={styles.participantAvatar}
                         />
@@ -383,7 +383,7 @@ export default function RoomCalculatorModal({
                         source={
                           activeSession?.topSupporter?.avatar
                             ? { uri: activeSession.topSupporter.avatar }
-                            : require('../../assets/avatars/avatar1.png')
+                            : require('../../assets/avtar.webp')
                         }
                         style={styles.participantAvatar}
                       />
@@ -410,7 +410,7 @@ export default function RoomCalculatorModal({
                         source={
                           activeSession?.topCharming?.avatar
                             ? { uri: activeSession.topCharming.avatar }
-                            : require('../../assets/avatars/avatar2.png')
+                            : require('../../assets/avtar.webp')
                         }
                         style={styles.participantAvatar}
                       />

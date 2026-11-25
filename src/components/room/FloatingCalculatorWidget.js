@@ -105,7 +105,7 @@ export default function FloatingCalculatorWidget({
                 source={
                   activeSession.topCharming.avatar
                     ? { uri: activeSession.topCharming.avatar }
-                    : require('../../assets/avatars/avatar1.png')
+                    : require('../../assets/avtar.webp')
                 }
                 style={styles.avatarMini}
               />

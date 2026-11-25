@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  ImageBackground,
   ScrollView,
   Dimensions,
   Platform,
@@ -19,11 +20,11 @@ import LinearGradient from 'react-native-linear-gradient';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Asset imports
-const calcFrameImg = require('../../assets/calculator/calc_frame.png');
+// User assets
+const calcBadgeBlankImg = require('../../assets/calculator/calc_badge_blank.png');
+const calcBadgeTextImg = require('../../assets/calculator/calc_badge_text.png');
 const calcHelpBtnImg = require('../../assets/calculator/calc_help_btn.png');
 const calcCloseBtnImg = require('../../assets/calculator/calc_close_btn.png');
-const calcBadgeImg = require('../../assets/calculator/calc_badge.png');
 const calcConfirmBtnImg = require('../../assets/calculator/calc_confirm_btn.png');
 const calcStarImg = require('../../assets/calculator/calc_star.png');
 const calcHeartImg = require('../../assets/calculator/calc_heart.png');
@@ -46,6 +47,7 @@ export default function RoomCalculatorModal({
   const [tempDuration, setTempDuration] = useState(10);
   const [showRules, setShowRules] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [postToast, setPostToast] = useState(false);
 
   // Remaining seconds calculation
   const [secondsLeft, setSecondsLeft] = useState(0);
@@ -99,6 +101,11 @@ export default function RoomCalculatorModal({
       if (onEndSession) {
         await onEndSession();
       }
+      // Show "Post successfully" brief toast matching video frame 55
+      setPostToast(true);
+      setTimeout(() => {
+        setPostToast(false);
+      }, 1500);
     } catch (e) {
       console.warn('[RoomCalculator] end error:', e);
     } finally {
@@ -148,9 +155,13 @@ export default function RoomCalculatorModal({
 
               {/* How to Improve Card */}
               <View style={styles.rulesCard}>
-                <View style={styles.cardRibbonBadge}>
-                  <Text style={styles.cardRibbonText}>How to improve</Text>
-                </View>
+                <ImageBackground
+                  source={calcBadgeBlankImg}
+                  style={styles.rulesCardRibbonBadge}
+                  resizeMode="stretch"
+                >
+                  <Text style={styles.rulesCardRibbonText}>How to improve</Text>
+                </ImageBackground>
 
                 <Text style={styles.rulesCardSubtitle}>
                   Receive gifts to increase the value
@@ -177,27 +188,26 @@ export default function RoomCalculatorModal({
         ) : (
           // ==================== MAIN CALCULATOR POPUP ====================
           <View style={styles.popupCard}>
-            {/* Top Stars & Bubbles Decor */}
+            {/* Top Stars & Bubbles Decor matching screenshot */}
             <Image source={calcStarImg} style={styles.decorStarLeft} />
             <Image source={calcStarImg} style={styles.decorStarRight} />
             <Image source={calcHeartImg} style={styles.decorHeartLeft} />
             <Image source={calcHeartImg} style={styles.decorHeartRight} />
 
-            {/* Header Ribbon / Badge */}
+            {/* Top Hexagonal Header Ribbon Asset */}
             <View style={styles.headerRibbonContainer}>
-              <LinearGradient
-                colors={['#8B5CF6', '#3B82F6', '#9333EA']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.headerRibbon}
+              <ImageBackground
+                source={calcBadgeBlankImg}
+                style={styles.headerRibbonBg}
+                resizeMode="stretch"
               >
                 <Text style={styles.headerRibbonText} numberOfLines={1}>
-                  {activeSession ? activeSession.theme : 'Calculator'}
+                  {activeSession ? (activeSession.theme || 'Calculator') : 'Calculator'}
                 </Text>
-              </LinearGradient>
+              </ImageBackground>
             </View>
 
-            {/* Top Left ? Help Button */}
+            {/* Top Left ? Help Button from user assets */}
             <TouchableOpacity
               style={styles.helpBtn}
               onPress={() => setShowRules(true)}
@@ -206,7 +216,7 @@ export default function RoomCalculatorModal({
               <Image source={calcHelpBtnImg} style={styles.iconBtnImg} />
             </TouchableOpacity>
 
-            {/* Top Right X Close Button */}
+            {/* Top Right X Close Button from user assets */}
             <TouchableOpacity
               style={styles.closeBtn}
               onPress={onClose}
@@ -216,7 +226,7 @@ export default function RoomCalculatorModal({
             </TouchableOpacity>
 
             {/* Content body based on session state */}
-            {!activeSession || activeSession.status !== 'active' && activeSession.status !== 'ended' ? (
+            {!activeSession || (activeSession.status !== 'active' && activeSession.status !== 'ended') ? (
               // ----------------- SETUP STATE -----------------
               <View style={styles.setupBody}>
                 {/* Theme Text Input */}
@@ -258,18 +268,17 @@ export default function RoomCalculatorModal({
                   activeOpacity={0.85}
                 >
                   {isFormValid ? (
-                    <LinearGradient
-                      colors={['#F59E0B', '#F97316', '#EAB308']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.confirmGradient}
+                    <ImageBackground
+                      source={calcConfirmBtnImg}
+                      style={styles.confirmBtnImgBg}
+                      resizeMode="stretch"
                     >
                       {submitting ? (
                         <ActivityIndicator color="#FFF" size="small" />
                       ) : (
                         <Text style={styles.confirmTextActive}>Confirm</Text>
                       )}
-                    </LinearGradient>
+                    </ImageBackground>
                   ) : (
                     <View style={styles.confirmDisabledInner}>
                       <Text style={styles.confirmTextDisabled}>Confirm</Text>
@@ -280,6 +289,13 @@ export default function RoomCalculatorModal({
             ) : activeSession.status === 'active' ? (
               // ----------------- ACTIVE SESSION STATE -----------------
               <View style={styles.activeBody}>
+                {/* Post Toast (matching video frame 55) */}
+                {postToast && (
+                  <View style={styles.toastOverlay}>
+                    <Text style={styles.toastText}>Post successfully</Text>
+                  </View>
+                )}
+
                 {/* Ranking Section */}
                 <View style={styles.rankingCardArea}>
                   {activeSession.topCharming ? (
@@ -311,11 +327,13 @@ export default function RoomCalculatorModal({
                   ) : (
                     <View style={styles.emptyRankingBox}>
                       <Text style={styles.emptyRankingText}>No current ranking</Text>
-                      <ActivityIndicator
-                        size="small"
-                        color="rgba(255, 255, 255, 0.4)"
-                        style={{ marginTop: 16 }}
-                      />
+                      {submitting && (
+                        <ActivityIndicator
+                          size="small"
+                          color="#FFF"
+                          style={{ marginTop: 16 }}
+                        />
+                      )}
                     </View>
                   )}
                 </View>
@@ -349,7 +367,11 @@ export default function RoomCalculatorModal({
                         colors={['#3B82F6', '#2563EB', '#1D4ED8']}
                         style={styles.endBtnGradient}
                       >
-                        <Text style={styles.endBtnText}>End</Text>
+                        {submitting ? (
+                          <ActivityIndicator color="#FFF" size="small" />
+                        ) : (
+                          <Text style={styles.endBtnText}>End</Text>
+                        )}
                       </LinearGradient>
                     </TouchableOpacity>
                   )}
@@ -558,30 +580,26 @@ const styles = StyleSheet.create({
   // Top Header Ribbon
   headerRibbonContainer: {
     position: 'absolute',
-    top: -18,
+    top: -20,
     alignSelf: 'center',
     zIndex: 10,
   },
-  headerRibbon: {
-    paddingHorizontal: 28,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#C084FC',
+  headerRibbonBg: {
+    width: 170,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 140,
-    shadowColor: '#C084FC',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 8,
+    paddingHorizontal: 16,
   },
   headerRibbonText: {
     color: '#FFF',
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.5,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   helpBtn: {
     position: 'absolute',
@@ -651,14 +669,16 @@ const styles = StyleSheet.create({
   themeInput: {
     color: '#FFF',
     fontSize: 15,
+    fontWeight: '500',
+    padding: 0,
     textAlignVertical: 'top',
-    height: 80,
+    height: 75,
   },
   charCounter: {
     position: 'absolute',
-    bottom: 8,
-    right: 12,
-    color: '#10B981',
+    bottom: 10,
+    right: 14,
+    color: '#2DD4BF',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -673,45 +693,56 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#4E4280',
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   durationSubtext: {
-    color: 'rgba(255, 255, 255, 0.45)',
-    fontSize: 11,
-    marginBottom: 4,
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 13,
   },
   durationValueText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   confirmButton: {
     width: '100%',
-    height: 50,
-    borderRadius: 25,
+    height: 48,
+    borderRadius: 24,
     overflow: 'hidden',
   },
-  confirmGradient: {
-    flex: 1,
-    justifyContent: 'center',
+  confirmBtnImgBg: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonDisabled: {
+    backgroundColor: '#C4C4C4',
   },
   confirmDisabledInner: {
-    flex: 1,
-    backgroundColor: '#E2E8F0',
-    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#C4C4C4',
   },
   confirmTextActive: {
     color: '#FFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   confirmTextDisabled: {
-    color: '#94A3B8',
-    fontSize: 17,
+    color: '#6B7280',
+    fontSize: 16,
     fontWeight: '700',
   },
   // Active State
@@ -720,14 +751,34 @@ const styles = StyleSheet.create({
     marginTop: 10,
     alignItems: 'center',
   },
+  toastOverlay: {
+    position: 'absolute',
+    top: 60,
+    alignSelf: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    zIndex: 99,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  toastText: {
+    color: '#1F2937',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   rankingCardArea: {
     width: '100%',
-    minHeight: 160,
+    minHeight: 180,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#2F2753',
     borderRadius: 16,
     padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 16,
   },
   emptyRankingBox: {
@@ -735,16 +786,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyRankingText: {
-    color: 'rgba(255, 255, 255, 0.75)',
+    color: '#FFF',
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
+    opacity: 0.9,
   },
   charmingBanner: {
-    width: 140,
+    width: 130,
     borderRadius: 14,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#F59E0B',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 6,
   },
   charmingBannerGrad: {
     paddingVertical: 12,
@@ -752,32 +807,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   participantAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 2,
-    borderColor: '#F59E0B',
+    borderColor: '#FFF',
     marginBottom: 6,
   },
   bannerRoleTitle: {
-    color: '#FCD34D',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 2,
   },
   participantName: {
     color: '#FFF',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     marginBottom: 6,
+    maxWidth: 100,
+    textAlign: 'center',
   },
   scoreCapsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingVertical: 2,
   },
   scoreStarIcon: {
     fontSize: 12,
@@ -786,29 +843,42 @@ const styles = StyleSheet.create({
   scoreNumber: {
     color: '#FFF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
+  diamondScoreCapsule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  scoreDiamondIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  // Stats Row
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
     width: '100%',
-    paddingVertical: 12,
-    marginBottom: 16,
+    justifyContent: 'space-around',
+    marginBottom: 20,
+    paddingHorizontal: 8,
   },
   statCol: {
     alignItems: 'center',
-    flex: 1,
   },
   statValue: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     marginBottom: 2,
   },
   statLabel: {
-    color: 'rgba(255, 255, 255, 0.55)',
+    color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 12,
   },
+  // Action Buttons
   actionButtonsRow: {
     flexDirection: 'row',
     width: '100%',
@@ -816,37 +886,45 @@ const styles = StyleSheet.create({
   },
   endActionBtn: {
     flex: 1,
-    height: 48,
-    borderRadius: 24,
+    height: 44,
+    borderRadius: 22,
     overflow: 'hidden',
   },
   endBtnGradient: {
-    flex: 1,
-    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   endBtnText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   shareActionBtn: {
     flex: 1,
-    height: 48,
-    borderRadius: 24,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  shareFullBtn: {
+    width: '100%',
+    height: 46,
+    borderRadius: 23,
     overflow: 'hidden',
   },
   shareBtnGradient: {
-    flex: 1,
-    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   shareBtnText: {
     color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
   },
-  // Ended State
+  // Ended state
   endedBody: {
     width: '100%',
     marginTop: 10,
@@ -855,58 +933,42 @@ const styles = StyleSheet.create({
   endedBannersRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
-    width: '100%',
+    gap: 14,
     marginBottom: 16,
+    width: '100%',
   },
   endedBannerItem: {
     flex: 1,
-    maxWidth: 130,
+    maxWidth: 135,
     borderRadius: 14,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#F59E0B',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 6,
   },
   endedBannerGrad: {
     paddingVertical: 12,
     paddingHorizontal: 6,
     alignItems: 'center',
   },
-  diamondScoreCapsule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  scoreDiamondIcon: {
-    fontSize: 12,
-    marginRight: 4,
-  },
-  shareFullBtn: {
-    width: '100%',
-    height: 48,
-    borderRadius: 24,
-    overflow: 'hidden',
-  },
-  // Bottom Sheet Duration Picker
+  // Picker Bottom Sheet
   pickerOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    zIndex: 9999,
+    zIndex: 999,
   },
   pickerBackdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   pickerContainer: {
     backgroundColor: '#FFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-    maxHeight: 380,
-    zIndex: 10000,
+    maxHeight: SCREEN_HEIGHT * 0.45,
+    paddingBottom: 24,
   },
   pickerHeader: {
     flexDirection: 'row',
@@ -918,7 +980,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   pickerHeaderBtn: {
-    padding: 6,
+    padding: 4,
   },
   pickerHeaderTitle: {
     fontSize: 16,
@@ -928,13 +990,13 @@ const styles = StyleSheet.create({
   pickerDoneText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#06B6D4',
+    color: '#0284C7',
   },
   pickerScrollView: {
-    maxHeight: 280,
+    maxHeight: 240,
   },
   pickerScrollContent: {
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   pickerItem: {
     paddingVertical: 12,
@@ -942,32 +1004,31 @@ const styles = StyleSheet.create({
   },
   pickerItemSelected: {
     backgroundColor: '#F3F4F6',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E7EB',
   },
   pickerItemText: {
-    fontSize: 17,
-    color: '#9CA3AF',
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   pickerItemTextSelected: {
-    fontSize: 19,
-    fontWeight: '800',
     color: '#111827',
+    fontWeight: '800',
+    fontSize: 17,
   },
   // Rules Screen
   rulesContainer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#1E143E',
-    zIndex: 9998,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#2A1F52',
   },
   rulesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: Platform.OS === 'android' ? 40 : 50,
     paddingBottom: 14,
+    backgroundColor: '#2A1F52',
   },
   backButton: {
     padding: 6,
@@ -978,89 +1039,89 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   rulesScrollContent: {
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 40,
+    alignItems: 'center',
   },
   starryBanner: {
     width: '100%',
-    paddingVertical: 36,
+    height: 160,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    marginVertical: 16,
   },
   floatingStar: {
     position: 'absolute',
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
+    opacity: 0.7,
     resizeMode: 'contain',
   },
   brightestStarTitle: {
-    color: '#E0E7FF',
+    color: '#FFF',
     fontSize: 32,
     fontWeight: '900',
     textAlign: 'center',
-    letterSpacing: 1,
-    textShadowColor: '#818CF8',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+    lineHeight: 40,
+    textShadowColor: '#C084FC',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
   },
   rulesCard: {
     width: '100%',
-    backgroundColor: '#2F2356',
+    backgroundColor: '#392C66',
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: '#5B429A',
-    padding: 24,
+    borderColor: '#604F98',
+    paddingTop: 32,
+    paddingHorizontal: 18,
+    paddingBottom: 24,
     alignItems: 'center',
-    marginTop: 10,
     position: 'relative',
+    marginTop: 10,
   },
-  cardRibbonBadge: {
+  rulesCardRibbonBadge: {
     position: 'absolute',
     top: -16,
-    backgroundColor: '#4C1D95',
-    borderColor: '#A78BFA',
-    borderWidth: 1.5,
-    paddingHorizontal: 22,
-    paddingVertical: 6,
-    borderRadius: 16,
+    width: 150,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardRibbonText: {
+  rulesCardRibbonText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   rulesCardSubtitle: {
-    color: '#E2E8F0',
-    fontSize: 16,
+    color: '#E0E7FF',
+    fontSize: 14,
     fontWeight: '600',
-    marginTop: 14,
-    marginBottom: 20,
     textAlign: 'center',
+    marginBottom: 16,
   },
   rulesConversionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 18,
   },
   starTag: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F59E0B',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
     borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   starTagIcon: {
-    fontSize: 16,
-    marginRight: 6,
+    fontSize: 13,
+    marginRight: 4,
   },
   starTagText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
   },
   equalSign: {
@@ -1072,23 +1133,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#C084FC',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
     borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   diamondTagIcon: {
-    fontSize: 16,
-    marginRight: 6,
+    fontSize: 13,
+    marginRight: 4,
   },
   diamondTagText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
   },
   rulesDescription: {
     color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 20,
     textAlign: 'center',
   },
 });

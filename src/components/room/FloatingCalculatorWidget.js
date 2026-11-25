@@ -8,16 +8,20 @@ import {
   Animated,
   Dimensions,
   Image,
+  ImageBackground,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+const calcBadgeBlankImg = require('../../assets/calculator/calc_badge_blank.png');
+
 export default function FloatingCalculatorWidget({
   activeSession,
   onPress,
 }) {
-  const pan = useRef(new Animated.ValueXY({ x: 16, y: SCREEN_HEIGHT * 0.45 })).current;
+  // Positioned on the right side by default matching video
+  const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - 176, y: SCREEN_HEIGHT * 0.52 })).current;
   const [secondsLeft, setSecondsLeft] = useState(0);
 
   useEffect(() => {
@@ -57,16 +61,12 @@ export default function FloatingCalculatorWidget({
     })
   ).current;
 
+  // Crucial: completely vanish when session is not active
   if (!activeSession || activeSession.status !== 'active') return null;
 
   const mins = Math.floor(secondsLeft / 60);
   const secs = secondsLeft % 60;
-  const countdownText =
-    activeSession.status === 'ended'
-      ? 'End'
-      : mins >= 1
-      ? `${mins}m ${secs}s`
-      : `${secs}s`;
+  const countdownText = mins >= 1 ? `${mins}m ${secs}s` : `${secs}s`;
 
   return (
     <Animated.View
@@ -79,28 +79,30 @@ export default function FloatingCalculatorWidget({
       {...panResponder.panHandlers}
     >
       <TouchableOpacity
-        activeOpacity={0.88}
+        activeOpacity={0.9}
         onPress={onPress}
         style={styles.touchArea}
       >
-        {/* Top Mini Ribbon Badge */}
+        {/* Hexagonal Ribbon Banner from user assets */}
         <View style={styles.ribbonBadgeContainer}>
-          <LinearGradient
-            colors={['#8B5CF6', '#3B82F6', '#9333EA']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.ribbonBadge}
+          <ImageBackground
+            source={calcBadgeBlankImg}
+            style={styles.ribbonBadgeBg}
+            resizeMode="stretch"
           >
             <Text style={styles.ribbonBadgeText} numberOfLines={1}>
-              {activeSession.theme || 'Calculator'}
+              {activeSession.theme || 'Calculator ranking'}
             </Text>
-          </LinearGradient>
+          </ImageBackground>
         </View>
 
         {/* Floating Card Body */}
-        <View style={styles.cardBody}>
+        <LinearGradient
+          colors={['#4C3F78', '#382D5C', '#2A2048']}
+          style={styles.cardGradient}
+        >
           {activeSession.topCharming ? (
-            <View style={styles.topUserRow}>
+            <View style={styles.rankedUserContent}>
               <Image
                 source={
                   activeSession.topCharming.avatar
@@ -109,28 +111,29 @@ export default function FloatingCalculatorWidget({
                 }
                 style={styles.avatarMini}
               />
-              <View style={styles.userInfoCol}>
-                <Text style={styles.userNameMini} numberOfLines={1}>
-                  {activeSession.topCharming.name}
-                </Text>
-                <Text style={styles.userScoreMini}>
-                  ⭐ {activeSession.topCharming.score}
-                </Text>
+              <Text style={styles.rankRoleText}>Top charming</Text>
+              <Text style={styles.userNameMini} numberOfLines={1}>
+                {activeSession.topCharming.name}
+              </Text>
+              <View style={styles.scorePill}>
+                <Text style={styles.scorePillText}>⭐ {activeSession.topCharming.score}</Text>
               </View>
             </View>
           ) : (
-            <Text style={styles.noRankingText} numberOfLines={1}>
-              No current ranking
-            </Text>
+            <View style={styles.emptyContent}>
+              <Text style={styles.noRankingText}>
+                No current ranking
+              </Text>
+            </View>
           )}
 
-          {/* Countdown & Total Bar */}
+          {/* Stats Footer Bar */}
           <View style={styles.statsBar}>
-            <Text style={styles.statsBarText}>
+            <Text style={styles.statsBarText} numberOfLines={1}>
               {activeSession.totalScore || 0} Total • ⏱️ {countdownText}
             </Text>
           </View>
-        </View>
+        </LinearGradient>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -144,90 +147,116 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   touchArea: {
-    width: 146,
-    borderRadius: 16,
-    backgroundColor: '#382D5C',
-    borderWidth: 1.5,
-    borderColor: '#7C67B8',
-    paddingTop: 16,
-    paddingHorizontal: 8,
-    paddingBottom: 6,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 10,
+    width: 156,
+    minHeight: 168,
     position: 'relative',
+    paddingTop: 12,
   },
   ribbonBadgeContainer: {
     position: 'absolute',
-    top: -10,
-    alignSelf: 'center',
-    zIndex: 2,
-  },
-  ribbonBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#C084FC',
-    minWidth: 80,
+    top: 0,
+    left: 0,
+    right: 0,
     alignItems: 'center',
+    zIndex: 10,
+  },
+  ribbonBadgeBg: {
+    width: 142,
+    height: 36,
     justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 12,
   },
   ribbonBadgeText: {
     color: '#FFF',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  cardBody: {
+  cardGradient: {
+    borderRadius: 20,
+    borderWidth: 1.8,
+    borderColor: '#8B5CF6',
+    paddingTop: 26,
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    minHeight: 156,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
+    elevation: 12,
+  },
+  emptyContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  noRankingText: {
+    color: '#E0E7FF',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    opacity: 0.95,
+  },
+  rankedUserContent: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  topUserRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
+    paddingVertical: 6,
   },
   avatarMini: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
     borderColor: '#F59E0B',
-    marginRight: 6,
+    marginBottom: 4,
   },
-  userInfoCol: {
-    maxWidth: 90,
-  },
-  userNameMini: {
-    color: '#FFF',
+  rankRoleText: {
+    color: '#C084FC',
     fontSize: 10,
     fontWeight: '700',
   },
-  userScoreMini: {
-    color: '#FCD34D',
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  noRankingText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 10,
-    fontWeight: '600',
-    marginVertical: 4,
+  userNameMini: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '700',
+    maxWidth: 120,
     textAlign: 'center',
+    marginTop: 1,
+  },
+  scorePill: {
+    backgroundColor: 'rgba(245, 158, 11, 0.25)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginTop: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.5)',
+  },
+  scorePillText: {
+    color: '#FCD34D',
+    fontSize: 10,
+    fontWeight: '800',
   },
   statsBar: {
     width: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-    borderRadius: 6,
-    paddingVertical: 2,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 6,
   },
   statsBarText: {
     color: '#E0E7FF',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
   },
 });

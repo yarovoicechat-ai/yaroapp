@@ -2791,7 +2791,12 @@ export default function VoiceRoomScreen() {
       {/* Room Calculator Modal */}
       <RoomCalculatorModal
         visible={calculatorModalVisible}
-        onClose={() => setCalculatorModalVisible(false)}
+        onClose={() => {
+          setCalculatorModalVisible(false);
+          if (calculatorSession?.status === 'ended') {
+            setCalculatorSession(null);
+          }
+        }}
         roomId={currentRoomId || room?.id || room?.roomId}
         isOwner={Boolean(
           isRoomOwner ||

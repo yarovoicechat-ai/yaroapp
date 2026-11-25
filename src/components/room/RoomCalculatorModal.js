@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,24 +7,23 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  ImageBackground,
   ScrollView,
   Dimensions,
   Platform,
-  Animated,
   ActivityIndicator,
 } from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Asset imports
-const calcFrameImg = require('../../assets/calculator/calc_frame.png');
+// Sliced graphic assets from user-provided design
+const calcFullFrameImg = require('../../assets/calculator/calc_full_frame.png');
 const calcHelpBtnImg = require('../../assets/calculator/calc_help_btn.png');
 const calcCloseBtnImg = require('../../assets/calculator/calc_close_btn.png');
-const calcBadgeImg = require('../../assets/calculator/calc_badge.png');
 const calcConfirmBtnImg = require('../../assets/calculator/calc_confirm_btn.png');
+const calcRibbonBannerImg = require('../../assets/calculator/calc_ribbon_banner.png');
 const calcStarImg = require('../../assets/calculator/calc_star.png');
 const calcHeartImg = require('../../assets/calculator/calc_heart.png');
 
@@ -176,121 +175,237 @@ export default function RoomCalculatorModal({
           </View>
         ) : (
           // ==================== MAIN CALCULATOR POPUP ====================
-          <View style={styles.popupCard}>
-            {/* Top Stars & Bubbles Decor */}
-            <Image source={calcStarImg} style={styles.decorStarLeft} />
-            <Image source={calcStarImg} style={styles.decorStarRight} />
-            <Image source={calcHeartImg} style={styles.decorHeartLeft} />
-            <Image source={calcHeartImg} style={styles.decorHeartRight} />
-
-            {/* Header Ribbon / Badge */}
-            <View style={styles.headerRibbonContainer}>
-              <LinearGradient
-                colors={['#8B5CF6', '#3B82F6', '#9333EA']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.headerRibbon}
-              >
-                <Text style={styles.headerRibbonText} numberOfLines={1}>
-                  {activeSession ? activeSession.theme : 'Calculator'}
-                </Text>
-              </LinearGradient>
-            </View>
-
-            {/* Top Left ? Help Button */}
-            <TouchableOpacity
-              style={styles.helpBtn}
-              onPress={() => setShowRules(true)}
-              activeOpacity={0.8}
+          <View style={styles.popupWrapper}>
+            <ImageBackground
+              source={calcFullFrameImg}
+              style={styles.popupCard}
+              imageStyle={styles.popupCardImg}
+              resizeMode="stretch"
             >
-              <Image source={calcHelpBtnImg} style={styles.iconBtnImg} />
-            </TouchableOpacity>
-
-            {/* Top Right X Close Button */}
-            <TouchableOpacity
-              style={styles.closeBtn}
-              onPress={onClose}
-              activeOpacity={0.8}
-            >
-              <Image source={calcCloseBtnImg} style={styles.iconBtnImg} />
-            </TouchableOpacity>
-
-            {/* Content body based on session state */}
-            {!activeSession || activeSession.status !== 'active' && activeSession.status !== 'ended' ? (
-              // ----------------- SETUP STATE -----------------
-              <View style={styles.setupBody}>
-                {/* Theme Text Input */}
-                <View style={styles.themeInputContainer}>
-                  <TextInput
-                    style={styles.themeInput}
-                    placeholder="Enter activity theme..."
-                    placeholderTextColor="rgba(255, 255, 255, 0.45)"
-                    maxLength={30}
-                    value={theme}
-                    onChangeText={setTheme}
-                    multiline
-                  />
-                  <Text style={styles.charCounter}>{theme.length}/30</Text>
-                </View>
-
-                {/* Duration Section */}
-                <Text style={styles.durationLabel}>Duration:</Text>
-                <TouchableOpacity
-                  style={styles.durationSelectorBox}
-                  onPress={() => {
-                    setTempDuration(durationMins);
-                    setShowPicker(true);
-                  }}
-                  activeOpacity={0.8}
+              {/* Top Header Ribbon / Badge */}
+              <View style={styles.headerRibbonContainer} pointerEvents="none">
+                <ImageBackground
+                  source={calcRibbonBannerImg}
+                  style={styles.headerRibbonBg}
+                  imageStyle={styles.headerRibbonBgImg}
+                  resizeMode="contain"
                 >
-                  <Text style={styles.durationSubtext}>Select times</Text>
-                  <Text style={styles.durationValueText}>{durationMins} mins</Text>
-                </TouchableOpacity>
-
-                {/* Confirm Button */}
-                <TouchableOpacity
-                  style={[
-                    styles.confirmButton,
-                    !isFormValid && styles.confirmButtonDisabled,
-                  ]}
-                  onPress={handleConfirmStart}
-                  disabled={!isFormValid || submitting}
-                  activeOpacity={0.85}
-                >
-                  {isFormValid ? (
-                    <LinearGradient
-                      colors={['#F59E0B', '#F97316', '#EAB308']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.confirmGradient}
-                    >
-                      {submitting ? (
-                        <ActivityIndicator color="#FFF" size="small" />
-                      ) : (
-                        <Text style={styles.confirmTextActive}>Confirm</Text>
-                      )}
-                    </LinearGradient>
-                  ) : (
-                    <View style={styles.confirmDisabledInner}>
-                      <Text style={styles.confirmTextDisabled}>Confirm</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+                  <Text style={styles.headerRibbonText} numberOfLines={1}>
+                    {activeSession ? (activeSession.theme || 'Calculator') : 'Calculator'}
+                  </Text>
+                </ImageBackground>
               </View>
-            ) : activeSession.status === 'active' ? (
-              // ----------------- ACTIVE SESSION STATE -----------------
-              <View style={styles.activeBody}>
-                {/* Ranking Section */}
-                <View style={styles.rankingCardArea}>
-                  {activeSession.topCharming ? (
-                    <View style={styles.charmingBanner}>
+
+              {/* Top Left ? Help Button */}
+              <TouchableOpacity
+                style={styles.helpBtn}
+                onPress={() => setShowRules(true)}
+                activeOpacity={0.8}
+              >
+                <Image source={calcHelpBtnImg} style={styles.iconBtnImg} />
+              </TouchableOpacity>
+
+              {/* Top Right X Close Button */}
+              <TouchableOpacity
+                style={styles.closeBtn}
+                onPress={onClose}
+                activeOpacity={0.8}
+              >
+                <Image source={calcCloseBtnImg} style={styles.iconBtnImg} />
+              </TouchableOpacity>
+
+              {/* Content body based on session state */}
+              {!activeSession || (activeSession.status !== 'active' && activeSession.status !== 'ended') ? (
+                // ----------------- SETUP STATE -----------------
+                <View style={styles.setupBody}>
+                  {/* Theme Text Input */}
+                  <View style={styles.themeInputContainer}>
+                    <TextInput
+                      style={styles.themeInput}
+                      placeholder="Enter activity theme..."
+                      placeholderTextColor="rgba(191, 219, 254, 0.5)"
+                      maxLength={30}
+                      value={theme}
+                      onChangeText={setTheme}
+                      multiline
+                    />
+                    <Text style={styles.charCounter}>{theme.length}/30</Text>
+                  </View>
+
+                  {/* Duration Section */}
+                  <Text style={styles.durationLabel}>Duration:</Text>
+                  <TouchableOpacity
+                    style={styles.durationSelectorBox}
+                    onPress={() => {
+                      setTempDuration(durationMins);
+                      setShowPicker(true);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.durationSubtext}>Select times</Text>
+                    <Text style={styles.durationValueText}>{durationMins} mins</Text>
+                  </TouchableOpacity>
+
+                  {/* Confirm Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.confirmButton,
+                      !isFormValid && styles.confirmButtonDisabled,
+                    ]}
+                    onPress={handleConfirmStart}
+                    disabled={!isFormValid || submitting}
+                    activeOpacity={0.85}
+                  >
+                    {isFormValid ? (
+                      <ImageBackground
+                        source={calcConfirmBtnImg}
+                        style={styles.confirmBtnImgBg}
+                        imageStyle={styles.confirmBtnImgStyle}
+                        resizeMode="contain"
+                      >
+                        {submitting && (
+                          <ActivityIndicator color="#FFF" size="small" />
+                        )}
+                      </ImageBackground>
+                    ) : (
+                      <View style={styles.confirmDisabledInner}>
+                        <Text style={styles.confirmTextDisabled}>Confirm</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : activeSession.status === 'active' ? (
+                // ----------------- ACTIVE SESSION STATE -----------------
+                <View style={styles.activeBody}>
+                  {/* Ranking Section */}
+                  <View style={styles.rankingCardArea}>
+                    {activeSession.topCharming ? (
+                      <View style={styles.charmingBanner}>
+                        <LinearGradient
+                          colors={['#8B5CF6', '#6D28D9', '#4C1D95']}
+                          style={styles.charmingBannerGrad}
+                        >
+                          <Image
+                            source={
+                              activeSession.topCharming.avatar
+                                ? { uri: activeSession.topCharming.avatar }
+                                : require('../../assets/avtar.webp')
+                            }
+                            style={styles.participantAvatar}
+                          />
+                          <Text style={styles.bannerRoleTitle}>Top charming</Text>
+                          <Text style={styles.participantName} numberOfLines={1}>
+                            {activeSession.topCharming.name}
+                          </Text>
+                          <View style={styles.scoreCapsule}>
+                            <Text style={styles.scoreStarIcon}>⭐</Text>
+                            <Text style={styles.scoreNumber}>
+                              {activeSession.topCharming.score}
+                            </Text>
+                          </View>
+                        </LinearGradient>
+                      </View>
+                    ) : (
+                      <View style={styles.emptyRankingBox}>
+                        <Text style={styles.emptyRankingText}>No current ranking</Text>
+                        <ActivityIndicator
+                          size="small"
+                          color="rgba(56, 189, 248, 0.6)"
+                          style={{ marginTop: 16 }}
+                        />
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Stats Row */}
+                  <View style={styles.statsRow}>
+                    <View style={styles.statCol}>
+                      <Text style={styles.statValue}>{activeSession.totalScore || 0}</Text>
+                      <Text style={styles.statLabel}>Total</Text>
+                    </View>
+                    <View style={styles.statCol}>
+                      <Text style={styles.statValue}>{activeSession.totalPeople || 0}</Text>
+                      <Text style={styles.statLabel}>People</Text>
+                    </View>
+                    <View style={styles.statCol}>
+                      <Text style={styles.statValue}>{formattedCountdown}</Text>
+                      <Text style={styles.statLabel}>Countdown</Text>
+                    </View>
+                  </View>
+
+                  {/* Action Buttons Row (End / Share) */}
+                  <View style={styles.actionButtonsRow}>
+                    {isOwner && (
+                      <TouchableOpacity
+                        style={styles.endActionBtn}
+                        onPress={handleEnd}
+                        disabled={submitting}
+                        activeOpacity={0.85}
+                      >
+                        <LinearGradient
+                          colors={['#0284C7', '#0369A1', '#075985']}
+                          style={styles.endBtnGradient}
+                        >
+                          <Text style={styles.endBtnText}>End</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
+
+                    <TouchableOpacity
+                      style={[styles.shareActionBtn, !isOwner && { flex: 1 }]}
+                      onPress={() => onShareSession && onShareSession(activeSession)}
+                      activeOpacity={0.85}
+                    >
                       <LinearGradient
-                        colors={['#8B5CF6', '#6D28D9', '#4C1D95']}
-                        style={styles.charmingBannerGrad}
+                        colors={['#F59E0B', '#F97316', '#EAB308']}
+                        style={styles.shareBtnGradient}
+                      >
+                        <Text style={styles.shareBtnText}>Share</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                // ----------------- ENDED RESULT STATE -----------------
+                <View style={styles.endedBody}>
+                  {/* Result Banners */}
+                  <View style={styles.endedBannersRow}>
+                    {/* Top Supporter (Red) */}
+                    <View style={styles.endedBannerItem}>
+                      <LinearGradient
+                        colors={['#EF4444', '#DC2626', '#B91C1C']}
+                        style={styles.endedBannerGrad}
                       >
                         <Image
                           source={
-                            activeSession.topCharming.avatar
+                            activeSession?.topSupporter?.avatar
+                              ? { uri: activeSession.topSupporter.avatar }
+                              : require('../../assets/avtar.webp')
+                          }
+                          style={styles.participantAvatar}
+                        />
+                        <Text style={styles.bannerRoleTitle}>Top supporter</Text>
+                        <Text style={styles.participantName} numberOfLines={1}>
+                          {activeSession?.topSupporter?.name || 'None'}
+                        </Text>
+                        <View style={styles.scoreCapsule}>
+                          <Text style={styles.scoreDiamondIcon}>💎</Text>
+                          <Text style={styles.scoreNumber}>
+                            {activeSession?.topSupporter?.score || 0}
+                          </Text>
+                        </View>
+                      </LinearGradient>
+                    </View>
+
+                    {/* Top Charming (Purple) */}
+                    <View style={styles.endedBannerItem}>
+                      <LinearGradient
+                        colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
+                        style={styles.endedBannerGrad}
+                      >
+                        <Image
+                          source={
+                            activeSession?.topCharming?.avatar
                               ? { uri: activeSession.topCharming.avatar }
                               : require('../../assets/avtar.webp')
                           }
@@ -298,64 +413,37 @@ export default function RoomCalculatorModal({
                         />
                         <Text style={styles.bannerRoleTitle}>Top charming</Text>
                         <Text style={styles.participantName} numberOfLines={1}>
-                          {activeSession.topCharming.name}
+                          {activeSession?.topCharming?.name || 'None'}
                         </Text>
                         <View style={styles.scoreCapsule}>
                           <Text style={styles.scoreStarIcon}>⭐</Text>
                           <Text style={styles.scoreNumber}>
-                            {activeSession.topCharming.score}
+                            {activeSession?.topCharming?.score || 0}
                           </Text>
                         </View>
                       </LinearGradient>
                     </View>
-                  ) : (
-                    <View style={styles.emptyRankingBox}>
-                      <Text style={styles.emptyRankingText}>No current ranking</Text>
-                      <ActivityIndicator
-                        size="small"
-                        color="rgba(255, 255, 255, 0.4)"
-                        style={{ marginTop: 16 }}
-                      />
+                  </View>
+
+                  {/* Stats Row */}
+                  <View style={styles.statsRow}>
+                    <View style={styles.statCol}>
+                      <Text style={styles.statValue}>{activeSession?.totalScore || 0}</Text>
+                      <Text style={styles.statLabel}>Total</Text>
                     </View>
-                  )}
-                </View>
-
-                {/* Stats Row */}
-                <View style={styles.statsRow}>
-                  <View style={styles.statCol}>
-                    <Text style={styles.statValue}>{activeSession.totalScore || 0}</Text>
-                    <Text style={styles.statLabel}>Total</Text>
+                    <View style={styles.statCol}>
+                      <Text style={styles.statValue}>{activeSession?.totalPeople || 0}</Text>
+                      <Text style={styles.statLabel}>People</Text>
+                    </View>
+                    <View style={styles.statCol}>
+                      <Text style={styles.statValue}>End</Text>
+                      <Text style={styles.statLabel}>Countdown</Text>
+                    </View>
                   </View>
-                  <View style={styles.statCol}>
-                    <Text style={styles.statValue}>{activeSession.totalPeople || 0}</Text>
-                    <Text style={styles.statLabel}>People</Text>
-                  </View>
-                  <View style={styles.statCol}>
-                    <Text style={styles.statValue}>{formattedCountdown}</Text>
-                    <Text style={styles.statLabel}>Countdown</Text>
-                  </View>
-                </View>
 
-                {/* Action Buttons Row (End / Share) */}
-                <View style={styles.actionButtonsRow}>
-                  {isOwner && (
-                    <TouchableOpacity
-                      style={styles.endActionBtn}
-                      onPress={handleEnd}
-                      disabled={submitting}
-                      activeOpacity={0.85}
-                    >
-                      <LinearGradient
-                        colors={['#3B82F6', '#2563EB', '#1D4ED8']}
-                        style={styles.endBtnGradient}
-                      >
-                        <Text style={styles.endBtnText}>End</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  )}
-
+                  {/* Share Button */}
                   <TouchableOpacity
-                    style={[styles.shareActionBtn, !isOwner && { flex: 1 }]}
+                    style={styles.shareFullBtn}
                     onPress={() => onShareSession && onShareSession(activeSession)}
                     activeOpacity={0.85}
                   >
@@ -367,98 +455,8 @@ export default function RoomCalculatorModal({
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
-              </View>
-            ) : (
-              // ----------------- ENDED RESULT STATE -----------------
-              <View style={styles.endedBody}>
-                {/* Result Banners */}
-                <View style={styles.endedBannersRow}>
-                  {/* Top Supporter (Red) */}
-                  <View style={styles.endedBannerItem}>
-                    <LinearGradient
-                      colors={['#EF4444', '#DC2626', '#B91C1C']}
-                      style={styles.endedBannerGrad}
-                    >
-                      <Image
-                        source={
-                          activeSession?.topSupporter?.avatar
-                            ? { uri: activeSession.topSupporter.avatar }
-                            : require('../../assets/avtar.webp')
-                        }
-                        style={styles.participantAvatar}
-                      />
-                      <Text style={styles.bannerRoleTitle}>Top supporter</Text>
-                      <Text style={styles.participantName} numberOfLines={1}>
-                        {activeSession?.topSupporter?.name || 'None'}
-                      </Text>
-                      <View style={styles.diamondScoreCapsule}>
-                        <Text style={styles.scoreDiamondIcon}>💎</Text>
-                        <Text style={styles.scoreNumber}>
-                          {activeSession?.topSupporter?.score || 0}
-                        </Text>
-                      </View>
-                    </LinearGradient>
-                  </View>
-
-                  {/* Top Charming (Purple) */}
-                  <View style={styles.endedBannerItem}>
-                    <LinearGradient
-                      colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
-                      style={styles.endedBannerGrad}
-                    >
-                      <Image
-                        source={
-                          activeSession?.topCharming?.avatar
-                            ? { uri: activeSession.topCharming.avatar }
-                            : require('../../assets/avtar.webp')
-                        }
-                        style={styles.participantAvatar}
-                      />
-                      <Text style={styles.bannerRoleTitle}>Top charming</Text>
-                      <Text style={styles.participantName} numberOfLines={1}>
-                        {activeSession?.topCharming?.name || 'None'}
-                      </Text>
-                      <View style={styles.scoreCapsule}>
-                        <Text style={styles.scoreStarIcon}>⭐</Text>
-                        <Text style={styles.scoreNumber}>
-                          {activeSession?.topCharming?.score || 0}
-                        </Text>
-                      </View>
-                    </LinearGradient>
-                  </View>
-                </View>
-
-                {/* Stats Row */}
-                <View style={styles.statsRow}>
-                  <View style={styles.statCol}>
-                    <Text style={styles.statValue}>{activeSession?.totalScore || 0}</Text>
-                    <Text style={styles.statLabel}>Total</Text>
-                  </View>
-                  <View style={styles.statCol}>
-                    <Text style={styles.statValue}>{activeSession?.totalPeople || 0}</Text>
-                    <Text style={styles.statLabel}>People</Text>
-                  </View>
-                  <View style={styles.statCol}>
-                    <Text style={styles.statValue}>End</Text>
-                    <Text style={styles.statLabel}>Countdown</Text>
-                  </View>
-                </View>
-
-                {/* Share Button */}
-                <TouchableOpacity
-                  style={styles.shareFullBtn}
-                  onPress={() => onShareSession && onShareSession(activeSession)}
-                  activeOpacity={0.85}
-                >
-                  <LinearGradient
-                    colors={['#F59E0B', '#F97316', '#EAB308']}
-                    style={styles.shareBtnGradient}
-                  >
-                    <Text style={styles.shareBtnText}>Share</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            )}
+              )}
+            </ImageBackground>
           </View>
         )}
 
@@ -532,267 +530,259 @@ export default function RoomCalculatorModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // Popup card
+  popupWrapper: {
+    width: Math.min(SCREEN_WIDTH * 0.94, 380),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   popupCard: {
-    width: SCREEN_WIDTH * 0.88,
-    maxWidth: 380,
-    backgroundColor: '#3E3465',
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: '#7C67B8',
-    paddingTop: 36,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    width: '100%',
+    minHeight: 460,
+    paddingTop: 54,
+    paddingHorizontal: 22,
+    paddingBottom: 30,
     alignItems: 'center',
     position: 'relative',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    elevation: 15,
+    shadowColor: '#38BDF8',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.55,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  popupCardImg: {
+    borderRadius: 28,
   },
   // Top Header Ribbon
   headerRibbonContainer: {
     position: 'absolute',
-    top: -18,
-    alignSelf: 'center',
+    top: -14,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
     zIndex: 10,
   },
-  headerRibbon: {
-    paddingHorizontal: 28,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#C084FC',
+  headerRibbonBg: {
+    width: 175,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 140,
-    shadowColor: '#C084FC',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 8,
+    paddingHorizontal: 20,
+  },
+  headerRibbonBgImg: {
+    resizeMode: 'contain',
   },
   headerRibbonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   helpBtn: {
     position: 'absolute',
-    top: 14,
-    left: 16,
-    zIndex: 5,
+    top: 18,
+    left: 20,
+    zIndex: 15,
   },
   closeBtn: {
     position: 'absolute',
-    top: 14,
-    right: 16,
-    zIndex: 5,
+    top: 18,
+    right: 20,
+    zIndex: 15,
   },
   iconBtnImg: {
-    width: 32,
-    height: 32,
-    resizeMode: 'contain',
-  },
-  // Decorations
-  decorStarLeft: {
-    position: 'absolute',
-    top: -24,
-    left: 45,
-    width: 34,
-    height: 34,
-    resizeMode: 'contain',
-  },
-  decorStarRight: {
-    position: 'absolute',
-    top: -22,
-    right: 50,
-    width: 30,
-    height: 30,
-    resizeMode: 'contain',
-  },
-  decorHeartLeft: {
-    position: 'absolute',
-    top: -16,
-    left: 14,
-    width: 26,
-    height: 26,
-    resizeMode: 'contain',
-  },
-  decorHeartRight: {
-    position: 'absolute',
-    top: -14,
-    right: 18,
-    width: 26,
-    height: 26,
+    width: 36,
+    height: 36,
     resizeMode: 'contain',
   },
   // Setup State
   setupBody: {
     width: '100%',
-    marginTop: 10,
+    marginTop: 8,
   },
   themeInputContainer: {
-    backgroundColor: '#2F2753',
+    backgroundColor: 'rgba(6, 20, 60, 0.88)',
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#4E4280',
+    borderWidth: 1.2,
+    borderColor: '#1D4ED8',
     padding: 14,
-    minHeight: 120,
+    minHeight: 110,
     position: 'relative',
     marginBottom: 16,
   },
   themeInput: {
     color: '#FFF',
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '500',
+    minHeight: 65,
     textAlignVertical: 'top',
-    height: 80,
+    padding: 0,
   },
   charCounter: {
     position: 'absolute',
     bottom: 8,
     right: 12,
-    color: '#10B981',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#38BDF8',
+    fontSize: 11,
+    fontWeight: '700',
   },
   durationLabel: {
     color: '#FFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     marginBottom: 8,
   },
   durationSelectorBox: {
-    backgroundColor: '#2F2753',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#4E4280',
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginBottom: 20,
+    backgroundColor: 'rgba(6, 20, 60, 0.88)',
+    borderRadius: 14,
+    borderWidth: 1.2,
+    borderColor: '#1D4ED8',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 22,
+    justifyContent: 'center',
   },
   durationSubtext: {
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: '#93C5FD',
     fontSize: 11,
+    fontWeight: '600',
     marginBottom: 4,
   },
   durationValueText: {
     color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   confirmButton: {
     width: '100%',
-    height: 50,
-    borderRadius: 25,
+    height: 52,
+    borderRadius: 26,
     overflow: 'hidden',
-  },
-  confirmGradient: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonDisabled: {
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.25)',
+  },
+  confirmBtnImgBg: {
+    width: '100%',
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnImgStyle: {
+    resizeMode: 'contain',
   },
   confirmDisabledInner: {
-    flex: 1,
-    backgroundColor: '#E2E8F0',
-    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
-  },
-  confirmTextActive: {
-    color: '#FFF',
-    fontSize: 17,
-    fontWeight: '800',
+    justifyContent: 'center',
   },
   confirmTextDisabled: {
-    color: '#94A3B8',
-    fontSize: 17,
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 15,
     fontWeight: '700',
   },
-  // Active State
+
+  // Active Session State
   activeBody: {
     width: '100%',
-    marginTop: 10,
-    alignItems: 'center',
+    marginTop: 8,
   },
   rankingCardArea: {
     width: '100%',
-    minHeight: 160,
-    backgroundColor: '#2F2753',
+    height: 180,
+    backgroundColor: 'rgba(6, 20, 60, 0.85)',
     borderRadius: 16,
-    padding: 16,
+    borderWidth: 1.2,
+    borderColor: '#1D4ED8',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    overflow: 'hidden',
   },
   emptyRankingBox: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyRankingText: {
-    color: 'rgba(255, 255, 255, 0.75)',
-    fontSize: 15,
-    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 14,
+    fontWeight: '600',
   },
   charmingBanner: {
     width: 140,
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#F59E0B',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
   },
   charmingBannerGrad: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
     alignItems: 'center',
   },
   participantAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     borderWidth: 2,
     borderColor: '#F59E0B',
     marginBottom: 6,
   },
   bannerRoleTitle: {
-    color: '#FCD34D',
-    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 10,
     fontWeight: '700',
     marginBottom: 2,
   },
   participantName: {
     color: '#FFF',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '800',
     marginBottom: 6,
+    maxWidth: 120,
+    textAlign: 'center',
   },
   scoreCapsule: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   scoreStarIcon: {
-    fontSize: 12,
+    fontSize: 11,
+    marginRight: 4,
+  },
+  scoreDiamondIcon: {
+    fontSize: 11,
     marginRight: 4,
   },
   scoreNumber: {
     color: '#FFF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
+
+  // Stats Row
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     width: '100%',
-    paddingVertical: 12,
+    paddingHorizontal: 10,
     marginBottom: 16,
   },
   statCol: {
@@ -801,88 +791,83 @@ const styles = StyleSheet.create({
   },
   statValue: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800',
     marginBottom: 2,
   },
   statLabel: {
-    color: 'rgba(255, 255, 255, 0.55)',
-    fontSize: 12,
+    color: '#93C5FD',
+    fontSize: 11,
+    fontWeight: '600',
   },
+
+  // Action Buttons
   actionButtonsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     width: '100%',
     gap: 12,
   },
   endActionBtn: {
     flex: 1,
-    height: 48,
-    borderRadius: 24,
+    height: 46,
+    borderRadius: 23,
     overflow: 'hidden',
   },
   endBtnGradient: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   endBtnText: {
     color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
   },
   shareActionBtn: {
     flex: 1,
-    height: 48,
-    borderRadius: 24,
+    height: 46,
+    borderRadius: 23,
     overflow: 'hidden',
   },
   shareBtnGradient: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   shareBtnText: {
     color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
   },
-  // Ended State
+
+  // Ended Body
   endedBody: {
     width: '100%',
-    marginTop: 10,
-    alignItems: 'center',
+    marginTop: 8,
   },
   endedBannersRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
+    gap: 14,
     width: '100%',
     marginBottom: 16,
   },
   endedBannerItem: {
     flex: 1,
-    maxWidth: 130,
-    borderRadius: 14,
+    maxWidth: 140,
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#F59E0B',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 6,
   },
   endedBannerGrad: {
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-  },
-  diamondScoreCapsule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    paddingVertical: 14,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  scoreDiamondIcon: {
-    fontSize: 12,
-    marginRight: 4,
+    alignItems: 'center',
   },
   shareFullBtn: {
     width: '100%',
@@ -890,84 +875,23 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
   },
-  // Bottom Sheet Duration Picker
-  pickerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    zIndex: 9999,
-  },
-  pickerBackdrop: {
-    flex: 1,
-  },
-  pickerContainer: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-    maxHeight: 380,
-    zIndex: 10000,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E7EB',
-  },
-  pickerHeaderBtn: {
-    padding: 6,
-  },
-  pickerHeaderTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  pickerDoneText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#06B6D4',
-  },
-  pickerScrollView: {
-    maxHeight: 280,
-  },
-  pickerScrollContent: {
-    paddingVertical: 10,
-  },
-  pickerItem: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  pickerItemSelected: {
-    backgroundColor: '#F3F4F6',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E7EB',
-  },
-  pickerItemText: {
-    fontSize: 17,
-    color: '#9CA3AF',
-  },
-  pickerItemTextSelected: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#111827',
-  },
+
   // Rules Screen
   rulesContainer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#1E143E',
-    zIndex: 9998,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#0F172A',
   },
   rulesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'android' ? 44 : 54,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 14,
+    backgroundColor: '#1E293B',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
   },
   backButton: {
     padding: 6,
@@ -978,89 +902,91 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   rulesScrollContent: {
+    padding: 20,
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 40,
   },
   starryBanner: {
     width: '100%',
-    paddingVertical: 36,
+    height: 120,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    marginVertical: 10,
   },
   floatingStar: {
     position: 'absolute',
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     resizeMode: 'contain',
   },
   brightestStarTitle: {
     color: '#E0E7FF',
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '900',
     textAlign: 'center',
-    letterSpacing: 1,
-    textShadowColor: '#818CF8',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+    lineHeight: 34,
+    textShadowColor: '#38BDF8',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
   },
   rulesCard: {
     width: '100%',
-    backgroundColor: '#2F2356',
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: '#5B429A',
-    padding: 24,
+    borderColor: '#38BDF8',
+    paddingTop: 28,
+    paddingHorizontal: 18,
+    paddingBottom: 24,
     alignItems: 'center',
-    marginTop: 10,
     position: 'relative',
+    marginTop: 18,
   },
   cardRibbonBadge: {
     position: 'absolute',
-    top: -16,
-    backgroundColor: '#4C1D95',
-    borderColor: '#A78BFA',
-    borderWidth: 1.5,
-    paddingHorizontal: 22,
-    paddingVertical: 6,
-    borderRadius: 16,
+    top: -14,
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 20,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
   },
   cardRibbonText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   rulesCardSubtitle: {
-    color: '#E2E8F0',
-    fontSize: 16,
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: '600',
-    marginTop: 14,
-    marginBottom: 20,
     textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 16,
   },
   rulesConversionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 18,
     gap: 12,
-    marginBottom: 24,
   },
   starTag: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F59E0B',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 14,
+    borderRadius: 16,
   },
   starTagIcon: {
-    fontSize: 16,
-    marginRight: 6,
+    fontSize: 14,
+    marginRight: 4,
   },
   starTagText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
   },
   equalSign: {
@@ -1072,23 +998,89 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#C084FC',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 14,
+    borderRadius: 16,
   },
   diamondTagIcon: {
-    fontSize: 16,
-    marginRight: 6,
+    fontSize: 14,
+    marginRight: 4,
   },
   diamondTagText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
   },
   rulesDescription: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    lineHeight: 22,
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 12,
+    fontWeight: '500',
     textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 10,
+  },
+
+  // Duration Scroll Picker Overlay
+  pickerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 99999,
+    justifyContent: 'flex-end',
+  },
+  pickerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+  pickerContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: SCREEN_HEIGHT * 0.45,
+    paddingBottom: Platform.OS === 'android' ? 20 : 34,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  pickerHeaderBtn: {
+    padding: 6,
+  },
+  pickerHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  pickerDoneText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  pickerScrollView: {
+    maxHeight: 240,
+  },
+  pickerScrollContent: {
+    paddingVertical: 8,
+  },
+  pickerItem: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerItemSelected: {
+    backgroundColor: 'rgba(2, 132, 199, 0.08)',
+  },
+  pickerItemText: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  pickerItemTextSelected: {
+    color: '#0284C7',
+    fontWeight: '800',
+    fontSize: 17,
   },
 });

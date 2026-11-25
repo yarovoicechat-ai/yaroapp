@@ -2292,6 +2292,8 @@ export default function VoiceRoomScreen() {
         visible={crossRoomPkModalVisible}
         onClose={() => setCrossRoomPkModalVisible(false)}
         roomId={currentRoomId || room?.id || room?.roomId}
+        roomName={room?.roomName || room?.name || 'Our Room'}
+        roomCover={room?.coverImage || room?.cover || ''}
         isOwner={Boolean(
           isRoomOwner ||
           isContextOwnerMatch ||
@@ -2300,6 +2302,17 @@ export default function VoiceRoomScreen() {
           (seats?.[0]?.user && [String(user?._id || ''), String(user?.id || ''), String(user?.userId || '')].some(uid => uid && uid === String(seats[0].user.userId || seats[0].user.id || seats[0].user._id)))
         )}
         currentUser={user}
+        onChatMessage={(text) => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `opp_voice_${Date.now()}_${Math.random()}`,
+              text,
+              isSystem: true,
+              createdAt: new Date().toISOString(),
+            },
+          ]);
+        }}
       />
 
       {/* Notice & Announcement & Event Row (Image 2 Model) */}

@@ -463,12 +463,7 @@ export default function RoomCalculatorModal({
         )}
 
         {/* ==================== DURATION SCROLL PICKER BOTTOM SHEET ==================== */}
-        <Modal
-          visible={showPicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowPicker(false)}
-        >
+        {showPicker && (
           <View style={styles.pickerOverlay}>
             <TouchableOpacity
               style={styles.pickerBackdrop}
@@ -528,7 +523,7 @@ export default function RoomCalculatorModal({
               </ScrollView>
             </View>
           </View>
-        </Modal>
+        )}
       </View>
     </Modal>
   );
@@ -897,9 +892,10 @@ const styles = StyleSheet.create({
   },
   // Bottom Sheet Duration Picker
   pickerOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    zIndex: 9999,
   },
   pickerBackdrop: {
     flex: 1,
@@ -910,6 +906,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     maxHeight: 380,
+    zIndex: 10000,
   },
   pickerHeader: {
     flexDirection: 'row',
@@ -960,9 +957,9 @@ const styles = StyleSheet.create({
   },
   // Rules Screen
   rulesContainer: {
-    width: '100%',
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: '#1E143E',
+    zIndex: 9998,
   },
   rulesHeader: {
     flexDirection: 'row',

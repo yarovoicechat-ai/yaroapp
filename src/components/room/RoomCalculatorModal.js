@@ -48,6 +48,7 @@ export default function RoomCalculatorModal({
   const [showRules, setShowRules] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [postToast, setPostToast] = useState(false);
+  const [forceSetup, setForceSetup] = useState(false);
 
   // Remaining seconds calculation
   const [secondsLeft, setSecondsLeft] = useState(0);
@@ -88,6 +89,7 @@ export default function RoomCalculatorModal({
         await onStartSession(clean, durationMins);
       }
       setTheme('');
+      setForceSetup(false);
     } catch (e) {
       console.warn('[RoomCalculator] start error:', e);
     } finally {
@@ -211,6 +213,7 @@ export default function RoomCalculatorModal({
             <TouchableOpacity
               style={styles.helpBtn}
               onPress={() => setShowRules(true)}
+              hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
               activeOpacity={0.8}
             >
               <Image source={calcHelpBtnImg} style={styles.iconBtnImg} />
@@ -219,14 +222,18 @@ export default function RoomCalculatorModal({
             {/* Top Right X Close Button from user assets */}
             <TouchableOpacity
               style={styles.closeBtn}
-              onPress={onClose}
+              onPress={() => {
+                setForceSetup(false);
+                onClose && onClose();
+              }}
+              hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
               activeOpacity={0.8}
             >
               <Image source={calcCloseBtnImg} style={styles.iconBtnImg} />
             </TouchableOpacity>
 
             {/* Content body based on session state */}
-            {!activeSession || (activeSession.status !== 'active' && activeSession.status !== 'ended') ? (
+            {forceSetup || !activeSession || (activeSession.status !== 'active' && activeSession.status !== 'ended') ? (
               // ----------------- SETUP STATE -----------------
               <View style={styles.setupBody}>
                 {/* Theme Text Input */}
@@ -466,19 +473,36 @@ export default function RoomCalculatorModal({
                   </View>
                 </View>
 
-                {/* Share Button */}
-                <TouchableOpacity
-                  style={styles.shareFullBtn}
-                  onPress={() => onShareSession && onShareSession(activeSession)}
-                  activeOpacity={0.85}
-                >
-                  <LinearGradient
-                    colors={['#F59E0B', '#F97316', '#EAB308']}
-                    style={styles.shareBtnGradient}
+                {/* Action Buttons Row */}
+                <View style={styles.actionButtonsRow}>
+                  {isOwner && (
+                    <TouchableOpacity
+                      style={styles.endActionBtn}
+                      onPress={() => setForceSetup(true)}
+                      activeOpacity={0.85}
+                    >
+                      <LinearGradient
+                        colors={['#10B981', '#059669', '#047857']}
+                        style={styles.endBtnGradient}
+                      >
+                        <Text style={styles.endBtnText}>New Session</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.shareActionBtn, !isOwner && { flex: 1 }]}
+                    onPress={() => onShareSession && onShareSession(activeSession)}
+                    activeOpacity={0.85}
                   >
-                    <Text style={styles.shareBtnText}>Share</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                    <LinearGradient
+                      colors={['#F59E0B', '#F97316', '#EAB308']}
+                      style={styles.shareBtnGradient}
+                    >
+                      <Text style={styles.shareBtnText}>Share</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>

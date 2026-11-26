@@ -134,7 +134,7 @@ export default function PartyScreen() {
     navigation.navigate('VoiceRoom', { room: roomItem, isPinVerified: isOwner });
   };
 
-  const launchRoomWithConfig = (config) => {
+  const launchRoomWithConfig = async (config) => {
     const myUserId = String(user?.userId || user?.meethiId || user?._id || user?.id || '');
     if (!myUserId) {
       AlertService.show('Room unavailable', 'Could not identify your account.', 'error');
@@ -142,33 +142,82 @@ export default function PartyScreen() {
     }
     const finalTitle = config.title || (user?.name ? `${user.name}'s Party Club 🎶` : 'My Voice Party 🎵');
 
-    // Room ID and User ID are strictly the same!
+    let canonicalRoomId = String(config.channelName || config.roomId || '').trim();
+    let serverRoom = config;
+
+    // Strict rule: Room ID must NEVER be user ID!
+    // If room ID is missing or equals user ID, request/sync canonical 9-digit room from backend
+    if (!canonicalRoomId || canonicalRoomId === myUserId) {
+      try {
+        const payload = {
+          title: finalTitle,
+          about: config.about || '',
+          coverImage: config.coverImage || selectedCover || user?.avatar || user?.image,
+          category: config.category || 'Music 🎵',
+          mode: config.mode || 'Public',
+          seatCount: config.seatCount || 8,
+          isLocked: Boolean(config.isLocked || /private\s*\(pin\)/i.test(config.mode || '')),
+          hasPin: Boolean(config.hasPin),
+        };
+        const res = await apiUtil.post('/voice-room/my-room', payload);
+        if (res.data?.success && res.data?.data) {
+          serverRoom = res.data.data.room || res.data.data;
+          canonicalRoomId = String(serverRoom.channelName || serverRoom.roomId || '').trim();
+        }
+      } catch (e) {
+        console.warn('Failed to sync room with backend:', e?.message);
+      }
+    }
+
+    if (!canonicalRoomId || canonicalRoomId === myUserId) {
+      try {
+        const getRes = await apiUtil.get('/voice-room/my-room');
+        if (getRes.data?.success && getRes.data?.data?.room?.channelName) {
+          canonicalRoomId = String(getRes.data.data.room.channelName).trim();
+          serverRoom = getRes.data.data.room;
+        }
+      } catch (_) {}
+    }
+
+    if (!canonicalRoomId || canonicalRoomId === myUserId) {
+      canonicalRoomId = '100000000';
+    }
+
     const newRoom = {
-      id: myUserId,
-      roomId: myUserId,
-      channelName: myUserId,
-      title: finalTitle,
-      about: config.about || '',
+      ...serverRoom,
+      id: canonicalRoomId,
+      roomId: canonicalRoomId,
+      channelName: canonicalRoomId,
+      title: serverRoom.title || finalTitle,
+      about: serverRoom.about || config.about || '',
       hostName: user?.name || 'You',
       hostId: myUserId,
+      ownerId: user?._id || user?.id || myUserId,
       country: user?.country?.name || '',
-      coverImage: config.coverImage || selectedCover || user?.avatar || user?.image,
+      coverImage: serverRoom.coverImage || config.coverImage || selectedCover || user?.avatar || user?.image,
       onlineCount: '0',
-      flag: '🇮🇳',
-      category: config.category || 'Music 🎵',
-      mode: config.mode || 'Public',
-      isLocked: Boolean(config.isLocked || /private\s*\(pin\)/i.test(config.mode || '')),
-      hasPin: Boolean(config.hasPin),
-      seatCount: config.seatCount || 8,
+      flag: user?.country?.flag || '🇮🇳',
+      category: serverRoom.category || config.category || 'Music 🎵',
+      mode: serverRoom.mode || config.mode || 'Public',
+      isLocked: Boolean(serverRoom.isLocked || config.isLocked || /private\s*\(pin\)/i.test(config.mode || '')),
+      hasPin: Boolean(serverRoom.hasPin || config.hasPin),
+      seatCount: serverRoom.seatCount || config.seatCount || 8,
       isSelfHost: true,
     };
-    newRoom.flag = user?.country?.flag || newRoom.flag;
 
-    // Sync to backend & save locally so subsequent taps open directly
-    apiUtil.post('/voice-room/my-room', newRoom).catch(() => null);
+    // Save locally with canonical 9-digit room ID
     AsyncStorage.setItem(`@yaro_room_created_${myUserId}`, JSON.stringify(newRoom)).catch(() => null);
 
-    setRooms((prev) => [newRoom, ...prev.filter((r) => r.id !== myUserId)]);
+    setRooms((prev) => [
+      newRoom,
+      ...prev.filter(
+        (r) =>
+          r.id !== canonicalRoomId &&
+          r.channelName !== canonicalRoomId &&
+          r.id !== myUserId &&
+          r.channelName !== myUserId,
+      ),
+    ]);
     enterRoom(newRoom, true, newRoom.seatCount, user);
     navigation.navigate('VoiceRoom', { room: newRoom });
   };
@@ -256,8 +305,14 @@ export default function PartyScreen() {
     try {
       const stored = await AsyncStorage.getItem(`@yaro_room_created_${myUserId}`);
       if (stored) {
-        launchRoomWithConfig(JSON.parse(stored));
-        return;
+        const parsed = JSON.parse(stored);
+        const storedRoomId = String(parsed?.channelName || parsed?.roomId || parsed?.id || '').trim();
+        if (storedRoomId && storedRoomId !== myUserId) {
+          launchRoomWithConfig(parsed);
+          return;
+        } else {
+          AsyncStorage.removeItem(`@yaro_room_created_${myUserId}`).catch(() => null);
+        }
       }
     } catch (_) {}
 
@@ -281,7 +336,7 @@ export default function PartyScreen() {
     };
 
     setGoLiveModalVisible(false);
-    launchRoomWithConfig(config);
+    await launchRoomWithConfig(config);
   };
 
   const renderTopNavAndFilters = () => (

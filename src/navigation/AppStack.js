@@ -84,6 +84,12 @@ import VIPScreen from "../screens/user/VIPScreen";
 import DataCenter from "../screens/user/DataCenter";
 import ARFilterStudio from '../features/YaroAR/screens/ARFilterStudio';
 import GreedyKingScreen from '../screens/games/GreedyKingScreen';
+import RewardAssistantScreen from '../screens/chats/RewardAssistantScreen';
+import AllRewardsScreen from '../screens/chats/AllRewardsScreen';
+import YaroOfficialScreen from '../screens/chats/YaroOfficialScreen';
+import EventScreen from '../screens/chats/EventScreen';
+import TeamBlackScreen from '../screens/chats/TeamBlackScreen';
+import FriendsScreen from '../screens/chats/FriendsScreen';
 
 const Stack = createStackNavigator();
 
@@ -177,6 +183,12 @@ export default function AppStack() {
       <Stack.Screen name="DataCenter" component={DataCenter} />
       <Stack.Screen name="ARFilterStudio" component={ARFilterStudio} />
       <Stack.Screen name="GreedyKing" component={GreedyKingScreen} />
+      <Stack.Screen name="RewardAssistantScreen" component={RewardAssistantScreen} />
+      <Stack.Screen name="AllRewardsScreen" component={AllRewardsScreen} />
+      <Stack.Screen name="YaroOfficialScreen" component={YaroOfficialScreen} />
+      <Stack.Screen name="EventScreen" component={EventScreen} />
+      <Stack.Screen name="TeamBlackScreen" component={TeamBlackScreen} />
+      <Stack.Screen name="FriendsScreen" component={FriendsScreen} />
     </Stack.Navigator>
   );
 }

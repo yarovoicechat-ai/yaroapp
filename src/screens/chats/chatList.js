@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -7,494 +7,399 @@ import {
   Image,
   StatusBar,
   StyleSheet,
-  ScrollView,
   ActivityIndicator,
+  TextInput,
+  ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAppTopSafeInset, getTabScreenBottomPadding } from '../../utils/safeAreaUtils';
-import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { apiUtil } from '../../utils/apiUtil';
 import { getUserAvatar } from '../../utils/avatarUtil';
 import { AuthContext } from '../../context/AuthProvider';
-import { resolveGiftVisual } from '../../components/gift/giftMediaUtils';
 import useInboxMessages from '../../hooks/useInboxMessages';
 import { formatConversationTime } from '../../utils/chatTimeUtil';
 
-const diamondIcon = require('../../assets/icons/diamond.png');
+const monthlyCardFloatImg = require('../../assets/card/monthly_card_float.png');
 
-const INBOX_SUB_TABS = [
-  { id: 'all_messages', label: 'All Messages', icon: 'chatbubbles-outline' },
-  { id: 'gifts', label: 'Gifts', icon: 'gift-outline' },
+const OFFICIAL_CHANNELS = [
+  {
+    id: 'official_event',
+    title: 'Event',
+    subtitle: '[Activity]',
+    time: '9:07 AM',
+    unreadCount: 9,
+    iconName: 'flash',
+    iconBg: '#8B5CF6',
+    route: 'EventScreen',
+  },
+  {
+    id: 'official_reward_assistant',
+    title: 'Reward Assistant',
+    subtitle: 'Rewards received! Check...',
+    time: '3:00 AM',
+    unreadCount: 10,
+    iconName: 'gift',
+    iconBg: '#F59E0B',
+    route: 'RewardAssistantScreen',
+  },
+  {
+    id: 'official_yaro',
+    title: 'Yaro Official',
+    subtitle: '[Notification]',
+    time: '3:00 AM',
+    unreadCount: 7,
+    iconName: 'megaphone',
+    iconBg: '#7C3AED',
+    route: 'YaroOfficialScreen',
+  },
+  {
+    id: 'official_team_black',
+    title: 'Team Black',
+    subtitle: '[Notification]',
+    time: 'Yesterday',
+    unreadCount: 0,
+    iconName: 'home',
+    iconBg: '#C2410C',
+    route: 'TeamBlackScreen',
+  },
 ];
-
-const SYSTEM_NOTICE_ENTRY = {
-  id: 'm_system_notice',
-  isSpecial: true,
-  type: 'system_notice',
-  title: 'System Notice',
-  snippet: 'Official notifications, announcements and safety tips',
-  time: '',
-  unreadCount: 0,
-  icon: 'notifications',
-};
-
-const LUCKY_REWARD_BAG_ENTRY = {
-  id: 'm_lucky_reward_bag',
-  isSpecial: true,
-  actionTab: 'gifts',
-  type: 'lucky_reward_bag',
-  title: 'Lucky Reward Bag',
-  snippet: 'Open your gift box and check received rewards',
-  time: '',
-  unreadCount: 0,
-  icon: 'gift',
-};
 
 export default function ChatListScreen({ embedded = false, onNavigate, onClose } = {}) {
   const insets = useSafeAreaInsets();
   const topSafeInset = embedded ? 0 : getAppTopSafeInset(insets.top);
   const bottomTabBarPadding = embedded ? 16 : getTabScreenBottomPadding(insets.bottom);
   const navigation = useNavigation();
-  const openScreen = (name, params) => onNavigate ? onNavigate(name, params) : navigation.navigate(name, params);
+  const isFocused = useIsFocused();
+  const openScreen = (name, params) => (onNavigate ? onNavigate(name, params) : navigation.navigate(name, params));
   const { user } = useContext(AuthContext);
-  const [activeSubTab, setActiveSubTab] = useState('all_messages');
+
+  const [mainTab, setMainTab] = useState('chats'); // 'chats' | 'contacts'
+  const [searchQuery, setSearchQuery] = useState('');
+
   const { conversations, loading, refresh: fetchConversations } = useInboxMessages();
-  const [giftHistory, setGiftHistory] = useState([]);
-  const [loadingGifts, setLoadingGifts] = useState(false);
-  const [systemNotices, setSystemNotices] = useState([]);
-  const [loadingNotices, setLoadingNotices] = useState(false);
 
+  // Contacts counts summary (friends, followers, following)
+  const [contactsSummary, setContactsSummary] = useState({
+    friendsCount: 2,
+    followersCount: 17,
+    followingCount: 42,
+  });
 
-  const fetchGiftHistory = useCallback(async () => {
+  const fetchContactsSummary = useCallback(async () => {
     try {
-      setLoadingGifts(true);
-      const [sentResponse, receivedResponse] = await Promise.all([
-        apiUtil.get('/gifts/sent', { params: { limit: 50 } }),
-        apiUtil.get('/gifts/received', { params: { limit: 50 } }),
-      ]);
-      const sent = sentResponse.data?.data?.transactions || [];
-      const received = receivedResponse.data?.data?.transactions || [];
-      const mapped = [
-        ...sent.map((transaction) => {
-          const gift = transaction.giftId || {};
-          const receiver = transaction.receiverId || {};
-          const visual = resolveGiftVisual(gift);
-          return {
-            id: String(transaction._id),
-            type: 'sent',
-            name: receiver.name || 'Recipient',
-            avatar: receiver.image || receiver.avatar,
-            giftName: gift.name || transaction.meta?.giftName || 'Gift',
-            giftEmoji: visual.giftIcon,
-            giftImage: visual.giftImage,
-            price: Number(transaction.totalDiamonds || transaction.totalPrice || 0),
-            createdAt: transaction.createdAt,
-          };
-        }),
-        ...received.map((transaction) => {
-          const gift = transaction.giftId || {};
-          const sender = transaction.senderId || {};
-          const visual = resolveGiftVisual(gift);
-          return {
-            id: String(transaction._id),
-            type: 'received',
-            name: sender.name || 'Sender',
-            avatar: sender.image || sender.avatar,
-            giftName: gift.name || transaction.meta?.giftName || 'Gift',
-            giftEmoji: visual.giftIcon,
-            giftImage: visual.giftImage,
-            price: Number(transaction.totalDiamonds || transaction.totalPrice || 0),
-            createdAt: transaction.createdAt,
-          };
-        }),
-      ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-      setGiftHistory(mapped);
-    } catch (error) {
-      console.log('Failed to fetch gift history:', error?.message || error);
-      setGiftHistory([]);
-    } finally {
-      setLoadingGifts(false);
-    }
-  }, []);
-
-  const fetchSystemNotices = useCallback(async () => {
-    try {
-      setLoadingNotices(true);
-      const response = await apiUtil.get('/notifications', { params: { limit: 50, type: 'system' } });
-      const notices = (response.data?.data?.notifications || []).filter(
-        (notice) => String(notice?.type || '').toLowerCase() === 'system',
-      );
-      const mapped = Array.isArray(notices) ? notices.map((notice) => ({
-        id: String(notice._id || notice.id),
-        type: notice.type,
-        title: notice.title || 'Notification',
-        badge: notice.isRead ? null : 'New',
-        subtitle: notice.message || notice.content || '',
-        time: notice.createdAt ? new Date(notice.createdAt).toLocaleString() : '',
-        icon: notice.type === 'transaction'
-          ? 'gift-outline'
-          : notice.type === 'follow'
-          ? 'person-add-outline'
-          : 'notifications-outline',
-        iconColor: notice.type === 'transaction'
-          ? '#D97706'
-          : notice.type === 'follow'
-          ? '#EC4899'
-          : '#6C5CE7',
-        iconBg: notice.type === 'transaction'
-          ? '#FEF3C7'
-          : notice.type === 'follow'
-          ? '#FDF2F8'
-          : '#F3E8FF',
-      })) : [];
-      setSystemNotices(mapped);
-    } catch (error) {
-      console.log('Failed to fetch system notices:', error?.message || error);
-      setSystemNotices([]);
-    } finally {
-      setLoadingNotices(false);
-    }
+      const res = await apiUtil.get('/user/contacts-summary');
+      if (res.data?.success && res.data?.data) {
+        setContactsSummary(res.data.data);
+      }
+    } catch (_) {}
   }, []);
 
   useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
-
-  const handleSubTabPress = (tabId) => {
-    setActiveSubTab(tabId);
-    if (tabId === 'gifts') fetchGiftHistory();
-    if (tabId === 'system') fetchSystemNotices();
-  };
-
-  // Render conversation row
-  const renderMessageCard = ({ item }) => {
-    if (item.isSpecial) {
-      return (
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.cardWrapper}
-          onPress={() => {
-            if (item.id === 'm_system_notice') {
-              openScreen('SystemNoticeScreen');
-              return;
-            }
-            if (item.actionTab) {
-              handleSubTabPress(item.actionTab);
-            }
-          }}
-        >
-          <View style={[styles.specialIconBox, { backgroundColor: item.actionTab ? '#FEF3C7' : '#F3E8FF' }]}>
-            <Icon name={item.icon} size={24} color={item.actionTab ? '#D97706' : '#8B5CF6'} />
-          </View>
-          <View style={styles.cardMainContent}>
-            <Text style={styles.userNameText}>{item.title}</Text>
-            <Text style={styles.lastMsgSnippet} numberOfLines={1}>
-              {item.snippet}
-            </Text>
-          </View>
-          <View style={styles.cardRightMeta}>
-            <Text style={styles.timeAgoText}>{item.time}</Text>
-            {item.unreadCount > 0 ? (
-              <View style={styles.unreadBadgePill}>
-                <Text style={styles.unreadBadgeVal}>{item.unreadCount}</Text>
-              </View>
-            ) : (
-              <Icon name="chevron-forward" size={18} color="#CBD5E1" />
-            )}
-          </View>
-        </TouchableOpacity>
-      );
+    if (isFocused) {
+      fetchConversations();
+      fetchContactsSummary();
     }
+  }, [isFocused, fetchConversations, fetchContactsSummary]);
 
-    const other = (item.participants || []).find(p => String(p?._id || p?.userId) !== String(user?._id || user?.userId)) || item.otherUser || item;
-    const lastMsg = typeof item.lastMessage === 'string' ? item.lastMessage : (item.lastMessage?.content || item.lastMessage?.text || 'Tap to chat');
+  // Filtered direct conversations
+  const filteredConversations = (conversations || []).filter((conv) => {
+    if (!searchQuery.trim()) return true;
+    const other = (conv.participants || []).find(
+      (p) => String(p?._id || p?.userId) !== String(user?._id || user?.userId)
+    ) || conv.otherUser || conv;
+    const name = String(other?.name || '').toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
+    return name.includes(q);
+  });
+
+  // Render Official Channel Row
+  const renderOfficialChannel = (item) => (
+    <TouchableOpacity
+      key={item.id}
+      activeOpacity={0.75}
+      style={styles.chatRow}
+      onPress={() => openScreen(item.route)}
+    >
+      <View style={[styles.avatarBox, { backgroundColor: item.iconBg }]}>
+        <Icon name={item.iconName} size={24} color="#FFFFFF" />
+      </View>
+      <View style={styles.chatRowCenter}>
+        <Text style={styles.titleText}>{item.title}</Text>
+        <Text style={styles.subtitleText} numberOfLines={1}>
+          {item.subtitle}
+        </Text>
+      </View>
+      <View style={styles.chatRowRight}>
+        <Text style={styles.timeText}>{item.time}</Text>
+        {item.unreadCount > 0 ? (
+          <View style={styles.badgePill}>
+            <Text style={styles.badgeText}>{item.unreadCount}</Text>
+          </View>
+        ) : (
+          <View style={{ height: 20 }} />
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  // Render Direct Conversation Row
+  const renderConversationItem = ({ item }) => {
+    const other = (item.participants || []).find(
+      (p) => String(p?._id || p?.userId) !== String(user?._id || user?.userId)
+    ) || item.otherUser || item;
+    const lastMsg =
+      typeof item.lastMessage === 'string'
+        ? item.lastMessage
+        : item.lastMessage?.content || item.lastMessage?.text || '[Share]';
     const senderName = other?.name || 'User';
 
-    const lastMsgTimeRaw = item.lastMessage?.createdAt || item.lastMessage?.sentAt || item.lastMessage?.updatedAt || item.updatedAt || item.createdAt;
-    const conversationTime = formatConversationTime(lastMsgTimeRaw);
+    const lastMsgTimeRaw =
+      item.lastMessage?.createdAt ||
+      item.lastMessage?.sentAt ||
+      item.lastMessage?.updatedAt ||
+      item.updatedAt ||
+      item.createdAt;
+    const conversationTime = formatConversationTime(lastMsgTimeRaw) || 'Recently';
 
     return (
       <TouchableOpacity
-        activeOpacity={0.8}
-        style={styles.cardWrapper}
-        onPress={() => openScreen('Chat', {
-          conversationId: item._id,
-          otherUser: other,
-          lastMessageTime: lastMsgTimeRaw,
-        })}
+        activeOpacity={0.75}
+        style={styles.chatRow}
+        onPress={() =>
+          openScreen('Chat', {
+            conversationId: item._id,
+            otherUser: other,
+            lastMessageTime: lastMsgTimeRaw,
+          })
+        }
       >
-        <View style={styles.avatarWrapper}>
-          <Image source={getUserAvatar(other)} style={styles.userAvatarImg} />
-          {other?.isOnline && <View style={styles.greenOnlineIndicator} />}
+        <View style={styles.avatarBox}>
+          <Image source={getUserAvatar(other)} style={styles.avatarImg} />
+          {other?.isOnline && <View style={styles.onlineDot} />}
         </View>
 
-        <View style={styles.cardMainContent}>
-          <View style={styles.nameAgeBadgeRow}>
-            <Text style={styles.userNameText}>{senderName}</Text>
-            {other?.age ? <Text style={styles.userAgeText}>{other.age}</Text> : null}
+        <View style={styles.chatRowCenter}>
+          <View style={styles.nameRow}>
+            <Text style={styles.titleText} numberOfLines={1}>
+              {senderName}
+            </Text>
             {other?.isHost && (
-              <Icon name="checkmark-circle" size={16} color="#3B82F6" style={{ marginLeft: 4 }} />
+              <Icon name="checkmark-circle" size={15} color="#3B82F6" style={{ marginLeft: 4 }} />
             )}
           </View>
-          <Text style={styles.lastMsgSnippet} numberOfLines={1}>
+          <Text style={styles.subtitleText} numberOfLines={1}>
             {lastMsg}
           </Text>
         </View>
 
-        <View style={styles.cardRightMeta}>
-          {Boolean(conversationTime) && (
-            <Text style={styles.timeAgoText}>{conversationTime}</Text>
-          )}
+        <View style={styles.chatRowRight}>
+          <Text style={styles.timeText}>{conversationTime}</Text>
           {Number(item.unreadCount) > 0 ? (
-            <View style={styles.unreadBadgePill}>
-              <Text style={styles.unreadBadgeVal}>{Number(item.unreadCount) > 99 ? '99+' : Number(item.unreadCount)}</Text>
+            <View style={styles.badgePill}>
+              <Text style={styles.badgeText}>
+                {Number(item.unreadCount) > 99 ? '99+' : Number(item.unreadCount)}
+              </Text>
             </View>
           ) : (
-            <Icon name="chevron-forward" size={16} color="#CBD5E1" style={{ marginTop: 2 }} />
+            <View style={{ height: 20 }} />
           )}
         </View>
       </TouchableOpacity>
     );
   };
 
-  // Render gift item
-  const renderGiftCard = ({ item }) => {
-    return (
-      <View style={styles.cardWrapper}>
-        <View style={styles.avatarWrapper}>
-          <Image source={getUserAvatar({ avatar: item.avatar, image: item.avatar })} style={styles.userAvatarImg} />
-        </View>
-
-        <View style={styles.cardMainContent}>
-          <View style={styles.nameAgeBadgeRow}>
-            <Text style={styles.userNameText}>{item.name}</Text>
-            <Text style={styles.giftDirectionPill}>
-              {item.type === 'received' ? 'Received' : 'Sent'}
-            </Text>
-          </View>
-          <Text style={styles.lastMsgSnippet}>
-            {item.type === 'received' ? 'Sent you' : 'You sent'} {item.giftName || 'a gift'}
-          </Text>
-        </View>
-
-        <View style={styles.giftRightBadge}>
-          {item.giftImage ? (
-            <Image source={{ uri: item.giftImage }} style={{ width: 28, height: 28 }} resizeMode="contain" />
-          ) : item.giftEmoji ? (
-            <Text style={{ fontSize: 24 }}>{item.giftEmoji}</Text>
-          ) : (
-            <Icon name="gift-outline" size={24} color="#D97706" />
-          )}
-          <View style={styles.giftCoinsWrap}>
-            <Image source={diamondIcon} style={{ width: 12, height: 12, marginRight: 3 }} resizeMode="contain" />
-            <Text style={styles.giftCoinsVal}>{item.price}</Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  // Render system notice card
-  const renderSystemCard = ({ item }) => {
-    return (
+  // Contacts View matching media_1795650517843_43c65be8.jpg
+  const renderContactsView = () => (
+    <ScrollView
+      contentContainerStyle={[styles.contactsContent, { paddingBottom: bottomTabBarPadding + 80 }]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* 1. Family group */}
       <TouchableOpacity
-        style={styles.cardWrapper}
+        style={styles.contactCard}
         activeOpacity={0.8}
-        onPress={() => {
-          if (item.type === 'follow') {
-            openScreen('Followers', { initialTab: 'followers' });
-          }
-        }}
+        onPress={() => openScreen('TeamBlackScreen')}
       >
-        <View style={[styles.specialIconBox, { backgroundColor: item.iconBg }]}>
-          <Icon name={item.icon} size={22} color={item.iconColor} />
-        </View>
-
-        <View style={styles.cardMainContent}>
-          <View style={styles.nameAgeBadgeRow}>
-            <Text style={styles.userNameText}>{item.title}</Text>
-            {item.badge && (
-              <View style={styles.newBadgePill}>
-                <Text style={styles.newBadgeText}>{item.badge}</Text>
-              </View>
-            )}
+        <View style={styles.contactLeft}>
+          <View style={[styles.contactIconCircle, { backgroundColor: '#FDF2F8' }]}>
+            <Text style={{ fontSize: 22 }}>🏠</Text>
           </View>
-          <Text style={styles.lastMsgSnippet} numberOfLines={2}>
-            {item.subtitle}
-          </Text>
+          <Text style={styles.contactCardTitle}>Family group</Text>
         </View>
+        <Icon name="chevron-forward" size={18} color="#CBD5E1" />
+      </TouchableOpacity>
 
-        <View style={styles.cardRightMeta}>
-          <Text style={styles.timeAgoText}>{item.time}</Text>
-          <Icon name="chevron-forward" size={16} color="#CBD5E1" />
+      {/* 2. Friends */}
+      <TouchableOpacity
+        style={styles.contactCard}
+        activeOpacity={0.8}
+        onPress={() => openScreen('FriendsScreen')}
+      >
+        <View style={styles.contactLeft}>
+          <View style={[styles.contactIconCircle, { backgroundColor: '#EFF6FF' }]}>
+            <Icon name="people" size={22} color="#3B82F6" />
+          </View>
+          <Text style={styles.contactCardTitle}>Friends</Text>
+        </View>
+        <View style={styles.contactRightRow}>
+          <Text style={styles.contactCountText}>{contactsSummary.friendsCount}</Text>
+          <Icon name="chevron-forward" size={18} color="#CBD5E1" />
         </View>
       </TouchableOpacity>
-    );
-  };
 
-  const sortedConversations = useMemo(() => {
-    return [...conversations].sort((a, b) => {
-      const timeA = new Date(a.lastMessage?.createdAt || a.updatedAt || a.createdAt || 0).getTime();
-      const timeB = new Date(b.lastMessage?.createdAt || b.updatedAt || b.createdAt || 0).getTime();
-      return timeB - timeA;
-    });
-  }, [conversations]);
+      {/* 3. Followers */}
+      <TouchableOpacity
+        style={styles.contactCard}
+        activeOpacity={0.8}
+        onPress={() => openScreen('Followers', { initialTab: 'followers' })}
+      >
+        <View style={styles.contactLeft}>
+          <View style={[styles.contactIconCircle, { backgroundColor: '#F5F3FF' }]}>
+            <Icon name="person-add" size={20} color="#8B5CF6" />
+          </View>
+          <Text style={styles.contactCardTitle}>Followers</Text>
+        </View>
+        <View style={styles.contactRightRow}>
+          <Text style={styles.contactCountText}>{contactsSummary.followersCount}</Text>
+          <Icon name="chevron-forward" size={18} color="#CBD5E1" />
+        </View>
+      </TouchableOpacity>
 
-  const listData = [LUCKY_REWARD_BAG_ENTRY, SYSTEM_NOTICE_ENTRY, ...sortedConversations];
+      {/* 4. Following */}
+      <TouchableOpacity
+        style={styles.contactCard}
+        activeOpacity={0.8}
+        onPress={() => openScreen('Followers', { initialTab: 'following' })}
+      >
+        <View style={styles.contactLeft}>
+          <View style={[styles.contactIconCircle, { backgroundColor: '#FFFBEB' }]}>
+            <Icon name="star" size={20} color="#F59E0B" />
+          </View>
+          <Text style={styles.contactCardTitle}>Following</Text>
+        </View>
+        <View style={styles.contactRightRow}>
+          <Text style={styles.contactCountText}>{contactsSummary.followingCount}</Text>
+          <Icon name="chevron-forward" size={18} color="#CBD5E1" />
+        </View>
+      </TouchableOpacity>
+
+      {/* 5. Family */}
+      <TouchableOpacity
+        style={styles.contactCard}
+        activeOpacity={0.8}
+        onPress={() => openScreen('FamilyScreen')}
+      >
+        <View style={styles.contactLeft}>
+          <View style={[styles.contactIconCircle, { backgroundColor: '#ECFDF5' }]}>
+            <Icon name="home" size={20} color="#10B981" />
+          </View>
+          <Text style={styles.contactCardTitle}>Family</Text>
+        </View>
+        <Icon name="chevron-forward" size={18} color="#CBD5E1" />
+      </TouchableOpacity>
+
+      {/* Floating Monthly Card Widget */}
+      <TouchableOpacity
+        style={styles.floatingMonthlyCard}
+        activeOpacity={0.85}
+        onPress={() => openScreen('Store')}
+      >
+        <Image
+          source={monthlyCardFloatImg}
+          style={styles.monthlyCardImg}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
+    </ScrollView>
+  );
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-      {!embedded && <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" animated />}
-      <LinearGradient colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']} style={StyleSheet.absoluteFillObject} />
+    <View style={[styles.container, { paddingTop: topSafeInset }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F4F1FA" />
 
-      {/* Main Title Row - Top header removed as requested */}
-      <View style={[styles.mainTitleRow, { paddingTop: topSafeInset + 8 }]}>
-        <View>
-          <Text style={styles.mainHeaderTitle}>
-            {activeSubTab === 'all_messages'
-              ? 'Inbox'
-              : activeSubTab === 'gifts'
-              ? 'Gift Box'
-              : 'System Notices'}
-          </Text>
-          <Text style={styles.mainHeaderSubtitle}>
-            {activeSubTab === 'all_messages'
-              ? 'Your messages & chats'
-              : activeSubTab === 'gifts'
-              ? 'Gifts received & sent'
-              : 'Official updates & alerts'}
-          </Text>
+      {/* Top Tabs & Search Pill Header */}
+      <View style={styles.topHeader}>
+        <View style={styles.tabsRow}>
+          {/* Chats Tab */}
+          <TouchableOpacity
+            style={styles.tabBtn}
+            activeOpacity={0.8}
+            onPress={() => setMainTab('chats')}
+          >
+            <Text style={[styles.tabBtnText, mainTab === 'chats' && styles.tabBtnTextActive]}>
+              Chats
+            </Text>
+            {mainTab === 'chats' && <View style={styles.tabUnderline} />}
+          </TouchableOpacity>
+
+          {/* Contacts Tab */}
+          <TouchableOpacity
+            style={styles.tabBtn}
+            activeOpacity={0.8}
+            onPress={() => setMainTab('contacts')}
+          >
+            <Text style={[styles.tabBtnText, mainTab === 'contacts' && styles.tabBtnTextActive]}>
+              Contacts
+            </Text>
+            {mainTab === 'contacts' && <View style={styles.tabUnderline} />}
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.titleRightIcons}>
-          <TouchableOpacity
-            style={styles.actionCircleBtn}
-            activeOpacity={0.8}
-            onPress={() => {
-              if (activeSubTab === 'gifts') openScreen('GiftsScreen');
-              else if (activeSubTab === 'system') openScreen('SystemNoticeScreen');
-            }}
-          >
-            <Icon name={activeSubTab === 'all_messages' ? 'search' : 'open-outline'} size={20} color="#1E293B" />
-          </TouchableOpacity>
-          {embedded && onClose && (
+        {/* Right Search Bar or Add Contact icon */}
+        <View style={styles.rightSearchRow}>
+          <View style={styles.searchPill}>
+            <Icon name="search" size={16} color="#7C3AED" style={{ marginRight: 6 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search"
+              placeholderTextColor="#94A3B8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+
+          {mainTab === 'contacts' && (
             <TouchableOpacity
-              style={[styles.actionCircleBtn, { marginLeft: 8 }]}
-              activeOpacity={0.8}
-              onPress={onClose}
+              style={styles.addContactBtn}
+              activeOpacity={0.7}
+              onPress={() => openScreen('Search')}
             >
-              <Icon name="close" size={20} color="#1E293B" />
+              <Icon name="person-add-outline" size={22} color="#1E293B" />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* 3. Sub-Tab Filter Pills */}
-      <View style={{ height: 48 }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.subTabsScrollContent}
-        >
-          {INBOX_SUB_TABS.map((tab) => {
-            const isActive = activeSubTab === tab.id;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                onPress={() => handleSubTabPress(tab.id)}
-                activeOpacity={0.8}
-                style={[styles.subTabPillBtn, isActive && styles.subTabPillBtnActive]}
-              >
-                {isActive ? (
-                  <LinearGradient
-                    colors={['#8B5CF6', '#6C5CE7']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.subTabGradient}
-                  >
-                    <Icon name={tab.icon} size={16} color="#FFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.subTabTextActive}>{tab.label}</Text>
-                  </LinearGradient>
-                ) : (
-                  <View style={styles.subTabInactiveInner}>
-                    <Icon name={tab.icon} size={16} color="#64748B" style={{ marginRight: 6 }} />
-                    <Text style={styles.subTabTextInactive}>{tab.label}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* 4. Active Tab Content Rendering */}
-      {activeSubTab === 'all_messages' && (
+      {mainTab === 'contacts' ? (
+        renderContactsView()
+      ) : (
         <FlatList
-          data={listData}
-          renderItem={renderMessageCard}
-          keyExtractor={(item) => item.id || item._id || String(Math.random())}
-          ListFooterComponent={
-            conversations.length === 0 && !loading ? (
-              <View style={styles.emptyStateContainer}>
-                <Icon name="chatbubble-ellipses-outline" size={42} color="#94A3B8" />
-                <Text style={styles.emptyStateTitle}>No Active Conversations</Text>
-                <Text style={styles.emptyStateSubtitle}>
-                  Connect with people through live and party rooms to chat!
-                </Text>
+          data={filteredConversations}
+          keyExtractor={(item) => String(item._id || item.id)}
+          renderItem={renderConversationItem}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: bottomTabBarPadding + 20 }}
+          ListHeaderComponent={
+            <View>
+              {/* Chatlist Subheader Row */}
+              <View style={styles.chatlistSubheader}>
+                <Text style={styles.chatlistTitle}>Chatlist</Text>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setSearchQuery('')}>
+                  <Text style={styles.allBtnText}>All</Text>
+                </TouchableOpacity>
               </View>
+
+              {/* Official System Channels */}
+              {OFFICIAL_CHANNELS.map(renderOfficialChannel)}
+            </View>
+          }
+          ListEmptyComponent={
+            loading ? (
+              <ActivityIndicator size="small" color="#7C3AED" style={{ marginTop: 24 }} />
             ) : null
           }
-          contentContainerStyle={[
-            styles.listContentContainer,
-            { paddingBottom: bottomTabBarPadding },
-          ]}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-
-      {activeSubTab === 'gifts' && (
-        <FlatList
-          data={giftHistory}
-          renderItem={renderGiftCard}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={
-            loadingGifts ? <ActivityIndicator size="small" color="#6C5CE7" style={{ marginTop: 40 }} /> : (
-              <View style={styles.emptyStateContainer}>
-                <Icon name="gift-outline" size={42} color="#94A3B8" />
-                <Text style={styles.emptyStateTitle}>No Gifts Yet</Text>
-                <Text style={styles.emptyStateSubtitle}>Real gifts you send or receive will appear here.</Text>
-              </View>
-            )
-          }
-          contentContainerStyle={[
-            styles.listContentContainer,
-            { paddingBottom: bottomTabBarPadding },
-          ]}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-
-      {activeSubTab === 'system' && (
-        <FlatList
-          data={systemNotices}
-          renderItem={renderSystemCard}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={
-            loadingNotices ? <ActivityIndicator size="small" color="#6C5CE7" style={{ marginTop: 40 }} /> : (
-              <View style={styles.emptyStateContainer}>
-                <Icon name="notifications-outline" size={42} color="#94A3B8" />
-                <Text style={styles.emptyStateTitle}>No Notifications Yet</Text>
-                <Text style={styles.emptyStateSubtitle}>Account updates and messages from Yaro will appear here.</Text>
-              </View>
-            )
-          }
-          contentContainerStyle={[
-            styles.listContentContainer,
-            { paddingBottom: bottomTabBarPadding },
-          ]}
-          showsVerticalScrollIndicator={false}
         />
       )}
     </View>
@@ -502,245 +407,217 @@ export default function ChatListScreen({ embedded = false, onNavigate, onClose }
 }
 
 const styles = StyleSheet.create({
-  topBarGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  langPillBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 6,
-    elevation: 2,
-  },
-  langPillValText: { color: '#1E293B', fontSize: 13, fontWeight: '700' },
-  rightActionsGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  coinBalancePillCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFBEB',
-    borderRadius: 20,
-    paddingLeft: 8,
-    paddingRight: 6,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    gap: 6,
-    elevation: 2,
-  },
-  coinIconImg: { width: 18, height: 18 },
-  coinValText: { color: '#1E293B', fontSize: 13, fontWeight: '800' },
-  plusIconBadgeCircle: {
-    width: 17,
-    height: 17,
-    borderRadius: 8.5,
-    backgroundColor: '#6C5CE7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bellButtonCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    position: 'relative',
-    elevation: 2,
-  },
-  redBadgeDotSmall: {
-    position: 'absolute',
-    top: 6,
-    right: 7,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF2D55',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  mainTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginVertical: 10,
-  },
-  mainHeaderTitle: { fontSize: 26, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-  mainHeaderSubtitle: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  titleRightIcons: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  actionCircleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  container: {
+    flex: 1,
     backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    justifyContent: 'center',
+  },
+  topHeader: {
+    height: 54,
+    backgroundColor: '#F4F1FA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  tabsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  subTabsScrollContent: { paddingHorizontal: 16, paddingVertical: 6, gap: 8 },
-  subTabPillBtn: { borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden' },
-  subTabPillBtnActive: { borderColor: 'transparent' },
-  subTabGradient: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 },
-  subTabInactiveInner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 },
-  subTabTextActive: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-  subTabTextInactive: { color: '#64748B', fontSize: 13, fontWeight: '600' },
-  listContentContainer: { paddingHorizontal: 16, paddingTop: 10 },
-  cardWrapper: {
+  tabBtn: {
+    paddingVertical: 8,
+    marginRight: 20,
+    position: 'relative',
+    alignItems: 'center',
+  },
+  tabBtnText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  tabBtnTextActive: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  tabUnderline: {
+    position: 'absolute',
+    bottom: 2,
+    width: 22,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#7C3AED',
+  },
+  rightSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    elevation: 2,
-    shadowColor: '#64748B',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-  },
-  avatarWrapper: { position: 'relative', marginRight: 12 },
-  userAvatarImg: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#E2E8F0' },
-  greenOnlineIndicator: {
-    position: 'absolute',
-    top: 2,
-    left: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#22C55E',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  specialIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  cardMainContent: { flex: 1 },
-  nameAgeBadgeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
-  userNameText: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginRight: 6 },
-  userAgeText: { fontSize: 13, fontWeight: '600', color: '#94A3B8' },
-  lastMsgSnippet: { fontSize: 12.5, color: '#64748B', fontWeight: '500' },
-  cardRightMeta: { alignItems: 'flex-end', justifyContent: 'center', marginLeft: 8 },
-  timeAgoText: { fontSize: 11, color: '#94A3B8', marginBottom: 4 },
-  unreadBadgePill: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  unreadBadgeVal: { color: '#FFFFFF', fontSize: 10.5, fontWeight: '900' },
-  callTypeDot: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  callBackBtn: {
-    width: 36,
+    paddingHorizontal: 12,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F5F3FF',
-    borderWidth: 1,
-    borderColor: '#DDD6FE',
-    justifyContent: 'center',
+    width: 140,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0F172A',
+    paddingVertical: 0,
+  },
+  addContactBtn: {
+    marginLeft: 10,
+    padding: 4,
+  },
+  chatlistSubheader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginLeft: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 6,
   },
-  giftDirectionPill: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#8B5CF6',
-    backgroundColor: '#F3E8FF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+  chatlistTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#1E293B',
   },
-  giftRightBadge: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
+  allBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7C3AED',
   },
-  giftCoinsWrap: {
+  chatRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFBEB',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginTop: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
   },
-  giftCoinsVal: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#D97706',
-  },
-  newBadgePill: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  newBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  emptyStateContainer: {
+  avatarBox: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 44,
-    paddingHorizontal: 24,
+    marginRight: 14,
+    position: 'relative',
   },
-  emptyStateTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#334155',
-    marginTop: 12,
+  avatarImg: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
-  emptyStateSubtitle: {
+  onlineDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: '#10B981',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  chatRowCenter: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  titleText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  subtitleText: {
     fontSize: 13,
     color: '#94A3B8',
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 18,
+    marginTop: 2,
   },
-  primaryActionBtn: {
-    backgroundColor: '#6C5CE7',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginTop: 16,
+  chatRowRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
-  primaryActionBtnText: {
+  timeText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginBottom: 4,
+  },
+  badgePill: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#EC4899',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  badgeText: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  contactsContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  contactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  contactLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  contactIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  contactCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  contactRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  contactCountText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginRight: 8,
+  },
+  floatingMonthlyCard: {
+    position: 'absolute',
+    right: 16,
+    bottom: 20,
+    width: 90,
+    height: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthlyCardImg: {
+    width: 84,
+    height: 84,
   },
 });
